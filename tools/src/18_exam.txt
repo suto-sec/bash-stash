@@ -1,0 +1,880 @@
+@@topic 18_exam_scripts | Exam-style scripts
+@@ex 1801 deploy_bins | deploy_bins.sh
+@@level 4
+@@cmds find -perm /111, cp, mkdir -p, while read, exit codes
+@@readme
+Write `deploy_bins.sh`:
+
+```
+deploy_bins.sh [directory]
+```
+
+It finds and **copies** to `$HOME/deploy/bin` every **regular file** (not directories) under
+`directory` (including subdirectories) that has **some** execute permission enabled and whose name
+ends in `.sh` or `.bin`.
+
+- More than one argument: print an error message **and the correct usage**, exit code **1**.
+- `directory` does not exist: error message (including the name), exit code **2**.
+- `directory` exists but is not a directory: error message (including the name), exit code **3**.
+- No argument: use the current directory.
+- If `$HOME/deploy/bin` does not exist, create it and print exactly
+  `Directory <full path> created` on stdout.
+- Existing files in the destination are overwritten.
+- Count the files **successfully** copied and print exactly `Copied N files` on stdout.
+
+Error messages go to **stderr** (wording is free). File names may contain spaces.
+Some files may be unreadable: `cp` fails for them, and they must not be counted.
+@@check
+SCRIPT_NAME=deploy_bins.sh
+SEEDS=2
+COMPARE="stdout exit files"
+setup() {
+  local i f n=0
+  mkdir -p "src/sub/deep" "mi dir" "src/x.sh"
+  for d in src src/sub src/sub/deep "mi dir" .; do
+    for i in 1 2 3; do
+      n=$((n + 1)); f="$d/$(word)$n$(pick .sh .bin .sh .txt .shx '') "; f=${f% }
+      [[ $(rand 4) == 0 ]] && f="$d/my $(word)$n$(pick .sh .bin)"
+      echo "echo $n" > "$f"; chmod "$(pick 755 644 700 604 601 610 744 754)" "$f"
+    done
+  done
+  echo "echo locked" > "src/locked$n.sh"; chmod 100 "src/locked$n.sh"
+  touch notadir.txt
+  if [[ $(rand 2) == 1 ]]; then mkdir -p "$H/deploy/bin"; echo old > "$H/deploy/bin/old.sh"; fi
+}
+ARGS=('' 'src' '"mi dir"' 'src/sub' 'noexiste' 'notadir.txt' 'src "mi dir"' '"$W/src"')
+extra_check() {
+  if [[ $REF_CODE == [123] ]]; then
+    [[ -n $ERR ]] || fail "expected an error message on stderr"
+    [[ $REF_CODE == [23] ]] && mentions "$(eval "set -- $CASE"; echo "$1")"
+    [[ $REF_CODE == 1 ]] && { [[ $ERR == *deploy_bins.sh* || $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* ]] || fail "the usage message should show how to call the script"; }
+  fi
+}
+@@solution
+#!/bin/bash
+# deploy_bins.sh [directory]
+# Copies to $HOME/deploy/bin every regular executable *.sh / *.bin file under directory.
+
+if [ $# -gt 1 ]; then
+  echo "Error: too many arguments" >&2
+  echo "Usage: $(basename "$0") [directory]" >&2
+  exit 1
+fi
+
+DIR=${1:-.}
+if [ ! -e "$DIR" ]; then
+  echo "Error: '$DIR' does not exist" >&2
+  exit 2
+fi
+if [ ! -d "$DIR" ]; then
+  echo "Error: '$DIR' is not a directory" >&2
+  exit 3
+fi
+
+DEST="$HOME/deploy/bin"
+if [ ! -d "$DEST" ]; then
+  mkdir -p "$DEST" || { echo "Error: cannot create $DEST" >&2; exit 4; }
+  echo "Directory $DEST created"
+fi
+
+N=0
+# process substitution (not a pipe) so that N is not lost in a subshell
+while IFS= read -r -d '' f; do
+  cp -f "$f" "$DEST/" && N=$((N + 1))
+done < <(find "$DIR" -type f -perm /111 \( -name '*.sh' -o -name '*.bin' \) -print0)
+
+echo "Copied $N files"
+
+@@ex 1802 iplog | ipLog.sh (log analysis tool)
+@@level 5
+@@cmds grep -F -w, tail, find, regex validation, header info
+@@readme
+A log analysis tool, specified precisely so it can be checked automatically:
+
+```
+ipLog.sh [<path>] [<ip>]
+```
+
+**Always first** (before any processing, even when there are errors) print this header on stdout:
+
+```
+User: <user running the script (whoami)>
+Date: <date in format YYYY-MM-DD HH:MM:SS>
+Bash: <$BASH_VERSION>
+```
+
+Then, depending on the arguments (the auth log is `/var/log/auth.log`; "log files" are **regular files
+whose name ends in `.log`**, searched recursively under `<path>`, which may be relative or absolute):
+
+| arguments | behaviour |
+|-----------|-----------|
+| none | print the last 100 lines of the auth log |
+| one valid IPv4 | print `IP <ip> appears in N lines of /var/log/auth.log` |
+| one directory | find the **last IP** that appears in the auth log, print `Last IP in /var/log/auth.log: <ip>`, then the log files under `<path>` that contain it (sorted, one per line, as found under `<path>`), or `No log file in <path> contains <ip>` |
+| `<path> <ip>` | print every line of the log files under `<path>` containing `<ip>`, as `file:line` (files sorted by path), then `Total: N lines` |
+
+Errors (message on **stderr**):
+
+- more than 2 arguments → exit **1** (show usage)
+- one argument that is neither a valid IP nor a directory → exit **2**
+- two arguments and `<path>` is not a directory → exit **2**
+- two arguments and `<ip>` is not a valid IPv4 (4 numbers 0-255) → exit **3**
+
+An IP matches only as a whole: `1.2.3.4` must not match inside `11.2.3.45` (`grep -w -F`).
+On success the exit code must be **0** (careful: a script's exit code is the one of its last command,
+so a final `[ ... ] && echo ...` that evaluates to false makes the whole script "fail").
+@@check
+SCRIPT_NAME=ipLog.sh
+SEEDS=2
+setup() {
+  mkdir -p logs/sub "logs/con espacio"
+  local ips=(185.220.101.47 45.33.32.156 10.0.0.1 192.168.1.10 "$(ip_rand)") f i
+  for f in logs/a.log logs/sub/b.log "logs/con espacio/c d.log" logs/notes.txt logs/old.log.1 logs/sub/e.log; do
+    for i in $(seq "$(randr 2 6)"); do echo "$(word) $(pick "${ips[@]}" "${ips[0]}5" "1${ips[2]}" '') $(word)"; done > "$f"
+  done
+  mkdir logs/dir.log
+  touch fichero.txt
+}
+ARGS=('' '185.220.101.47' '192.168.1.10' '8.8.8.8' 'logs' '"$W/logs"' 'logs/sub' 'logs 45.33.32.156' '"$W/logs" 10.0.0.1' 'logs 185.220.101.47' 'noexiste' 'fichero.txt' 'logs 999.1.1.1' 'logs 1.2.3' 'nodir 1.2.3.4' 'a b c')
+filter() { sed -E 's/^Date: [0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}$/Date: <date ok>/'; }
+extra_check() { [[ $REF_CODE != 0 && -z $ERR ]] && fail "expected an error message on stderr"; true; }
+@@solution
+#!/bin/bash
+# ipLog.sh [<path>] [<ip>] - look for an IP in log files
+AUTH=/var/log/auth.log
+
+valid_ip() {
+  [[ $1 =~ ^([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})$ ]] || return 1
+  local i
+  for i in 1 2 3 4; do (( 10#${BASH_REMATCH[i]} <= 255 )) || return 1; done
+}
+log_files() { find "$1" -type f -name '*.log' | sort; }
+usage() { echo "Usage: $(basename "$0") [<path>] [<ip>]" >&2; }
+
+echo "User: $(whoami)"
+echo "Date: $(date '+%Y-%m-%d %H:%M:%S')"
+echo "Bash: $BASH_VERSION"
+
+case $# in
+  0)
+    tail -n 100 "$AUTH" || exit 4
+    ;;
+  1)
+    if valid_ip "$1"; then
+      echo "IP $1 appears in $(grep -cwF "$1" "$AUTH") lines of $AUTH"
+    elif [ -d "$1" ]; then
+      IP=$(grep -oE '([0-9]{1,3}\.){3}[0-9]{1,3}' "$AUTH" | tail -n 1)
+      echo "Last IP in $AUTH: $IP"
+      FOUND=0
+      while IFS= read -r f; do
+        if grep -qwF "$IP" "$f"; then echo "$f"; FOUND=1; fi
+      done < <(log_files "$1")
+      [ $FOUND -eq 0 ] && echo "No log file in $1 contains $IP"
+    else
+      echo "Error: '$1' is neither a valid IP nor a directory" >&2
+      exit 2
+    fi
+    ;;
+  2)
+    [ -d "$1" ] || { echo "Error: '$1' is not a directory" >&2; exit 2; }
+    valid_ip "$2" || { echo "Error: '$2' is not a valid IP" >&2; exit 3; }
+    N=0
+    while IFS= read -r f; do
+      while IFS= read -r line; do
+        echo "$f:$line"
+        N=$((N + 1))
+      done < <(grep -wF "$2" "$f")
+    done < <(log_files "$1")
+    echo "Total: $N lines"
+    ;;
+  *)
+    echo "Error: too many arguments" >&2
+    usage
+    exit 1
+    ;;
+esac
+# without this, a final "[ ... ] && echo" that is false would make the script exit with 1
+exit 0
+
+@@ex 1803 no_manpage | Binaries without a man page
+@@level 3
+@@cmds for, test -e, sort
+@@readme
+Write `sinman.sh [bindir] [mandir]` (defaults: `/bin` and `/usr/share/man/man1`) that prints, sorted,
+the names of the files in `bindir` that **don't** have a page `mandir/NAME.1.gz`, followed by a line
+`Total: N files without man page`.
+
+If either directory doesn't exist: message on stderr, exit 1. More than 2 arguments: usage on stderr,
+exit 1.
+@@check
+SCRIPT_NAME=sinman.sh
+COMPARE="stdout exit errmsg"
+setup() { mkdir -p bin man1; local i n; for i in $(seq 10); do n="$(word)$i"; touch "bin/$n"; [[ $(rand 2) == 1 ]] && touch "man1/$n.1.gz"; done; touch man1/extra.1.gz "man1/$(word).8.gz"; }
+ARGS=('bin man1' '' 'bin' 'noexiste man1' 'bin noexiste' 'a b c')
+@@solution
+#!/bin/bash
+[ $# -gt 2 ] && { echo "Usage: $(basename "$0") [bindir] [mandir]" >&2; exit 1; }
+BIN=${1:-/bin}
+MAN=${2:-/usr/share/man/man1}
+for d in "$BIN" "$MAN"; do
+  [ -d "$d" ] || { echo "Error: $d is not a directory" >&2; exit 1; }
+done
+N=0
+for f in $(ls "$BIN" | sort); do
+  if [ ! -e "$MAN/$f.1.gz" ]; then
+    echo "$f"
+    N=$((N + 1))
+  fi
+done
+echo "Total: $N files without man page"
+
+@@ex 1804 add_exec | Recursive chmod +x of scripts
+@@level 3
+@@cmds find, chmod +x, test -x
+@@readme
+Write `addexec.sh [dir]` (default: current directory) that adds execute permission (`chmod +x`) to
+**every regular file** ending in `.sh` under `dir`, recursively.
+
+Print (sorted) the path of each file that **did not already have** execute permission for
+user, group **and** others (i.e. the ones whose permissions actually change), then
+`Updated N files`. If `dir` is not a directory: stderr message, exit 1.
+@@check
+SCRIPT_NAME=addexec.sh
+COMPARE="stdout exit errmsg files"
+setup() { mkdir -p p/{a,b/c} "p/con esp"; local i f; for i in $(seq 10); do f="p/$(pick . a b/c 'con esp')/$(word)$i$(pick .sh .sh .txt .sh.old)"; touch "$f"; chmod "$(pick 644 755 700 600 744 711)" "$f"; done; mkdir p/dir.sh; }
+ARGS=('p' '"p/con esp"' 'noexiste' 'p/a/../b')
+@@solution
+#!/bin/bash
+DIR=${1:-.}
+[ -d "$DIR" ] || { echo "Error: $DIR is not a directory" >&2; exit 1; }
+N=0
+while IFS= read -r -d '' f; do
+  echo "$f"
+  chmod +x "$f" && N=$((N + 1))
+done < <(find "$DIR" -type f -name '*.sh' ! -perm -111 -print0 | sort -z)
+echo "Updated $N files"
+
+@@ex 1805 ab_files | Names starting with a or b
+@@level 3
+@@cmds find \( -o \) !, wc
+@@readme
+Write `ab.sh [dir]` (default: current directory) that prints, recursively and sorted, every file and
+directory under `dir` whose **name** starts with `a` or `b` and does **not** contain `~`, and finally
+`N entries`. `dir` itself is never listed. If `dir` doesn't exist or isn't a directory: stderr, exit 1.
+@@check
+SCRIPT_NAME=ab.sh
+COMPARE="stdout exit errmsg"
+setup() { mkdir -p d/{alfa,beta~,c/b2}; local i; for i in $(seq 12); do touch "d/$(pick . alfa c c/b2)/$(pick a b c B)$(word)$i$(pick '' '~' '.txt' '.a~b')"; done; mkdir -p abc; touch abc/about bar; }
+ARGS=('d' '' 'd/c' 'noexiste' 'bar')
+@@solution
+#!/bin/bash
+DIR=${1:-.}
+[ -d "$DIR" ] || { echo "Error: $DIR is not a directory" >&2; exit 1; }
+R=$(find "$DIR" -mindepth 1 \( -name 'a*' -o -name 'b*' \) ! -name '*~*' | sort)
+[ -n "$R" ] && echo "$R"
+echo "$(echo -n "$R" | grep -c '^') entries"
+
+@@ex 1806 in_path | Where is it in $PATH?
+@@level 3
+@@cmds IFS=:, for, test -e -x
+@@readme
+Write `inpath.sh NAME` that looks for `NAME` in every directory of `$PATH`, **in order**, and for
+each match prints `DIR/NAME (executable)` or `DIR/NAME (not executable)`.
+
+- no argument (or more than one): usage on stderr, exit 2
+- not found anywhere: `NAME not found in PATH` on stderr, exit 1
+- directories of `$PATH` that don't exist are skipped silently
+@@check
+SCRIPT_NAME=inpath.sh
+SEEDS=1
+COMPARE="stdout stderr exit"
+ENV=(PATH="$SB/home/bin:/usr/local/bin:/usr/bin:/bin:/nonexistent:$SB/home/tools")
+setup() { mkdir -p "$H/bin" "$H/tools"; printf '#!/bin/sh\n' | tee "$H/bin/mytool" "$H/tools/mytool" "$H/tools/cat" "$H/tools/notes" >/dev/null; chmod +x "$H/bin/mytool" "$H/tools/cat" "$H/tools/mytool"; }
+ARGS=('ls' 'mytool' 'cat' 'notes' 'zzznothing' '' 'a b')
+@@solution
+#!/bin/bash
+[ $# -eq 1 ] || { echo "Usage: $(basename "$0") NAME" >&2; exit 2; }
+FOUND=0
+IFS=:
+for d in $PATH; do
+  if [ -e "$d/$1" ]; then
+    FOUND=1
+    if [ -x "$d/$1" ]; then echo "$d/$1 (executable)"; else echo "$d/$1 (not executable)"; fi
+  fi
+done
+[ $FOUND -eq 1 ] || { echo "$1 not found in PATH" >&2; exit 1; }
+
+@@ex 1807 biggest_two | The two biggest files
+@@level 3
+@@cmds find, stat / du -b, sort, head
+@@readme
+Write `grandes.sh [dir]` (default: current directory) that prints the **two biggest regular files**
+under `dir` (recursively), biggest first, as `<size in bytes> <path>` (path as `find` prints it).
+Ties: path in alphabetical order (`sort -k1,1nr -k2`). If there's only one file print one line;
+if none, print `No files` and exit 1. Not a directory: stderr, exit 2. Names may contain spaces.
+@@check
+SCRIPT_NAME=grandes.sh
+COMPARE="stdout exit errmsg"
+setup() { mkdir -p d/{a,b} vacio uno; local i; for i in $(seq 8); do bigfile "d/$(pick . a b)/$(word) $i" "$(pick 100 2000 2000 5000 70000 70000 123)"; done; mkdir -p vacio/sub; bigfile uno/f 10; touch nodir; }
+ARGS=('d' 'd/a' 'vacio' 'uno' 'nodir' 'noexiste')
+@@solution
+#!/bin/bash
+DIR=${1:-.}
+[ -d "$DIR" ] || { echo "Error: $DIR is not a directory" >&2; exit 2; }
+R=$(find "$DIR" -type f -exec stat -c '%s %n' {} + | sort -k1,1nr -k2 | head -n 2)
+[ -z "$R" ] && { echo "No files"; exit 1; }
+echo "$R"
+
+@@ex 1808 tgz_prune | Removing big files from a .tgz
+@@level 5
+@@cmds mktemp -d, tar -xzf -C, find -size, tar -czf
+@@readme
+Write `podar.sh ARCHIVE.tgz [KB]` that removes from **inside** the archive every regular file bigger than
+`KB` kibibytes (default 8, i.e. size > 8192 bytes). The archive is replaced by the new one (same name),
+keeping the same internal paths for the remaining entries.
+
+Print `Removed <path> (<bytes> bytes)` for each removed file (path as stored in the archive, sorted),
+then `Kept N files, removed M files`.
+
+- wrong number of arguments: usage on stderr, exit 1
+- the archive doesn't exist or is not a valid `.tgz` (`tar -tzf` fails): stderr, exit 2
+- `KB` not a positive integer: stderr, exit 3
+
+Use a temporary directory (`mktemp -d`) and delete it at the end.
+@@check
+SCRIPT_NAME=podar.sh
+COMPARE="stdout exit errmsg files"
+setup() { mkdir -p proyecto/{src,img}; local i; for i in $(seq 7); do bigfile "proyecto/$(pick src img .)/$(word)$i.$(pick c png txt)" "$(pick 100 5000 8192 8193 20000 1000000)"; done; tar -czf pack.tgz proyecto; rm -r proyecto; echo "not a tar" > roto.tgz; }
+ARGS=('pack.tgz' 'pack.tgz 4' 'pack.tgz 1000' 'roto.tgz' 'noexiste.tgz' '' 'pack.tgz abc' 'pack.tgz 0')
+@@solution
+#!/bin/bash
+[ $# -ge 1 ] && [ $# -le 2 ] || { echo "Usage: $(basename "$0") ARCHIVE.tgz [KB]" >&2; exit 1; }
+ARCH=$1
+KB=${2:-8}
+[ -f "$ARCH" ] && tar -tzf "$ARCH" > /dev/null 2>&1 || { echo "Error: $ARCH is not a valid .tgz" >&2; exit 2; }
+[[ $KB =~ ^[0-9]+$ ]] && [ "$KB" -gt 0 ] || { echo "Error: KB must be a positive integer" >&2; exit 3; }
+
+TMP=$(mktemp -d)
+tar -xzf "$ARCH" -C "$TMP"
+M=0
+while IFS= read -r f; do
+  echo "Removed ${f#./} ($(stat -c %s "$TMP/$f") bytes)"
+  rm "$TMP/$f"
+  M=$((M + 1))
+done < <(cd "$TMP" && find . -type f -size +$((KB * 1024))c | sort)
+K=$(find "$TMP" -type f | wc -l)
+ABS=$(cd "$(dirname "$ARCH")" && pwd)/$(basename "$ARCH")
+(cd "$TMP" && tar -czf "$ABS" $(ls -A))
+rm -rf "$TMP"
+echo "Kept $K files, removed $M files"
+
+@@ex 1809 user_report | Users report
+@@level 4
+@@cmds while IFS=: read, grep -c, test -d
+@@readme
+Write `usuarios.sh [passwd_file] [group_file]` (defaults `/etc/passwd`, `/etc/group`). For every user
+with UID between 1000 and 59999 (in file order) print:
+
+```
+<login> uid=<uid> home=<home> (exists|missing) shell=<shell> groups=<N>
+```
+
+where `exists/missing` says whether the home directory exists **on this system**, and `groups` is the
+number of lines of the group file whose member list (4th field, comma-separated) contains the login
+**plus one** for the primary group. End with `Total: N users`.
+If a file can't be read: stderr, exit 1.
+@@check
+SCRIPT_NAME=usuarios.sh
+COMPARE="stdout exit errmsg"
+setup() {
+  local i u
+  cp /etc/group grp
+  for i in $(seq 6); do u="$(word)$i"; echo "$u:x:$(pick 999 1000 1500 60000 1200):100:$(word):/home/$(pick $u luke alumno $u):/bin/$(pick bash sh)"; [[ $(rand 2) == 1 ]] && sed -i "/^devs:/ s/\$/,$u/" grp; done > pw
+}
+ARGS=('' 'pw grp' 'noexiste' 'pw noexiste')
+@@solution
+#!/bin/bash
+PW=${1:-/etc/passwd}
+GR=${2:-/etc/group}
+for f in "$PW" "$GR"; do [ -r "$f" ] || { echo "Error: cannot read $f" >&2; exit 1; }; done
+N=0
+while IFS=: read -r login x uid gid gecos home shell; do
+  [ "$uid" -ge 1000 ] && [ "$uid" -lt 60000 ] || continue
+  if [ -d "$home" ]; then h=exists; else h=missing; fi
+  g=$(cut -d: -f4 "$GR" | tr , '\n' | grep -cx "$login")
+  echo "$login uid=$uid home=$home ($h) shell=$shell groups=$((g + 1))"
+  N=$((N + 1))
+done < "$PW"
+echo "Total: $N users"
+
+@@ex 1810 backup_conf | Backing up configuration files
+@@level 4
+@@cmds find -name, tar -czf -C, mkdir -p, relative/absolute paths
+@@readme
+Write `backup_conf.sh SRC [DEST]` that archives every **regular** file ending in `.conf` under `SRC`
+(recursively) into `DEST/conf_backup.tgz`. Paths inside the archive are **relative to SRC**
+(e.g. `nginx/site.conf`). `DEST` defaults to `$HOME/backups`; if it does not exist create it and print
+`Created <DEST>`. Then print `Archived N files into <DEST>/conf_backup.tgz` (DEST as given / default).
+
+- no arguments or more than 2: usage on stderr, exit 1
+- `SRC` is not a directory: stderr, exit 2
+- no `.conf` files: stderr message, exit 3 and **no** archive is created
+
+Careful: `SRC` and `DEST` may be relative; if you `cd` into `SRC`, relative `DEST` breaks.
+@@check
+SCRIPT_NAME=backup_conf.sh
+COMPARE="stdout exit errmsg files"
+setup() { mkdir -p etc/{nginx,ssh,app/sub} vacio out; local i; for i in $(seq 7); do randtext 2 > "etc/$(pick . nginx ssh app/sub)/$(word)$i.$(pick conf conf txt conf.bak)"; done; mkdir etc/dir.conf; touch vacio/readme; }
+ARGS=('etc' 'etc out' 'etc/app "$W/nuevo"' 'vacio' 'noexiste' '' 'a b c')
+@@solution
+#!/bin/bash
+[ $# -ge 1 ] && [ $# -le 2 ] || { echo "Usage: $(basename "$0") SRC [DEST]" >&2; exit 1; }
+SRC=$1
+DEST=${2:-$HOME/backups}
+[ -d "$SRC" ] || { echo "Error: $SRC is not a directory" >&2; exit 2; }
+N=$(find "$SRC" -type f -name '*.conf' | wc -l)
+[ "$N" -gt 0 ] || { echo "Error: no .conf files in $SRC" >&2; exit 3; }
+if [ ! -d "$DEST" ]; then
+  mkdir -p "$DEST" || exit 4
+  echo "Created $DEST"
+fi
+OUT=$(cd "$DEST" && pwd)/conf_backup.tgz
+(cd "$SRC" && find . -type f -name '*.conf' -print0 | tar -czf "$OUT" --null -T -)
+echo "Archived $N files into $DEST/conf_backup.tgz"
+
+@@ex 1811 clean_old | Cleaning old temporary files
+@@level 4
+@@cmds find -mtime, -delete, regex validation
+@@readme
+Write `limpia.sh [DIR] [DAYS]` (defaults: current directory, 7) that deletes every **regular** file
+under `DIR` whose name ends in `.tmp` or `~` and that was last modified **more than** `DAYS` days ago
+(`find -mtime +DAYS`).
+
+Print `Deleted <path>` for each deleted file (sorted), then `Deleted N files`.
+
+- more than 2 arguments: usage on stderr, exit 1
+- `DIR` not a directory: stderr, exit 2
+- `DAYS` not a non-negative integer: stderr, exit 3
+@@check
+SCRIPT_NAME=limpia.sh
+COMPARE="stdout exit errmsg files"
+setup() { mkdir -p t/{a,b}; local i f; for i in $(seq 10); do f="t/$(pick . a b)/$(word)$i$(pick .tmp '~' .txt .tmp.keep)"; touch -d "$(pick 1 3 6 10 20 40) days ago" "$f"; done; touch nodir; }
+ARGS=('t' 't 2' 't 15' 't/a 0' 'noexiste' 'nodir' 't -3' 't abc' 'a b c')
+@@solution
+#!/bin/bash
+[ $# -le 2 ] || { echo "Usage: $(basename "$0") [DIR] [DAYS]" >&2; exit 1; }
+DIR=${1:-.}
+DAYS=${2:-7}
+[ -d "$DIR" ] || { echo "Error: $DIR is not a directory" >&2; exit 2; }
+[[ $DAYS =~ ^[0-9]+$ ]] || { echo "Error: DAYS must be a non-negative integer" >&2; exit 3; }
+N=0
+while IFS= read -r f; do
+  rm -f "$f" && echo "Deleted $f" && N=$((N + 1))
+done < <(find "$DIR" -type f \( -name '*.tmp' -o -name '*~' \) -mtime +"$DAYS" | sort)
+echo "Deleted $N files"
+
+@@ex 1812 organize | Organising files by extension
+@@level 4
+@@cmds for, ${f##*.}, ${x,,}, mkdir -p, mv
+@@readme
+Write `ordena.sh [DIR]` (default: current directory) that moves every **regular file directly inside**
+`DIR` (not recursive, hidden files ignored) into a subdirectory of `DIR` named after its extension in
+**lowercase** (`foto.JPG` → `DIR/jpg/foto.JPG`). Files without extension go to `DIR/other`.
+The extension is the text after the **last** dot; a name like `README` has none.
+
+Finally print one line per extension used, sorted: `<ext>: N files`.
+If `DIR` is not a directory: stderr, exit 1.
+@@check
+SCRIPT_NAME=ordena.sh
+COMPARE="stdout exit errmsg files"
+setup() { mkdir -p m/existing; local i; for i in $(seq 10); do touch "m/$(word)$i$(pick .txt .TXT .jpg .JPG .tar.gz '' .c)"; done; touch m/.hidden m/existing/keep.txt; }
+ARGS=('m' 'noexiste')
+@@solution
+#!/bin/bash
+DIR=${1:-.}
+[ -d "$DIR" ] || { echo "Error: $DIR is not a directory" >&2; exit 1; }
+declare -A C
+for f in "$DIR"/*; do
+  [ -f "$f" ] || continue
+  name=$(basename "$f")
+  if [[ $name == *.* ]]; then ext=${name##*.}; ext=${ext,,}; else ext=other; fi
+  mkdir -p "$DIR/$ext"
+  mv "$f" "$DIR/$ext/"
+  C[$ext]=$(( ${C[$ext]:-0} + 1 ))
+done
+for e in "${!C[@]}"; do echo "$e: ${C[$e]} files"; done | sort
+
+@@ex 1813 dup_finder | Finding duplicate files
+@@level 5
+@@cmds md5sum, sort, uniq, while read
+@@readme
+Write `duplicados.sh [DIR]` (default: current directory) that finds groups of **non-empty regular files
+with identical content** under `DIR` (recursively).
+
+Print each group as its paths (sorted), one per line, groups separated by an empty line and ordered by
+their first path. Finish with `N groups of duplicates` (preceded by an empty line if there was
+at least one group). Not a directory: stderr, exit 1.
+
+Hint: `md5sum` every file, sort by hash, keep hashes that appear more than once.
+@@check
+SCRIPT_NAME=duplicados.sh
+COMPARE="stdout exit errmsg"
+setup() { mkdir -p d/{a,b}; local i c=(uno dos tres cuatro); for i in $(seq 10); do echo "$(pick "${c[@]}" "$(word)$i")" > "d/$(pick . a b)/$(word) $i"; done; touch d/e1 d/e2; }
+ARGS=('d' 'd/a' 'noexiste')
+@@solution
+#!/bin/bash
+DIR=${1:-.}
+[ -d "$DIR" ] || { echo "Error: $DIR is not a directory" >&2; exit 1; }
+SUMS=$(find "$DIR" -type f ! -empty -exec md5sum {} + | sort)
+N=0
+for h in $(echo "$SUMS" | cut -c1-32 | uniq -d); do
+  echo "$SUMS" | grep "^$h" | cut -c35- | sort | paste -sd'|'
+done | sort | while IFS='|' read -ra g; do
+  printf '%s\n' "${g[@]}"
+  echo
+done
+N=$(echo "$SUMS" | cut -c1-32 | uniq -d | grep -c .)
+echo "$N groups of duplicates"
+
+@@ex 1814 bruteforce | Brute-force detector
+@@level 4
+@@cmds grep, grep -oE, sort, uniq -c, while read
+@@readme
+Write `bruteforce.sh [LOG] [THRESHOLD]` (defaults `/var/log/auth.log` and `10`) that prints every IP
+with **at least** THRESHOLD `Failed password` lines in LOG, as `<ip> <count>`, sorted by count
+descending and then by IP (as text). If none reaches the threshold, print `No suspicious IPs` and
+exit **1**.
+
+- more than 2 arguments: usage on stderr, exit 4
+- LOG not readable: stderr, exit 2
+- THRESHOLD not a positive integer: stderr, exit 3
+@@check
+SCRIPT_NAME=bruteforce.sh
+COMPARE="stdout exit errmsg"
+setup() { local i ips=("$(ip_rand)" "$(ip_rand)" "$(ip_rand)" 10.0.0.1); for i in $(seq 40); do echo "Jun 20 10:00:$i host sshd[1]: $(pick 'Failed password for root' 'Accepted password for alumno' 'Failed password for invalid user admin') from $(pick "${ips[@]}" "${ips[0]}") port 22 ssh2"; done > fake.log; }
+ARGS=('' 'fake.log' 'fake.log 3' 'fake.log 100' '/var/log/auth.log 300' 'noexiste.log' 'fake.log 0' 'fake.log x' 'a b c')
+@@solution
+#!/bin/bash
+[ $# -le 2 ] || { echo "Usage: $(basename "$0") [LOG] [THRESHOLD]" >&2; exit 4; }
+LOG=${1:-/var/log/auth.log}
+T=${2:-10}
+[ -r "$LOG" ] || { echo "Error: cannot read $LOG" >&2; exit 2; }
+[[ $T =~ ^[0-9]+$ ]] && [ "$T" -gt 0 ] || { echo "Error: THRESHOLD must be a positive integer" >&2; exit 3; }
+R=$(grep 'Failed password' "$LOG" | grep -oE '([0-9]{1,3}\.){3}[0-9]{1,3}' | sort | uniq -c |
+    while read -r n ip; do [ "$n" -ge "$T" ] && echo "$ip $n"; done | sort -k2,2nr -k1,1)
+[ -z "$R" ] && { echo "No suspicious IPs"; exit 1; }
+echo "$R"
+
+@@ex 1815 sync_dirs | One-way directory sync
+@@level 5
+@@cmds find, test -nt, cp -p, mkdir -p, ${f#prefix}
+@@readme
+Write `sync.sh SRC DST` that makes `DST` contain every regular file of `SRC` (recursively, same
+relative paths): a file is copied if it is **missing** in `DST` or the one in `SRC` is **newer**
+(`-nt`). Copies must **preserve** modification times (`cp -p`), so a second run copies nothing.
+Files that exist only in `DST` are left alone.
+
+If `DST` doesn't exist, create it and print `Created <DST>`. Print `copied: <relative path>` for each
+copied file (sorted), then `N files copied`.
+
+- not exactly 2 arguments: usage on stderr, exit 1
+- `SRC` not a directory: stderr, exit 2
+@@check
+SCRIPT_NAME=sync.sh
+COMPARE="stdout exit errmsg files mtime"
+setup() {
+  mkdir -p src/{a,b/c} dst/a; local i f
+  for i in $(seq 8); do f="$(pick . a b/c)/$(word) $i.txt"; randtext 2 > "src/$f"; touch -d "2026-06-1$(randr 0 9) 10:00" "src/$f"
+    case $(rand 3) in 0) mkdir -p "dst/$(dirname "$f")"; randtext 1 > "dst/$f"; touch -d "2026-06-01 10:00" "dst/$f";; 1) mkdir -p "dst/$(dirname "$f")"; randtext 1 > "dst/$f"; touch -d "2026-06-25 10:00" "dst/$f";; esac
+  done
+  touch dst/solo_en_destino
+}
+ARGS=('src dst' 'src nuevo' 'src/b "$W/dst"' 'noexiste dst' 'src' '')
+@@solution
+#!/bin/bash
+[ $# -eq 2 ] || { echo "Usage: $(basename "$0") SRC DST" >&2; exit 1; }
+SRC=$1
+DST=$2
+[ -d "$SRC" ] || { echo "Error: $SRC is not a directory" >&2; exit 2; }
+if [ ! -d "$DST" ]; then mkdir -p "$DST" || exit 3; echo "Created $DST"; fi
+N=0
+while IFS= read -r -d '' f; do
+  rel=${f#"$SRC"/}
+  if [ ! -e "$DST/$rel" ] || [ "$f" -nt "$DST/$rel" ]; then
+    mkdir -p "$DST/$(dirname "$rel")"
+    cp -p "$f" "$DST/$rel" && echo "copied: $rel" && N=$((N + 1))
+  fi
+done < <(find "$SRC" -type f -print0 | sort -z)
+echo "$N files copied"
+
+@@ex 1816 rotate | Log rotation
+@@level 4
+@@cmds mv, gzip, for (( )), test -e
+@@readme
+Write `rota.sh LOGFILE [KEEP]` (KEEP default 3) that rotates a log like `logrotate` does:
+
+1. delete `LOGFILE.KEEP.gz` if it exists
+2. for i = KEEP-1 down to 1: rename `LOGFILE.i.gz` → `LOGFILE.(i+1).gz` (if it exists)
+3. compress the current `LOGFILE` into `LOGFILE.1.gz` (`gzip -c LOGFILE > LOGFILE.1.gz`)
+4. leave an **empty** `LOGFILE` (same name) in place
+
+Print `Rotated <LOGFILE> (keeping KEEP)`.
+
+- wrong number of arguments: usage on stderr, exit 1
+- LOGFILE is not a regular file: stderr, exit 2
+- KEEP not an integer ≥ 1: stderr, exit 3
+@@check
+SCRIPT_NAME=rota.sh
+COMPARE="stdout exit errmsg files"
+setup() { mkdir -p logs; randtext 5 > logs/app.log; local i; for i in $(seq "$(randr 0 4)"); do echo "old $i $(word)" | gzip > "logs/app.log.$i.gz"; done; randtext 2 > logs/other.log; }
+ARGS=('logs/app.log' 'logs/app.log 2' 'logs/app.log 5' 'logs/other.log 1' 'logs/nada.log' 'logs' 'logs/app.log 0' '')
+@@solution
+#!/bin/bash
+[ $# -ge 1 ] && [ $# -le 2 ] || { echo "Usage: $(basename "$0") LOGFILE [KEEP]" >&2; exit 1; }
+LOG=$1
+KEEP=${2:-3}
+[ -f "$LOG" ] || { echo "Error: $LOG is not a regular file" >&2; exit 2; }
+[[ $KEEP =~ ^[0-9]+$ ]] && [ "$KEEP" -ge 1 ] || { echo "Error: KEEP must be >= 1" >&2; exit 3; }
+rm -f "$LOG.$KEEP.gz"
+for ((i = KEEP - 1; i >= 1; i--)); do
+  [ -e "$LOG.$i.gz" ] && mv "$LOG.$i.gz" "$LOG.$((i + 1)).gz"
+done
+gzip -c "$LOG" > "$LOG.1.gz"
+: > "$LOG"
+echo "Rotated $LOG (keeping $KEEP)"
+
+@@ex 1817 perm_audit | Permission audit
+@@level 4
+@@cmds find -perm -o+w, -perm -1000, -perm /6000
+@@readme
+Write `auditoria.sh [DIR]` (default: current directory) that prints four sections (each list sorted,
+or `(none)`):
+
+```
+== world-writable files ==
+== world-writable dirs without sticky bit ==
+== setuid/setgid files ==
+== scripts without execute permission ==
+```
+
+- world-writable files: regular files writable by others
+- world-writable dirs without sticky bit: directories writable by others and without `t` (`! -perm -1000`)
+- setuid/setgid: regular files with the SUID or SGID bit (`-perm /6000`)
+- scripts without execute: regular `*.sh` files with **no** execute bit at all
+
+Exit code: 0 if all sections are empty, 1 otherwise. Not a directory: stderr, exit 2.
+@@check
+SCRIPT_NAME=auditoria.sh
+COMPARE="stdout exit errmsg"
+setup() { mkdir -p a/{x,y,z} limpio; local i f; for i in $(seq 9); do f="a/$(pick . x y z)/$(word)$i$(pick .sh .txt .bin)"; touch "$f"; chmod "$(pick 644 666 755 4755 2755 600 602 700)" "$f"; done; chmod 777 a/x; chmod 1777 a/y; touch limpio/ok.txt; }
+ARGS=('a' 'limpio' 'noexiste')
+@@solution
+#!/bin/bash
+DIR=${1:-.}
+[ -d "$DIR" ] || { echo "Error: $DIR is not a directory" >&2; exit 2; }
+FOUND=0
+section() { # title, then find arguments
+  local title=$1 r; shift
+  echo "== $title =="
+  r=$(find "$DIR" "$@" | sort)
+  if [ -n "$r" ]; then echo "$r"; FOUND=1; else echo "(none)"; fi
+}
+section "world-writable files" -type f -perm -o+w
+section "world-writable dirs without sticky bit" -type d -perm -o+w ! -perm -1000
+section "setuid/setgid files" -type f -perm /6000
+section "scripts without execute permission" -type f -name '*.sh' ! -perm /111
+exit $FOUND
+
+@@ex 1818 lower_names | Lowercasing names safely
+@@level 4
+@@cmds for, ${x,,}, mv, test -e
+@@readme
+Write `minusculas.sh [DIR]` (default: current directory) that renames every entry (file or directory,
+not hidden) **directly inside** `DIR` whose name has uppercase letters to its lowercase version.
+If the lowercase name already exists, don't rename: print `skip <name>: <lower> exists` on **stderr**.
+
+Print `<name> -> <lower>` on stdout for each rename (in alphabetical order of the original names, as the
+`*` glob gives them), then `Renamed N entries`. Exit 0. Not a directory: stderr, exit 1.
+@@check
+SCRIPT_NAME=minusculas.sh
+COMPARE="stdout stderr exit files"
+setup() { mkdir -p n/SubDir; local i w; for i in $(seq 7); do w=$(word)$i; touch "n/$(pick "${w^^}" "${w^}" "$w" "${w^^}.TXT")"; done; touch n/Dup n/dup n/.Hidden; }
+ARGS=('n' 'noexiste')
+@@solution
+#!/bin/bash
+DIR=${1:-.}
+[ -d "$DIR" ] || { echo "Error: $DIR is not a directory" >&2; exit 1; }
+N=0
+for p in "$DIR"/*; do
+  name=$(basename "$p")
+  lower=${name,,}
+  [ "$name" = "$lower" ] && continue
+  if [ -e "$DIR/$lower" ]; then
+    echo "skip $name: $lower exists" >&2
+    continue
+  fi
+  mv "$p" "$DIR/$lower"
+  echo "$name -> $lower"
+  N=$((N + 1))
+done
+echo "Renamed $N entries"
+
+@@ex 1819 disk_report | Disk usage report with percentages
+@@level 4
+@@cmds du -sk, sort -n, head, $(( ))
+@@readme
+Write `espacio.sh [DIR] [N]` (defaults: current directory, 3) that prints the `N` biggest
+**subdirectories directly inside** `DIR` according to `du -sk`, biggest first (ties: name), as:
+
+```
+<KB> KB <PCT>% <name>
+```
+
+where PCT = KB·100 / (`du -sk DIR` total), integer division, and name is the subdirectory name (no path).
+Last line: `Total: <KB> KB`. Validation: DIR not a directory → stderr, exit 1; N not a positive integer
+→ stderr, exit 2.
+@@check
+SCRIPT_NAME=espacio.sh
+COMPARE="stdout exit errmsg"
+setup() { mkdir -p r; local i d; for i in $(seq 5); do d="r/$(word)$i"; mkdir -p "$d/sub"; bigfile "$d/f" $(( $(randr 1 60) * 4096 )); bigfile "$d/sub/g" $(( $(randr 0 30) * 4096 )); done; bigfile r/top $((20 * 4096)); }
+ARGS=('r' 'r 1' 'r 10' 'noexiste' 'r 0' 'r x')
+@@solution
+#!/bin/bash
+DIR=${1:-.}
+N=${2:-3}
+[ -d "$DIR" ] || { echo "Error: $DIR is not a directory" >&2; exit 1; }
+[[ $N =~ ^[0-9]+$ ]] && [ "$N" -gt 0 ] || { echo "Error: N must be a positive integer" >&2; exit 2; }
+TOTAL=$(du -sk "$DIR" | cut -f1)
+for d in "$DIR"/*/; do
+  kb=$(du -sk "$d" | cut -f1)
+  echo "$kb $(basename "$d")"
+done | sort -k1,1nr -k2 | head -n "$N" | while read -r kb name; do
+  echo "$kb KB $((kb * 100 / TOTAL))% $name"
+done
+echo "Total: $TOTAL KB"
+
+@@ex 1820 deploy_options | deploy_bins with options (-n dry run, -m move)
+@@level 5
+@@cmds while case shift, options parsing
+@@readme
+Extend the deploy script (1801): `deploy2.sh [-n] [-m] [directory]` (options in any order, before the directory).
+
+- `-n` (dry run): don't touch anything; print `would <copy|move>: <path>` for each matching file
+  (sorted by path) and finally `N files would be <copied|moved>`. Don't create the destination either.
+- `-m`: **move** instead of copy (final message `Moved N files`).
+- no options: behave exactly like `deploy_bins.sh` (1801) (copy, `Copied N files`, `Directory ... created`).
+- unknown option (anything starting with `-`): usage on stderr, exit 1. More than one directory: exit 1.
+- the directory checks and exit codes 2 and 3 are the same as in 1801.
+@@check
+SCRIPT_NAME=deploy2.sh
+COMPARE="stdout exit errmsg files"
+setup() { mkdir -p src/sub; local i f; for i in $(seq 8); do f="src/$(pick . sub)/$(word)$i$(pick .sh .bin .txt)"; echo "echo $i" > "$f"; chmod "$(pick 755 644 700)" "$f"; done; touch notadir; }
+ARGS=('src' '-n src' '-m src' '-n -m src' '-m -n' '-x src' 'src src' 'noexiste' '-n notadir' '-m')
+@@solution
+#!/bin/bash
+usage() { echo "Usage: $(basename "$0") [-n] [-m] [directory]" >&2; exit 1; }
+DRY=0; MOVE=0; DIR=
+while [ $# -gt 0 ]; do
+  case $1 in
+    -n) DRY=1 ;;
+    -m) MOVE=1 ;;
+    -*) usage ;;
+    *) [ -n "$DIR" ] && usage; DIR=$1 ;;
+  esac
+  shift
+done
+DIR=${DIR:-.}
+[ -e "$DIR" ] || { echo "Error: '$DIR' does not exist" >&2; exit 2; }
+[ -d "$DIR" ] || { echo "Error: '$DIR' is not a directory" >&2; exit 3; }
+if [ $MOVE -eq 1 ]; then VERB=move; PAST=moved; else VERB=copy; PAST=copied; fi
+DEST="$HOME/deploy/bin"
+if [ $DRY -eq 0 ] && [ ! -d "$DEST" ]; then mkdir -p "$DEST"; echo "Directory $DEST created"; fi
+N=0
+while IFS= read -r -d '' f; do
+  if [ $DRY -eq 1 ]; then echo "would $VERB: $f"; N=$((N + 1))
+  elif [ $MOVE -eq 1 ]; then mv -f "$f" "$DEST/" && N=$((N + 1))
+  else cp -f "$f" "$DEST/" && N=$((N + 1))
+  fi
+done < <(find "$DIR" -type f -perm /111 \( -name '*.sh' -o -name '*.bin' \) -print0 | sort -z)
+if [ $DRY -eq 1 ]; then echo "$N files would be $PAST"; else echo "${PAST^} $N files"; fi
+
+@@ex 1821 mini_tree | A tree command without find or tree
+@@level 5
+@@cmds recursive function, for, test -d -L, printf
+@@readme
+Write `arbol.sh [DIR]` (default `.`) that prints a tree **without using `find`, `tree` or `ls -R`**,
+with a recursive function:
+
+- first line: `DIR` as given
+- then every entry (not hidden), in the order of the `*` glob, indented with **2 spaces per level**
+  (first level: 2 spaces)
+- directories are printed with a trailing `/` and their content follows (recursively)
+- symbolic links are printed as `name -> target` and **never** followed
+- last line: `N directories, M files` (links count as files)
+
+Not a directory: stderr, exit 1.
+@@check
+SCRIPT_NAME=arbol.sh
+COMPARE="stdout exit errmsg"
+setup() { mkdir -p t/{a/b/c,d,e}; local i; for i in $(seq 7); do touch "t/$(pick . a a/b a/b/c d)/$(word)$i"; done; ln -s a t/link_a; ln -s /etc t/a/etc; touch t/.oculto; }
+ARGS=('t' 't/a' 'noexiste')
+extra_check() { must_not_use find tree; }
+@@solution
+#!/bin/bash
+DIR=${1:-.}
+[ -d "$DIR" ] || { echo "Error: $DIR is not a directory" >&2; exit 1; }
+ND=0; NF=0
+walk() { # dir indent
+  local e name
+  for e in "$1"/*; do
+    [ -e "$e" ] || [ -L "$e" ] || continue
+    name=$(basename "$e")
+    if [ -L "$e" ]; then
+      echo "$2$name -> $(readlink "$e")"; NF=$((NF + 1))
+    elif [ -d "$e" ]; then
+      echo "$2$name/"; ND=$((ND + 1))
+      walk "$e" "$2  "
+    else
+      echo "$2$name"; NF=$((NF + 1))
+    fi
+  done
+}
+echo "$DIR"
+walk "$DIR" "  "
+echo "$ND directories, $NF files"
+
+@@ex 1822 log_summary | Log summary with error handling
+@@level 4
+@@cmds find, grep -ci, test -r, exit codes
+@@readme
+Write `resumen.sh [DIR]` (default: current directory) that, for every regular `*.log` file under `DIR`
+(sorted by path), prints:
+
+```
+<path>: <L> lines, <E> errors, <W> warnings
+```
+
+where E = lines containing `error` (any case) and W = lines containing `warn` (any case).
+Unreadable files: print `cannot read <path>` on **stderr**, skip them and remember it.
+Finally print `TOTAL: <files> files, <L> lines, <E> errors, <W> warnings` (only readable files count).
+Exit code: 0 if all files were readable, **4** otherwise. Not a directory: stderr, exit 1.
+@@check
+SCRIPT_NAME=resumen.sh
+COMPARE="stdout stderr exit"
+setup() { mkdir -p l/{a,b}; local i f j; for i in $(seq 6); do f="l/$(pick . a b)/$(word)$i.$(pick log log txt)"; for j in $(seq "$(randr 0 8)"); do echo "$(pick INFO ERROR Error WARN warning debug) $(words 2)"; done > "$f"; done; echo x > l/secret.log; [[ $(rand 2) == 1 ]] && chmod 000 l/secret.log; true; }
+ARGS=('l' 'l/a' 'noexiste')
+filter() { cat; }
+extra_check() { [[ $REF_CODE == 1 ]] && [[ -z $ERR ]] && fail "expected an error message on stderr"; true; }
+@@solution
+#!/bin/bash
+DIR=${1:-.}
+[ -d "$DIR" ] || { echo "Error: $DIR is not a directory" >&2; exit 1; }
+F=0; TL=0; TE=0; TW=0; RC=0
+while IFS= read -r f; do
+  if [ ! -r "$f" ]; then echo "cannot read $f" >&2; RC=4; continue; fi
+  l=$(wc -l < "$f"); e=$(grep -ci error "$f"); w=$(grep -ci warn "$f")
+  echo "$f: $l lines, $e errors, $w warnings"
+  F=$((F + 1)); TL=$((TL + l)); TE=$((TE + e)); TW=$((TW + w))
+done < <(find "$DIR" -type f -name '*.log' | sort)
+echo "TOTAL: $F files, $TL lines, $TE errors, $TW warnings"
+exit $RC

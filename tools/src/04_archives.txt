@@ -1,0 +1,147 @@
+@@topic 04_archives | tar, gzip & compression
+@@ex 0401 tar_create | Creating a .tgz
+@@level 2
+@@cmds tar -czf
+@@readme
+Create a compressed archive `archivo.tgz` in the current directory that contains everything
+under the directories `Datos` and `Textos` (paths inside the archive must start with `Datos/` and
+`Textos/`, i.e. run `tar` from the current directory with relative paths).
+@@check
+setup() { mkdir -p Datos/{Inversiones,Stocks} Textos/Cartas; local f; for f in Datos/Stocks/$(word).txt Datos/Inversiones/$(word).txt Textos/Cartas/$(word); do randtext 3 > "$f"; done; }
+COMPARE="stdout exit"
+extra_check() {
+  [[ -f $W/archivo.tgz ]] || { fail "archivo.tgz was not created"; return; }
+  gzip -t "$W/archivo.tgz" 2>/dev/null || { fail "archivo.tgz is not gzip-compressed (use z)"; return; }
+  diff <(cd "$W" && find Datos Textos | sort) <(tar tzf "$W/archivo.tgz" | sed 's#/$##' | sort) >/dev/null || fail "the archive content is not Datos/ + Textos/ (check with tar tzf)"
+}
+@@solution
+#!/bin/bash
+tar -czf archivo.tgz Datos Textos
+
+@@ex 0402 tar_list | Listing an archive
+@@level 2
+@@cmds tar -tzf, tar -tvzf
+@@readme
+The file `backup.tgz` exists in the current directory. Without extracting it, print:
+
+1. the list of paths it contains (just the names, as `tar` lists them)
+2. a line `---`
+3. only the number of entries (`tar ... | wc -l`)
+@@check
+setup() { mkdir -p src/{a,b}; local i; for i in $(seq "$(randr 2 6)"); do randtext 2 > "src/$(pick a b)/$(word)$i"; done; tar --sort=name -czf backup.tgz src; rm -r src; }
+@@solution
+#!/bin/bash
+tar -tzf backup.tgz
+echo ---
+tar -tzf backup.tgz | wc -l
+
+@@ex 0403 tar_extract | Extracting into another directory
+@@level 2
+@@cmds tar -xzf, -C, mkdir
+@@readme
+1. Create a directory `pruebatar`.
+2. Extract the whole `archivo.tgz` **inside** `pruebatar` (without `cd`: see option `-C`).
+3. Leave the original `archivo.tgz` where it is.
+@@check
+COMPARE="stdout exit files"
+setup() { mkdir -p Datos/Stocks Textos; randtext 3 > "Datos/Stocks/$(word).txt"; randtext 2 > "Textos/$(word)"; tar -czf archivo.tgz Datos Textos; rm -r Datos Textos; }
+extra_check() { must_use -C; }
+@@solution
+#!/bin/bash
+mkdir pruebatar
+tar -xzf archivo.tgz -C pruebatar
+
+@@ex 0404 tar_one_file | Extracting a single file
+@@level 3
+@@cmds tar -xzf FILE, tar -xOzf
+@@readme
+`backup.tgz` contains a file whose path ends in `/config.ini` (you don't know the directory).
+
+1. Print the **content** of that file without extracting anything to disk (see `-O`).
+2. Extract **only** that file (keeping its path) into the current directory.
+
+Hint: first find its exact path with `tar -tzf backup.tgz | grep config.ini`.
+@@check
+COMPARE="stdout exit files"
+setup() { local d; d="etc/$(word)/$(word)"; mkdir -p "$d" etc/other; printf '[main]\nuser=%s\nport=%s\n' "$(word)" "$(randr 1000 9999)" > "$d/config.ini"; randtext 3 > etc/other/readme; randtext 3 > etc/other/config.bak; tar -czf backup.tgz etc; rm -r etc; }
+@@solution
+#!/bin/bash
+F=$(tar -tzf backup.tgz | grep '/config\.ini$')
+tar -xOzf backup.tgz "$F"
+tar -xzf backup.tgz "$F"
+
+@@ex 0405 tar_append | Appending to a .tar
+@@level 3
+@@cmds tar -rf, tar -tf
+@@readme
+`coleccion.tar` is an **uncompressed** tar archive. Add the files `nuevo1.txt` and `nuevo2.txt` to it
+(append, don't recreate), then print its list of entries.
+@@check
+COMPARE="stdout exit files"
+setup() { randtext 2 > "$(word).txt"; for f in *.txt; do tar -cf coleccion.tar "$f"; rm "$f"; done; randtext 2 > nuevo1.txt; randtext 3 > nuevo2.txt; }
+extra_check() { ans_code | grep -qE 'tar +-?[a-zA-Z]*r' || fail "append with tar -r (don't recreate the archive)"; }
+@@solution
+#!/bin/bash
+tar -rf coleccion.tar nuevo1.txt nuevo2.txt
+tar -tf coleccion.tar
+
+@@ex 0406 gzip | gzip and gunzip
+@@level 2
+@@cmds gzip, gunzip, zcat
+@@readme
+The directory `logs` contains several `.log` files and one `old.log.gz`.
+
+1. Compress every `.log` file in `logs` with `gzip` (each becomes `.log.gz`, the original disappears).
+2. Before that, print the content of `logs/old.log.gz` **without** decompressing it on disk (`zcat`
+   or `gzip -dc`).
+3. Finally decompress `logs/old.log.gz` back to `logs/old.log`.
+@@check
+COMPARE="stdout exit files"
+setup() { mkdir logs; local i; for i in 1 2 3; do randtext 4 > "logs/$(word)$i.log"; done; randtext 3 > logs/old.log; gzip logs/old.log; }
+@@solution
+#!/bin/bash
+zcat logs/old.log.gz
+gzip logs/*.log
+gunzip logs/old.log.gz
+
+@@ex 0407 compress | compress / uncompress (.Z)
+@@level 2
+@@cmds compress, uncompress, gzip -r
+@@readme
+1. Compress `informe.txt` with `compress` (the old UNIX tool, result: `informe.txt.Z`).
+2. Compress **recursively** every file under the directory `archivo` with `gzip` (see `-r`).
+3. Decompress `datos.csv.Z` with `uncompress`.
+@@check
+COMPARE="stdout exit files"
+setup() { randtext 300 > informe.txt; mkdir -p archivo/sub; randtext 5 > archivo/a; randtext 5 > archivo/sub/b; randtext 200 > datos.csv; compress -f datos.csv; }
+@@solution
+#!/bin/bash
+compress informe.txt
+gzip -r archivo
+uncompress datos.csv.Z
+
+@@ex 0408 tar_roundtrip | Backup and verify
+@@level 3
+@@cmds tar -czf, tar -xzf, mktemp -d, diff -r
+@@readme
+Make a backup of the directory `proyecto` into `proyecto.tgz`, then verify it:
+
+1. create a temporary directory with `mktemp -d`
+2. extract the archive there
+3. compare it with the original using `diff -r`; print `backup OK` if identical, `backup FAILED` otherwise
+4. remove the temporary directory
+
+Only `backup OK` (or `FAILED`) must be printed.
+@@check
+setup() { mkdir -p proyecto/{src,doc}; local i; for i in 1 2 3; do randtext 4 > "proyecto/src/$(word)$i.c"; done; randtext 2 > proyecto/doc/README; }
+extra_check() {
+  must_use mktemp
+  [[ -f $W/proyecto.tgz ]] && tar tzf "$W/proyecto.tgz" >/dev/null 2>&1 || fail "proyecto.tgz missing or not a valid .tgz"
+}
+@@solution
+#!/bin/bash
+tar -czf proyecto.tgz proyecto
+TMP=$(mktemp -d)
+tar -xzf proyecto.tgz -C "$TMP"
+if diff -r proyecto "$TMP/proyecto" > /dev/null; then echo "backup OK"; else echo "backup FAILED"; fi
+rm -rf "$TMP"

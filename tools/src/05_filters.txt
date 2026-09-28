@@ -1,0 +1,432 @@
+@@topic 05_filters | Filters: wc, head, tail, cut, sort, uniq, tr, sed, tee...
+@@ex 0501 wc_basic | Counting with wc
+@@level 1
+@@cmds wc -l, -w, -c
+@@readme
+For the file `texto.txt` print, **only the numbers** (no file name), one per line:
+
+1. its number of lines
+2. its number of words
+3. its number of bytes
+
+Hint: `wc -l texto.txt` prints the name too; `wc -l < texto.txt` does not.
+@@check
+setup() { randtext "$(randr 5 40)" > texto.txt; }
+extra_check() { must_use wc; }
+@@solution
+#!/bin/bash
+wc -l < texto.txt
+wc -w < texto.txt
+wc -c < texto.txt
+
+@@ex 0502 wc_multi | wc on several files
+@@level 1
+@@cmds wc
+@@readme
+Print what `wc` prints for **lines and words only** of all the `.txt` files in the current
+directory (one line per file plus the `total` line).
+@@check
+setup() { local i; for i in 1 2 3; do randtext "$(randr 1 20)" > "$(word)$i.txt"; done; randtext 3 > other.md; }
+@@solution
+#!/bin/bash
+wc -lw *.txt
+
+@@ex 0503 head_tail | head and tail
+@@level 1
+@@cmds head, tail
+@@readme
+`passwd` is a copy of a `/etc/passwd`-like file. Print, in this order, separated by a line `---`:
+
+1. its first 5 lines
+2. its last 3 lines
+3. its first 50 **bytes** (then print an empty line with `echo`, since they don't end in newline)
+@@check
+setup() { local i; for i in $(seq "$(randr 12 25)"); do echo "$(word)$i:x:$((999+i)):$((999+i)):$(word) $(word):/home/$(word)$i:$(pick /bin/bash /bin/sh /usr/sbin/nologin)"; done > passwd; }
+@@solution
+#!/bin/bash
+head -n 5 passwd
+echo ---
+tail -n 3 passwd
+echo ---
+head -c 50 passwd
+echo
+
+@@ex 0504 head_tail_minus | All but the first / last N lines
+@@level 2
+@@cmds head -n -N, tail -n +N
+@@readme
+For the file `datos.txt`, print separated by a line `---`:
+
+1. all the lines **except the last 5**
+2. all the lines **except the first 5** (i.e. from line 6 to the end)
+3. the last 20 **bytes**
+@@check
+setup() { local i; for i in $(seq "$(randr 8 15)"); do echo "$i $(words 3)"; done > datos.txt; }
+@@solution
+#!/bin/bash
+head -n -5 datos.txt
+echo ---
+tail -n +6 datos.txt
+echo ---
+tail -c 20 datos.txt
+
+@@ex 0505 line_range | A range of lines
+@@level 2
+@@cmds head | tail, sed -n
+@@readme
+The file `libro.txt` has many lines and the file `rango.txt` contains two numbers `A B` (A ≤ B).
+Print lines A to B (both included) of `libro.txt`.
+
+Do it first with `head` + `tail` in a pipeline; then try `sed -n 'A,Bp'`.
+@@check
+setup() { local i; for i in $(seq 60); do echo "L$i: $(words 4)"; done > libro.txt; local a; a=$(randr 1 40); echo "$a $((a + $(randr 0 15)))" > rango.txt; }
+@@solution
+#!/bin/bash
+read A B < rango.txt
+head -n "$B" libro.txt | tail -n $((B - A + 1))
+
+@@ex 0506 cut_fields | cut with a delimiter
+@@level 1
+@@cmds cut -d -f
+@@readme
+From the `/etc/passwd`-like file `passwd` (fields separated by `:`), print for every user:
+the **UID** (field 3), the **home directory** (6) and the **shell** (7), separated by `:`.
+@@check
+setup() { local i; for i in $(seq "$(randr 8 15)"); do echo "$(word)$i:x:$((999+i)):$((999+i)):$(word):/home/$(word)$i:$(pick /bin/bash /bin/sh /usr/sbin/nologin)"; done > passwd; }
+extra_check() { must_use cut; }
+@@solution
+#!/bin/bash
+cut -d: -f3,6,7 passwd
+
+@@ex 0507 cut_chars | cut by characters and output delimiter
+@@level 2
+@@cmds cut -c, cut --output-delimiter
+@@readme
+`ls_output.txt` contains lines from `ls -l`. Print:
+
+1. the first 10 characters of every line (the type and permissions)
+2. a line `---`
+3. the fields 1 and 3 of the file `notas.csv` (separated by `;`), but printed separated by ` | `
+   (see `--output-delimiter`)
+@@check
+setup() {
+  local i; for i in $(seq 6); do echo "$(pick - d l)$(pick rwx rw- r--)$(pick r-x r-- ---)$(pick r-x r-- ---) 1 $(word) $(word) $(randr 10 9999) Jun $(randr 10 28) 12:00 $(word)$i"; done > ls_output.txt
+  for i in $(seq 5); do echo "$(word);$(randr 18 30);$(randr 0 10);$(word)"; done > notas.csv
+}
+@@solution
+#!/bin/bash
+cut -c1-10 ls_output.txt
+echo ---
+cut -d';' -f1,3 --output-delimiter=' | ' notas.csv
+
+@@ex 0508 sort_basic | Sorting lines
+@@level 1
+@@cmds sort, sort -r, sort -u
+@@readme
+Print, separated by `---`:
+
+1. the lines of `nombres.txt` in alphabetical order
+2. the same in reverse order
+3. the same alphabetical order but **without duplicates**
+@@check
+setup() { local i; for i in $(seq 15); do word; done > nombres.txt; }
+@@solution
+#!/bin/bash
+sort nombres.txt
+echo ---
+sort -r nombres.txt
+echo ---
+sort -u nombres.txt
+
+@@ex 0509 sort_numeric | Numeric sort
+@@level 2
+@@cmds sort -n, sort -h
+@@readme
+`numeros.txt` contains one integer per line; `tamanos.txt` contains human readable sizes like
+`4K`, `1.5M`, `2G`. Print, separated by `---`:
+
+1. `numeros.txt` sorted numerically ascending (note: plain `sort` puts `10` before `9`)
+2. `numeros.txt` sorted numerically **descending**
+3. `tamanos.txt` sorted ascending by real size
+@@check
+setup() { local i; for i in $(seq 12); do randr 1 5000; done > numeros.txt; for i in $(seq 8); do echo "$(randr 1 900)$(pick K M G)"; done > tamanos.txt; }
+@@solution
+#!/bin/bash
+sort -n numeros.txt
+echo ---
+sort -nr numeros.txt
+echo ---
+sort -h tamanos.txt
+
+@@ex 0510 sort_keys | Sorting by a field
+@@level 2
+@@cmds sort -t -k
+@@readme
+`notas.txt` contains lines `name:subject:grade`. Print:
+
+1. the lines sorted by **grade** (field 3), highest first (numeric)
+2. `---`
+3. the lines sorted by **subject** (alphabetical), and for the same subject by **grade** descending
+
+Use `-t:` and `-k` with a field range (`-k3,3n`), not just `-k3`.
+@@check
+setup() { local i; for i in $(seq 12); do echo "$(word)$i:$(pick SO Redes BD Mates):$(randr 0 10)"; done > notas.txt; }
+extra_check() { must_use sort; }
+@@solution
+#!/bin/bash
+sort -t: -k3,3nr notas.txt
+echo ---
+sort -t: -k2,2 -k3,3nr notas.txt
+
+@@ex 0511 uniq | Counting repetitions
+@@level 2
+@@cmds sort | uniq, uniq -c, uniq -d
+@@readme
+`accesos.txt` contains one user name per line (unsorted). Print, separated by `---`:
+
+1. every user **once**, sorted
+2. how many times each user appears, as `uniq -c` prints it (sorted by name)
+3. only the users that appear **more than once** (sorted)
+
+Remember: `uniq` only merges **adjacent** repeated lines, so sort first.
+@@check
+setup() { local i; for i in $(seq 20); do pick luke sally rod rosa jgarcia mlopez alumno; done > accesos.txt; }
+@@solution
+#!/bin/bash
+sort accesos.txt | uniq
+echo ---
+sort accesos.txt | uniq -c
+echo ---
+sort accesos.txt | uniq -d
+
+@@ex 0512 tr_basic | tr: translating characters
+@@level 1
+@@cmds tr
+@@readme
+The script reads text from **standard input**. Convert all lowercase letters to uppercase,
+and additionally every `:` into a TAB.
+@@check
+input() { local i; for i in $(seq 4); do echo "$(word):$(word) $(word):$(randr 1 99)"; done; }
+extra_check() { must_use tr; }
+@@solution
+#!/bin/bash
+tr 'a-z:' 'A-Z\t'
+
+@@ex 0513 tr_delete_squeeze | tr -d and tr -s
+@@level 2
+@@cmds tr -d, tr -s, tr -c
+@@readme
+Read text from **standard input** and, in a single pipeline:
+
+1. delete every digit
+2. squeeze runs of repeated spaces into a single space
+
+Then, as a second output line group, print the file `ruido.txt` keeping **only** letters and newlines
+(delete everything else: `tr -cd`).
+@@check
+input() { local i; for i in $(seq 4); do echo "$(word)$(randr 1 99)    $(word)  $(randr 1 9)$(word)   end"; done; }
+setup() { local i; for i in $(seq 3); do echo "$(word)!!$(randr 1 9)#$(word)@@ $(word)."; done > ruido.txt; }
+@@solution
+#!/bin/bash
+tr -d '0-9' | tr -s ' '
+tr -cd 'a-zA-Z\n' < ruido.txt
+
+@@ex 0514 sed_subst | sed substitutions
+@@level 2
+@@cmds sed s///, s///g
+@@readme
+For the file `passwd`, print (separated by `---`):
+
+1. its content replacing **every** `a` with `AAA`
+2. its content replacing only the **first** `sys` of each line with `SYSTEM`
+3. its content replacing `/bin/bash` with `/bin/zsh` (tip: use another delimiter, `s#...#...#`)
+@@check
+setup() { local i; for i in $(seq 8); do echo "$(pick sys sysadm $(word))$i:x:$((i+100)):100:$(word) sys:/home/$(word):$(pick /bin/bash /bin/sh)"; done > passwd; }
+extra_check() { must_use sed; }
+@@solution
+#!/bin/bash
+sed 's/a/AAA/g' passwd
+echo ---
+sed 's/sys/SYSTEM/' passwd
+echo ---
+sed 's#/bin/bash#/bin/zsh#' passwd
+
+@@ex 0515 sed_delete_print | sed: deleting and printing lines
+@@level 2
+@@cmds sed /re/d, sed -n p
+@@readme
+For the file `config.conf`, print separated by `---`:
+
+1. the file **without** comment lines (lines starting with `#`) and without empty lines
+2. only lines 2 to 4 (`sed -n`)
+3. only the lines containing `port` (`sed -n '/.../p'`)
+@@check
+setup() { { echo "# config"; local i; for i in $(seq 8); do case $(rand 4) in 0) echo "# $(words 3)";; 1) echo;; *) echo "$(pick port host user timeout)_$i = $(randr 1 9999)";; esac; done; echo "port = 22"; } > config.conf; }
+extra_check() { must_use sed; }
+@@solution
+#!/bin/bash
+sed '/^#/d; /^$/d' config.conf
+echo ---
+sed -n '2,4p' config.conf
+echo ---
+sed -n '/port/p' config.conf
+
+@@ex 0516 sed_inplace | Editing a file in place
+@@level 2
+@@cmds sed -i
+@@readme
+Modify the file `app.conf` **in place** (no output):
+
+- change the line `debug=false` into `debug=true`
+- change every occurrence of `localhost` into `127.0.0.1`
+- delete every line containing `deprecated`
+@@check
+COMPARE="stdout exit files"
+setup() { { echo "debug=false"; local i; for i in $(seq 6); do echo "$(pick host db cache)$i=$(pick localhost localhost:5432 10.0.0.$i)"; [[ $(rand 3) == 0 ]] && echo "old$i=deprecated"; done; } > app.conf; }
+extra_check() { must_use sed; }
+@@solution
+#!/bin/bash
+sed -i 's/^debug=false$/debug=true/; s/localhost/127.0.0.1/g; /deprecated/d' app.conf
+
+@@ex 0517 tee | tee: output to screen and file
+@@level 1
+@@cmds tee, tee -a
+@@readme
+Read **standard input** and copy it both to standard output and to the file `copia.txt`.
+Then append the line `-- fin --` to `copia.txt` **and** print it, again using `tee` (see `-a`).
+@@check
+COMPARE="stdout exit files"
+input() { randtext 4; }
+extra_check() { must_use tee; }
+@@solution
+#!/bin/bash
+tee copia.txt
+echo "-- fin --" | tee -a copia.txt
+
+@@ex 0518 nl_cat_tac | Numbering and reversing
+@@level 1
+@@cmds cat -n, nl, tac
+@@readme
+For the file `poema.txt`, print separated by `---`:
+
+1. the file with line numbers using `cat -n`
+2. the file with line numbers using `nl` (note it doesn't number empty lines)
+3. the file with its lines in **reverse** order
+@@check
+setup() { local i; for i in $(seq 7); do [[ $(rand 4) == 0 ]] && echo || words 4; done > poema.txt; }
+@@solution
+#!/bin/bash
+cat -n poema.txt
+echo ---
+nl poema.txt
+echo ---
+tac poema.txt
+
+@@ex 0519 paste | Joining files side by side
+@@level 2
+@@cmds paste, paste -d, paste -s
+@@readme
+`nombres.txt` and `edades.txt` have the same number of lines. Print:
+
+1. both files side by side separated by TAB (`paste`)
+2. `---`
+3. both side by side separated by `,`
+4. `---`
+5. all the names in **one line** separated by `+` (`paste -s -d`)
+@@check
+setup() { local n i; n=$(randr 3 7); for i in $(seq "$n"); do word; done > nombres.txt; for i in $(seq "$n"); do randr 18 70; done > edades.txt; }
+@@solution
+#!/bin/bash
+paste nombres.txt edades.txt
+echo ---
+paste -d, nombres.txt edades.txt
+echo ---
+paste -s -d+ nombres.txt
+
+@@ex 0520 diff_cmp | Comparing files
+@@level 2
+@@cmds diff, cmp, diff -q
+@@readme
+Print:
+
+1. the output of `diff v1.txt v2.txt`
+2. `---`
+3. the output of `cmp v1.txt v2.txt`
+4. `---`
+5. the output of `diff -q` on `v1.txt` and `copia.txt` (identical files: prints nothing),
+   followed by `equal` if they are equal
+
+The script must finish with exit code 0.
+@@check
+setup() { local i; for i in $(seq 8); do words 3; done > v1.txt; cp v1.txt copia.txt; sed "$(randr 2 7)s/.*/$(words 2)/; $(randr 1 8)d" v1.txt > v2.txt; echo "$(word)" >> v2.txt; }
+@@solution
+#!/bin/bash
+diff v1.txt v2.txt
+echo ---
+cmp v1.txt v2.txt
+echo ---
+diff -q v1.txt copia.txt && echo equal
+exit 0
+
+@@ex 0521 od | Looking at bytes with od
+@@level 3
+@@cmds od -c, od -An -tx1
+@@readme
+`raro.txt` contains invisible characters (tabs, carriage returns...). Print:
+
+1. its content as characters with `od -c`
+2. `---`
+3. its first 8 bytes in hexadecimal, one byte per unit, **without** the offset column (`-An -tx1 -N8`)
+@@check
+setup() { printf '%s\t%s\r\n%s  \n' "$(word)" "$(word)" "$(word)" > raro.txt; }
+extra_check() { must_use od; }
+@@solution
+#!/bin/bash
+od -c raro.txt
+echo ---
+od -An -tx1 -N8 raro.txt
+
+@@ex 0522 split | Splitting a file
+@@level 3
+@@cmds split -l, split -d
+@@readme
+Split `grande.txt` into pieces of **10 lines** each named `parte_00`, `parte_01`, ... (numeric
+suffixes, see `-d`), in the current directory. Then print how many pieces were created.
+@@check
+COMPARE="stdout exit files"
+setup() { local i; for i in $(seq "$(randr 21 55)"); do echo "$i $(words 2)"; done > grande.txt; }
+@@solution
+#!/bin/bash
+split -l 10 -d grande.txt parte_
+ls parte_* | wc -l
+
+@@ex 0523 cut_sort_combo | Combining filters
+@@level 3
+@@cmds cut, sort, head, tr
+@@readme
+`ventas.csv` has a header line and then lines `fecha,producto,unidades,precio`.
+Print the **3 products with most units** in one sale (lines, not aggregated), as `producto unidades`
+separated by a single space, highest first (ties: product name alphabetically).
+The header must be ignored.
+@@check
+setup() { echo "fecha,producto,unidades,precio" > ventas.csv; local i; for i in $(seq 12); do echo "2026-0$(randr 1 9)-1$(randr 0 9),$(word),$(randr 1 300),$(randr 1 99).$(randr 10 99)"; done >> ventas.csv; }
+@@solution
+#!/bin/bash
+tail -n +2 ventas.csv | cut -d, -f2,3 | sort -t, -k2,2nr -k1,1 | head -n 3 | tr , ' '
+
+@@ex 0524 word_freq | Word frequency
+@@level 4
+@@cmds tr, sort, uniq -c, head
+@@readme
+Print the **5 most frequent words** of `articulo.txt` with their count, in `uniq -c` format,
+most frequent first. For equal counts, alphabetical order of the word.
+
+- words are sequences of letters; convert everything to lowercase first
+- anything that is not a letter separates words
+
+Hint: `tr -cs 'A-Za-z' '\n'` puts every word on its own line.
+@@check
+setup() { local i; for i in $(seq 25); do echo "$(word) $(word), $(pick The the THE Linux kernel) $(word). $(pick shell Shell SHELL)!"; done > articulo.txt; }
+@@solution
+#!/bin/bash
+tr 'A-Z' 'a-z' < articulo.txt | tr -cs 'a-z' '\n' | grep -v '^$' | sort | uniq -c | sort -k1,1nr -k2,2 | head -n 5

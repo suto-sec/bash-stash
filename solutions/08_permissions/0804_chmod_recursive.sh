@@ -1,0 +1,3 @@
+#!/bin/bash
+chmod -R u=rwX,go=rX web
+

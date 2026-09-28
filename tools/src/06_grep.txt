@@ -1,0 +1,262 @@
+@@topic 06_grep_regex | grep & regular expressions
+@@ex 0601 grep_basic | Lines containing a string
+@@level 1
+@@cmds grep
+@@readme
+Print the lines of the file `passwd` that contain the string `root`.
+@@check
+setup() { local i; for i in $(seq 12); do echo "$(pick root $(word) $(word) chroot)$i:x:$i:$i:$(pick Root root $(word)):/$(pick root home)/$(word):/bin/bash"; done > passwd; }
+@@solution
+#!/bin/bash
+grep root passwd
+
+@@ex 0602 grep_anchors | Anchors ^ and $
+@@level 1
+@@cmds grep ^, $
+@@readme
+For the file `passwd`, print separated by `---`:
+
+1. the lines that **start** with `sys`
+2. the lines that **end** with `bash`
+3. the **empty** lines count (`grep -c`)
+@@check
+setup() { local i; for i in $(seq 14); do [[ $(rand 5) == 0 ]] && { echo; continue; }; echo "$(pick sys sysadm $(word) mysys)$i:x:$i:$i:sys:/home/$(word):$(pick /bin/bash /bin/sh /usr/bin/bashx /bin/rbash)"; done > passwd; }
+@@solution
+#!/bin/bash
+grep '^sys' passwd
+echo ---
+grep 'bash$' passwd
+echo ---
+grep -c '^$' passwd
+
+@@ex 0603 grep_options | -i -v -c -n
+@@level 1
+@@cmds grep -i -v -c -n
+@@readme
+For the file `log.txt`, print separated by `---`:
+
+1. lines containing `error` in any case (`Error`, `ERROR`...) with their **line numbers**
+2. the **number** of lines that do **not** contain `error` (any case)
+3. lines that contain `warn` (exact case) but **not** `disk`
+@@check
+setup() { local i; for i in $(seq 20); do echo "$(pick INFO warn Warn error ERROR Error debug) $(pick disk net cpu) $(words 3)"; done > log.txt; }
+@@solution
+#!/bin/bash
+grep -in error log.txt
+echo ---
+grep -vic error log.txt
+echo ---
+grep warn log.txt | grep -v disk
+
+@@ex 0604 dict_dots | The dot: any character
+@@level 2
+@@cmds grep, ., ^ $
+@@readme
+Using the dictionary `/usr/share/dict/words`, print the words of **exactly four letters** that
+start with `c` and end with `h` (e.g. `cash`). One regex: anchors + dots.
+@@check
+SEEDS=1
+@@solution
+#!/bin/bash
+grep '^c..h$' /usr/share/dict/words
+
+@@ex 0605 dict_brackets | Bracket expressions
+@@level 2
+@@cmds grep [ ], [^ ]
+@@readme
+Using `/usr/share/dict/words`, print separated by `---` the words that contain:
+
+1. a 3-letter substring starting with `b`, ending with `g`, with `a` or `e` in the middle
+2. a 3-letter substring starting with `b`, ending with `g`, with anything **except** `a` or `e` in the middle
+3. only the **count** of words that end in a digit-free `ing` and start with an uppercase letter
+@@check
+SEEDS=1
+@@solution
+#!/bin/bash
+grep 'b[ae]g' /usr/share/dict/words
+echo ---
+grep 'b[^ae]g' /usr/share/dict/words
+echo ---
+grep -c '^[A-Z].*ing$' /usr/share/dict/words
+
+@@ex 0606 grep_ere_alt | Alternatives with grep -E
+@@level 2
+@@cmds grep -E, |
+@@readme
+Print the words of `/usr/share/dict/words` that contain `car` **or** `truck`, but only those that
+**start** with one of those two strings. Use one `grep -E` with a group: `^(...|...)`.
+@@check
+SEEDS=1
+extra_check() { must_use grep; }
+@@solution
+#!/bin/bash
+grep -E '^(car|truck)' /usr/share/dict/words
+
+@@ex 0607 ere_repetition | Repetition: * + ? {n,m}
+@@level 3
+@@cmds grep -E, + ? {n,m}
+@@readme
+The file `codigos.txt` contains one code per line. Print separated by `---`:
+
+1. the codes made of **exactly** 3 uppercase letters, a `-` and 2 to 4 digits (`ABC-12`, `XYZ-1234`)
+2. the codes that contain **one or more** `x` followed by `y` (e.g. `xy`, `xxxy`)
+3. the codes that are `colour` or `color` (optional `u`), exact whole line
+@@check
+setup() { local i; for i in $(seq 25); do case $(rand 7) in 0) echo "$(pick ABC XYZ QWE)-$(randr 1 99999)";; 1) echo "$(pick AB ABCD abc)-$(randr 10 99)";; 2) echo "$(pick x xx xxx '')y$(word)";; 3) pick colour color colouur colr;; 4) echo "$(word)xy";; 5) echo "$(pick A B)$(pick C D)$(pick E F)-$(randr 10 9999)";; *) word;; esac; done > codigos.txt; }
+@@solution
+#!/bin/bash
+grep -E '^[A-Z]{3}-[0-9]{2,4}$' codigos.txt
+echo ---
+grep -E 'x+y' codigos.txt
+echo ---
+grep -E '^colou?r$' codigos.txt
+
+@@ex 0608 grep_o_ip | Extracting IPs with grep -o
+@@level 3
+@@cmds grep -oE
+@@readme
+`acceso.log` contains lines with IPv4 addresses somewhere in the text. Print **only** the IP addresses
+(`-o`), one per line, in order of appearance. An IP is 4 groups of 1-3 digits separated by dots.
+@@check
+setup() { local i; for i in $(seq 15); do echo "$(word) from $(ip_rand) port $(randr 1000 65000) $(words 2) $( [[ $(rand 3) == 0 ]] && ip_rand )"; done > acceso.log; }
+@@solution
+#!/bin/bash
+grep -oE '([0-9]{1,3}\.){3}[0-9]{1,3}' acceso.log
+
+@@ex 0609 grep_files | Searching in many files
+@@level 2
+@@cmds grep -l, -r, -c, -h
+@@readme
+The directory `src` contains source files in several subdirectories. Print separated by `---`:
+
+1. the **names** of files (recursive) that contain `TODO` (`-rl`), sorted
+2. for each `.c` file directly in `src`, `file:count` of lines with `TODO` (`-c`)
+3. all lines with `TODO` in any file, **without** the file name prefix (`-rh`), sorted
+@@check
+setup() { mkdir -p src/lib src/test; local f i; for f in src/$(word)1.c src/$(word)2.c src/lib/$(word).h src/test/$(word).c src/README; do for i in $(seq 4); do echo "$(pick 'TODO' 'todo' 'DONE' '') $(words 3)"; done > "$f"; done; }
+@@solution
+#!/bin/bash
+grep -rl TODO src | sort
+echo ---
+grep -c TODO src/*.c
+echo ---
+grep -rh TODO src | sort
+
+@@ex 0610 grep_w_x | Whole words and whole lines
+@@level 2
+@@cmds grep -w, grep -x
+@@readme
+For `palabras.txt`, print separated by `---`:
+
+1. lines containing `log` as a **whole word** (not `login`, `blog`...)
+2. lines that are **exactly** `log` (whole line)
+3. the number of lines that contain `log` anywhere
+@@check
+setup() { local i; for i in $(seq 18); do pick "log" "login ok" "the log file" "blog" "log-in" "catalog" "log." "syslog" "a log"; done > palabras.txt; }
+@@solution
+#!/bin/bash
+grep -w log palabras.txt
+echo ---
+grep -x log palabras.txt
+echo ---
+grep -c log palabras.txt
+
+@@ex 0611 grep_context | Context lines
+@@level 2
+@@cmds grep -A, -B, -C
+@@readme
+In `server.log`, the lines containing `PANIC` are important. Print every `PANIC` line together with
+the **2 lines before** it and **1 line after** it (as grep prints it, including `--` separators).
+@@check
+setup() { local i; for i in $(seq 30); do [[ $(rand 9) == 0 ]] && echo "$i PANIC $(words 2)" || echo "$i $(pick INFO DEBUG WARN) $(words 2)"; done > server.log; echo "31 PANIC final" >> server.log; }
+@@solution
+#!/bin/bash
+grep -B 2 -A 1 PANIC server.log
+
+@@ex 0612 grep_f | Patterns from a file
+@@level 3
+@@cmds grep -f, grep -F
+@@readme
+`blacklist.txt` contains IPs, one per line. `conexiones.log` contains connection lines.
+Print the lines of `conexiones.log` that contain **any** of the blacklisted IPs. The IPs must be
+treated as **fixed strings** (a `.` must not match any character): see `-F` and `-f`.
+@@check
+setup() { local i b=(); for i in 1 2 3; do b+=("$(ip_rand)"); done; printf '%s\n' "${b[@]}" > blacklist.txt; for i in $(seq 20); do echo "conn $(pick "${b[@]}" "$(ip_rand)" "$(ip_rand)" "${b[0]//./x}") $(word)"; done > conexiones.log; }
+@@solution
+#!/bin/bash
+grep -Ff blacklist.txt conexiones.log
+
+@@ex 0613 grep_exit | grep exit codes and -q
+@@level 3
+@@cmds grep -q, $?
+@@readme
+For each of these three commands, print its exit code (`$?`) on its own line:
+
+1. `grep -q` for the word `kernel` in `texto.txt`
+2. `grep -q` for the word `zzzzz` in `texto.txt`
+3. `grep -q` for `kernel` in a file that does **not** exist, `noexiste.txt` (hide the error message)
+
+Then print `found` if `texto.txt` contains `shell`, or `not found` otherwise, using `grep -q` in an `if`.
+@@check
+setup() { randtext 6 > texto.txt; }
+@@solution
+#!/bin/bash
+grep -q kernel texto.txt; echo $?
+grep -q zzzzz texto.txt; echo $?
+grep -q kernel noexiste.txt 2>/dev/null; echo $?
+if grep -q shell texto.txt; then echo found; else echo "not found"; fi
+
+@@ex 0614 regex_dates | Validating formats
+@@level 4
+@@cmds grep -E, anchors, groups
+@@readme
+`fechas.txt` has one candidate per line. Print only the lines that are a date `YYYY-MM-DD` where:
+
+- the year is 4 digits starting with `19` or `20`
+- the month is `01` to `12`
+- the day is `01` to `31`
+
+The whole line must be the date (nothing before or after).
+@@check
+setup() { local i; for i in $(seq 25); do echo "$(pick 19 20 21 18)$(randr 10 99)-$(pick 01 02 09 10 11 12 13 00 1)-$(pick 01 09 10 19 20 29 30 31 32 00 5)$(pick '' '' '' ' ' x)"; done > fechas.txt; }
+@@solution
+#!/bin/bash
+grep -E '^(19|20)[0-9]{2}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$' fechas.txt
+
+@@ex 0615 regex_backref | Back-references
+@@level 4
+@@cmds grep, \(\) \1
+@@readme
+Print the words of `/usr/share/dict/words` that:
+
+1. contain the **same letter three times in a row** (e.g. `...eee...`)
+2. `---`
+3. are 5-letter palindromes in lowercase (like `level`, `radar`)
+
+Use basic regex groups `\(.\)` and back-references `\1`.
+@@check
+SEEDS=1
+@@solution
+#!/bin/bash
+grep '\(.\)\1\1' /usr/share/dict/words
+echo ---
+grep '^\([a-z]\)\([a-z]\)[a-z]\2\1$' /usr/share/dict/words
+
+@@ex 0616 grep_passwd_combo | Real files: /etc/passwd and /etc/group
+@@level 3
+@@cmds grep, cut, sort
+@@readme
+Using the **real** system files, print separated by `---`:
+
+1. the login names (sorted) of the users of `/etc/passwd` whose shell is exactly `/bin/bash`
+2. the login names (sorted) of users whose login name starts with `r`
+3. the names of the groups of `/etc/group` that have **at least one** member listed (4th field not empty), sorted
+@@check
+SEEDS=1
+@@solution
+#!/bin/bash
+grep ':/bin/bash$' /etc/passwd | cut -d: -f1 | sort
+echo ---
+grep '^r' /etc/passwd | cut -d: -f1 | sort
+echo ---
+grep -v ':$' /etc/group | cut -d: -f1 | sort

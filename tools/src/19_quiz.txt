@@ -1,0 +1,423 @@
+@@topic 19_theory_quizzes | Theory quizzes
+@@ex 1901 quiz_help | Getting help: man, info, less
+@@level 1
+@@cmds man, whatis, apropos, info, less
+@@readme
+Answer in `answer.txt`, one line per question as `N: answer`. Case and extra spaces are ignored.
+You may (and should) check things with `man`, `info`... inside the lab.
+
+1. Which manual **section** contains the system calls? (number)
+2. Full command to read the page of the `write` **system call**. (command)
+3. Command that searches a keyword in the short descriptions of all man pages (either of the two
+   equivalent forms). (command name, with option if needed)
+4. Command that tells you the one-line description of a page given its exact name. (command name)
+5. In `less` (the pager `man` uses), which key starts a **forward** search? (key)
+6. In `less`, which key shows the help screen? (key)
+7. In `less`, which key quits? (key)
+8. In `info`, which key moves **up** one level in the node hierarchy? (key)
+9. In `info`, which key goes back to the **last** node you visited? (key)
+10. Which manual section contains **administration** commands? (number)
+11. Which manual section contains **file formats** (like `/etc/passwd`)? (number)
+12. Command to see the page of the file format `passwd` (not the command). (command)
+@@check
+TYPE=quiz
+@@solution
+1: 2
+2: man 2 write
+3: apropos | man -k
+4: whatis | man -f
+5: /
+6: h
+7: q
+8: u
+9: l
+10: 8
+11: 5
+12: man 5 passwd
+
+@@ex 1902 quiz_shell | Shell basics & job control
+@@level 1
+@@cmds &, ^Z, bg, fg, jobs, builtins
+@@readme
+Answer in `answer.txt` as `N: answer`.
+
+1. Character written after a command to run it in the **background**. (character)
+2. Key combination that **suspends** the foreground process. (e.g. `ctrl+x`)
+3. Key combination that usually **aborts** the foreground process. (e.g. `ctrl+x`)
+4. Command that resumes a suspended job **in the background**. (command)
+5. Command that brings a job to the **foreground**. (command)
+6. Is `cd` an internal (builtin) or external command? (internal/external)
+7. Is `ls` an internal or external command? (internal/external)
+8. Why must `cd` be internal? a) because it is faster b) because a child process cannot change its
+   parent's current directory c) because it needs root (a/b/c)
+9. Command that locates the executable, the sources and the man page of a command. (command)
+10. Name of the variable with the list of directories where executables are searched. (name, no `$`)
+11. Exit status of a command that finished successfully. (number)
+12. Per-user configuration file read by every interactive `bash`. (file name)
+13. When the shell evaluates a line, what is done first: alias expansion or wildcard (filename)
+    expansion? (alias/wildcard)
+14. Key combination that searches backwards in the command history. (e.g. `ctrl+x`)
+@@check
+TYPE=quiz
+@@solution
+1: &
+2: ctrl+z | ctrl-z | ^z | control+z | ctrl z
+3: ctrl+c | ctrl-c | ^c | control+c | ctrl c
+4: bg
+5: fg
+6: internal
+7: external
+8: b
+9: whereis
+10: PATH
+11: 0
+12: .bashrc | ~/.bashrc | bashrc
+13: alias
+14: ctrl+r | ctrl-r | ^r | control+r | ctrl r
+
+@@ex 1903 quiz_files | Inodes, links & permissions
+@@level 2
+@@cmds ln, chmod, umask, ls -l
+@@readme
+Answer in `answer.txt` as `N: answer`.
+
+1. Structure where a file's attributes (owner, dates, permissions, block list) are stored. (one word)
+2. Link count of a newly created regular file. (number)
+3. After `ln a b`, the link count of `a`. (number)
+4. After `ln a b; rm a`, can you still read the data through `b`? (yes/no)
+5. After `ln -s a c; rm a`, can you still read the data through `c`? (yes/no)
+6. Octal value of `rwxr-x--x`. (3 digits)
+7. With `umask 027`, permissions of a new **file** in octal. (3 digits)
+8. With `umask 027`, permissions of a new **directory** in octal. (3 digits)
+9. With `umask 0174`, permissions of a new file in octal (a classic example). (3 digits)
+10. Which permission on a **directory** allows going through it (`cd`)? (r/w/x)
+11. Which permission on a directory allows **creating** entries in it? (r/w/x)
+12. First character of `ls -l` for a symbolic link. (character)
+13. Who can change the permissions of a file? a) only root b) its owner (and root) c) anyone with
+    write permission (a/b/c)
+14. In `find`, which one means "**all** of these bits set": `-perm -111` or `-perm /111`? (write it)
+15. What does the capital `X` in `chmod a+X` do? a) sets execute on everything b) sets execute only
+    on directories and on files that already have some execute bit c) removes execute (a/b/c)
+@@check
+TYPE=quiz
+@@solution
+1: inode | i-nodo | inodo | i-node
+2: 1
+3: 2
+4: yes
+5: no
+6: 751
+7: 640
+8: 750
+9: 602
+10: x
+11: w
+12: l
+13: b
+14: -perm -111 | -111
+15: b
+
+@@ex 1904 quiz_redirection | Redirection & pipes semantics
+@@level 2
+@@cmds > >> 2> 2>&1 | tee xargs
+@@readme
+Answer in `answer.txt` as `N: answer`.
+
+1. Operator that **appends** stdout to a file. (operator)
+2. File descriptor number of stderr. (number)
+3. With `cmd > f 2>&1`, where does stderr end? a) in f b) on the screen (a/b)
+4. With `cmd 2>&1 > f`, where does stderr end? a) in f b) on the screen (a/b)
+5. Special file that discards everything written to it. (path)
+6. Does `wc -l < file` print the file name? (yes/no)
+7. A pipe connects the stdout of the left command to the ____ of the right command. (stdin/stdout/stderr)
+8. Command that copies its stdin both to stdout and to a file. (command)
+9. Command that builds command-line arguments from its stdin. (command)
+10. Older (backquote) syntax equivalent to `$(cmd)`: write it for `cmd`. (write it)
+11. What does `cat <<< "hola"` print? (text)
+12. By default, the exit status of a pipeline is the status of which command? (first/last)
+13. Bash option that makes a pipeline fail if **any** command fails. (write the `set` command)
+14. In a here document, how do you prevent `$VAR` from being expanded? a) quote the delimiter
+    (`<< 'EOF'`) b) use `<<-` c) it cannot be prevented (a/b/c)
+@@check
+TYPE=quiz
+@@solution
+1: >>
+2: 2
+3: a
+4: b
+5: /dev/null
+6: no
+7: stdin
+8: tee
+9: xargs
+10: `cmd`
+11: hola
+12: last
+13: set -o pipefail
+14: a
+
+@@ex 1905 quiz_users | Users, groups & sudo
+@@level 2
+@@cmds /etc/passwd, /etc/shadow, /etc/group, su, sudo, passwd
+@@readme
+Answer in `answer.txt` as `N: answer`.
+
+1. UID of `root`. (number)
+2. Home directory of `root`. (path)
+3. Field number of the **login shell** in `/etc/passwd`. (number)
+4. Field number of the **home directory** in `/etc/passwd`. (number)
+5. File that stores the (hashed) passwords. (path)
+6. File that stores the groups and their members. (path)
+7. GID of the `root` group. (number)
+8. Option of `passwd` that **locks** an account. (option)
+9. Option of `passwd` that forces a password change at next login. (option)
+10. Option of `su` that loads the target user's full environment (login shell). (option; `-` counts)
+11. Option of `su` to run a single command. (option)
+12. File that configures `sudo`. (path)
+13. Command that safely edits (and validates) that file. (command)
+14. What do you get with `sudo -s`? a) the sudoers file b) a root shell c) the status of sudo (a/b/c)
+15. Command that lists the groups of a user given its name. (command)
+16. Command that shows the login history (reads `wtmp`). (command)
+17. In sudoers, what does the prefix `%` in `%admin ALL=(ALL) ALL` mean? a) a comment b) a group
+    c) a host alias (a/b/c)
+18. Command to add an **existing** user `u` to the supplementary group `g` without removing its other
+    groups (with `usermod`). (command)
+@@check
+TYPE=quiz
+@@solution
+1: 0
+2: /root
+3: 7
+4: 6
+5: /etc/shadow
+6: /etc/group
+7: 0
+8: -l
+9: -e
+10: - | -l | --login
+11: -c
+12: /etc/sudoers
+13: visudo
+14: b
+15: groups | id -gn | id -nG
+16: last
+17: b
+18: usermod -aG g u | usermod -a -G g u | sudo usermod -aG g u
+
+@@ex 1906 quiz_processes | Processes & signals
+@@level 2
+@@cmds ps, kill, top, pstree
+@@readme
+Answer in `answer.txt` as `N: answer`.
+
+1. Maximum PID in classic 16-bit Unix compatibility. (number)
+2. PID of the initial process (`init`/`systemd`). (number)
+3. PID of the "idle" process. (number)
+4. Number of `SIGKILL`. (number)
+5. Number of the signal `kill` sends by default (`SIGTERM`). (number)
+6. `ps` state letter of a **zombie** process. (letter)
+7. `ps` state letter of a process stopped with Ctrl+Z. (letter)
+8. `ps` state letter of a **running** process. (letter)
+9. `ps` option (UNIX style, with dash) to list **every** process. (option)
+10. Command that shows the processes as a tree. (command)
+11. Exit status seen by the shell for a process killed with `SIGKILL`. (number)
+12. What are daemons? a) interactive processes b) processes that do system tasks in the background
+    c) zombie processes (a/b/c)
+13. Can a process ignore `SIGKILL`? (yes/no)
+14. Signal sent by Ctrl+C (name without `SIG`). (name)
+15. `kill -0 PID` sends no signal: what is it used for? a) to kill quietly b) to check whether the
+    process exists (and we may signal it) c) to pause it (a/b/c)
+@@check
+TYPE=quiz
+@@solution
+1: 32767
+2: 1
+3: 0
+4: 9
+5: 15
+6: z
+7: t
+8: r
+9: -e | -a | -ef | -aux | aux
+10: pstree
+11: 137
+12: b
+13: no
+14: int | sigint
+15: b
+
+@@ex 1907 quiz_boot | Boot: firmware, partitions, GRUB, kernel
+@@level 3
+@@cmds UEFI, GPT, GRUB, initrd
+@@readme
+Answer in `answer.txt` as `N: answer`.
+
+1. Firmware interface that replaced the BIOS. (acronym)
+2. Partition table that replaced MBR. (acronym)
+3. Maximum number of **primary** partitions in MBR. (number)
+4. Maximum number of primary partitions in GPT. (number)
+5. Maximum partition size supported by MBR. (e.g. `2TB`)
+6. Default second-stage boot loader of most Linux distributions. (name)
+7. Command that installs it on a disk (e.g. on `/dev/sda`): only the command name. (command)
+8. Configuration file it reads at boot. (path)
+9. Ubuntu command that regenerates that file (it should not be edited by hand). (command)
+10. File with its general configuration parameters. (path)
+11. Usual path of the Linux kernel image. (path)
+12. Name of the temporary RAM disk with modules needed to mount the root filesystem. (name)
+13. GRUB mechanism used to boot Windows (passing control to another loader). (two words or the GRUB
+    command)
+14. UEFI feature that prevents running software not signed by the manufacturer. (two words)
+15. After loading itself, the kernel looks for the initial process. Which PID does it get? (number)
+16. Put in order (letters, no spaces): a) the kernel runs the initial process b) the firmware checks
+    the hardware c) the boot loader loads the kernel d) the partition table is loaded
+@@check
+TYPE=quiz
+@@solution
+1: uefi
+2: gpt
+3: 4
+4: 128
+5: 2tb | 2 tb
+6: grub | grub2
+7: grub-install
+8: /boot/grub/grub.cfg
+9: update-grub
+10: /etc/default/grub
+11: /boot/vmlinuz
+12: initrd | initramfs
+13: chain loading | chainloading | chainloader
+14: secure boot
+15: 1
+16: bdca
+
+@@ex 1908 quiz_systemd | systemd, services & shutdown
+@@level 3
+@@cmds systemctl, targets, shutdown
+@@readme
+Answer in `answer.txt` as `N: answer`.
+
+1. First target systemd starts. (name)
+2. Target that `default.target` usually links to on a desktop. (name)
+3. Target of runlevel 1 (single user). (name)
+4. Target of runlevel 0. (name)
+5. Target of runlevel 6. (name)
+6. Target of runlevel 3. (name)
+7. Command to show the default target. (command)
+8. `systemctl` subcommand to switch to another target right now. (subcommand)
+9. Command to start the service `cups` now. (command)
+10. Command to make `cups` start at every boot. (command)
+11. Kernel mechanism systemd uses to track processes instead of PIDs. (name)
+12. Command to power off **now**. (with `shutdown`)
+13. Command to cancel a scheduled shutdown. (command)
+14. Signal sent first to every process during shutdown. (name)
+15. Seconds after which the remaining processes receive `SIGKILL`. (number)
+16. Name of the classic init system systemd replaced on Linux. (name)
+17. What is a systemd **unit**? a) a CPU core b) a configuration file describing something systemd
+    manages (a service, a mount...) c) a user session (a/b/c)
+@@check
+TYPE=quiz
+@@solution
+1: default.target
+2: graphical.target
+3: rescue.target
+4: poweroff.target
+5: reboot.target
+6: multi-user.target
+7: systemctl get-default
+8: isolate
+9: systemctl start cups | sudo systemctl start cups
+10: systemctl enable cups | sudo systemctl enable cups
+11: cgroups | cgroup | control groups
+12: shutdown -h now | sudo shutdown -h now
+13: shutdown -c | sudo shutdown -c
+14: sigterm | term
+15: 5
+16: system v | sysv | init | system v init | sysvinit
+17: b
+
+@@ex 1909 quiz_trace | What does it print?
+@@level 3
+@@cmds quoting, expansions, exit codes
+@@readme
+Answer in `answer.txt` as `N: answer` with **exactly** what the snippet prints (one line each).
+Don't run them until you have answered!
+
+1. `A=5; echo '$A'`
+2. `A=5; echo "$A$A"`
+3. `echo $((7 / 2))`
+4. `echo $((17 % 5))`
+5. `X=hola; echo ${#X}`
+6. `set -- a "b c" d; echo $#`
+7. `f() { return 3; }; f; echo $?`
+8. `false || echo no`
+9. `true && echo yes || echo no`
+10. `echo {1..4}`
+11. `F=informe.tar.gz; echo ${F%%.*}`
+12. `F=informe.tar.gz; echo ${F#*.}`
+13. `for i in a b c; do echo -n $i; done; echo`
+14. `expr 3 + 4 \* 2`
+15. `[[ 10 > 9 ]] && echo ok || echo ko`   (careful: inside `[[ ]]`, `>` compares **strings**)
+16. `[ 10 -gt 9 ] && echo ok || echo ko`
+17. `V=; echo "[${V:-vacio}]"`
+18. `echo "$(echo uno; echo dos)" | wc -l`
+@@check
+TYPE=quiz
+@@solution
+1: $A
+2: 55
+3: 3
+4: 2
+5: 4
+6: 3
+7: 3
+8: no
+9: yes
+10: 1 2 3 4
+11: informe
+12: tar.gz
+13: abc
+14: 11
+15: ko
+16: ok
+17: [vacio]
+18: 2
+
+@@ex 1910 quiz_patterns | Globs vs regular expressions
+@@level 3
+@@cmds *, ?, [ ], grep, find
+@@readme
+Answer in `answer.txt` as `N: answer` (yes/no unless stated).
+
+1. Does the glob `*.txt` match the file `.oculto.txt`?
+2. Does the glob `?.log` match `ab.log`?
+3. Does the glob `[!a]*` match `abc`?
+4. Does the regex `^c..h$` match the line `catch`?
+5. Does the regex `b[^ae]g` match the line `big`?
+6. Does the ERE `colou?r` match the whole line `colouur` with `grep -xE`?
+7. Does the ERE `x+y` match the line `y`?
+8. Is `+` a special (repetition) character in `grep` **without** `-E`?
+9. Does `grep -w log` match the line `syslog started`?
+10. Does `find . -name 'a*'` also list **directories** whose name starts with `a`?
+11. Does `find -size -1M` match a file of 500 bytes? (think about rounding up to units)
+12. Does `find -mtime +7` match a file modified 7.5 days ago?
+13. Which `grep` option is needed for `[0-9]{1,3}` to be a repetition? (option)
+14. Does `ls *` show hidden files?
+15. In the regex `.*`, what does `.` mean? a) a literal dot b) any single character (a/b)
+@@check
+TYPE=quiz
+@@solution
+1: no
+2: no
+3: no
+4: no
+5: yes
+6: no
+7: no
+8: no
+9: no
+10: yes
+11: no
+12: no
+13: -e | -E
+14: no
+15: b

@@ -1,0 +1,266 @@
+@@topic 10_pipes_xargs | Pipes, xargs & command substitution
+@@ex 1001 pipe_count | Counting with a pipe
+@@level 1
+@@cmds |, ls, wc
+@@readme
+Print (just the numbers, one per line):
+
+1. how many entries the directory `/usr/bin` has
+2. how many entries of `/usr/bin` contain the letter `m` in their name
+3. how many users are connected to the system right now (`who | wc -l`)
+@@check
+SEEDS=1
+extra_check() { must_use '\|'; }
+@@solution
+#!/bin/bash
+ls /usr/bin | wc -l
+ls /usr/bin | grep m | wc -l
+who | wc -l
+
+@@ex 1002 pipe_users | Users of the system
+@@level 1
+@@cmds cut, sort, grep, wc
+@@readme
+Using the real `/etc/passwd`, print separated by `---`:
+
+1. how many users there are (lines)
+2. all login names in alphabetical order
+3. the login names that start with `r`
+4. the connected users (`who`) names sorted alphabetically, without repetitions
+@@check
+SEEDS=1
+@@solution
+#!/bin/bash
+wc -l < /etc/passwd
+echo ---
+cut -d: -f1 /etc/passwd | sort
+echo ---
+cut -d: -f1 /etc/passwd | grep '^r'
+echo ---
+who | cut -d' ' -f1 | sort -u
+
+@@ex 1003 pipe_login_home | Name and home separated by a TAB
+@@level 2
+@@cmds cut, sort, tr
+@@readme
+From the `passwd` file in the current directory, print `login<TAB>home` for every user, sorted by
+login name.
+@@check
+setup() { local i; for i in $(seq 10); do echo "$(word)$i:x:$((1000+i)):100:$(word):/home/$(word)$i:/bin/bash"; done > passwd; }
+@@solution
+#!/bin/bash
+cut -d: -f1,6 passwd | sort | tr : '\t'
+
+@@ex 1004 pipe_ls_count | Counting directories and files
+@@level 2
+@@cmds ls -l, grep ^d, wc
+@@readme
+In the current directory, print (just numbers, one per line):
+
+1. how many **subdirectories** there are (`ls -l | grep '^d'`)
+2. how many **regular files** there are
+3. on how many files **and** directories the **owner has write permission** (`ls -l | cut -c3`)
+4. how many **regular files** have write permission for the owner
+@@check
+setup() { local i f; for i in $(seq 9); do f="$(word)$i"; if [[ $(rand 3) == 0 ]]; then mkdir "$f"; else touch "$f"; fi; chmod "$(pick 755 555 644 444 700)" "$f"; done; }
+@@solution
+#!/bin/bash
+ls -l | grep -c '^d'
+ls -l | grep -c '^-'
+ls -l | tail -n +2 | cut -c3 | grep -c w
+ls -l | grep '^-' | cut -c3 | grep -c w
+
+@@ex 1005 biggest_files | The biggest files
+@@level 2
+@@cmds ls -S, du, sort -n, head
+@@readme
+Print the names of the **3 biggest** regular files of the directory `datos` (biggest first, only
+names). Then `---`, then the 2 biggest subdirectories of `datos` (by `du -s` size, biggest first,
+as `du -s` prints them: `size<TAB>path`).
+@@check
+setup() { mkdir -p datos/{a,b,c}; local i; for i in $(seq 6); do bigfile "datos/$(word)$i" $(( $(randr 1 200) * 512 + i )); done; for i in a b c; do bigfile "datos/$i/f" $(( $(randr 1 50) * 4096 )); done; }
+@@solution
+#!/bin/bash
+ls -S datos | grep -v -x -e a -e b -e c | head -n 3
+echo ---
+du -s datos/*/ | sort -nr | head -n 2
+
+@@ex 1006 xargs_rm | xargs
+@@level 2
+@@cmds find | xargs rm
+@@readme
+Delete every file under the current directory whose name matches `*~`, using `find` **piped** to
+`xargs rm` (no spaces in the names this time).
+@@check
+COMPARE="stdout exit files"
+setup() { mkdir -p a/b c; local i; for i in $(seq 8); do touch "$(pick . a a/b c)/$(word)$i$(pick '~' '' '.bak')"; done; }
+extra_check() { must_use xargs; }
+@@solution
+#!/bin/bash
+find . -name '*~' | xargs rm
+
+@@ex 1007 subst_rm | Command substitution instead of xargs
+@@level 2
+@@cmds $( ), `...`
+@@readme
+Same as before (delete every `*~` file under the current directory), but now using
+**command substitution**: `rm $(find ...)`.
+@@check
+COMPARE="stdout exit files"
+setup() { mkdir -p a/b c; local i; for i in $(seq 8); do touch "$(pick . a a/b c)/$(word)$i$(pick '~' '' '.bak')"; done; touch "x~"; }
+extra_check() { must_not_use xargs; }
+@@solution
+#!/bin/bash
+rm $(find . -name '*~')
+
+@@ex 1008 xargs_cp | Collecting files
+@@level 2
+@@cmds find, xargs cp -t, mkdir
+@@readme
+Create the directory `temporal` and copy into it every file ending in `.sh` found anywhere under
+`$HOME` (the checker gives you a fake home with some scripts). Use `find ... | xargs cp -t temporal`
+(or `xargs -I{} cp {} temporal`). No two scripts have the same name.
+@@check
+COMPARE="stdout exit files"
+setup() { mkdir -p "$H/bin" "$H/a/b"; local i; for i in $(seq 6); do printf '#!/bin/bash\necho %s\n' "$(word)" > "$H/$(pick bin a a/b .)/$(word)$i$(pick .sh .sh .txt)"; done; }
+@@solution
+#!/bin/bash
+mkdir temporal
+find "$HOME" -name '*.sh' | xargs cp -t temporal
+
+@@ex 1009 xargs_n | xargs -n and -I
+@@level 3
+@@cmds xargs -n1, xargs -I{}
+@@readme
+`dirs.txt` contains one directory name per line (no spaces). Using `xargs`:
+
+1. create all those directories (`xargs mkdir -p`)
+2. inside each one create a file called `README` (`xargs -I{} touch {}/README`)
+3. print the numbers of `numeros.txt` (several per line) **two per line** (`xargs -n2`)
+@@check
+COMPARE="stdout exit files"
+setup() { local i; for i in $(seq 4); do echo "$(word)$i/$(pick src doc)"; done > dirs.txt; for i in 1 2 3; do echo "$(randr 1 99) $(randr 1 99) $(randr 1 99)"; done > numeros.txt; }
+extra_check() { must_use xargs; }
+@@solution
+#!/bin/bash
+xargs mkdir -p < dirs.txt
+xargs -I{} touch {}/README < dirs.txt
+xargs -n2 < numeros.txt
+
+@@ex 1010 top_attackers | Top IPs in auth.log
+@@level 3
+@@cmds grep, grep -o, sort, uniq -c, sort -nr, head
+@@readme
+Using the real `/var/log/auth.log`, print the **5 IP addresses** with the most
+`Failed password` lines, as `uniq -c` prints them, most attempts first (ties: IP ascending as text).
+@@check
+SEEDS=1
+@@solution
+#!/bin/bash
+grep 'Failed password' /var/log/auth.log | grep -oE '([0-9]{1,3}\.){3}[0-9]{1,3}' | sort | uniq -c | sort -k1,1nr -k2,2 | head -n 5
+
+@@ex 1011 pipe_ps | Processes in a pipeline
+@@level 3
+@@cmds ps -e -o, grep, sort, uniq -c
+@@readme
+Print the users that own processes in the system, with how many processes each owns, in
+`uniq -c` format, sorted by user name. Use `ps -e -o user=` (the `=` removes the header).
+
+Note: your own script and its pipeline also count as processes of `alumno`; the checker
+tolerates that difference only if your pipeline is a single line... so keep it on **one line**.
+@@check
+SEEDS=1
+filter() { grep -v ' alumno$'; }
+extra_check() { max_lines 1; }
+@@solution
+#!/bin/bash
+ps -e -o user= | sort | uniq -c
+
+@@ex 1012 tee_pipeline | tee in the middle of a pipeline
+@@level 3
+@@cmds tee, sort, uniq
+@@readme
+In **one pipeline**: read `palabras.txt`, save its **sorted** version into `ordenado.txt`
+(with `tee`) and at the same time print on screen only the **unique** words (`uniq`) of that sorted list.
+@@check
+COMPARE="stdout exit files"
+setup() { local i; for i in $(seq 15); do pick luke sally rod rosa kernel shell; done > palabras.txt; }
+extra_check() { must_use tee; max_lines 1; }
+@@solution
+#!/bin/bash
+sort palabras.txt | tee ordenado.txt | uniq
+
+@@ex 1013 pipestatus | Exit codes in pipelines
+@@level 4
+@@cmds $?, PIPESTATUS, set -o pipefail
+@@readme
+1. Run `grep zzz noexiste.txt 2>/dev/null | wc -l` and print the pipeline output.
+2. Print the exit code of the **whole pipeline** (`$?`) — it's the exit code of the **last** command.
+3. Run the same pipeline again and print the exit codes of **every** command, separated by a space,
+   using `${PIPESTATUS[@]}`.
+4. Enable `set -o pipefail`, run it once more (print its output) and print `$?` again.
+@@check
+SEEDS=1
+@@solution
+#!/bin/bash
+grep zzz noexiste.txt 2>/dev/null | wc -l
+echo $?
+grep zzz noexiste.txt 2>/dev/null | wc -l
+echo "${PIPESTATUS[@]}"
+set -o pipefail
+grep zzz noexiste.txt 2>/dev/null | wc -l
+echo $?
+
+@@ex 1014 subst_nested | Nested command substitution
+@@level 3
+@@cmds $( $( ) ), basename, dirname
+@@readme
+The file `ruta.txt` contains the path of a file that exists under the current directory.
+Using nested command substitution, print one line:
+
+```
+The file <name> is in <dirname> which contains <N> entries
+```
+
+where `<name>` is the basename, `<dirname>` the directory as written in `ruta.txt`, and `<N>` the
+number of entries of that directory.
+@@check
+setup() { local d; d="$(word)/$(word)"; mkdir -p "$d"; local i; for i in $(seq "$(randr 1 6)"); do touch "$d/$(word)$i"; done; echo "$d/$(ls "$d" | head -n 1)" > ruta.txt; }
+@@solution
+#!/bin/bash
+echo "The file $(basename "$(cat ruta.txt)") is in $(dirname "$(cat ruta.txt)") which contains $(ls "$(dirname "$(cat ruta.txt)")" | wc -l) entries"
+
+@@ex 1015 which_manpage | Commands without man page
+@@level 4
+@@cmds ls, comm, sed, sort
+@@readme
+Print, sorted, the names of the files in `/bin` whose name starts with `z` and that do **not** have a
+man page in section 1 (`/usr/share/man/man1/NAME.1.gz`). Solve it with a pipeline:
+`comm -23` between the sorted list of names in `/bin` and the sorted list of man1 page names
+(strip `.1.gz` with `sed`).
+@@check
+SEEDS=1
+@@solution
+#!/bin/bash
+comm -23 <(ls /bin | grep '^z' | sort) <(ls /usr/share/man/man1 | sed 's/\.1\.gz$//' | sort)
+
+@@ex 1016 path_dirs | Searching in $PATH
+@@level 4
+@@cmds tr, xargs, find / ls
+@@readme
+The script receives a file name as argument. Print the full path of every file with that exact name
+found in the directories of `$PATH` (in `$PATH` order, one per line). Directories that don't exist
+must not produce errors.
+
+Hint: `echo "$PATH" | tr : '\n'` gives one directory per line.
+@@check
+ARGS=('ls' 'python3' 'cat' 'mytool')
+SEEDS=1
+ENV=(PATH="$SB/home/bin:/usr/local/bin:/usr/bin:/bin:/nonexistent:$SB/home/tools")
+setup() { mkdir -p "$H/bin" "$H/tools"; printf '#!/bin/sh\n' > "$H/bin/mytool"; printf '#!/bin/sh\n' > "$H/tools/mytool"; printf '#!/bin/sh\n' > "$H/tools/cat"; chmod +x "$H"/bin/* "$H"/tools/*; }
+@@solution
+#!/bin/bash
+for d in $(echo "$PATH" | tr : ' '); do
+  [ -e "$d/$1" ] && echo "$d/$1"
+done
+exit 0

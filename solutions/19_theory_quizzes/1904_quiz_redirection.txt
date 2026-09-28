@@ -1,0 +1,15 @@
+1: >>
+2: 2
+3: a
+4: b
+5: /dev/null
+6: no
+7: stdin
+8: tee
+9: xargs
+10: `cmd`
+11: hola
+12: last
+13: set -o pipefail
+14: a
+
