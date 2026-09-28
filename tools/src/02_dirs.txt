@@ -1,0 +1,284 @@
+@@topic 02_directories | Directories & navigation
+@@ex 0201 pwd_cd | pwd and cd
+@@level 1
+@@cmds cd, pwd
+@@readme
+The current directory contains the path `a/b/c`. Go into `a/b/c`, print the current directory,
+then go back **up two levels** using `..` and print the current directory again.
+
+```
+/.../work/a/b/c
+/.../work/a
+```
+@@check
+SEEDS=1
+setup() { mkdir -p a/b/c; }
+extra_check() { must_use cd pwd; must_use '\.\.'; }
+@@solution
+#!/bin/bash
+cd a/b/c
+pwd
+cd ../..
+pwd
+
+@@ex 0202 mkdir_tree | Build a directory tree
+@@level 1
+@@cmds mkdir, cd
+@@readme
+Create this structure **inside the current directory**:
+
+```
+.
+├── Datos
+│   ├── Inversiones
+│   ├── Nominas
+│   └── Stocks
+└── Textos
+    ├── Cartas
+    │   ├── Avisos
+    │   └── Circulares
+    └── Informes
+```
+
+The checker compares the resulting files and directories. Nothing needs to be printed.
+@@check
+SEEDS=1
+COMPARE="stdout exit files"
+@@solution
+#!/bin/bash
+mkdir -p Datos/{Inversiones,Nominas,Stocks} Textos/Cartas/{Avisos,Circulares} Textos/Informes
+
+@@ex 0203 mkdir_p | mkdir -p in one command
+@@level 1
+@@cmds mkdir -p
+@@readme
+With **one single** `mkdir` command, create the path `proyecto/src/main/java/es/lab`
+(including every intermediate directory), and also `proyecto/docs` and `proyecto/tests`.
+@@check
+SEEDS=1
+COMPARE="stdout exit files"
+extra_check() { max_lines 1; must_use mkdir; }
+@@solution
+#!/bin/bash
+mkdir -p proyecto/src/main/java/es/lab proyecto/docs proyecto/tests
+
+@@ex 0204 rmdir | Removing empty directories
+@@level 1
+@@cmds rmdir
+@@readme
+The current directory contains the example tree (`Datos/...`, `Textos/...`), all directories empty.
+
+Remove the directories `Datos/Nominas` and `Textos/Cartas` **using `rmdir` only**
+(remember: `rmdir` only removes empty directories, and `Cartas` contains `Avisos` and `Circulares`).
+@@check
+SEEDS=1
+COMPARE="stdout exit files"
+setup() { mkdir -p Datos/{Inversiones,Nominas,Stocks} Textos/Cartas/{Avisos,Circulares} Textos/Informes; }
+extra_check() { must_use rmdir; must_not_use rm; }
+@@solution
+#!/bin/bash
+rmdir Datos/Nominas Textos/Cartas/Avisos Textos/Cartas/Circulares Textos/Cartas
+
+@@ex 0205 ls_hidden | Hidden files
+@@level 1
+@@cmds ls -a, ls -A
+@@readme
+The directory `cfg` contains normal and hidden files (names starting with `.`).
+Print the list of **all** its entries including the hidden ones, **but not** `.` and `..`,
+one per line (that's what `ls` does when its output is not a terminal).
+@@check
+setup() { mkdir cfg; local i; for i in $(seq "$(randr 2 5)"); do touch "cfg/$(word)$i" "cfg/.$(word)rc$i"; done; }
+extra_check() { must_use ls; }
+@@solution
+#!/bin/bash
+ls -A cfg
+
+@@ex 0206 ls_other_dirs | Listing without moving
+@@level 1
+@@cmds ls, relative paths
+@@readme
+The current directory contains `Datos/{Inversiones,Nominas,Stocks}` and `Textos/{Cartas,Informes}`,
+each with some files. **Without using `cd`**, print (in this order):
+
+1. the content of `Textos/Cartas`
+2. the content of the parent directory of `Stocks`, reached as `Datos/Stocks/..`
+3. the content of `/usr/share/dict`
+
+(Plain `ls DIR` for each; each listing is one entry per line.)
+@@check
+setup() { mkdir -p Datos/{Inversiones,Nominas,Stocks} Textos/{Cartas,Informes}; local d; for d in Datos/* Textos/*; do touch "$d/$(word).txt" "$d/$(word).dat"; done; }
+extra_check() { must_not_use cd; }
+@@solution
+#!/bin/bash
+ls Textos/Cartas
+ls Datos/Stocks/..
+ls /usr/share/dict
+
+@@ex 0207 cd_relative | Relative paths with ..
+@@level 2
+@@cmds cd, ..
+@@readme
+The current directory contains `Datos/Stocks` and `Textos/Cartas/Avisos`.
+
+1. `cd` into `Datos/Stocks` and print the current directory.
+2. From there, using **one** `cd` with a **relative** path (with `..`), go to `Textos/Cartas/Avisos`
+   and print the current directory.
+3. Go back to the previous directory with `cd -` (it prints the directory itself).
+@@check
+SEEDS=1
+setup() { mkdir -p Datos/Stocks Textos/Cartas/Avisos; }
+extra_check() { must_use '\.\./\.\./Textos'; }
+@@solution
+#!/bin/bash
+cd Datos/Stocks
+pwd
+cd ../../Textos/Cartas/Avisos
+pwd
+cd -
+
+@@ex 0208 cd_home | cd without arguments, $HOME and ~
+@@level 2
+@@cmds cd, ~, $HOME
+@@readme
+1. Go to `/usr/bin` and print the current directory.
+2. Go to your home directory with `cd` **without arguments** and print the current directory.
+3. Create the directory `~/proyectos/so` (use `~`), go into it and print the current directory.
+@@check
+SEEDS=1
+COMPARE="stdout exit files"
+@@solution
+#!/bin/bash
+cd /usr/bin
+pwd
+cd
+pwd
+mkdir -p ~/proyectos/so
+cd ~/proyectos/so
+pwd
+
+@@ex 0209 ls_sort | ls sorting options
+@@level 2
+@@cmds ls -S, ls -t, ls -r
+@@readme
+The directory `data` contains files of different sizes and modification dates.
+Print, one per line:
+
+1. the file names ordered by **size**, biggest first
+2. a line with `---`
+3. the file names ordered by **modification time**, **oldest** first
+
+Look at `ls -S`, `ls -t` and `ls -r`.
+@@check
+setup() {
+  mkdir data; local i n
+  for i in $(seq 6); do
+    n="$(word)_$i.bin"; bigfile "data/$n" $(( $(randr 1 90) * 100 + i ))
+    touch -d "2026-0$(randr 1 5)-$(randr 10 28) $(randr 10 23):00" "data/$n"
+  done
+}
+@@solution
+#!/bin/bash
+ls -S data
+echo ---
+ls -tr data
+
+@@ex 0210 ls_dirs_only | Only the directories
+@@level 2
+@@cmds ls -d, */
+@@readme
+The current directory has files and subdirectories. Print **only the subdirectories**, one per line,
+each followed by `/` (e.g. `docs/`). Hint: the glob `*/` only matches directories, and `ls -d`
+lists a directory itself instead of its content.
+@@check
+setup() { local i d; for i in $(seq "$(randr 2 5)"); do d="$(word)_d$i"; mkdir -p "$d"; touch "$(word)_f$i" "$d/inner"; done; }
+@@solution
+#!/bin/bash
+ls -d */
+
+@@ex 0211 ls_recursive | Recursive listing
+@@level 2
+@@cmds ls -R
+@@readme
+Print the recursive listing (all subdirectories) of the directory `proyecto` using `ls`.
+@@check
+setup() { mkdir -p proyecto/{src/lib,docs,tests}; local d; for d in proyecto proyecto/src proyecto/src/lib proyecto/docs; do touch "$d/$(word).c" "$d/$(word).h"; done; }
+extra_check() { must_use ls; }
+@@solution
+#!/bin/bash
+ls -R proyecto
+
+@@ex 0212 tree | tree with limited depth
+@@level 2
+@@cmds tree -L, tree -d, --noreport
+@@readme
+Print:
+
+1. the full tree of `Datos` (files included), **without** the final summary line
+   (`N directories, M files`)
+2. the tree of `/usr/share/man`, **directories only**, with **depth 1**, also without the summary line.
+
+See `man tree` (`-L`, `-d`, `--noreport`).
+@@check
+setup() { mkdir -p Datos/{Inversiones,Nominas/2025,Stocks}; local d; for d in Datos/*/; do touch "$d$(word).txt"; done; touch "Datos/Nominas/2025/$(word).pdf"; }
+@@solution
+#!/bin/bash
+tree --noreport Datos
+tree -d -L 1 --noreport /usr/share/man
+
+@@ex 0213 du | Disk usage with du
+@@level 3
+@@cmds du -s, du -h, du -d
+@@readme
+The current directory contains `Datos` with several subdirectories and files.
+
+Print:
+
+1. the total size of `Datos` in **human readable** form (one line, `du` format)
+2. the size of every directory **under** `Datos` with **max depth 1**, in KiB (`-k`)
+3. the size of every directory **and file** under `Datos`, max depth 2, human readable
+
+(Exactly what `du` prints; the checker runs your command and the reference on identical files.)
+@@check
+setup() { mkdir -p Datos/{a,b/c,d}; local f; for f in Datos/a/x Datos/b/y Datos/b/c/z Datos/d/w Datos/top; do bigfile "$f" $(( $(randr 1 40) * 1024 )); done; }
+SORT_OUTPUT=1
+extra_check() { must_use du; }
+@@solution
+#!/bin/bash
+du -sh Datos
+du -k -d 1 Datos
+du -ah -d 2 Datos
+
+@@ex 0214 absolute_vs_relative | Absolute and relative paths
+@@level 3
+@@cmds cd, pwd, realpath
+@@readme
+The file `where.txt` contains a **relative** path to an existing directory (e.g. `x/y/../z`).
+
+Print:
+
+1. the path exactly as written in the file
+2. the **absolute, canonical** path of that directory (no `..`), obtained by going into it with
+   `cd` and asking `pwd`
+3. the path to go **from that directory back to the current one** as a relative path made only
+   of `..` components separated by `/` (e.g. `../..`). The number of `..` equals the depth of the
+   canonical relative path.
+
+Hint: for 3 you may count the `/` in the canonical path relative to the start directory.
+@@check
+setup() {
+  local a b c; a=$(word)1 b=$(word)2 c=$(word)3
+  mkdir -p "$a/$b/$c" "$a/tmp"
+  pick "$a/tmp/../$b/$c" "$a/$b/./$c" "$a/$b" "$a/tmp/../$b/$c/../$c" "$a" > where.txt
+}
+@@solution
+#!/bin/bash
+REL=$(cat where.txt)
+echo "$REL"
+START=$(pwd)
+cd "$REL"
+ABS=$(pwd)
+echo "$ABS"
+SUB=${ABS#"$START"/}
+UP=..
+for ((i = 0; i < $(echo "$SUB" | tr -cd / | wc -c); i++)); do UP="$UP/.."; done
+echo "$UP"

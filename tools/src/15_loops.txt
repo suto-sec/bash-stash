@@ -1,0 +1,395 @@
+@@topic 15_loops_read | Loops: for, while, until, read
+@@ex 1501 for_seq | Counting loops
+@@level 1
+@@cmds for in {1..N}, seq, for (( ))
+@@readme
+The script receives N. Print:
+
+1. the numbers 1..N separated by spaces on one line (using a `for` loop and `echo -n`, then a newline)
+2. the numbers N down to 1, one per line (`seq N -1 1` or a C-style for)
+3. `Iteracion numero K` for K = 1..N (like `script_for.sh` in `~/scripts.tgz`)
+
+Note: `{1..$N}` does **not** work with variables; use `seq` or `for ((...))`.
+@@check
+SEEDS=1
+ARGS=('1' '3' '7')
+extra_check() { must_use for; }
+@@solution
+#!/bin/bash
+N=$1
+for ((i = 1; i <= N; i++)); do echo -n "$i "; done
+echo
+for i in $(seq "$N" -1 1); do echo "$i"; done
+for i in $(seq "$N"); do echo "Iteracion numero $i"; done
+
+@@ex 1502 for_glob | Looping over files (script_for_txt)
+@@level 1
+@@cmds for f in *.txt
+@@readme
+For every `.txt` file in the current directory (alphabetical), print `name: N lines` and create a copy
+called `name.bak` (e.g. `a.txt.bak`), like `script_for_txt.sh` in `~/scripts.tgz`. If there are no `.txt`
+files, print nothing (hint: without care, `*.txt` stays literally `*.txt`).
+@@check
+COMPARE="stdout exit files"
+setup() { local i; for i in $(seq 0 "$(randr 0 4)"); do [[ $i == 0 ]] && continue; randtext "$(randr 1 9)" > "$(word)$i.txt"; done; touch notes.md; }
+@@solution
+#!/bin/bash
+for f in *.txt; do
+  [ -e "$f" ] || continue
+  echo "$f: $(wc -l < "$f") lines"
+  cp "$f" "$f.bak"
+done
+
+@@ex 1503 while_read | Reading a file line by line
+@@level 2
+@@cmds while read -r, IFS=
+@@readme
+Print every line of `entrada.txt` prefixed with its number, like a classic "number the lines" child process:
+
+```
+1: first line
+2:    second line keeps its leading spaces
+```
+
+Use `while IFS= read -r line; do ...; done < entrada.txt` (think: why `IFS=` and why `-r`?).
+The last line of the file may **not** end with a newline: it must still be printed.
+@@check
+setup() { { local i; for i in $(seq "$(randr 2 6)"); do echo "$(pick '' '   ' '	')$(words 3) $(pick '' '\n' '\\t')"; done; printf '%s' "$(words 2)"; } > entrada.txt; }
+extra_check() { must_use while read; }
+@@solution
+#!/bin/bash
+n=1
+while IFS= read -r line || [ -n "$line" ]; do
+  echo "$n: $line"
+  n=$((n + 1))
+done < entrada.txt
+
+@@ex 1504 read_fields | Splitting fields with IFS
+@@level 2
+@@cmds while IFS=: read -r a b c
+@@readme
+Read the `passwd` file (in the current directory) with a `while IFS=: read -r ...` loop and print,
+for every user with UID ≥ 1000, `user (uid) -> shell`.
+@@check
+setup() { local i; for i in $(seq 12); do echo "$(word)$i:x:$(pick 0 1 33 999 1000 1001 1500 65534):100:$(word) $(word):/home/$(word):$(pick /bin/bash /bin/sh /usr/sbin/nologin)"; done > passwd; }
+extra_check() { must_use while read; }
+@@solution
+#!/bin/bash
+while IFS=: read -r user x uid gid gecos home shell; do
+  [ "$uid" -ge 1000 ] && echo "$user ($uid) -> $shell"
+done < passwd
+
+@@ex 1505 until | until loops
+@@level 1
+@@cmds until, while
+@@readme
+The script receives N (≥ 0). Using an `until` loop, print a countdown from N to 0 as `T-N`, then
+`Liftoff!`. Then, with a `while` loop, print the powers of 2 that are **less than** 1000 in one line
+separated by spaces.
+@@check
+SEEDS=1
+ARGS=('0' '3' '10')
+extra_check() { must_use until while; }
+@@solution
+#!/bin/bash
+i=$1
+until [ "$i" -lt 0 ]; do
+  echo "T-$i"
+  i=$((i - 1))
+done
+echo "Liftoff!"
+p=1
+out=
+while [ $p -lt 1000 ]; do
+  out+="$p "
+  p=$((p * 2))
+done
+echo $out
+
+@@ex 1506 break_continue | break and continue
+@@level 2
+@@cmds break, continue
+@@readme
+The script receives numbers as arguments. Go through them in order and:
+
+- skip (`continue`) negative numbers
+- stop (`break`) at the first `0`
+- print every other number
+
+At the end print `processed: N` with how many numbers were printed.
+@@check
+SEEDS=1
+ARGS=('1 2 3' '4 -1 5 0 6' '0 1 2' '-1 -2 -3' '7 8 -9 10 0 11 12')
+extra_check() { must_use break continue; }
+@@solution
+#!/bin/bash
+n=0
+for x in "$@"; do
+  [ "$x" -lt 0 ] && continue
+  [ "$x" -eq 0 ] && break
+  echo "$x"
+  n=$((n + 1))
+done
+echo "processed: $n"
+
+@@ex 1507 nested | Nested loops: multiplication table
+@@level 2
+@@cmds for, for, printf
+@@readme
+The script receives N. Print the N×N multiplication table, each row with the values separated by a
+single TAB (row i: i*1 ... i*N).
+@@check
+SEEDS=1
+ARGS=('1' '3' '5')
+@@solution
+#!/bin/bash
+for ((i = 1; i <= $1; i++)); do
+  row=
+  for ((j = 1; j <= $1; j++)); do
+    row+="$((i * j))"
+    [ $j -lt $1 ] && row+=$'\t'
+  done
+  echo "$row"
+done
+
+@@ex 1508 sum_file | Accumulators
+@@level 2
+@@cmds while read, $(( ))
+@@readme
+`gastos.txt` contains lines `category amount` (amount = integer). Print the **total** and then the
+total per category (`category: total`) sorted by category name. Only bash loops + `sort` at the end.
+@@check
+setup() { local i; for i in $(seq 12); do echo "$(pick comida casa ocio transporte) $(randr 1 200)"; done > gastos.txt; }
+@@solution
+#!/bin/bash
+T=0
+declare -A C
+while read -r cat amt; do
+  T=$((T + amt))
+  C[$cat]=$(( ${C[$cat]:-0} + amt ))
+done < gastos.txt
+echo "total: $T"
+for k in "${!C[@]}"; do echo "$k: ${C[$k]}"; done | sort
+
+@@ex 1509 read_stdin_numbers | Reading until a sentinel
+@@level 2
+@@cmds while read, stdin
+@@readme
+Read numbers from **standard input**, one per line, until you read `0` (or the input ends).
+Print their count and their average as an integer (`$((sum / count))`), as `count=N avg=A`.
+If no numbers were read before the `0`, print `no data`.
+@@check
+SEEDS=5
+input() { local i; for i in $(seq "$(randr 0 6)"); do randr 1 100; done; [[ $(rand 3) != 0 ]] && echo 0; randr 1 9; }
+@@solution
+#!/bin/bash
+n=0; s=0
+while read -r x && [ "$x" != 0 ]; do
+  s=$((s + x)); n=$((n + 1))
+done
+if [ $n -eq 0 ]; then echo "no data"; else echo "count=$n avg=$((s / n))"; fi
+
+@@ex 1510 read_prompt | Interactive input: read -p
+@@level 2
+@@cmds read -p, read -s, read -t
+@@readme
+Ask the user (stdin) for their **name** and their **age** using `read -p "Name: " NAME` and
+`read -p "Age: " AGE` (the prompt goes to stderr, the checker ignores it), and print:
+
+- `Hello NAME, next year you will be AGE+1` if AGE is a number
+- `Hello NAME, that is not an age` otherwise
+@@check
+SEEDS=5
+input() { echo "$(word)"; pick 20 33 abc 7 99 ''; }
+extra_check() { must_use read; }
+@@solution
+#!/bin/bash
+read -p "Name: " NAME
+read -p "Age: " AGE
+if [[ $AGE =~ ^[0-9]+$ ]]; then
+  echo "Hello $NAME, next year you will be $((AGE + 1))"
+else
+  echo "Hello $NAME, that is not an age"
+fi
+
+@@ex 1511 select_menu | Menus with select
+@@level 3
+@@cmds select, case, break, PS3
+@@readme
+Show a menu with `select opt in listar contar salir` (the menu and `PS3` prompt go to stderr).
+The user's choices come from stdin, one per line:
+
+- `listar` (1): print the files of the current directory (`ls`)
+- `contar` (2): print `N files`
+- `salir` (3): print `bye` and leave the loop
+- invalid number: print `invalid option`
+
+If stdin ends without choosing `salir`, the loop ends by itself (select stops at EOF).
+@@check
+SEEDS=4
+setup() { local i; for i in $(seq "$(randr 1 4)"); do touch "$(word)$i"; done; }
+input() { local i; for i in $(seq "$(randr 1 4)"); do pick 1 2 7 2; done; [[ $(rand 3) != 0 ]] && echo 3; echo 1; }
+extra_check() { must_use select; }
+@@solution
+#!/bin/bash
+PS3="Opcion: "
+select opt in listar contar salir; do
+  case $opt in
+    listar) ls ;;
+    contar) echo "$(ls | wc -l) files" ;;
+    salir) echo bye; break ;;
+    *) echo "invalid option" ;;
+  esac
+done
+
+@@ex 1512 find_while | Safe loop over find results
+@@level 3
+@@cmds find -print0, while IFS= read -r -d ''
+@@readme
+Under `docs` there are files with **spaces** (and even newlines are possible in real life).
+For each regular file (sorted by path), print `path (N bytes)`. Use
+`find docs -type f -print0 | sort -z | while IFS= read -r -d '' f; do ... done`.
+@@check
+setup() { mkdir -p "docs/mis cosas/más"; local i; for i in $(seq 5); do bigfile "docs/$(pick . 'mis cosas' 'mis cosas/más')/$(word) $(pick '' copia 'v 2') $i.txt" "$(randr 0 300)"; done; }
+@@solution
+#!/bin/bash
+find docs -type f -print0 | sort -z | while IFS= read -r -d '' f; do
+  echo "$f ($(stat -c %s "$f") bytes)"
+done
+
+@@ex 1513 rename_loop | Batch rename
+@@level 3
+@@cmds for, mv, ${f%.*}
+@@readme
+Rename every `.jpeg` file in `fotos` to `.jpg`, and every file whose name contains spaces so that
+spaces become `_` (both rules may apply to the same file). Print `old -> new` for each renamed file,
+in alphabetical order of the old name. Files needing no change are not printed.
+@@check
+COMPARE="stdout exit files"
+setup() { mkdir fotos; local i; for i in $(seq 6); do touch "fotos/$(word)$(pick ' ' '_' '')$i.$(pick jpeg jpg png jpeg)"; done; }
+@@solution
+#!/bin/bash
+cd fotos
+for f in *; do
+  n=${f// /_}
+  [[ $n == *.jpeg ]] && n=${n%.jpeg}.jpg
+  if [ "$f" != "$n" ]; then
+    mv "$f" "$n"
+    echo "$f -> $n"
+  fi
+done
+
+@@ex 1514 factorial_fib | Factorial and Fibonacci
+@@level 2
+@@cmds while, $(( ))
+@@readme
+The script receives N (0 ≤ N ≤ 20). Print:
+
+```
+N! = <factorial>
+fib(N) = <N-th Fibonacci number, fib(0)=0, fib(1)=1>
+```
+@@check
+SEEDS=1
+ARGS=('0' '1' '5' '10' '20')
+@@solution
+#!/bin/bash
+n=$1
+f=1
+for ((i = 2; i <= n; i++)); do f=$((f * i)); done
+echo "$n! = $f"
+a=0; b=1
+for ((i = 0; i < n; i++)); do t=$((a + b)); a=$b; b=$t; done
+echo "fib($n) = $a"
+
+@@ex 1515 primes | Prime numbers
+@@level 3
+@@cmds nested loops, %, break
+@@readme
+The script receives N. Print all prime numbers ≤ N on one line separated by spaces
+(nothing — just an empty line — if there are none).
+@@check
+SEEDS=1
+ARGS=('1' '2' '10' '50' '100')
+@@solution
+#!/bin/bash
+out=()
+for ((n = 2; n <= $1; n++)); do
+  p=1
+  for ((d = 2; d * d <= n; d++)); do
+    (( n % d == 0 )) && { p=0; break; }
+  done
+  (( p )) && out+=("$n")
+done
+echo "${out[*]}"
+
+@@ex 1516 dir_report | Directory report
+@@level 3
+@@cmds for, test, wc, stat
+@@readme
+The script receives a directory. For each entry (alphabetical, including hidden ones but not `.`
+and `..`) print one line:
+
+- `[D] name (N entries)` for directories (N = number of entries inside, hidden included)
+- `[F] name (N bytes)` for regular files
+- `[L] name -> target` for symbolic links (check first)
+
+At the end: `Total: X dirs, Y files, Z links`.
+@@check
+setup() { mkdir -p base/{a,b,.oculto}; local i; for i in $(seq 4); do bigfile "base/$(word)$i" "$(randr 0 500)"; touch "base/$(pick a b .oculto)/x$i"; done; touch base/.hidden; ln -s a base/enlace; ln -s /etc/passwd base/pw; }
+ARGS=('base')
+@@solution
+#!/bin/bash
+cd "$1" || exit 1
+d=0; f=0; l=0
+for e in $(ls -A); do
+  if [ -L "$e" ]; then echo "[L] $e -> $(readlink "$e")"; l=$((l + 1))
+  elif [ -d "$e" ]; then echo "[D] $e ($(ls -A "$e" | wc -l) entries)"; d=$((d + 1))
+  elif [ -f "$e" ]; then echo "[F] $e ($(stat -c %s "$e") bytes)"; f=$((f + 1))
+  fi
+done
+echo "Total: $d dirs, $f files, $l links"
+
+@@ex 1517 csv_parse | Parsing a CSV
+@@level 3
+@@cmds while IFS=, read, tail -n +2
+@@readme
+`alumnos.csv` has a header and lines `nombre,apellido,nota` (nota integer 0-10). Print:
+
+1. every student as `APELLIDO, nombre: nota` (surname in uppercase: `${var^^}`), in file order
+2. `---`
+3. `aprobados: X, suspensos: Y`
+4. `mejor: nombre apellido (nota)` for the best grade (the first one in the file if tied)
+@@check
+setup() { echo "nombre,apellido,nota" > alumnos.csv; local i; for i in $(seq "$(randr 3 8)"); do echo "$(pick Ana Luis Eva Pedro Marta Sofia Jose),$(pick garcia lopez perez sanz ruiz),$(randr 0 10)"; done >> alumnos.csv; }
+@@solution
+#!/bin/bash
+a=0; s=0; best=-1
+while IFS=, read -r n ap nota; do
+  echo "${ap^^}, $n: $nota"
+  if [ "$nota" -ge 5 ]; then a=$((a + 1)); else s=$((s + 1)); fi
+  if [ "$nota" -gt "$best" ]; then best=$nota; bn="$n $ap"; fi
+done < <(tail -n +2 alumnos.csv)
+echo ---
+echo "aprobados: $a, suspensos: $s"
+echo "mejor: $bn ($best)"
+
+@@ex 1518 retry | Retrying a command
+@@level 4
+@@cmds until, $?, counters
+@@readme
+`flaky.sh` fails (exit 1) several times before succeeding (it keeps a counter in `.flaky_state`).
+Run it until it succeeds, **at most 5 attempts**. For each attempt print `attempt N: exit C`.
+At the end print `success after N attempts` or `giving up after 5 attempts` and exit 0 or 1 accordingly.
+@@check
+setup() { local k; k=$(randr 1 7); printf '#!/bin/bash\nn=$(cat .flaky_state 2>/dev/null || echo 0)\nn=$((n+1)); echo $n > .flaky_state\n[ $n -ge %s ] && exit 0 || exit 1\n' "$k" > flaky.sh; chmod +x flaky.sh; }
+@@solution
+#!/bin/bash
+for ((i = 1; i <= 5; i++)); do
+  ./flaky.sh
+  c=$?
+  echo "attempt $i: exit $c"
+  if [ $c -eq 0 ]; then echo "success after $i attempts"; exit 0; fi
+done
+echo "giving up after 5 attempts"
+exit 1

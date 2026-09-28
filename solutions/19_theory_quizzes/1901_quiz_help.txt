@@ -1,0 +1,13 @@
+1: 2
+2: man 2 write
+3: apropos | man -k
+4: whatis | man -f
+5: /
+6: h
+7: q
+8: u
+9: l
+10: 8
+11: 5
+12: man 5 passwd
+

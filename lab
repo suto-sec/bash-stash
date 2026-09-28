@@ -1,0 +1,42 @@
+#!/bin/bash
+# Host wrapper for the Ubuntu lab container.
+#   ./lab              open a shell as alumno (starts the container if needed)
+#   ./lab check ID     run the checker for an exercise (or "all")
+#   ./lab next         show the next unsolved exercise
+#   ./lab <cmd...>     run any command inside the container as alumno
+#   ./lab build        (re)build the image
+#   ./lab reset        destroy the container (fresh system on next start)
+#   ./lab root         open a root shell
+set -e
+HERE=$(cd "$(dirname "$0")" && pwd)
+IMG=bash-stash
+NAME=bash-stash
+
+if command -v podman >/dev/null; then RT=podman; USERNS=(--userns=keep-id:uid=1000,gid=1000)
+elif command -v docker >/dev/null; then RT=docker; USERNS=()
+else echo "Need podman or docker" >&2; exit 1; fi
+
+build() { "$RT" build -t "$IMG" -f "$HERE/container/Containerfile" "$HERE/container"; }
+
+ensure() {
+  "$RT" image exists "$IMG" 2>/dev/null || "$RT" image inspect "$IMG" >/dev/null 2>&1 || build
+  if [[ $("$RT" inspect -f '{{.State.Running}}' "$NAME" 2>/dev/null) != true ]]; then
+    "$RT" rm -f "$NAME" >/dev/null 2>&1 || true
+    "$RT" run -d --name "$NAME" --hostname labhost "${USERNS[@]}" --user root \
+      -v "$HERE:/home/alumno/lab:Z" "$IMG" >/dev/null
+  fi
+}
+
+in_lab() { # [-t] cmd...
+  local tty=(-i); [[ -t 0 && -t 1 ]] && tty=(-it)
+  "$RT" exec "${tty[@]}" -u alumno -w /home/alumno/lab -e HOME=/home/alumno -e LAB_QUIET=1 "$NAME" \
+    "$@"
+}
+
+case ${1:-} in
+  build) build ;;
+  reset) "$RT" rm -f "$NAME" >/dev/null 2>&1; echo "container removed" ;;
+  root)  ensure; shift; if (( $# )); then "$RT" exec -u root "$NAME" "$@"; else "$RT" exec -it -u root "$NAME" bash -l; fi ;;
+  "")    ensure; "$RT" exec -it -u alumno -w /home/alumno/lab -e HOME=/home/alumno "$NAME" bash -l ;;
+  *)     ensure; in_lab "$@" ;;
+esac

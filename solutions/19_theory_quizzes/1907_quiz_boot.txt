@@ -1,0 +1,17 @@
+1: uefi
+2: gpt
+3: 4
+4: 128
+5: 2tb | 2 tb
+6: grub | grub2
+7: grub-install
+8: /boot/grub/grub.cfg
+9: update-grub
+10: /etc/default/grub
+11: /boot/vmlinuz
+12: initrd | initramfs
+13: chain loading | chainloading | chainloader
+14: secure boot
+15: 1
+16: bdca
+

@@ -1,0 +1,233 @@
+@@topic 12_processes_jobs | Processes, jobs & signals
+@@ex 1201 background | Background processes, $! and wait
+@@level 2
+@@cmds &, $!, kill, wait
+@@readme
+1. Start `sleep 300` in the **background** and save its PID (`$!`).
+2. Print `running` if the process exists (`kill -0 PID` succeeds), `not running` otherwise.
+3. Terminate it with `kill` (default signal, SIGTERM).
+4. `wait` for it and print the exit status returned by `wait` (a process killed by signal N exits
+   with 128+N).
+5. Print `running`/`not running` again.
+@@check
+SEEDS=1
+@@solution
+#!/bin/bash
+sleep 300 &
+P=$!
+if kill -0 "$P" 2>/dev/null; then echo running; else echo "not running"; fi
+kill "$P"
+wait "$P"
+echo $?
+if kill -0 "$P" 2>/dev/null; then echo running; else echo "not running"; fi
+
+@@ex 1202 jobs | The jobs table
+@@level 2
+@@cmds jobs, kill %N
+@@readme
+1. Start three background jobs: `sleep 101`, `sleep 102`, `sleep 103` (in that order).
+2. Print the job table with `jobs`.
+3. Kill job **number 2** using job syntax (`kill %2`), then `wait` for it (hide wait's output).
+4. Print `jobs` again: job 2 is gone, and notice how the `+` (current) and `-` (previous) marks work.
+5. Kill the remaining jobs (`%1 %3`) and wait for them.
+@@check
+SEEDS=1
+filter() { sed 's/  */ /g'; }
+@@solution
+#!/bin/bash
+sleep 101 &
+sleep 102 &
+sleep 103 &
+jobs
+kill %2
+wait %2 2>/dev/null
+jobs
+kill %1 %3
+wait 2>/dev/null
+
+@@ex 1203 signals | Signal names and numbers
+@@level 1
+@@cmds kill -l
+@@readme
+Using `kill -l`, print (one per line):
+
+1. the number of the signal `TERM`
+2. the number of the signal `KILL`
+3. the number of `INT` (what Ctrl+C sends)
+4. the number of `TSTP` (what Ctrl+Z sends)
+5. the name of signal number `1`
+6. the name of the signal a process died from if its exit status was `137` (`kill -l 137`)
+@@check
+SEEDS=1
+extra_check() { must_use kill; }
+@@solution
+#!/bin/bash
+kill -l TERM
+kill -l KILL
+kill -l INT
+kill -l TSTP
+kill -l 1
+kill -l 137
+
+@@ex 1204 stop_cont | Stopping and resuming: process states
+@@level 3
+@@cmds kill -STOP, kill -CONT, ps -o stat=
+@@readme
+1. Start `sleep 200` in the background.
+2. Print its state with `ps -o stat= -p PID` (should be `S`, sleeping).
+3. Stop it with `kill -STOP` and print its state (should be `T`). Small detail: signals are
+   asynchronous; `sleep 0.2` before reading the state.
+4. Resume it with `kill -CONT` and print its state again.
+5. Kill it with `SIGKILL`, `wait` for it and print the exit status.
+@@check
+SEEDS=1
+@@solution
+#!/bin/bash
+sleep 200 &
+P=$!
+sleep 0.2
+ps -o stat= -p "$P"
+kill -STOP "$P"
+sleep 0.2
+ps -o stat= -p "$P"
+kill -CONT "$P"
+sleep 0.2
+ps -o stat= -p "$P"
+kill -KILL "$P"
+wait "$P" 2>/dev/null
+echo $?
+
+@@ex 1205 wait_status | Exit statuses of background jobs
+@@level 3
+@@cmds ( ) &, wait PID, $?
+@@readme
+Start **in the background**, in this order, three subshells that end with different exit codes:
+
+- `(sleep 0.3; exit 3) &`
+- `(sleep 0.1; exit 0) &`
+- `(sleep 0.2; exit 7) &`
+
+Save their PIDs, then wait for each one **in the order they were started** and print
+`job N: exit CODE` for each (N = 1, 2, 3). Finally print `total: SUM` with the sum of the three codes.
+@@check
+SEEDS=1
+@@solution
+#!/bin/bash
+(sleep 0.3; exit 3) & P1=$!
+(sleep 0.1; exit 0) & P2=$!
+(sleep 0.2; exit 7) & P3=$!
+T=0; N=1
+for P in $P1 $P2 $P3; do
+  wait "$P"; C=$?
+  echo "job $N: exit $C"
+  T=$((T + C)); N=$((N + 1))
+done
+echo "total: $T"
+
+@@ex 1206 parallel_files | Parallel work
+@@level 3
+@@cmds &, wait
+@@readme
+For each `.txt` file in `datos` (sorted), start **in the background** a job that counts its lines and
+writes the number into `resultados/<name>.count` (e.g. `resultados/a.txt.count`). Wait for **all**
+jobs to finish and then print the total number of lines (sum of all `.count` files).
+@@check
+COMPARE="stdout exit files"
+setup() { mkdir datos; local i; for i in $(seq "$(randr 2 6)"); do randtext "$(randr 1 30)" > "datos/$(word)$i.txt"; done; }
+extra_check() { must_use wait; }
+@@solution
+#!/bin/bash
+mkdir -p resultados
+for f in datos/*.txt; do
+  n=$(basename "$f")
+  wc -l < "$f" > "resultados/$n.count" &
+done
+wait
+cat resultados/*.count | paste -sd+ | bc
+
+@@ex 1207 ps_filters | Querying processes with ps
+@@level 3
+@@cmds ps -u, ps -p, ps -o, ps -C
+@@readme
+The system has fake sessions of `luke`, `sally`, `rod` and `pruiz`. Print, separated by `---`:
+
+1. the number of processes owned by `luke` (`ps -u luke`, no header: `--no-headers` or `-o pid=`)
+2. the user and command of process **1** (`ps -o user=,comm= -p 1`)
+3. the users that own a process called `sleep`, sorted and unique (`ps -C sleep -o user=`),
+   excluding `alumno`
+@@check
+SEEDS=1
+@@solution
+#!/bin/bash
+ps -u luke -o pid= | wc -l
+echo ---
+ps -o user=,comm= -p 1
+echo ---
+ps -C sleep -o user= | sort -u | grep -v alumno
+
+@@ex 1208 kill_stubborn | Processes that ignore SIGTERM
+@@level 4
+@@cmds kill, kill -9, kill -0, trap (in the provided script)
+@@readme
+`terco.sh` is a provided script that **ignores SIGTERM**. Start it in the background, then:
+
+1. `sleep 0.3` and send it SIGTERM; `sleep 0.3` and print `alive` or `dead` (`kill -0`)
+2. send it SIGKILL (`-9`), `wait` for it (hide messages) and print `alive`/`dead` again
+3. print the exit status returned by `wait`
+@@check
+SEEDS=1
+setup() { printf '#!/bin/bash\ntrap "" TERM\nwhile true; do sleep 0.1; done\n' > terco.sh; chmod +x terco.sh; }
+@@solution
+#!/bin/bash
+./terco.sh &
+P=$!
+sleep 0.3
+kill "$P"
+sleep 0.3
+if kill -0 "$P" 2>/dev/null; then echo alive; else echo dead; fi
+kill -9 "$P"
+wait "$P" 2>/dev/null
+S=$?
+if kill -0 "$P" 2>/dev/null; then echo alive; else echo dead; fi
+echo "$S"
+
+@@ex 1209 pid_shells | $$, subshells and source
+@@level 3
+@@cmds $$, $BASHPID, bash script, source script
+@@readme
+The provided `pid.sh` prints `$$`. Print (only these words):
+
+1. `same` or `different`: is the PID printed by `bash pid.sh` equal to your script's `$$`?
+2. `same` or `different`: is the PID printed by `source pid.sh` equal to your `$$`?
+3. `same` or `different`: inside `( ... )`, is `$BASHPID` equal to your `$$`?
+
+Think about why: which one creates a new process?
+@@check
+SEEDS=1
+setup() { printf 'echo $$\n' > pid.sh; }
+@@solution
+#!/bin/bash
+[ "$(bash pid.sh)" = "$$" ] && echo same || echo different
+[ "$(source pid.sh)" = "$$" ] && echo same || echo different
+[ "$( echo $BASHPID )" = "$$" ] && echo same || echo different
+
+@@ex 1210 timeout_loop | Waiting for a condition
+@@level 4
+@@cmds while, sleep, kill -0, &
+@@readme
+The provided `worker.sh` runs for a random time (under 2 s) and creates `done.flag` when it finishes.
+Start it in the background and **poll** every 0.1 s until `done.flag` exists (or at most 50 times).
+Then print `worker finished` and the content of `done.flag`. The script must exit 0.
+@@check
+setup() { printf '#!/bin/bash\nsleep 0.%s\necho "result %s" > done.flag\n' "$(randr 3 9)" "$(word)" > worker.sh; chmod +x worker.sh; }
+COMPARE="stdout exit"
+@@solution
+#!/bin/bash
+./worker.sh &
+for ((i = 0; i < 50; i++)); do
+  [ -e done.flag ] && break
+  sleep 0.1
+done
+wait
+echo "worker finished"
+cat done.flag

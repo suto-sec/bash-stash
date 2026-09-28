@@ -1,0 +1,325 @@
+@@topic 14_test_if_case | test, if & case
+@@ex 1401 file_kind | What is it?
+@@level 1
+@@cmds if, test -e -f -d -L
+@@readme
+The script receives a path as its only argument and prints exactly one of:
+
+- `<path> is a symbolic link` (check this first: `-L`)
+- `<path> is a directory`
+- `<path> is a regular file`
+- `<path> is something else` (exists, but none of the above, e.g. `/dev/null`)
+- `<path> does not exist`
+@@check
+SEEDS=1
+setup() { touch fichero; mkdir dir; ln -s fichero enlace; ln -s noexiste roto; }
+ARGS=('fichero' 'dir' 'enlace' 'roto' 'noexiste' '/dev/null' '/etc/passwd' '/')
+@@solution
+#!/bin/bash
+if [ -L "$1" ]; then echo "$1 is a symbolic link"
+elif [ -d "$1" ]; then echo "$1 is a directory"
+elif [ -f "$1" ]; then echo "$1 is a regular file"
+elif [ -e "$1" ]; then echo "$1 is something else"
+else echo "$1 does not exist"
+fi
+
+@@ex 1402 empty_file | Empty or not
+@@level 1
+@@cmds test -s, test -e
+@@readme
+For every argument print `<name>: missing`, `<name>: empty` or `<name>: N lines` (non-empty regular
+file; N = its number of lines, `wc -l`).
+@@check
+setup() { touch vacio; randtext "$(randr 1 9)" > lleno; printf 'sin salto' > raro; }
+ARGS=('vacio' 'lleno' 'nada' 'vacio lleno nada raro')
+@@solution
+#!/bin/bash
+for f in "$@"; do
+  if [ ! -e "$f" ]; then echo "$f: missing"
+  elif [ ! -s "$f" ]; then echo "$f: empty"
+  else echo "$f: $(wc -l < "$f") lines"
+  fi
+done
+
+@@ex 1403 max3 | The biggest of three numbers
+@@level 1
+@@cmds test -gt -ge -lt
+@@readme
+The script receives three integers and prints the biggest one. Use `[ a -gt b ]`-style comparisons
+(not `sort`).
+@@check
+SEEDS=1
+ARGS=('1 2 3' '3 2 1' '2 3 1' '5 5 1' '-4 -2 -9' '7 7 7' '10 9 100')
+extra_check() { must_not_use sort; }
+@@solution
+#!/bin/bash
+M=$1
+[ "$2" -gt "$M" ] && M=$2
+[ "$3" -gt "$M" ] && M=$3
+echo "$M"
+
+@@ex 1404 strings | Comparing strings
+@@level 2
+@@cmds test -z -n = !=
+@@readme
+The script receives two arguments (either may be empty: `""`). Print, one per line:
+
+1. `first empty` or `first not empty` (`-z`)
+2. `second empty` or `second not empty` (`-n`)
+3. `equal` or `different`
+4. which one goes first alphabetically (bash `[[ a < b ]]`): print it, or `same` if equal
+@@check
+SEEDS=1
+ARGS=('"" ""' 'hola ""' '"" adios' 'abc abc' 'abc abd' 'zeta alfa' '"a b" "a b"')
+@@solution
+#!/bin/bash
+[ -z "$1" ] && echo "first empty" || echo "first not empty"
+[ -n "$2" ] && echo "second not empty" || echo "second empty"
+[ "$1" = "$2" ] && echo equal || echo different
+if [[ $1 == "$2" ]]; then echo same
+elif [[ $1 < $2 ]]; then echo "$1"
+else echo "$2"
+fi
+
+@@ex 1405 grades | if / elif chains
+@@level 2
+@@cmds if elif else, -lt -ge
+@@readme
+The script receives a grade (integer 0-10) and prints:
+
+| grade | output |
+|-------|--------|
+| 0-4 | `Suspenso` |
+| 5-6 | `Aprobado` |
+| 7-8 | `Notable` |
+| 9 | `Sobresaliente` |
+| 10 | `Matricula de Honor` |
+
+Anything else (not a number in 0-10, or no argument): print `Invalid grade` on stderr, exit 1.
+@@check
+SEEDS=1
+COMPARE="stdout stderr exit"
+ARGS=('0' '4' '5' '6' '7' '8' '9' '10' '11' '-1' 'abc' '' '5.5')
+@@solution
+#!/bin/bash
+if [[ ! $1 =~ ^[0-9]+$ ]] || [ "$1" -gt 10 ]; then
+  echo "Invalid grade" >&2
+  exit 1
+fi
+if [ "$1" -lt 5 ]; then echo Suspenso
+elif [ "$1" -lt 7 ]; then echo Aprobado
+elif [ "$1" -lt 9 ]; then echo Notable
+elif [ "$1" -eq 9 ]; then echo Sobresaliente
+else echo "Matricula de Honor"
+fi
+
+@@ex 1406 perms_test | Permission tests
+@@level 2
+@@cmds test -r -w -x
+@@readme
+For every argument (an existing file), print a line like `name: r-x` showing whether **you** can
+read, write and execute it (`-r`, `-w`, `-x`), using `-` when not.
+@@check
+setup() { local i f; for i in 1 2 3 4; do f="f$i"; touch "$f"; chmod "$(pick 700 600 400 500 300 100 000 644)" "$f"; done; }
+ARGS=('f1 f2 f3 f4')
+@@solution
+#!/bin/bash
+for f in "$@"; do
+  p=
+  [ -r "$f" ] && p+=r || p+=-
+  [ -w "$f" ] && p+=w || p+=-
+  [ -x "$f" ] && p+=x || p+=-
+  echo "$f: $p"
+done
+
+@@ex 1407 newer | Which file is newer
+@@level 2
+@@cmds test -nt, -ot
+@@readme
+The script receives two files. Print `<file1> is newer`, `<file2> is newer` or `same age`,
+using `-nt` / `-ot`.
+@@check
+setup() { touch -d "2026-0$(randr 1 5)-10 10:00" a; touch -d "2026-0$(randr 1 5)-10 10:00" b; touch -d "2026-03-03 03:03" c d; }
+ARGS=('a b' 'b a' 'c d')
+@@solution
+#!/bin/bash
+if [ "$1" -nt "$2" ]; then echo "$1 is newer"
+elif [ "$1" -ot "$2" ]; then echo "$2 is newer"
+else echo "same age"
+fi
+
+@@ex 1408 case_ext | case: classify by extension
+@@level 2
+@@cmds case, patterns, |
+@@readme
+For each argument (a file name), print `name: TYPE` where TYPE is:
+
+- `image` for `.jpg`, `.jpeg`, `.png`, `.gif` (any case: also `.JPG`)
+- `document` for `.pdf`, `.odt`, `.docx`, `.txt`
+- `archive` for `.tar`, `.tgz`, `.tar.gz`, `.zip`
+- `script` for `.sh`
+- `unknown` otherwise
+
+Use one `case` with patterns like `*.jpg|*.png)`.
+@@check
+SEEDS=1
+ARGS=('foto.jpg FOTO.PNG a.jpeg x.gif' 'tesis.pdf notas.txt c.odt d.docx' 'b.tar c.tgz d.tar.gz e.zip' 'run.sh sh noext a.b.c .bashrc' 'Foto.Jpg')
+extra_check() { must_use case; }
+@@solution
+#!/bin/bash
+for f in "$@"; do
+  case ${f,,} in
+    *.jpg|*.jpeg|*.png|*.gif) t=image ;;
+    *.pdf|*.odt|*.docx|*.txt) t=document ;;
+    *.tar|*.tgz|*.tar.gz|*.zip) t=archive ;;
+    *.sh) t=script ;;
+    *) t=unknown ;;
+  esac
+  echo "$f: $t"
+done
+
+@@ex 1409 case_yesno | case with user input
+@@level 2
+@@cmds read, case
+@@readme
+Read **one line** from standard input (the answer to "Continue? (s/n)") and print:
+
+- `yes` for `s`, `S`, `si`, `sí`, `y`, `yes` (any case)
+- `no` for `n`, `N`, `no` (any case)
+- `invalid answer: <text>` otherwise, and exit with code 2
+@@check
+SEEDS=6
+COMPARE="stdout exit"
+input() { pick s S si Si SÍ sí y YES yes n N no NO No quizas '' 'si no' maybe; }
+extra_check() { must_use case read; }
+@@solution
+#!/bin/bash
+read -r R
+case ${R,,} in
+  s|si|sí|y|yes) echo yes ;;
+  n|no) echo no ;;
+  *) echo "invalid answer: $R"; exit 2 ;;
+esac
+
+@@ex 1410 double_brackets | [[ ]]: patterns and regex
+@@level 3
+@@cmds [[ == pattern ]], [[ =~ ]], BASH_REMATCH
+@@readme
+For each argument print one line:
+
+- `email user=<u> domain=<d>` if it looks like an email `user@domain.tld` (use `=~` with groups and
+  `BASH_REMATCH`; user and domain are sequences of letters, digits, `.`, `_` or `-`; tld is 2-6 letters)
+- `backup` if it matches the **glob** pattern `*.bak` or `*~` (`[[ $x == *.bak ]]`)
+- `other` otherwise
+@@check
+SEEDS=1
+ARGS=('pepe@example.es' 'a.b_c@mail.example.com x.bak y~ nada' '@nope.es sin@tld foo@bar.toolongtld' 'MiNombre99@dominio.org')
+@@solution
+#!/bin/bash
+for a in "$@"; do
+  if [[ $a =~ ^([A-Za-z0-9._-]+)@([A-Za-z0-9.-]+\.[A-Za-z]{2,6})$ ]]; then
+    echo "email user=${BASH_REMATCH[1]} domain=${BASH_REMATCH[2]}"
+  elif [[ $a == *.bak || $a == *~ ]]; then
+    echo backup
+  else
+    echo other
+  fi
+done
+
+@@ex 1411 valid_ip | Validating an IPv4 address
+@@level 3
+@@cmds [[ =~ ]], IFS, read -a, -le
+@@readme
+The script receives one argument and prints `valid` or `invalid`: a valid IPv4 has exactly 4
+decimal numbers from 0 to 255 separated by dots, no leading `+`/`-`, no empty parts.
+Exit code: 0 if valid, 1 if invalid. (You will reuse this in the ipLog exercise (1802).)
+@@check
+SEEDS=1
+ARGS=('192.168.1.10' '0.0.0.0' '255.255.255.255' '256.1.1.1' '1.2.3' '1.2.3.4.5' 'a.b.c.d' '10.0.0.-1' '' '1..2.3' '01.2.3.4' '8.8.8.8')
+@@solution
+#!/bin/bash
+ip=$1
+if [[ $ip =~ ^([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})$ ]]; then
+  for i in 1 2 3 4; do
+    (( 10#${BASH_REMATCH[i]} > 255 )) && { echo invalid; exit 1; }
+  done
+  echo valid
+  exit 0
+fi
+echo invalid
+exit 1
+
+@@ex 1412 compound | Compound conditions
+@@level 3
+@@cmds -a -o, && ||, !
+@@readme
+For each argument (a path), print `name: OK` only if it is a **regular file** that is **readable**
+and (it is **executable** **or** its name ends in `.sh`), and it is **not empty**.
+Otherwise print `name: KO`.
+@@check
+setup() { local i f; for i in 1 2 3 4 5 6; do f="f$i$(pick .sh .txt '')"; randtext "$(rand 2)" > "$f"; chmod "$(pick 755 644 600 700 200 311)" "$f"; echo "$f" >> list; done; mkdir d.sh; }
+ARGS=('$(cat list) d.sh nope.sh')
+@@solution
+#!/bin/bash
+for f in "$@"; do
+  if [ -f "$f" ] && [ -r "$f" ] && [ -s "$f" ] && { [ -x "$f" ] || [[ $f == *.sh ]]; }; then
+    echo "$f: OK"
+  else
+    echo "$f: KO"
+  fi
+done
+
+@@ex 1413 exam_args | The exam argument template
+@@level 3
+@@cmds $#, test -e -d, >&2, exit codes
+@@readme
+Write the argument validation of the exam-style deploy script (1801) (installed as `tool.sh`, usage `tool.sh [directory]`):
+
+- more than one argument: message on stderr including the correct usage, exit **1**
+- the argument doesn't exist: message on stderr **mentioning the name**, exit **2**
+- it exists but is not a directory: message on stderr **mentioning the name**, exit **3**
+- no argument: use the current directory
+
+If everything is OK, print `Base directory: <dir>` where `<dir>` is the given argument, or `.` if
+none was given, and exit 0. (Error message wording is free; the checker checks stderr is not empty,
+the exit code and that the name appears.)
+@@check
+SEEDS=1
+SCRIPT_NAME=tool.sh
+COMPARE="stdout exit errmsg"
+setup() { mkdir -p "mi dir" sub; touch fichero; }
+ARGS=('' 'sub' '"mi dir"' 'fichero' 'noexiste' 'a b' 'sub sub' '/etc' '/etc/passwd')
+extra_check() { [[ $REF_CODE == [23] ]] && mentions "$(eval "set -- $CASE"; echo "$1")"; true; }
+@@solution
+#!/bin/bash
+if [ $# -gt 1 ]; then
+  echo "Error: too many arguments. Usage: $(basename "$0") [directory]" >&2
+  exit 1
+fi
+DIR=${1:-.}
+if [ ! -e "$DIR" ]; then
+  echo "Error: '$DIR' does not exist" >&2
+  exit 2
+fi
+if [ ! -d "$DIR" ]; then
+  echo "Error: '$DIR' is not a directory" >&2
+  exit 3
+fi
+echo "Base directory: $DIR"
+
+@@ex 1414 leap_year | Leap years
+@@level 3
+@@cmds (( )), %, &&, ||
+@@readme
+For each argument (a year) print `YEAR: leap` or `YEAR: not leap`.
+A year is leap if divisible by 4 and not by 100, or divisible by 400.
+@@check
+SEEDS=1
+ARGS=('2024 2023 1900 2000 2100 1996 2400 1')
+@@solution
+#!/bin/bash
+for y in "$@"; do
+  if (( (y % 4 == 0 && y % 100 != 0) || y % 400 == 0 )); then echo "$y: leap"
+  else echo "$y: not leap"
+  fi
+done

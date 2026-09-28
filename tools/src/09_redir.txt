@@ -1,0 +1,273 @@
+@@topic 09_redirection | Redirection: > >> 2> < << <<<
+@@ex 0901 redir_out | Output to a file
+@@level 1
+@@cmds >, >>
+@@readme
+1. Save the listing of the directory `datos` (plain `ls datos`) into `listado.txt`.
+2. **Append** to `listado.txt` a line with `--- total:` followed by the number of entries of `datos`
+   (e.g. `--- total: 5`).
+3. Overwrite `ultima.txt` with just the word `fin`.
+
+Nothing is printed on screen.
+@@check
+COMPARE="stdout exit files"
+setup() { mkdir datos; local i; for i in $(seq "$(randr 2 7)"); do touch "datos/$(word)$i"; done; echo "old content" > ultima.txt; }
+@@solution
+#!/bin/bash
+ls datos > listado.txt
+echo "--- total: $(ls datos | wc -l)" >> listado.txt
+echo fin > ultima.txt
+
+@@ex 0902 redir_err | Separating stdout and stderr
+@@level 1
+@@cmds 2>, >
+@@readme
+Run `ls` on the files listed in `nombres.txt` (some of them don't exist), with a single `ls` command
+whose arguments are `$(cat nombres.txt)`:
+
+- normal output must go to `ok.txt`
+- error messages must go to `errores.txt`
+
+Then print the number of lines of each file: `ok: N` and `errores: M`.
+@@check
+COMPARE="stdout exit files"
+setup() { local i n=(); for i in $(seq 6); do n+=("$(word)$i"); done; for i in 0 2 4; do touch "${n[$i]}"; done; [[ $(rand 2) == 1 ]] && touch "${n[1]}"; printf '%s\n' "${n[@]}" > nombres.txt; }
+@@solution
+#!/bin/bash
+ls $(cat nombres.txt) > ok.txt 2> errores.txt
+echo "ok: $(wc -l < ok.txt)"
+echo "errores: $(wc -l < errores.txt)"
+
+@@ex 0903 dev_null | Discarding output
+@@level 1
+@@cmds /dev/null, 2>/dev/null, &>/dev/null
+@@readme
+The provided script `ruidoso.sh` (in the current directory) prints things to stdout **and** stderr.
+Run it three times:
+
+1. discarding only its **errors** (you see its normal output)
+2. discarding only its **normal output** (you see its errors: they go to your stderr, the checker
+   compares both streams)
+3. discarding **everything**, and then print `exit code: N` with its exit code
+@@check
+COMPARE="stdout stderr exit"
+setup() { printf '#!/bin/bash\necho "out %s"\necho "err %s" >&2\necho "out2 %s"\nexit %s\n' "$(word)" "$(word)" "$(word)" "$(randr 1 5)" > ruidoso.sh; chmod +x ruidoso.sh; }
+@@solution
+#!/bin/bash
+./ruidoso.sh 2> /dev/null
+./ruidoso.sh > /dev/null
+./ruidoso.sh &> /dev/null
+echo "exit code: $?"
+
+@@ex 0904 both_order | 2>&1 and the order of redirections
+@@level 2
+@@cmds 2>&1, &>
+@@readme
+The script `ruidoso.sh` writes to stdout and stderr. Run it so that:
+
+1. **both** streams go to `todo.log` (in the order they were produced)
+2. then run it again with `./ruidoso.sh 2>&1 > solo_out.log`: stderr goes to the **screen** (your
+   stdout!) and only stdout to the file. Understand why.
+
+The checker compares your stdout and the files.
+@@check
+COMPARE="stdout stderr exit files"
+setup() { printf '#!/bin/bash\necho "out %s"\necho "err %s" >&2\necho "out2 %s"\necho "err2" >&2\n' "$(word)" "$(word)" "$(word)" > ruidoso.sh; chmod +x ruidoso.sh; }
+@@solution
+#!/bin/bash
+./ruidoso.sh > todo.log 2>&1
+./ruidoso.sh 2>&1 > solo_out.log
+
+@@ex 0905 redir_in | Input redirection
+@@level 1
+@@cmds <
+@@readme
+Using **input redirection** (`<`), never passing the file name as an argument, print:
+
+1. the number of lines of `/etc/passwd`
+2. the lines of `nombres.txt` sorted
+3. the content of `texto.txt` in uppercase (`tr`)
+@@check
+setup() { local i; for i in $(seq 6); do word; done > nombres.txt; randtext 3 > texto.txt; }
+extra_check() { ans_code | grep -qE '(wc|sort|tr)[^<|]*(passwd|nombres|texto)' && fail "pass the files with < (not as arguments)"; }
+@@solution
+#!/bin/bash
+wc -l < /etc/passwd
+sort < nombres.txt
+tr a-z A-Z < texto.txt
+
+@@ex 0906 heredoc | Here documents
+@@level 2
+@@cmds << EOF, << 'EOF'
+@@readme
+Create the file `config.ini` with a **here document** (`cat > config.ini << EOF`) so that it contains
+(with `<user>` and `<home>` being the values of `$USER` and `$HOME`):
+
+```
+[usuario]
+nombre=<user>
+home=<home>
+```
+
+Then **append** to it, with a second here document whose delimiter is **quoted** (no expansion),
+exactly these lines:
+
+```
+[notas]
+# $HOME is not expanded here
+precio=5$
+```
+@@check
+COMPARE="stdout exit files"
+extra_check() { ans_code | grep -q '<<' || fail "use here documents (<<)"; }
+@@solution
+#!/bin/bash
+cat > config.ini << EOF
+[usuario]
+nombre=$USER
+home=$HOME
+EOF
+cat >> config.ini << 'EOF'
+[notas]
+# $HOME is not expanded here
+precio=5$
+EOF
+
+@@ex 0907 herestring | Here strings
+@@level 2
+@@cmds <<<
+@@readme
+The file `frase.txt` contains one line. Store it in a variable and then, **using here strings**
+(`<<<`) and no pipes:
+
+1. print the number of words of the line (`wc -w`)
+2. print it in uppercase (`tr`)
+3. read its first two words into variables `A` and `B` with `read A B REST <<< "$LINE"` and print `B A`
+@@check
+setup() { words "$(randr 3 7)" > frase.txt; }
+extra_check() { must_not_use '\|'; ans_code | grep -q '<<<' || fail "use here strings (<<<)"; }
+@@solution
+#!/bin/bash
+LINE=$(cat frase.txt)
+wc -w <<< "$LINE"
+tr a-z A-Z <<< "$LINE"
+read A B REST <<< "$LINE"
+echo "$B $A"
+
+@@ex 0908 group_redir | Redirecting a group of commands
+@@level 2
+@@cmds { ...; } > file, ( ... ) > file
+@@readme
+Write **one** redirection for a group of commands (`{ ...; } > informe.txt`) so that `informe.txt`
+contains:
+
+```
+== informe ==
+<number of .txt files in docs>
+<the names of the .txt files in docs, sorted>
+== fin ==
+```
+
+Also print `hecho` on the screen afterwards.
+@@check
+COMPARE="stdout exit files"
+setup() { mkdir docs; local i; for i in $(seq "$(randr 1 5)"); do touch "docs/$(word)$i.txt" "docs/$(word)$i.md"; done; }
+@@solution
+#!/bin/bash
+{
+  echo "== informe =="
+  ls docs/*.txt | wc -l
+  ls docs | grep '\.txt$' | sort
+  echo "== fin =="
+} > informe.txt
+echo hecho
+
+@@ex 0909 stderr_messages | Writing error messages to stderr
+@@level 2
+@@cmds >&2, exit
+@@readme
+Scripts must write errors to **stderr**. The script receives a file name as argument:
+
+- if the file exists, print its number of lines (just the number) on **stdout** and exit `0`
+- if it doesn't, print `Error: <name> not found` on **stderr** and exit `1`
+
+The checker compares stdout, stderr and exit code exactly.
+@@check
+COMPARE="stdout stderr exit"
+setup() { randtext "$(randr 1 9)" > existe.txt; }
+ARGS=('existe.txt' 'noexiste.txt')
+@@solution
+#!/bin/bash
+if [ -f "$1" ]; then
+  wc -l < "$1"
+else
+  echo "Error: $1 not found" >&2
+  exit 1
+fi
+
+@@ex 0910 fd_exec | File descriptors with exec
+@@level 4
+@@cmds exec 3>, >&3, exec 3>&-, exec 4<, read -u
+@@readme
+Using **custom file descriptors**:
+
+1. open `salida.txt` for writing on fd 3 (`exec 3> salida.txt`)
+2. write the lines `uno` and `dos` to fd 3
+3. close fd 3
+4. open `entrada.txt` for reading on fd 4 and read **its first two lines** with `read -u 4`
+   (or `read <&4`); print them in reverse order (second line first)
+5. close fd 4
+@@check
+COMPARE="stdout exit files"
+setup() { local i; for i in 1 2 3; do words 2; done > entrada.txt; }
+extra_check() { ans_code | grep -q 'exec' || fail "use exec to open the file descriptors"; }
+@@solution
+#!/bin/bash
+exec 3> salida.txt
+echo uno >&3
+echo dos >&3
+exec 3>&-
+exec 4< entrada.txt
+read -r L1 <&4
+read -r L2 <&4
+exec 4<&-
+echo "$L2"
+echo "$L1"
+
+@@ex 0911 proc_subst | Process substitution
+@@level 4
+@@cmds <( ), diff, comm
+@@readme
+`lista1.txt` and `lista2.txt` contain names in random order. **Without creating temporary files**
+(use `<(...)`), print:
+
+1. the `diff` of both lists **once sorted**
+2. `---`
+3. the names that are in **both** lists (sorted), using `comm -12` on the sorted lists
+
+The script must exit with code 0.
+@@check
+setup() { local i; for i in $(seq 8); do word; done | sort -u > lista1.txt; for i in $(seq 8); do word; done | sort -u > lista2.txt; shuf --random-source=<(yes) lista1.txt -o lista1.txt 2>/dev/null; tac lista2.txt > l2 && mv l2 lista2.txt; }
+extra_check() { ans_code | grep -q '<(' || fail "use process substitution <(...)"; }
+@@solution
+#!/bin/bash
+diff <(sort lista1.txt) <(sort lista2.txt)
+echo ---
+comm -12 <(sort lista1.txt) <(sort lista2.txt)
+exit 0
+
+@@ex 0912 swap_streams | Swapping stdout and stderr
+@@level 5
+@@cmds 3>&1 1>&2 2>&3
+@@readme
+Run `./ruidoso.sh` so that its **stdout goes to your stderr** and its **stderr goes to your stdout**
+(swap them), then pipe only its (original) **errors** through `tr a-z A-Z`. The original normal output
+must still appear (on stderr) unchanged.
+
+Hint: `./ruidoso.sh 3>&1 1>&2 2>&3 | tr a-z A-Z`
+@@check
+COMPARE="stdout stderr exit"
+setup() { printf '#!/bin/bash\necho "normal %s"\necho "error %s" >&2\n' "$(word)" "$(word)" > ruidoso.sh; chmod +x ruidoso.sh; }
+@@solution
+#!/bin/bash
+./ruidoso.sh 3>&1 1>&2 2>&3 | tr a-z A-Z

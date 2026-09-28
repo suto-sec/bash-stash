@@ -1,0 +1,264 @@
+@@topic 07_find | find
+@@ex 0701 find_name | Searching by name
+@@level 1
+@@cmds find -name
+@@readme
+Under the directory `lib` (recursively), find the files whose name starts with `ls` and ends in `.so`.
+Print their paths **sorted** (find does not guarantee any order: pipe it to `sort`).
+
+Remember to **quote** the pattern so the shell does not expand it.
+@@check
+setup() { mkdir -p lib/{a,b/c}; local i; for i in 1 2 3 4; do touch "lib/$(pick a b b/c)/ls$(word)$i.so" "lib/$(pick a b)/$(word)ls$i.so" "lib/ls$(word)$i.so.1"; done; touch lsfake.so; }
+@@solution
+#!/bin/bash
+find lib -name 'ls*.so' | sort
+
+@@ex 0702 find_type | Files vs directories
+@@level 1
+@@cmds find -type f, -type d
+@@readme
+Under `proyecto`, print separated by `---` (each list sorted):
+
+1. only the **directories**
+2. only the **regular files**
+3. the **number** of regular files whose name ends in `.c`
+@@check
+setup() { mkdir -p proyecto/{src/{core,net},include,docs}; local i; for i in $(seq 8); do touch "proyecto/$(pick src src/core src/net include docs)/$(word)$i.$(pick c h md c)"; done; }
+@@solution
+#!/bin/bash
+find proyecto -type d | sort
+echo ---
+find proyecto -type f | sort
+echo ---
+find proyecto -type f -name '*.c' | wc -l
+
+@@ex 0703 find_iname_path | Case-insensitive names
+@@level 2
+@@cmds find -iname, -path
+@@readme
+Under `fotos`, print sorted:
+
+1. files ending in `.jpg` in **any case** (`.JPG`, `.Jpg`...)
+2. `---`
+3. files whose path contains a directory called `2025` (`-path '*/2025/*'`)
+@@check
+setup() { mkdir -p fotos/{2024,2025/verano,otras}; local i; for i in $(seq 9); do touch "fotos/$(pick 2024 2025 2025/verano otras)/$(word)$i.$(pick jpg JPG Jpg png jpeg)"; done; }
+@@solution
+#!/bin/bash
+find fotos -iname '*.jpg' | sort
+echo ---
+find fotos -path '*/2025/*' | sort
+
+@@ex 0704 find_size | Searching by size
+@@level 2
+@@cmds find -size
+@@readme
+Under `datos`, print sorted, separated by `---`:
+
+1. regular files **bigger than 2 MiB** (`-size +2M`)
+2. regular files **smaller than 10 KiB** (`-size -10k`)
+3. **empty** regular files (`-empty` or `-size 0`)
+
+(Beware: `-size -1M` means "0 blocks of 1M", i.e. only empty files. That's why we use k here.)
+@@check
+setup() { mkdir -p datos/sub; local i; for i in $(seq 7); do bigfile "datos/$(pick . sub)/f$i" "$(pick 0 100 9000 11000 2000000 2200000 3500000)"; done; }
+@@solution
+#!/bin/bash
+find datos -type f -size +2M | sort
+echo ---
+find datos -type f -size -10k | sort
+echo ---
+find datos -type f -empty | sort
+
+@@ex 0705 find_depth | Limiting the depth
+@@level 2
+@@cmds find -maxdepth, -mindepth
+@@readme
+Under `arbol`, print sorted, separated by `---`:
+
+1. everything at most **2 levels** deep (`arbol` itself is level 0)
+2. only the entries at **exactly** depth 3
+@@check
+setup() { mkdir -p arbol/{a/b/c/d,e/f,g}; local d; for d in arbol arbol/a arbol/a/b arbol/a/b/c arbol/e/f; do touch "$d/$(word).txt"; done; }
+@@solution
+#!/bin/bash
+find arbol -maxdepth 2 | sort
+echo ---
+find arbol -mindepth 3 -maxdepth 3 | sort
+
+@@ex 0706 find_perm | Searching by permissions
+@@level 3
+@@cmds find -perm -mode, -perm /mode
+@@readme
+Under `bin`, print sorted, separated by `---`:
+
+1. regular files with **exactly** permissions `755`
+2. regular files where **someone** (user, group or others) has **execute** permission (`-perm /111`)
+3. regular files that have **all** of `u+w` and `g+w` (`-perm -220`)
+4. regular files **without any** execute permission
+@@check
+setup() { mkdir -p bin/sub; local i f; for i in $(seq 10); do f="bin/$(pick . sub)/$(word)$i$(pick .sh .bin '')"; touch "$f"; chmod "$(pick 755 644 600 700 664 775 711 666 744 601)" "$f"; done; }
+@@solution
+#!/bin/bash
+find bin -type f -perm 755 | sort
+echo ---
+find bin -type f -perm /111 | sort
+echo ---
+find bin -type f -perm -220 | sort
+echo ---
+find bin -type f ! -perm /111 | sort
+
+@@ex 0707 find_user_group | Owner and group
+@@level 2
+@@cmds find -user, -group
+@@readme
+In the real system, print sorted, separated by `---`:
+
+1. the entries under `/home` owned by user `luke`, with `-maxdepth 1`
+2. the entries under `/var/log` (maxdepth 1) whose group is `adm`
+3. the entries under `/home` (maxdepth 1) **not** owned by `root`
+@@check
+SEEDS=1
+@@solution
+#!/bin/bash
+find /home -maxdepth 1 -user luke | sort
+echo ---
+find /var/log -maxdepth 1 -group adm | sort
+echo ---
+find /home -maxdepth 1 ! -user root | sort
+
+@@ex 0708 find_time | Searching by modification time
+@@level 3
+@@cmds find -mtime, -newer
+@@readme
+The files in `logs` have different modification dates. Print sorted, separated by `---`:
+
+1. files modified **more than 7 days** ago (`-mtime +7`)
+2. files modified in the **last 3 days** (`-mtime -3`)
+3. files **newer** than `logs/referencia` (`-newer`)
+@@check
+setup() { mkdir logs; local i; for i in $(seq 8); do touch -d "$(pick 1 2 5 9 15 30) days ago" "logs/$(word)$i.log"; done; touch -d "4 days ago" logs/referencia; }
+@@solution
+#!/bin/bash
+find logs -type f -mtime +7 | sort
+echo ---
+find logs -type f -mtime -3 | sort
+echo ---
+find logs -type f -newer logs/referencia | sort
+
+@@ex 0709 find_logic | Combining conditions: ! -o ( )
+@@level 3
+@@cmds find !, -o, \( \)
+@@readme
+Under `docs`, print sorted all files **and** directories whose name starts
+with `a` **or** `b` and does **not** contain the character `~`.
+
+Careful: `-o` has lower precedence than the implicit AND; you need `\( ... -o ... \)`.
+@@check
+setup() { mkdir -p docs/{alfa,beta~,c}; local i; for i in $(seq 10); do touch "docs/$(pick . alfa c)/$(pick a b c A)$(word)$i$(pick '' '~' '.txt')"; done; }
+@@solution
+#!/bin/bash
+find docs \( -name 'a*' -o -name 'b*' \) ! -name '*~*' | sort
+
+@@ex 0710 find_exec | Running a command on every result
+@@level 3
+@@cmds find -exec {} \;, -exec {} +
+@@readme
+Under `scripts` (recursively), **add execute permission for the user** to every regular file ending in
+`.sh`, using `find ... -exec chmod ...`. Nothing to print.
+@@check
+COMPARE="stdout exit files"
+setup() { mkdir -p scripts/{a,b/c}; local i; for i in $(seq 8); do touch "scripts/$(pick . a b/c)/$(word)$i$(pick .sh .txt .sh.bak)"; done; mkdir -p scripts/dir.sh; }
+extra_check() { must_use -exec; }
+@@solution
+#!/bin/bash
+find scripts -type f -name '*.sh' -exec chmod u+x {} +
+
+@@ex 0711 find_delete | Deleting found files
+@@level 2
+@@cmds find -delete, -exec rm
+@@readme
+Delete every regular file under the current directory whose name ends in `~` (backup files),
+at any depth. Directories ending in `~` must stay.
+@@check
+COMPARE="stdout exit files"
+setup() { mkdir -p a/b c "d~"; local i; for i in $(seq 8); do touch "$(pick . a a/b c d~)/$(word)$i$(pick '~' '' '.txt~' '~.txt')"; done; }
+@@solution
+#!/bin/bash
+find . -type f -name '*~' -delete
+
+@@ex 0712 find_print0 | Names with spaces
+@@level 4
+@@cmds find -print0, xargs -0
+@@readme
+Under `docs` there are `.txt` files, some with **spaces** in their names. Print the **total number
+of lines** of all of them (just the number).
+
+Use `find -print0 | xargs -0 cat | wc -l`. Try a naive `cat $(find ...)` in `play 0712` to see
+why it breaks.
+@@check
+setup() { mkdir -p "docs/mis cosas"; local i; for i in $(seq 5); do randtext "$(randr 1 9)" > "docs/$(pick . 'mis cosas')/$(word) $(pick '' 'copia ' '')$i.txt"; done; }
+@@solution
+#!/bin/bash
+find docs -type f -name '*.txt' -print0 | xargs -0 cat | wc -l
+
+@@ex 0713 find_links | Symbolic links and broken links
+@@level 3
+@@cmds find -type l, -xtype l
+@@readme
+Under `enlaces`, print sorted, separated by `---`:
+
+1. all symbolic links
+2. only the **broken** symbolic links (`-xtype l`)
+@@check
+setup() { mkdir -p enlaces/sub; touch enlaces/real1 enlaces/sub/real2; local i; for i in $(seq 6); do ln -s "$(pick real1 sub/real2 noexiste ../noexiste real1)" "enlaces/$(word)$i"; done; }
+@@solution
+#!/bin/bash
+find enlaces -type l | sort
+echo ---
+find enlaces -xtype l | sort
+
+@@ex 0714 find_empty_dirs | Empty directories
+@@level 2
+@@cmds find -empty, -type d
+@@readme
+Print sorted the **empty directories** under `proyecto`, then delete them (only them).
+@@check
+COMPARE="stdout exit files"
+setup() { mkdir -p proyecto/{a/b,c,d/e,f}; touch proyecto/a/x proyecto/d/y; [[ $(rand 2) == 1 ]] && touch proyecto/c/z; mkdir -p "proyecto/$(word)"; }
+@@solution
+#!/bin/bash
+find proyecto -type d -empty | sort
+find proyecto -type d -empty -delete
+
+@@ex 0715 find_exam | The exam filter
+@@level 4
+@@cmds find -type f -perm /111 \( -name -o -name \)
+@@readme
+This is the core of the exam-style deploy script (1801). Under `src` (recursively), print sorted the **regular files**
+(not directories) that have **some** execute permission enabled (user, group or other) and whose
+name ends in `.sh` **or** `.bin`.
+@@check
+setup() {
+  mkdir -p "src/a/b" "src/c d"; local i f
+  for i in $(seq 12); do f="src/$(pick . a a/b 'c d')/$(word)$i$(pick .sh .bin .shx .txt .sh.bak)"; touch "$f"; chmod "$(pick 755 644 700 604 601 610 744)" "$f"; done
+  mkdir -p src/dir.sh; chmod 755 src/dir.sh
+}
+@@solution
+#!/bin/bash
+find src -type f -perm /111 \( -name '*.sh' -o -name '*.bin' \) | sort
+
+@@ex 0716 find_count_ext | Counting by extension
+@@level 4
+@@cmds find, sed/rev, sort, uniq -c
+@@readme
+Under `repo`, count the regular files **by extension** (the part after the last `.` of the name;
+files without a dot are ignored). Print as `uniq -c` does, sorted by count descending and then by
+extension alphabetically.
+
+Hint: `find repo -type f -name '*.*'` + extract the extension (e.g. `sed 's/.*\.//'`).
+@@check
+setup() { mkdir -p repo/{a,b/c}; local i; for i in $(seq 20); do touch "repo/$(pick . a b/c)/$(word)$i$(pick .c .h .c .md .txt .tar.gz '' .c)"; done; }
+@@solution
+#!/bin/bash
+find repo -type f -name '*.*' | sed 's/.*\.//' | sort | uniq -c | sort -k1,1nr -k2,2

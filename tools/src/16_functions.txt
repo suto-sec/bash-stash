@@ -1,0 +1,265 @@
+@@topic 16_functions | Functions
+@@ex 1601 greet | Defining and calling functions
+@@level 1
+@@cmds name() { }, function name { }
+@@readme
+Define a function `saluda` that prints `Hola, <first argument>!` and a function `linea` that prints
+a line of 20 `=` characters. For each script argument call `linea` and then `saluda` with it, and
+finish with one more `linea`.
+@@check
+SEEDS=1
+ARGS=('Ana' 'Ana Luis "Maria Jose"' '')
+@@solution
+#!/bin/bash
+saluda() { echo "Hola, $1!"; }
+linea() { echo "===================="; }
+for n in "$@"; do
+  linea
+  saluda "$n"
+done
+linea
+
+@@ex 1602 return_status | return values are exit codes
+@@level 2
+@@cmds return, $?
+@@readme
+Write a function `es_par` that **returns** 0 if its argument is even and 1 otherwise (don't print
+anything inside). For each script argument print `N es par` or `N es impar` using
+`if es_par "$N"; then ...`.
+@@check
+SEEDS=1
+ARGS=('1 2 3 4' '0 -2 -3 100 99')
+extra_check() { must_use return; }
+@@solution
+#!/bin/bash
+es_par() { return $(( $1 % 2 != 0 )); }
+for n in "$@"; do
+  if es_par "$n"; then echo "$n es par"; else echo "$n es impar"; fi
+done
+
+@@ex 1603 capture_output | Returning data with echo + $( )
+@@level 2
+@@cmds $(func), local
+@@readme
+`return` only returns a number 0-255. To return **data**, the function prints it and the caller
+captures it with `$(...)`.
+
+Write `maximo` (prints the biggest of its arguments) and `media` (prints the integer average of its
+arguments). The script prints `max=X avg=Y` for its arguments, using both functions.
+@@check
+SEEDS=1
+ARGS=('5' '3 9 1' '10 20 30 40' '-5 -10 7')
+@@solution
+#!/bin/bash
+maximo() {
+  local m=$1 x
+  for x in "$@"; do [ "$x" -gt "$m" ] && m=$x; done
+  echo "$m"
+}
+media() {
+  local s=0 x
+  for x in "$@"; do s=$((s + x)); done
+  echo $((s / $#))
+}
+echo "max=$(maximo "$@") avg=$(media "$@")"
+
+@@ex 1604 local_scope | local vs global variables
+@@level 2
+@@cmds local
+@@readme
+Write the script below step by step, **predicting** each output line before running it:
+
+1. `X=global`, `Y=global`
+2. define function `f` that does `local X=local_f` and `Y=changed_by_f`, then prints `in f: X=$X Y=$Y`
+3. print `before: X=$X Y=$Y`, call `f`, print `after: X=$X Y=$Y`
+4. set `Y=reset`, then run `R=$(f)` and print `$R`
+5. print `subshell: Y=$Y` — the change made inside `$( )` is lost, because it ran in a subshell
+@@check
+SEEDS=1
+extra_check() { must_use local; }
+@@solution
+#!/bin/bash
+X=global
+Y=global
+f() {
+  local X=local_f
+  Y=changed_by_f
+  echo "in f: X=$X Y=$Y"
+}
+echo "before: X=$X Y=$Y"
+f
+echo "after: X=$X Y=$Y"
+Y=reset
+R=$(f)
+echo "$R"
+echo "subshell: Y=$Y"
+
+@@ex 1605 func_args | Function arguments vs script arguments
+@@level 2
+@@cmds $1 $# "$@" inside functions
+@@readme
+Write a function `info` that prints `func got N args: ...` (its `$#` and `$*`). Then:
+
+1. print `script got N args: ...`
+2. call `info` with **no** arguments
+3. call `info` with the script's arguments **reversed** (build the reversed list in a loop)
+4. call `info "$@"` and `info "$*"` (see the difference in N)
+@@check
+SEEDS=1
+ARGS=('' 'a' 'a b c' '"x y" z')
+@@solution
+#!/bin/bash
+info() { echo "func got $# args: $*"; }
+echo "script got $# args: $*"
+info
+rev=()
+for a in "$@"; do rev=("$a" "${rev[@]}"); done
+info "${rev[@]}"
+info "$@"
+info "$*"
+
+@@ex 1606 die_helper | Error helper functions
+@@level 2
+@@cmds function, >&2, exit
+@@readme
+Write a helper `die CODE MESSAGE...` that prints `ERROR: MESSAGE` on **stderr** and exits the
+**script** with CODE. Use it to validate the script's single argument (installed as `leer.sh`):
+
+- no argument: `die 1 "usage: leer.sh FILE"`
+- file doesn't exist: `die 2 "FILE not found"` (with the real name)
+- not readable: `die 3 "FILE not readable"`
+- otherwise print the number of words of the file (just the number)
+@@check
+SEEDS=1
+SCRIPT_NAME=leer.sh
+COMPARE="stdout stderr exit"
+setup() { randtext 4 > ok.txt; randtext 2 > secreto.txt; chmod 000 secreto.txt; }
+ARGS=('' 'ok.txt' 'nada.txt' 'secreto.txt')
+@@solution
+#!/bin/bash
+die() {
+  local code=$1; shift
+  echo "ERROR: $*" >&2
+  exit "$code"
+}
+[ $# -eq 1 ] || die 1 "usage: $(basename "$0") FILE"
+[ -e "$1" ] || die 2 "$1 not found"
+[ -r "$1" ] || die 3 "$1 not readable"
+wc -w < "$1"
+
+@@ex 1607 recursion | Recursive functions
+@@level 3
+@@cmds recursion, $( ), local
+@@readme
+Write a **recursive** function `fact` (factorial) and a recursive function `hanoi N from to via` that
+prints the moves `move disk D from A to C` of the Towers of Hanoi. The script receives N (1-6):
+print `N! = ...` and then the moves for N disks from `A` to `C` using `B`.
+@@check
+SEEDS=1
+ARGS=('1' '2' '3' '5')
+@@solution
+#!/bin/bash
+fact() {
+  if [ "$1" -le 1 ]; then echo 1; else echo $(( $1 * $(fact $(( $1 - 1 ))) )); fi
+}
+hanoi() {
+  local n=$1 from=$2 to=$3 via=$4
+  [ "$n" -eq 0 ] && return
+  hanoi $((n - 1)) "$from" "$via" "$to"
+  echo "move disk $n from $from to $to"
+  hanoi $((n - 1)) "$via" "$to" "$from"
+}
+echo "$1! = $(fact "$1")"
+hanoi "$1" A C B
+
+@@ex 1608 library | Sourcing a function library
+@@level 2
+@@cmds source, functions
+@@readme
+The provided file `lib.sh` defines the functions `mayus` (prints its arguments in uppercase) and
+`repite N TEXT` (prints TEXT N times on one line, separated by spaces). **Load it with `source`**
+and, for each argument of the script, print it in uppercase and then repeated 3 times.
+Don't redefine the functions.
+@@check
+SEEDS=1
+setup() { printf 'mayus() { echo "$*" | tr a-z A-Z; }\nrepite() { local i out=(); for ((i=0;i<$1;i++)); do out+=("$2"); done; echo "${out[*]}"; }\n' > lib.sh; }
+ARGS=('hola' 'uno dos')
+extra_check() { must_use source; ans_code | grep -qE '(mayus|repite) *\(\)' && fail "use the functions from lib.sh, don't redefine them"; }
+@@solution
+#!/bin/bash
+source ./lib.sh
+for a in "$@"; do
+  mayus "$a"
+  repite 3 "$a"
+done
+
+@@ex 1609 check_doit | The classic check/doit script
+@@level 3
+@@cmds functions, test -s, cp, exit
+@@readme
+Reproduce (and fix) this classic textbook script, installed as `copia.sh`:
+
+- `check SRC DST`: if `DST` exists and is **not empty** (`-s`), print `Target file exists! Exiting!`
+  on stderr and exit the script with **1**. If `SRC` doesn't exist, print `Source missing!` on stderr
+  and exit **2**.
+- `doit SRC DST`: copy SRC to DST and print `copied`.
+- the script needs exactly 2 arguments (else print `usage: copia.sh SRC DST` on stderr, exit 3);
+  calls `check` then `doit`, and exits 0. Quote everything: names may have spaces.
+@@check
+SEEDS=1
+SCRIPT_NAME=copia.sh
+COMPARE="stdout stderr exit files"
+setup() { randtext 2 > "a b.txt"; randtext 1 > lleno.txt; touch vacio.txt; }
+ARGS=('"a b.txt" nuevo.txt' '"a b.txt" lleno.txt' '"a b.txt" vacio.txt' 'nada.txt x.txt' '' 'x')
+@@solution
+#!/bin/bash
+check() {
+  if [ -s "$2" ]; then echo "Target file exists! Exiting!" >&2; exit 1; fi
+  if [ ! -e "$1" ]; then echo "Source missing!" >&2; exit 2; fi
+}
+doit() {
+  cp "$1" "$2"
+  echo copied
+}
+[ $# -eq 2 ] || { echo "usage: $(basename "$0") SRC DST" >&2; exit 3; }
+check "$1" "$2"
+doit "$1" "$2"
+exit 0
+
+@@ex 1610 menu_functions | A menu program built from functions
+@@level 3
+@@cmds functions, while read, case
+@@readme
+A tiny interactive note keeper. Commands come from stdin, one per line:
+
+- `add TEXT...` → append TEXT to `notas.txt` and print `added (N notes)`
+- `list` → print the notes numbered `N) text` (or `no notes` if the file is missing/empty)
+- `del N` → delete note N (`sed -i "Nd"`), print `deleted N`, or `no such note` if out of range
+- `quit` → print `bye` and stop
+- anything else → `unknown command: <cmd>` on stderr, continue
+
+Implement each command as a function. The checker compares stdout and the final `notas.txt`.
+@@check
+SEEDS=4
+COMPARE="stdout exit files"
+input() { local i; for i in $(seq "$(randr 3 8)"); do case $(rand 5) in 0|1) echo "add $(words 3)";; 2) echo list;; 3) echo "del $(randr 1 4)";; 4) echo "$(pick foo help)";; esac; done; echo list; [[ $(rand 2) == 1 ]] && echo quit; echo "add after quit"; }
+@@solution
+#!/bin/bash
+F=notas.txt
+count() { if [ -f $F ]; then wc -l < $F; else echo 0; fi; }
+add()  { echo "$*" >> $F; echo "added ($(count) notes)"; }
+list() { if [ -s $F ]; then nl -w1 -s') ' $F; else echo "no notes"; fi; }
+del()  {
+  if [[ $1 =~ ^[0-9]+$ ]] && [ "$1" -ge 1 ] && [ "$1" -le "$(count)" ]; then
+    sed -i "${1}d" $F; echo "deleted $1"
+  else echo "no such note"; fi
+}
+while read -r cmd rest; do
+  case $cmd in
+    add) add $rest ;;
+    list) list ;;
+    del) del $rest ;;
+    quit) echo bye; break ;;
+    *) echo "unknown command: $cmd" >&2 ;;
+  esac
+done

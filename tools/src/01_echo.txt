@@ -1,0 +1,248 @@
+@@topic 01_echo_quoting | Echo, quoting & substitution
+@@ex 0101 hello | Hello world
+@@level 1
+@@cmds echo
+@@readme
+Print exactly this line:
+
+```
+Hola Mundo
+```
+@@check
+SEEDS=1
+@@solution
+#!/bin/bash
+echo "Hola Mundo"
+
+@@ex 0102 one_line | Several commands in one line
+@@level 1
+@@cmds echo, ;
+@@readme
+Using **a single line of code** (commands separated by `;`), print:
+
+```
+Hola
+
+Mundo
+```
+
+(the middle line is empty).
+@@check
+SEEDS=1
+extra_check() { max_lines 1; }
+@@solution
+#!/bin/bash
+echo "Hola"; echo; echo "Mundo"
+
+@@ex 0103 special_chars | Printing special characters
+@@level 1
+@@cmds echo, quoting, \
+@@readme
+Print these three lines exactly (the second one must show the **real value** of your `$HOME`):
+
+```
+Quiero imprimir el carácter ;
+$HOME = /the/value/of/your/home
+Precio: 5$ & 10% de descuento (IVA incl.)
+```
+
+Hint: `;`, `&`, `(`, `)` and `$` are special for the shell. Use quotes or `\`.
+@@check
+SEEDS=1
+@@solution
+#!/bin/bash
+echo "Quiero imprimir el carácter ;"
+echo "\$HOME = $HOME"
+echo 'Precio: 5$ & 10% de descuento (IVA incl.)'
+
+@@ex 0104 glob_trap | The multiplication trap
+@@level 1
+@@cmds echo, quoting, globbing
+@@readme
+Your script runs in a directory that contains some files (you don't know which).
+Print exactly:
+
+```
+No sé multiplicar 4*2
+```
+
+Run `play 0104`, go to the work directory and try `echo No sé multiplicar 4*2` without quotes
+to see why the checker's files break the naive version.
+@@check
+SEEDS=2
+setup() { touch 4-por-2 "4_$(word)_2" "$(word).txt"; }
+@@solution
+#!/bin/bash
+echo "No sé multiplicar 4*2"
+
+@@ex 0105 env_vars | Environment variables
+@@level 1
+@@cmds echo, $VAR
+@@readme
+Print your user name, home directory, shell and the list of directories where the shell looks
+for executables, using the predefined variables (`USER`, `HOME`, `SHELL`, `PATH`), in this format:
+
+```
+User: alumno
+Home: /home/alumno
+Shell: /bin/bash
+Path: /usr/local/sbin:/usr/local/bin:...
+```
+
+(Values above are examples: the checker runs your script with a different `HOME`.)
+@@check
+SEEDS=1
+ENV=(HOME=/tmp/lab-home-$RANDOM)
+extra_check() { must_use '\$HOME' '\$PATH'; }
+@@solution
+#!/bin/bash
+echo "User: $USER"
+echo "Home: $HOME"
+echo "Shell: $SHELL"
+echo "Path: $PATH"
+
+@@ex 0106 single_vs_double | Single vs double quotes
+@@level 1
+@@cmds echo, ' ", \
+@@readme
+Print exactly these lines (`<home>` is the real value of `$HOME`):
+
+```
+Single quotes print '$HOME' literally
+Double quotes expand "$HOME" to <home>
+A backslash: \ and a double quote: "
+```
+
+Notice that the first line contains the characters `'$HOME'` including the single quotes.
+@@check
+SEEDS=1
+@@solution
+#!/bin/bash
+echo "Single quotes print '\$HOME' literally"
+echo "Double quotes expand \"\$HOME\" to $HOME"
+echo 'A backslash: \ and a double quote: "'
+
+@@ex 0107 cmd_subst | Command substitution
+@@level 1
+@@cmds echo, $(...), `...`, whoami, pwd
+@@readme
+Print one line with your login name and the current directory, obtaining them with
+**command substitution** of `whoami` and `pwd`:
+
+```
+Mi login es alumno y estoy en /some/dir
+```
+@@check
+SEEDS=1
+extra_check() { must_use whoami pwd; }
+@@solution
+#!/bin/bash
+echo "Mi login es $(whoami) y estoy en $(pwd)"
+
+@@ex 0108 var_braces | Variables and ${...}
+@@level 2
+@@cmds variables, ${VAR}, cat
+@@readme
+The file `name.txt` (in the current directory) contains a single word, e.g. `kernel`.
+
+1. Store its content in a variable called `NAME`.
+2. Print `NAME_backup.tar`, e.g. `kernel_backup.tar`
+3. Print `NAMEs are cool`, e.g. `kernels are cool`
+
+```
+kernel_backup.tar
+kernels are cool
+```
+
+Hint: `$NAME_backup` is a different (empty) variable. Use `${NAME}`.
+@@check
+setup() { word > name.txt; }
+@@solution
+#!/bin/bash
+NAME=$(cat name.txt)
+echo "${NAME}_backup.tar"
+echo "${NAME}s are cool"
+
+@@ex 0109 echo_e | Escape sequences with echo -e / -n
+@@level 2
+@@cmds echo -e, echo -n
+@@readme
+Using **exactly two** `echo` commands, print this table (columns separated by one TAB character)
+followed by a line with `END` that has **no newline** at the end:
+
+```
+user<TAB>uid
+root<TAB>0
+alumno<TAB>1000
+END
+```
+@@check
+SEEDS=1
+extra_check() { (( $(ans_code | grep -o 'echo' | wc -l) == 2 )) || fail "use exactly two echo commands"; }
+@@solution
+#!/bin/bash
+echo -e "user\tuid\nroot\t0\nalumno\t1000"
+echo -n "END"
+
+@@ex 0110 date_host | date formats and $HOSTNAME
+@@level 2
+@@cmds date, $HOSTNAME
+@@readme
+Print the machine name and the current date/time in these formats (see `man date`):
+
+```
+Host: labhost
+Date: 2026-06-20
+Year: 2026, day of year: 171
+```
+
+Use `$HOSTNAME` and `date +FORMAT`.
+@@check
+SEEDS=1
+@@solution
+#!/bin/bash
+echo "Host: $HOSTNAME"
+echo "Date: $(date +%Y-%m-%d)"
+echo "Year: $(date +%Y), day of year: $(date +%j)"
+
+@@ex 0111 brace_expansion | Brace expansion
+@@level 2
+@@cmds {a..b}, {x,y}
+@@readme
+Using brace expansion (no loops), print these three lines:
+
+```
+backup_01 backup_02 backup_03 backup_04 backup_05 backup_06 backup_07 backup_08 backup_09 backup_10
+img.png img.jpg img.gif
+a1 a2 b1 b2 c1 c2
+```
+@@check
+SEEDS=1
+extra_check() { must_not_use for while; }
+@@solution
+#!/bin/bash
+echo backup_{01..10}
+echo img.{png,jpg,gif}
+echo {a..c}{1..2}
+
+@@ex 0112 quoting_spaces | Quoting preserves spaces
+@@level 2
+@@cmds quoting, variables
+@@readme
+The file `msg.txt` contains one line with words separated by **several** spaces
+(e.g. `hello     big    world`).
+
+Print the line twice: first **exactly as it is** (spaces preserved), then with the words
+separated by a **single** space. Read it into a variable with `MSG=$(cat msg.txt)` and play with quotes.
+
+```
+hello     big    world
+hello big world
+```
+@@check
+setup() { printf '%s   %s %s      %s\n' "$(word)" "$(word)" "$(word)" "$(word)" > msg.txt; }
+@@solution
+#!/bin/bash
+MSG=$(cat msg.txt)
+echo "$MSG"
+echo $MSG

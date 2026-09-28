@@ -1,0 +1,295 @@
+@@topic 03_files_links | Files, copies & links
+@@ex 0301 touch | Creating empty files
+@@level 1
+@@cmds touch
+@@readme
+Inside the existing directory `docs`, create three empty files: `a.txt`, `b.txt` and `notas.md`.
+Use **one** `touch` command.
+@@check
+SEEDS=1
+COMPARE="stdout exit files"
+setup() { mkdir docs; }
+extra_check() { max_lines 1; must_use touch; }
+@@solution
+#!/bin/bash
+touch docs/a.txt docs/b.txt docs/notas.md
+
+@@ex 0302 cp_basic | Copying files
+@@level 1
+@@cmds cp
+@@readme
+The directory `Datos/Stocks` contains `Trimestre.17.1.txt`. Inside that same directory:
+
+1. copy it to `Trimestre.17.todos.txt`
+2. copy it to `Trimestre.17.antiguos.txt`
+3. copy it to `Trimestre.18.1.txt`
+4. copy it into `Datos/Inversiones` keeping its name
+@@check
+COMPARE="stdout exit files"
+setup() { mkdir -p Datos/Stocks Datos/Inversiones; printf '2017 - Primer trimestre\n---------------------\nEnero %s\nFebrero %s\nMarzo %s\n' $(randr 1000 5000) $(randr 1000 5000) $(randr 1000 5000) > Datos/Stocks/Trimestre.17.1.txt; }
+@@solution
+#!/bin/bash
+cd Datos/Stocks
+cp Trimestre.17.1.txt Trimestre.17.todos.txt
+cp Trimestre.17.1.txt Trimestre.17.antiguos.txt
+cp Trimestre.17.1.txt Trimestre.18.1.txt
+cp Trimestre.17.1.txt ../Inversiones/
+
+@@ex 0303 cp_r | Copying directories
+@@level 1
+@@cmds cp -r
+@@readme
+Copy the whole directory `proyecto` (with all its content) to `backup/proyecto`.
+The directory `backup` already exists.
+@@check
+COMPARE="stdout exit files"
+setup() { mkdir -p backup proyecto/{src,doc}; local f; for f in proyecto/README proyecto/src/$(word).c proyecto/doc/$(word).md; do randtext 3 > "$f"; done; }
+@@solution
+#!/bin/bash
+cp -r proyecto backup/
+
+@@ex 0304 mv_rename | Renaming and moving
+@@level 1
+@@cmds mv
+@@readme
+In `Datos/Stocks` there is a file `borrador.txt`.
+
+1. Rename it to `borrador` (without extension).
+2. Move it to the parent directory of `Stocks` (i.e. `Datos`).
+3. Rename the directory `Datos/Inversiones` to `Datos/Inversion`.
+@@check
+COMPARE="stdout exit files"
+setup() { mkdir -p Datos/Stocks Datos/Inversiones; randtext 4 > Datos/Stocks/borrador.txt; touch "Datos/Inversiones/$(word)"; }
+extra_check() { must_use mv; must_not_use cp; }
+@@solution
+#!/bin/bash
+mv Datos/Stocks/borrador.txt Datos/Stocks/borrador
+mv Datos/Stocks/borrador Datos/
+mv Datos/Inversiones Datos/Inversion
+
+@@ex 0305 rm_globs | Deleting with wildcards
+@@level 2
+@@cmds rm, *, ?, [...]
+@@readme
+The current directory contains many `Trimestre.*` files. Using **wildcards** (not listing names one by one):
+
+1. Delete every file whose name is `Trimestre.17` followed by anything.
+2. Delete the files named `Trimestre.18.` followed by a `1` or a `2` and ending in `.txt`.
+3. Delete every file whose name has exactly **one character** before `.log` (e.g. `a.log`, not `ab.log`).
+
+Leave everything else untouched.
+@@check
+COMPARE="stdout exit files"
+setup() {
+  local y q; for y in 16 17 18 19; do for q in 1 2 3 4; do touch "Trimestre.$y.$q.txt"; done; done
+  touch Trimestre.17.todos.txt Trimestre.17.antiguos.txt Trimestre.18.1.bak Trimestre.18.12.txt Trimestre.170.txt
+  touch "$(pick a b c).log" "$(pick x y z).log" "ab.log" "abc.log" ".log" "$(randr 1 9).log"
+}
+extra_check() { (( $(ans_code | wc -l) <= 3 )) || fail "use at most 3 rm commands (wildcards!)"; }
+@@solution
+#!/bin/bash
+rm Trimestre.17*
+rm Trimestre.18.[12].txt
+rm ?.log
+
+@@ex 0306 cp_glob_dir | Copy several files into a directory
+@@level 2
+@@cmds cp, *
+@@readme
+Copy all the files ending in `.txt` from the current directory **and** from `old/`
+into the directory `Inversiones` (it exists) with a single `cp`.
+@@check
+COMPARE="stdout exit files"
+setup() { mkdir -p Inversiones old; local i; for i in 1 2 3; do randtext 2 > "$(word)$i.txt"; randtext 2 > "old/$(word)$i.txt"; touch "$(word)$i.csv"; done; }
+extra_check() { max_lines 1; }
+@@solution
+#!/bin/bash
+cp *.txt old/*.txt Inversiones
+
+@@ex 0307 hardlink | Hard links
+@@level 2
+@@cmds ln, ls -l, link count
+@@readme
+The directory `Datos` contains a file `borrador` and a directory `Stocks`.
+
+1. Create a **hard link** named `Stocks/enlacefisico` pointing to `Datos/borrador`.
+2. Create another hard link `Datos/copia_dura` to the same file.
+3. Print the number of links of `Datos/borrador` using `stat -c %h`.
+
+The checker also compares link counts of every file.
+@@check
+COMPARE="stdout exit files"
+setup() { mkdir -p Datos/Stocks; randtext 5 > Datos/borrador; }
+extra_check() { must_use ln; must_not_use cp; }
+@@solution
+#!/bin/bash
+ln Datos/borrador Datos/Stocks/enlacefisico
+ln Datos/borrador Datos/copia_dura
+stat -c %h Datos/borrador
+
+@@ex 0308 symlink | Symbolic links
+@@level 2
+@@cmds ln -s, readlink
+@@readme
+The directory `Datos` contains a file `borrador` and a directory `Stocks`.
+
+1. Create a **symbolic link** `Datos/Stocks/enlacesimbolico` whose stored target is the **relative**
+   path `../borrador`.
+2. Create a symbolic link `acceso` in the current directory whose target is the **absolute** path
+   of `Datos` (use `$PWD`).
+3. Print the targets stored in both links with `readlink`.
+4. Print the content of the file through the first link.
+@@check
+COMPARE="stdout exit files"
+setup() { mkdir -p Datos/Stocks; randtext 3 > Datos/borrador; }
+@@solution
+#!/bin/bash
+ln -s ../borrador Datos/Stocks/enlacesimbolico
+ln -s "$PWD/Datos" acceso
+readlink Datos/Stocks/enlacesimbolico
+readlink acceso
+cat Datos/Stocks/enlacesimbolico
+
+@@ex 0309 links_after_delete | What survives a deletion
+@@level 3
+@@cmds ln, ln -s, rm, cat, test
+@@readme
+The file `original` exists in the current directory.
+
+1. Create a hard link `duro` and a symbolic link `blando` (target: `original`).
+2. Delete `original`.
+3. Print the content of `duro`.
+4. Print `broken` if `blando` is a broken link (`[ -e blando ]` follows the link), `ok` otherwise.
+5. Print the link count of `duro` (`stat -c %h`).
+
+Think about **why** the hard link survives and the symbolic one does not.
+@@check
+COMPARE="stdout exit files"
+setup() { randtext 3 > original; }
+@@solution
+#!/bin/bash
+ln original duro
+ln -s original blando
+rm original
+cat duro
+if [ -e blando ]; then echo ok; else echo broken; fi
+stat -c %h duro
+
+@@ex 0310 stat | File metadata with stat
+@@level 2
+@@cmds stat -c
+@@readme
+For each of the files `a`, `b` and `c` in the current directory, print a line with:
+name, size in bytes, permissions in octal and number of hard links, separated by spaces:
+
+```
+a 1532 644 1
+b 12 600 2
+c 0 755 1
+```
+
+Use `stat -c` with the right format sequences (`man stat`).
+@@check
+setup() { bigfile a $(randr 0 3000); bigfile b $(randr 0 50); bigfile c $(randr 0 9); chmod "$(pick 600 640 644 700)" a; chmod "$(pick 755 750 444)" b; [[ $(rand 2) == 1 ]] && ln c c2; true; }
+extra_check() { must_use stat; }
+@@solution
+#!/bin/bash
+stat -c '%n %s %a %h' a b c
+
+@@ex 0311 basename_dirname | basename and dirname
+@@level 2
+@@cmds basename, dirname
+@@readme
+The file `path.txt` contains an absolute path such as `/home/alumno/backups/2026/datos.tar.gz`.
+Print:
+
+1. the directory part (`/home/alumno/backups/2026`)
+2. the file name (`datos.tar.gz`)
+3. the file name without the `.tar.gz` suffix (`datos`)
+4. the name of the directory that contains the file (`2026`)
+@@check
+setup() { echo "/home/$(word)/$(word)/$(randr 2020 2026)/$(word).tar.gz" > path.txt; }
+extra_check() { must_use basename dirname; }
+@@solution
+#!/bin/bash
+P=$(cat path.txt)
+dirname "$P"
+basename "$P"
+basename "$P" .tar.gz
+basename "$(dirname "$P")"
+
+@@ex 0312 mv_many | Moving groups of files
+@@level 2
+@@cmds mkdir, mv, *
+@@readme
+The current directory is a mess. Organise it:
+
+1. Create the directories `logs`, `images` and `docs`.
+2. Move every `*.log` file into `logs`.
+3. Move every `.png` and `.jpg` file into `images`.
+4. Move every file that starts with `informe` (any extension) into `docs`.
+
+(No file matches more than one rule.)
+@@check
+COMPARE="stdout exit files"
+setup() { local i; for i in $(seq 1 "$(randr 2 5)"); do touch "$(word)$i.log" "$(word)$i.png" "foto$i.jpg" "informe_$i.$(pick pdf odt txt)" "$(word)$i.c"; done; }
+@@solution
+#!/bin/bash
+mkdir logs images docs
+mv *.log logs
+mv *.png *.jpg images
+mv informe* docs
+
+@@ex 0313 file_types | Identifying file types
+@@level 2
+@@cmds file
+@@readme
+The directory `mystery` contains files with misleading or no extensions.
+Print the type of each file as reported by `file`, **in brief mode** (without the file name),
+in alphabetical order of the file names (one per line).
+@@check
+setup() {
+  mkdir mystery
+  randtext 3 > "mystery/$(word).jpg"
+  printf '#!/bin/bash\necho hi\n' > "mystery/$(word)"
+  gzip -c /etc/hostname > "mystery/$(word).txt"
+  cp /usr/bin/true "mystery/$(word).doc"
+  mkdir "mystery/$(word)_dir"
+  ln -s /etc/passwd "mystery/$(word)_link"
+}
+@@solution
+#!/bin/bash
+file -b mystery/*
+
+@@ex 0314 readlink_f | Following link chains
+@@level 3
+@@cmds readlink, readlink -f
+@@readme
+The current directory contains a chain of symbolic links: `link1 → link2 → ... → real/file`.
+Print:
+
+1. the target **stored** in `link1` (one level)
+2. the **final canonical absolute path** after following the whole chain
+@@check
+setup() { mkdir -p real; randtext 1 > real/file; local n; n=$(randr 2 4); ln -s real/file "link$n"; local i; for ((i=n-1;i>=1;i--)); do ln -s "link$((i+1))" "link$i"; done; }
+@@solution
+#!/bin/bash
+readlink link1
+readlink -f link1
+
+@@ex 0315 rm_r | Recursive deletion and safe rmdir
+@@level 3
+@@cmds rm -r, rmdir, 2>/dev/null
+@@readme
+1. Delete the directory `pruebatar` and **all** its content with a single command.
+2. The directory `vacios` contains several subdirectories: some are empty and some are not.
+   Remove **only the empty ones** with one `rmdir` command, hiding its error messages
+   (`2>/dev/null`). The script must end with exit code **0**.
+@@check
+COMPARE="stdout exit files"
+setup() { mkdir -p pruebatar/a/b; randtext 2 > pruebatar/a/b/f; local i d; for i in 1 2 3 4 5; do d="vacios/$(word)$i"; mkdir -p "$d"; (( i == 1 || $(rand 2) )) && touch "$d/x"; done; mkdir -p vacios/empty0; }
+@@solution
+#!/bin/bash
+rm -r pruebatar
+rmdir vacios/* 2>/dev/null
+exit 0

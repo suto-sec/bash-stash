@@ -1,0 +1,19 @@
+1: 0
+2: /root
+3: 7
+4: 6
+5: /etc/shadow
+6: /etc/group
+7: 0
+8: -l
+9: -e
+10: - | -l | --login
+11: -c
+12: /etc/sudoers
+13: visudo
+14: b
+15: groups | id -gn | id -nG
+16: last
+17: b
+18: usermod -aG g u | usermod -a -G g u | sudo usermod -aG g u
+

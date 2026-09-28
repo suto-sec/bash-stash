@@ -1,0 +1,18 @@
+1: default.target
+2: graphical.target
+3: rescue.target
+4: poweroff.target
+5: reboot.target
+6: multi-user.target
+7: systemctl get-default
+8: isolate
+9: systemctl start cups | sudo systemctl start cups
+10: systemctl enable cups | sudo systemctl enable cups
+11: cgroups | cgroup | control groups
+12: shutdown -h now | sudo shutdown -h now
+13: shutdown -c | sudo shutdown -c
+14: sigterm | term
+15: 5
+16: system v | sysv | init | system v init | sysvinit
+17: b
+

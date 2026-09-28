@@ -1,0 +1,15 @@
+1: &
+2: ctrl+z | ctrl-z | ^z | control+z | ctrl z
+3: ctrl+c | ctrl-c | ^c | control+c | ctrl c
+4: bg
+5: fg
+6: internal
+7: external
+8: b
+9: whereis
+10: PATH
+11: 0
+12: .bashrc | ~/.bashrc | bashrc
+13: alias
+14: ctrl+r | ctrl-r | ^r | control+r | ctrl r
+

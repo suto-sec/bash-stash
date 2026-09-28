@@ -1,0 +1,294 @@
+@@topic 08_permissions | Permissions, chmod, umask, chown
+@@ex 0801 chmod_symbolic | chmod with symbols
+@@level 1
+@@cmds chmod u+x, o-w, ug+w, a-wx
+@@readme
+Apply these changes with **symbolic** `chmod` (the files start with random permissions):
+
+- `script.sh`: give the **user** execute permission
+- `publico.txt`: remove **write** permission from **others**
+- `equipo.txt`: give **user and group** write permission
+- `bloqueado.txt`: remove write and execute from **everyone**
+- `exacto.txt`: set **exactly** `rw-` for the user, `r--` for group and nothing for others, with `=`
+@@check
+COMPARE="stdout exit files"
+setup() { local f; for f in script.sh publico.txt equipo.txt bloqueado.txt exacto.txt; do touch "$f"; chmod "$(pick 644 666 600 777 640 664 604)" "$f"; done; }
+extra_check() { ans_code | grep -qE 'chmod +[0-7]{3}' && fail "use symbolic modes (u+x...), not octal, in this exercise"; }
+@@solution
+#!/bin/bash
+chmod u+x script.sh
+chmod o-w publico.txt
+chmod ug+w equipo.txt
+chmod a-wx bloqueado.txt
+chmod u=rw,g=r,o= exacto.txt
+
+@@ex 0802 chmod_octal | chmod with octal numbers
+@@level 1
+@@cmds chmod 740
+@@readme
+Using **octal** modes, set:
+
+| file | permissions |
+|------|-------------|
+| `a` | `rwxr-----` |
+| `b` | `rw-r--r--` |
+| `c` | `rw-------` |
+| `d` (a directory) | `rwxr-x--x` |
+| `e` | `r--r--r--` |
+@@check
+COMPARE="stdout exit files"
+setup() { touch a b c e; mkdir d; chmod "$(pick 777 000 111)" a b c e; }
+extra_check() { must_use chmod; }
+@@solution
+#!/bin/bash
+chmod 740 a
+chmod 644 b
+chmod 600 c
+chmod 751 d
+chmod 444 e
+
+@@ex 0803 perms_to_octal | Reading permissions
+@@level 2
+@@cmds stat -c %a %A, ls -l
+@@readme
+For every entry of the directory `varios` (sorted by name) print a line
+`name symbolic octal`, e.g. `notas.txt -rw-r----- 640`.
+
+Hint: `stat -c '%n %A %a'` gives this almost directly (but `%n` includes the path you pass: `cd` first).
+@@check
+setup() { mkdir varios; local i f; for i in $(seq 6); do f="varios/$(word)$i"; if [[ $(rand 3) == 0 ]]; then mkdir "$f"; else touch "$f"; fi; chmod "$(randr 0 7)$(randr 0 7)$(randr 0 7)" "$f"; done; }
+@@solution
+#!/bin/bash
+cd varios
+stat -c '%n %A %a' *
+
+@@ex 0804 chmod_recursive | Recursive chmod and capital X
+@@level 3
+@@cmds chmod -R, X
+@@readme
+The tree `web` has files and directories with messy permissions. With **one** `chmod -R` command:
+
+- user: read + write on everything, execute **only** on directories and on files that already
+  have execute for someone (that's what capital `X` does)
+- group and others: read on everything, execute with the same `X` rule
+- nobody except the user can write
+
+(Tip: `chmod -R u=rwX,go=rX web`.)
+@@check
+COMPARE="stdout exit files"
+setup() { mkdir -p web/{css,js,img/icons}; local i f; for i in $(seq 8); do f="web/$(pick . css js img img/icons)/$(word)$i.$(pick html css js sh)"; touch "$f"; chmod "$(pick 600 666 700 755 640 777)" "$f"; done; chmod 700 web/css; chmod 777 web/js; }
+extra_check() { max_lines 1; }
+@@solution
+#!/bin/bash
+chmod -R u=rwX,go=rX web
+
+@@ex 0805 umask_basic | umask: default permissions
+@@level 2
+@@cmds umask
+@@readme
+1. Print the current umask (the checker runs your script with umask `0022`).
+2. Change the umask so that new **files** are created `rw-r-----` and new **directories** `rwxr-x---`.
+3. Create the file `nuevo.txt` and the directory `nuevodir`.
+4. Print the new umask.
+@@check
+COMPARE="stdout exit files"
+extra_check() { must_use umask; must_not_use chmod; }
+@@solution
+#!/bin/bash
+umask
+umask 027
+touch nuevo.txt
+mkdir nuevodir
+umask
+
+@@ex 0806 umask_weird | A strange umask
+@@level 3
+@@cmds umask, chmod
+@@readme
+Set the umask so that new directories get:
+
+- owner: **only read**
+- group: **only execute**
+- others: read, write and execute
+
+Then:
+
+1. create directory `nuevodir` and file `nuevofichero_fuera` (see which permissions the file gets!)
+2. add **a single permission** to `nuevodir` so the owner can **enter** it
+3. add **a single permission** to `nuevodir` so the owner can **create files** in it
+4. create `nuevodir/nuevofichero`
+5. add **a single permission** to `nuevodir/nuevofichero` so the owner can write to it, then write
+   the line `hola` into it
+
+Nothing is printed.
+@@check
+COMPARE="stdout exit files"
+extra_check() { must_use umask; }
+@@solution
+#!/bin/bash
+umask 362
+mkdir nuevodir
+touch nuevofichero_fuera
+chmod u+x nuevodir
+chmod u+w nuevodir
+touch nuevodir/nuevofichero
+chmod u+w nuevodir/nuevofichero
+echo hola > nuevodir/nuevofichero
+
+@@ex 0807 umask_symbolic | Symbolic umask
+@@level 2
+@@cmds umask -S, umask u=,g=,o=
+@@readme
+1. Using a **symbolic** umask, allow everything to the user, only read+execute to the group and
+   nothing to others (`umask u=rwx,g=rx,o=`).
+2. Print the umask in symbolic form (`umask -S`) and in octal form (`umask`).
+3. Create the directory `privado` and the file `privado/nota`.
+@@check
+COMPARE="stdout exit files"
+@@solution
+#!/bin/bash
+umask u=rwx,g=rx,o=
+umask -S
+umask
+mkdir privado
+touch privado/nota
+
+@@ex 0808 dir_perms | What directory permissions mean
+@@level 3
+@@cmds chmod, ls, cd, test -r -w -x
+@@readme
+The directory `caja` contains some files. Test what each directory permission allows. For each of the
+three situations below, set the permission of `caja` **exactly** as stated with `chmod` and then print
+three words: `ls:yes|no`, `cd:yes|no`, `create:yes|no`, each one meaning whether the operation worked:
+
+- `ls caja >/dev/null 2>&1`
+- `(cd caja) 2>/dev/null`
+- `touch caja/nuevo 2>/dev/null` (remove `caja/nuevo` right after if it was created)
+
+Situations: `chmod 700 caja`, `chmod 600 caja`, `chmod 300 caja`. Output example for the first:
+
+```
+700 ls:yes cd:yes create:yes
+```
+
+Finally, restore `caja` to `755`.
+@@check
+COMPARE="stdout exit files"
+setup() { mkdir caja; touch "caja/$(word)"; }
+@@solution
+#!/bin/bash
+for m in 700 600 300; do
+  chmod "$m" caja
+  l=no; c=no; t=no
+  ls caja > /dev/null 2>&1 && l=yes
+  (cd caja) 2> /dev/null && c=yes
+  touch caja/nuevo 2> /dev/null && t=yes && rm -f caja/nuevo
+  echo "$m ls:$l cd:$c create:$t"
+done
+chmod 755 caja
+
+@@ex 0809 find_chmod | Fixing permissions in bulk
+@@level 3
+@@cmds find -perm, chmod
+@@readme
+Security audit of the tree `compartido`:
+
+1. print sorted the regular files that are **writable by others** (`-perm -o+w`)
+2. remove write permission for others from all of them
+3. remove **all** permissions for group and others from every file ending in `.key`
+
+Print only the list from step 1.
+@@check
+COMPARE="stdout exit files"
+setup() { mkdir -p compartido/{a,b}; local i f; for i in $(seq 9); do f="compartido/$(pick . a b)/$(word)$i$(pick .txt .key .conf)"; touch "$f"; chmod "$(pick 666 644 600 602 777 640 664)" "$f"; done; }
+@@solution
+#!/bin/bash
+find compartido -type f -perm -o+w | sort
+find compartido -type f -perm -o+w -exec chmod o-w {} +
+find compartido -type f -name '*.key' -exec chmod go= {} +
+
+@@ex 0810 chown_root | chown and chgrp (as root)
+@@level 3
+@@cmds sudo chown, chgrp, chown -R
+@@readme
+This script is run **as root** by the checker (in real life, use `sudo`). In the current directory:
+
+1. make `luke` the owner of `informe.txt`
+2. make user `sally` and group `devs` the owner/group of `datos.csv` (one command, `user:group`)
+3. change **only the group** of `publico` to `adm`
+4. recursively give the directory `proyecto` to `jgarcia` with group `secops`
+@@check
+COMPARE="stdout exit files owner"
+RUN_AS_ROOT=1
+setup() { touch informe.txt datos.csv publico; mkdir -p proyecto/src; touch proyecto/a proyecto/src/b; }
+@@solution
+#!/bin/bash
+chown luke informe.txt
+chown sally:devs datos.csv
+chgrp adm publico
+chown -R jgarcia:secops proyecto
+
+@@ex 0811 perm_calc | Permission calculator
+@@level 4
+@@cmds variables, $(( )), string slicing / case
+@@readme
+The script receives a symbolic permission string of 9 characters as its **first argument**
+(e.g. `rwxr-x---`) and prints its octal value (`750`).
+
+Validate the argument: if it is missing or not 9 characters made of `r`, `w`, `x`, `-` in the
+right positions, print an error to **stderr** and exit with code **1**.
+@@check
+ARGS=('rwxr-x---' 'rw-r--r--' '---------' 'rwxrwxrwx' 'r-x--x-w-' '' 'rwx' 'rwxrwxrwxr' 'wrxr-x---' 'rwxr-x--a')
+SEEDS=1
+COMPARE="stdout exit errmsg"
+@@solution
+#!/bin/bash
+p=$1
+if [[ ! $p =~ ^[r-][w-][x-][r-][w-][x-][r-][w-][x-]$ ]]; then
+  echo "Usage: $0 PERMS  (e.g. rwxr-x---)" >&2
+  exit 1
+fi
+out=
+for i in 0 3 6; do
+  n=0
+  [[ ${p:i:1} == r ]] && n=$((n + 4))
+  [[ ${p:i+1:1} == w ]] && n=$((n + 2))
+  [[ ${p:i+2:1} == x ]] && n=$((n + 1))
+  out+=$n
+done
+echo "$out"
+
+@@ex 0812 umask_calc | umask calculator
+@@level 4
+@@cmds $(( )), bitwise & ~
+@@readme
+The script receives a umask in octal as its argument (e.g. `027`) and prints, for that umask,
+the permissions a new **file** and a new **directory** would get, in octal (3 digits) and symbolic form:
+
+```
+file: 640 rw-r-----
+dir: 750 rwxr-x---
+```
+
+Files start from `666`, directories from `777`, and the umask **removes** bits
+(`$(( 8#666 & ~8#027 ))` gives the decimal value; print it back in octal with `printf '%03o'`).
+You can obtain the symbolic form with a tiny helper or by really creating a temp file and dir.
+@@check
+ARGS=('027' '022' '077' '000' '362' '174' '002')
+SEEDS=1
+@@solution
+#!/bin/bash
+sym() { # octal digits -> rwx string
+  local o=$1 s= d
+  for ((k = 0; k < 3; k++)); do
+    d=${o:k:1}
+    (( d & 4 )) && s+=r || s+=-
+    (( d & 2 )) && s+=w || s+=-
+    (( d & 1 )) && s+=x || s+=-
+  done
+  echo "$s"
+}
+f=$(printf '%03o' $(( 8#666 & ~8#$1 )))
+d=$(printf '%03o' $(( 8#777 & ~8#$1 )))
+echo "file: $f $(sym "$f")"
+echo "dir: $d $(sym "$d")"

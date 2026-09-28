@@ -1,0 +1,255 @@
+@@topic 11_variables_arith | Variables, arithmetic & environment
+@@ex 1101 arith_three_ways | expr, bc and $(( ))
+@@level 1
+@@cmds expr, bc, $(( ))
+@@readme
+Create `DATOA=25` and `DATOB=4`, and print the value of `DATOA*DATOB+5` three times, computed with:
+
+1. `expr` (remember to escape `*`)
+2. `echo ... | bc`
+3. `$(( ))`
+@@check
+SEEDS=1
+extra_check() { must_use expr bc; ans_code | grep -q '\$((' || fail "use \$(( )) too"; }
+@@solution
+#!/bin/bash
+DATOA=25
+DATOB=4
+expr $DATOA \* $DATOB + 5
+echo "$DATOA * $DATOB + 5" | bc
+echo $((DATOA * DATOB + 5))
+
+@@ex 1102 arith_ops | Integer arithmetic
+@@level 1
+@@cmds $(( )), / % **
+@@readme
+The file `nums.txt` contains two integers `A B` (B > 0). Print, one per line:
+
+```
+A + B = ...
+A - B = ...
+A * B = ...
+A / B = ...   (integer division)
+A % B = ...
+A ** 2 = ...
+```
+
+(with the real numbers instead of `A` and `B`).
+@@check
+setup() { echo "$(randr 10 500) $(randr 1 30)" > nums.txt; }
+@@solution
+#!/bin/bash
+read A B < nums.txt
+echo "$A + $B = $((A + B))"
+echo "$A - $B = $((A - B))"
+echo "$A * $B = $((A * B))"
+echo "$A / $B = $((A / B))"
+echo "$A % $B = $((A % B))"
+echo "$A ** 2 = $((A ** 2))"
+
+@@ex 1103 bc_decimals | Decimals with bc
+@@level 2
+@@cmds bc, scale
+@@readme
+Bash only does integer arithmetic. The file `notas.txt` contains one grade per line (integers 0-10).
+Print:
+
+1. the sum of the grades
+2. the average with **2 decimals** (`scale=2` in `bc`)
+3. `sqrt(2)` with 5 decimals
+
+Hint: `paste -sd+ notas.txt | bc` sums a column.
+@@check
+setup() { local i; for i in $(seq "$(randr 3 9)"); do randr 0 10; done > notas.txt; }
+extra_check() { must_use bc; }
+@@solution
+#!/bin/bash
+SUM=$(paste -sd+ notas.txt | bc)
+N=$(wc -l < notas.txt)
+echo "$SUM"
+echo "scale=2; $SUM / $N" | bc
+echo "scale=5; sqrt(2)" | bc
+
+@@ex 1104 env_path | Environment variables ending in PATH
+@@level 2
+@@cmds env, printenv, grep
+@@readme
+Print the environment variables (`NAME=value`) whose **name** ends with `PATH`, sorted.
+Careful: a variable whose **value** ends with `PATH` must not appear.
+@@check
+SEEDS=1
+ENV=(MANPATH=/usr/share/man INFOPATH=/usr/share/info LAB_NOTE=THE_PATH CLASSPATH=/opt/java PATHS_OK=1)
+@@solution
+#!/bin/bash
+env | grep '^[^=]*PATH=' | sort
+
+@@ex 1105 export | Exported vs local variables
+@@level 2
+@@cmds export, bash -c
+@@readme
+1. Create the variable `LOCAL_VAR=uno` (not exported) and `GLOBAL_VAR=dos` (exported).
+2. Run a child shell: `bash -c 'echo "local=[$LOCAL_VAR] global=[$GLOBAL_VAR]"'`
+3. Print `printenv GLOBAL_VAR` and the exit code of `printenv LOCAL_VAR` (hide its output).
+4. Export `LOCAL_VAR` too and run the child shell of step 2 again.
+@@check
+SEEDS=1
+@@solution
+#!/bin/bash
+LOCAL_VAR=uno
+export GLOBAL_VAR=dos
+bash -c 'echo "local=[$LOCAL_VAR] global=[$GLOBAL_VAR]"'
+printenv GLOBAL_VAR
+printenv LOCAL_VAR > /dev/null; echo $?
+export LOCAL_VAR
+bash -c 'echo "local=[$LOCAL_VAR] global=[$GLOBAL_VAR]"'
+
+@@ex 1106 unset_default | unset and default values
+@@level 2
+@@cmds unset, ${VAR:-def}, ${VAR:=def}, ${VAR:?}
+@@readme
+1. `COLOR=azul`; print `color: $COLOR`.
+2. `unset COLOR`; print `color: ${COLOR:-negro}` (default only for printing).
+3. Print `color: $COLOR` (still empty).
+4. Use `${COLOR:=rojo}` so the default is also **assigned**, print it, and print `$COLOR` again.
+5. Print the length of `$HOME` with `${#HOME}`.
+@@check
+SEEDS=1
+@@solution
+#!/bin/bash
+COLOR=azul
+echo "color: $COLOR"
+unset COLOR
+echo "color: ${COLOR:-negro}"
+echo "color: $COLOR"
+echo "color: ${COLOR:=rojo}"
+echo "color: $COLOR"
+echo ${#HOME}
+
+@@ex 1107 param_expansion | Cutting strings with ${ }
+@@level 3
+@@cmds ${v#}, ${v##}, ${v%}, ${v%%}, ${v/a/b}, ${v:o:l}
+@@readme
+The file `fichero.txt` contains a path like `/home/alumno/docs/informe.final.pdf`.
+**Without** external commands (no `basename`, `sed`, `cut`...), only parameter expansion, print:
+
+1. the file name (`informe.final.pdf`) — `${P##*/}`
+2. the directory (`/home/alumno/docs`) — `${P%/*}`
+3. the name without the **last** extension (`informe.final`)
+4. only the **last** extension (`pdf`)
+5. the path with every `/` replaced by `:` — `${P//\//:}`
+6. the first 5 characters of the path
+@@check
+setup() { echo "/home/$(word)/$(word)/$(word).$(pick final v2 old).$(pick pdf txt tar)" > fichero.txt; }
+extra_check() { must_not_use basename dirname sed cut awk; }
+@@solution
+#!/bin/bash
+P=$(cat fichero.txt)
+F=${P##*/}
+echo "$F"
+echo "${P%/*}"
+echo "${F%.*}"
+echo "${F##*.}"
+echo "${P//\//:}"
+echo "${P:0:5}"
+
+@@ex 1108 seq_sum | seq and bc
+@@level 2
+@@cmds seq, seq -s, bc
+@@readme
+The file `n.txt` contains a number N. Print:
+
+1. the numbers from 1 to N in one line separated by spaces (`seq -s ' '`)
+2. the even numbers from 2 to 2·N, one per line (`seq` with increment)
+3. the sum 1+2+...+N computed with `seq -s+ 1 N | bc`
+4. the same sum with the formula `N*(N+1)/2` in `$(( ))`
+@@check
+setup() { randr 3 15 > n.txt; }
+@@solution
+#!/bin/bash
+N=$(cat n.txt)
+seq -s ' ' 1 "$N"
+seq 2 2 $((2 * N))
+seq -s+ 1 "$N" | bc
+echo $((N * (N + 1) / 2))
+
+@@ex 1109 path_add | Modifying PATH
+@@level 3
+@@cmds PATH, which, export
+@@readme
+The checker gives you a home with an executable `~/bin/saluda` that is **not** in `$PATH`.
+
+1. Print the exit code of `which saluda` (hide its output).
+2. Add `$HOME/bin` to the **beginning** of `PATH`.
+3. Print `which saluda`, then run `saluda`.
+@@check
+setup() { mkdir -p "$H/bin"; printf '#!/bin/bash\necho "Hola desde saluda %s"\n' "$(word)" > "$H/bin/saluda"; chmod +x "$H/bin/saluda"; }
+@@solution
+#!/bin/bash
+which saluda > /dev/null; echo $?
+PATH="$HOME/bin:$PATH"
+which saluda
+saluda
+
+@@ex 1110 let_incr | Increments and compound assignment
+@@level 2
+@@cmds (( )), ++, +=, let
+@@readme
+1. `I=5`. Increment it with `((I++))`, then add 10 with `((I += 10))`, print `I`.
+2. `S=abc`; append `def` with `S+=def`; print `S`.
+3. Print `yes` if `I` is greater than 10 using an arithmetic test `(( I > 10 ))`.
+4. With `let`, compute `R = I * 2 - 1` and print `R`.
+@@check
+SEEDS=1
+@@solution
+#!/bin/bash
+I=5
+((I++))
+((I += 10))
+echo "$I"
+S=abc
+S+=def
+echo "$S"
+(( I > 10 )) && echo yes
+let "R = I * 2 - 1"
+echo "$R"
+
+@@ex 1111 arrays | Arrays (bash knowledge)
+@@level 3
+@@cmds arr=( ), ${arr[@]}, ${#arr[@]}, ${arr[i]}
+@@readme
+The file `frutas.txt` contains one fruit per line. Load it into an array with
+`mapfile -t FRUTAS < frutas.txt` (or `FRUTAS=($(cat frutas.txt))`) and print:
+
+1. the number of elements
+2. the first and the last element, separated by a space (`${FRUTAS[-1]}`)
+3. all elements in one line
+4. each element with its index: `0: apple`, `1: pear`, ...
+@@check
+setup() { local i; for i in $(seq "$(randr 3 7)"); do pick apple banana cherry grape lemon mango melon orange peach pear plum kiwi; done > frutas.txt; }
+@@solution
+#!/bin/bash
+mapfile -t FRUTAS < frutas.txt
+echo "${#FRUTAS[@]}"
+echo "${FRUTAS[0]} ${FRUTAS[-1]}"
+echo "${FRUTAS[@]}"
+for i in "${!FRUTAS[@]}"; do echo "$i: ${FRUTAS[i]}"; done
+
+@@ex 1112 base_conv | Bases and printf
+@@level 3
+@@cmds $((16#ff)), $((2#1010)), printf %x %o
+@@readme
+The file `n.txt` contains a decimal number N. Print:
+
+1. N in hexadecimal (lowercase, `printf '%x\n'`)
+2. N in octal
+3. the decimal value of the **hex** string in `hex.txt` (`$((16#...))`)
+4. the decimal value of the **binary** string in `bin.txt`
+@@check
+setup() { randr 1 5000 > n.txt; printf '%x\n' "$(randr 1 65535)" > hex.txt; echo "$(randr 0 1)$(randr 0 1)$(randr 0 1)$(randr 0 1)1$(randr 0 1)$(randr 0 1)" > bin.txt; }
+@@solution
+#!/bin/bash
+N=$(cat n.txt)
+printf '%x\n' "$N"
+printf '%o\n' "$N"
+echo $((16#$(cat hex.txt)))
+echo $((2#$(cat bin.txt)))

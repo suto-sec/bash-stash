@@ -1,0 +1,397 @@
+@@topic 17_users_logs_admin | Users, groups, sessions, logs & cron
+@@ex 1701 whoami_id | Who am I?
+@@level 1
+@@cmds whoami, id, groups
+@@readme
+Print, one per line:
+
+1. your login name (`whoami`)
+2. your numeric UID (`id -u`)
+3. the **name** of your primary group (`id -gn`)
+4. the names of all your groups (`groups` or `id -Gn`)
+5. the full `id` output
+@@check
+SEEDS=1
+@@solution
+#!/bin/bash
+whoami
+id -u
+id -gn
+id -Gn
+id
+
+@@ex 1702 other_users | Other users' identity
+@@level 1
+@@cmds id USER, groups USER
+@@readme
+Print:
+
+1. the groups of `jgarcia` as `groups jgarcia` prints them
+2. the UID of `rosa`
+3. the numeric GIDs of all the groups of `luke` (`id -G luke`)
+4. `exists` or `no such user` for the user given as argument (use the exit code of `id`)
+@@check
+SEEDS=1
+ARGS=('sally' 'pepito' 'root')
+@@solution
+#!/bin/bash
+groups jgarcia
+id -u rosa
+id -G luke
+if id "$1" > /dev/null 2>&1; then echo exists; else echo "no such user"; fi
+
+@@ex 1703 passwd_fields | The fields of /etc/passwd
+@@level 2
+@@cmds cut, while IFS=: read
+@@readme
+For every **human** user of the real `/etc/passwd` (UID between 1000 and 59999), print:
+
+```
+login | uid | full name (GECOS field up to the first comma) | home | shell
+```
+
+in file order. Example: `jgarcia | 1004 | Juan Garcia | /home/jgarcia | /bin/bash`.
+@@check
+SEEDS=1
+@@solution
+#!/bin/bash
+while IFS=: read -r login x uid gid gecos home shell; do
+  if [ "$uid" -ge 1000 ] && [ "$uid" -lt 60000 ]; then
+    echo "$login | $uid | ${gecos%%,*} | $home | $shell"
+  fi
+done < /etc/passwd
+
+@@ex 1704 group_members | Who belongs to a group
+@@level 3
+@@cmds /etc/group, /etc/passwd, cut, tr
+@@readme
+The script receives a group name. Print, sorted and without duplicates, **all** the users that belong
+to it: those listed as members in `/etc/group` (4th field, comma-separated) **plus** those whose
+**primary** group (4th field of `/etc/passwd`) is that group's GID.
+
+If the group does not exist, print `no such group: NAME` on stderr and exit 1.
+@@check
+SEEDS=1
+COMPARE="stdout exit errmsg"
+ARGS=('cdrom' 'devs' 'alumno' 'adm' 'root' 'nogroup_xyz' 'secops')
+@@solution
+#!/bin/bash
+line=$(grep "^$1:" /etc/group) || { echo "no such group: $1" >&2; exit 1; }
+gid=$(echo "$line" | cut -d: -f3)
+{
+  echo "$line" | cut -d: -f4 | tr , '\n'
+  while IFS=: read -r u x uid g rest; do [ "$g" = "$gid" ] && echo "$u"; done < /etc/passwd
+} | grep -v '^$' | sort -u
+
+@@ex 1705 who_sessions | Connected users
+@@level 2
+@@cmds who, who -q, cut, sort, uniq
+@@readme
+Print:
+
+1. the number of open sessions (`who | wc -l`)
+2. the names of the connected users, sorted, one per line, without repetitions
+3. the users connected **remotely** (their `who` line has a host in parentheses that is **not** `:0`),
+   sorted, as `user from host`
+@@check
+SEEDS=1
+@@solution
+#!/bin/bash
+who | wc -l
+who | cut -d' ' -f1 | sort -u
+who | grep '(' | grep -v '(:0' | sed -E 's/^([^ ]+).*\((.*)\)$/\1 from \2/' | sort
+
+@@ex 1706 last_logins | Login history with last
+@@level 3
+@@cmds last, grep, sort, uniq -c
+@@readme
+Using `last` (it reads `/var/log/wtmp`), print:
+
+1. the number of sessions recorded for each user, in `uniq -c` format sorted by user name
+   (ignore the empty line and the `wtmp begins` line)
+2. `---`
+3. the lines of sessions that have an **end time and duration** (they contain `(hh:mm)`)
+@@check
+SEEDS=1
+@@solution
+#!/bin/bash
+last | grep -v -e '^$' -e '^wtmp begins' | cut -d' ' -f1 | sort | uniq -c
+echo ---
+last | grep '([0-9][0-9]:[0-9][0-9])'
+
+@@ex 1707 auth_counts | auth.log: counting events
+@@level 2
+@@cmds grep -c, /var/log/auth.log
+@@readme
+From the real `/var/log/auth.log` (you can read it because you're in group `adm`), print:
+
+```
+failed passwords: N
+invalid users: N
+accepted logins: N
+sudo commands: N
+telnet connections: N
+```
+
+- failed passwords: lines with `Failed password`
+- invalid users: lines with `Invalid user`
+- accepted logins: lines with `Accepted `
+- sudo commands: lines with `COMMAND=`
+- telnet connections: lines from `in.telnetd`
+@@check
+SEEDS=1
+@@solution
+#!/bin/bash
+L=/var/log/auth.log
+echo "failed passwords: $(grep -c 'Failed password' $L)"
+echo "invalid users: $(grep -c 'Invalid user' $L)"
+echo "accepted logins: $(grep -c 'Accepted ' $L)"
+echo "sudo commands: $(grep -c 'COMMAND=' $L)"
+echo "telnet connections: $(grep -c 'in.telnetd' $L)"
+
+@@ex 1708 auth_per_day | auth.log: attempts per day
+@@level 3
+@@cmds cut -c, tr -s, uniq -c
+@@readme
+Print the number of `Failed password` lines **per day** of `/var/log/auth.log`, in chronological
+order, as:
+
+```
+Jun 8: 57
+Jun 9: 61
+...
+Jun 20: 70
+```
+
+Careful: syslog pads single-digit days with a space (`Jun  8`), so a naive `cut -d' ' -f1,2` breaks.
+@@check
+SEEDS=1
+@@solution
+#!/bin/bash
+grep 'Failed password' /var/log/auth.log | tr -s ' ' | cut -d' ' -f1,2 | uniq -c | while read -r n m d; do echo "$m $d: $n"; done
+
+@@ex 1709 auth_invalid_users | auth.log: usernames attackers try
+@@level 3
+@@cmds grep -o, sed, sort, uniq -c
+@@readme
+From `/var/log/auth.log`, print the user names tried in `Invalid user NAME from ...` lines, with how
+many times each was tried, as `uniq -c` prints it, most tried first (ties: name ascending).
+@@check
+SEEDS=1
+@@solution
+#!/bin/bash
+grep 'Invalid user' /var/log/auth.log | sed 's/.*Invalid user \([^ ]*\) from.*/\1/' | sort | uniq -c | sort -k1,1nr -k2,2
+
+@@ex 1710 auth_sudo | auth.log: what was run with sudo
+@@level 3
+@@cmds grep, sed / cut, sort, uniq -c
+@@readme
+Print the commands executed with `sudo` (the text after `COMMAND=`) with how many times each one was
+run, as `uniq -c` prints it, sorted by count descending and then by command.
+@@check
+SEEDS=1
+@@solution
+#!/bin/bash
+grep 'COMMAND=' /var/log/auth.log | sed 's/.*COMMAND=//' | sort | uniq -c | sort -k1,1nr -k2
+
+@@ex 1711 auth_last_ip | The last IP in auth.log
+@@level 3
+@@cmds grep -oE, tail -1
+@@readme
+Print the **last IP address** that appears in `/var/log/auth.log` (1802 needs this), and
+then on the next line the number of lines of the whole file that contain that IP.
+(Beware: a dot in a regex matches anything. Use `grep -F` for the second part.)
+@@check
+SEEDS=1
+@@solution
+#!/bin/bash
+IP=$(grep -oE '([0-9]{1,3}\.){3}[0-9]{1,3}' /var/log/auth.log | tail -n 1)
+echo "$IP"
+grep -cF "$IP" /var/log/auth.log
+
+@@ex 1712 shadow_locked | /etc/shadow (with sudo)
+@@level 3
+@@cmds sudo, /etc/shadow, cut, grep
+@@readme
+`/etc/shadow` is only readable by root, but you can use `sudo` (password `lab`; in the lab it won't ask).
+Print:
+
+1. the exit code of trying to `cat /etc/shadow` **without** sudo (hide the error)
+2. the users whose real password is **locked**: the password field is `!` followed by a hash
+   (`!$...`), sorted. (System accounts have `*` or `!*`: no password at all, not "locked".)
+3. the users that have a real password hash (field starts with `$`), sorted
+@@check
+SEEDS=1
+@@solution
+#!/bin/bash
+cat /etc/shadow > /dev/null 2>&1; echo $?
+sudo grep -E '^[^:]+:!\$' /etc/shadow | cut -d: -f1 | sort
+sudo grep -E '^[^:]+:\$' /etc/shadow | cut -d: -f1 | sort
+
+@@ex 1713 useradd | Creating a user (as root)
+@@level 3
+@@cmds useradd -m -s -G -c, chpasswd, getent
+@@readme
+This script is run **as root**. Create the user `pepe`:
+
+- with home directory (`-m`), shell `/bin/bash`
+- full name (GECOS) `Pepe Perez`
+- supplementary group `devs`
+- password `lab` (`echo 'pepe:lab' | chpasswd`)
+
+Then print `getent passwd pepe` and `id -Gn pepe`.
+(`adduser` is the interactive Debian wrapper; in scripts use `useradd`.)
+@@check
+SEEDS=1
+RUN_AS_ROOT=1
+setup() { sudo userdel -r pepe >/dev/null 2>&1; true; }
+extra_check() { sudo grep -q '^pepe:\$' /etc/shadow || fail "pepe has no password set"; [[ -d /home/pepe ]] || fail "/home/pepe was not created"; }
+@@solution
+#!/bin/bash
+useradd -m -s /bin/bash -c "Pepe Perez" -G devs pepe
+echo 'pepe:lab' | chpasswd
+getent passwd pepe
+id -Gn pepe
+
+@@ex 1714 groups_admin | Creating groups and adding members (as root)
+@@level 3
+@@cmds groupadd, usermod -aG, gpasswd -d, getent group
+@@readme
+Run **as root**:
+
+1. create the group `auditores`
+2. add `luke` and `sally` to it **without removing** their other groups (`usermod -aG`)
+3. remove `sally` from it again (`gpasswd -d`)
+4. print `getent group auditores` and `id -Gn luke`
+@@check
+SEEDS=1
+RUN_AS_ROOT=1
+setup() { sudo groupdel auditores >/dev/null 2>&1; true; }
+filter() { grep -v '^Removing user'; }
+@@solution
+#!/bin/bash
+groupadd auditores
+usermod -aG auditores luke
+usermod -aG auditores sally
+gpasswd -d sally auditores > /dev/null
+getent group auditores
+id -Gn luke
+
+@@ex 1715 passwd_lock | Locking accounts (as root)
+@@level 3
+@@cmds passwd -l, passwd -u, passwd -S, passwd -e
+@@readme
+Run **as root**:
+
+1. lock the account `rmartin` (`passwd -l`) and print the **second** field of `passwd -S rmartin`
+   (`L` = locked, `P` = usable password)
+2. unlock it and print the field again
+3. force `rmartin` to change the password at next login (`passwd -e`) and print the **third**
+   field of `passwd -S rmartin` (the date of the last change: `01/01/1970` means "must change")
+@@check
+SEEDS=1
+RUN_AS_ROOT=1
+setup() { sudo passwd -u rmartin >/dev/null 2>&1; echo 'rmartin:lab' | sudo chpasswd; true; }
+@@solution
+#!/bin/bash
+passwd -l rmartin > /dev/null
+passwd -S rmartin | cut -d' ' -f2
+passwd -u rmartin > /dev/null
+passwd -S rmartin | cut -d' ' -f2
+passwd -e rmartin > /dev/null
+passwd -S rmartin | cut -d' ' -f3
+
+@@ex 1716 su_sudo_u | Running commands as another user
+@@level 2
+@@cmds sudo -u, su -c
+@@readme
+Print:
+
+1. the result of `whoami` run **as luke** (`sudo -u luke whoami`)
+2. the primary group name of `sally`, obtained by running `id -gn` **as sally**
+3. the home directory seen by a **login** shell of `rod`: `sudo -i -u rod pwd` (the `-i` loads the
+   user's environment, like `su -`)
+4. the result of `sudo whoami`
+@@check
+SEEDS=1
+extra_check() { must_use sudo; }
+@@solution
+#!/bin/bash
+sudo -u luke whoami
+sudo -u sally id -gn
+sudo -i -u rod pwd
+sudo whoami
+
+@@ex 1717 crontab | Scheduling ipLog.sh with cron
+@@level 3
+@@cmds crontab -l, crontab -, cron syntax
+@@readme
+We want to run `ipLog.sh` **every 4 hours**, saving the results in a log. Install, for your
+user, a crontab entry that:
+
+- runs `ipLog.sh` located in your home directory (write the **absolute** path: the value of `$HOME`)
+- every 4 hours, at minute 0 (00:00, 04:00, 08:00...)
+- **appends** both stdout and stderr to `ipLog.log` in your home
+
+Your current crontab already contains other entries (the checker adds one): **keep them**.
+Hint: `(crontab -l; echo "0 */4 * * * ...") | crontab -`
+
+Nothing needs to be printed. (Writing to `/var/log/ipLog.log` instead would require root.)
+@@check
+SEEDS=1
+COMPARE="exit"
+setup() { printf '@reboot echo lab-%s >> /tmp/reboot.log\n' "$(word)" | crontab -; }
+capture() { crontab -l 2>&1 | grep -c '^@reboot echo lab-'; }
+extra_check() {
+  local line m h dom mon dow cmd hours=()
+  line=$(crontab -l 2>/dev/null | grep ipLog.sh | head -1)
+  [[ -n $line ]] || { fail "no crontab line running ipLog.sh"; return; }
+  read -r m h dom mon dow cmd <<< "$line"
+  [[ $m == 0 ]] || fail "minute field should be 0 (got '$m')"
+  [[ $dom == '*' && $mon == '*' && $dow == '*' ]] || fail "day/month/weekday fields should be *"
+  case $h in
+    '*/4'|'0-23/4'|'0,4,8,12,16,20') ;;
+    *) fail "hour field '$h' does not mean every 4 hours starting at 0" ;;
+  esac
+  [[ $cmd == "$H/ipLog.sh"* || $cmd == *" $H/ipLog.sh"* ]] || fail "command must use the absolute path $H/ipLog.sh"
+  [[ $cmd == *">> $H/ipLog.log"* || $cmd == *">>$H/ipLog.log"* ]] || fail "output must be appended (>>) to $H/ipLog.log"
+  [[ $cmd == *"2>&1"* ]] || fail "stderr must also go to the log (2>&1)"
+  crontab -r 2>/dev/null
+}
+@@solution
+#!/bin/bash
+(crontab -l 2>/dev/null; echo "0 */4 * * * $HOME/ipLog.sh >> $HOME/ipLog.log 2>&1") | crontab -
+
+@@ex 1718 sudoers | Writing sudoers rules
+@@level 4
+@@cmds /etc/sudoers syntax, visudo -c
+@@readme
+Write (into the file `lab_sudoers` in the current directory) sudoers rules so that:
+
+1. members of the group `devs` can run `/usr/bin/systemctl restart cups` as root **without** password
+2. user `luke` can run `/bin/kill` as root **with** password and `/bin/ls` **without** password
+   (like the classic `ray rushmore` sudoers example, but for `ALL` hosts)
+3. user `jgarcia` can run **any** command as **any** user
+
+Then validate it with `visudo -c -f lab_sudoers` (it prints `lab_sudoers: parsed OK`).
+The checker validates the syntax with `visudo` and then checks each of the three rules.
+@@check
+SEEDS=1
+COMPARE="exit"
+extra_check() {
+  local f=$W/lab_sudoers
+  [[ -f $f ]] || { fail "lab_sudoers not created"; return; }
+  sudo visudo -c -f "$f" >/dev/null 2>&1 || { fail "visudo reports a syntax error"; return; }
+  local c; c=$(sed 's/#.*//' "$f" | tr -s ' \t' ' ')
+  grep -qE '^ ?%devs ALL ?= ?(\(root\) |\(ALL\) )?NOPASSWD: ?/usr/bin/systemctl restart cups ?$' <<< "$c" || fail "rule 1 (devs, systemctl restart cups, NOPASSWD) not found"
+  grep -qE '^ ?luke ALL ?= ?(\(root\) |\(ALL\) )?(PASSWD: ?)?/bin/kill ?, ?NOPASSWD: ?/bin/ls ?$' <<< "$c" || fail "rule 2 (luke: kill with password, ls without) not found"
+  grep -qE '^ ?jgarcia ALL ?= ?\(ALL(:ALL)?\) ALL ?$' <<< "$c" || fail "rule 3 (jgarcia ALL=(ALL) ALL) not found"
+}
+@@solution
+#!/bin/bash
+cat > lab_sudoers << 'EOF'
+%devs ALL=(root) NOPASSWD: /usr/bin/systemctl restart cups
+luke ALL=(root) PASSWD: /bin/kill, NOPASSWD: /bin/ls
+jgarcia ALL=(ALL:ALL) ALL
+EOF
+visudo -c -f lab_sudoers

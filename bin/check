@@ -1,0 +1,24 @@
+#!/bin/bash
+# check <id>            check one exercise (e.g. check 0703)
+# check <NN>            check every attempted exercise of topic NN (e.g. check 07)
+# check all             check every attempted exercise and show progress
+source "$(dirname "$(readlink -f "$0")")/../lib/engine.sh"
+[[ -n ${1:-} ]] || { sed -n '2,4s/^# //p' "$0"; exit 2; }
+
+run_many() { # dirs...
+  local d id pass=0 fail=0 skip=0 rc
+  for d in "$@"; do
+    id=$(ex_id "$d")
+    load_spec "$d"; local a=$d/answer.sh; [[ $TYPE == quiz ]] && a=$d/answer.txt
+    if ! attempted "$a"; then skip=$((skip+1)); continue; fi
+    check_one "$id"; rc=$?
+    (( rc == 0 )) && pass=$((pass+1)) || fail=$((fail+1))
+  done
+  echo; echo "${B}passed $pass${N}, failed $fail, not attempted $skip  (of $#)"
+}
+
+case $1 in
+  all)  mapfile -t ds < <(all_ex); run_many "${ds[@]}"; echo; "$LAB/bin/progress" ;;
+  [0-9][0-9]) mapfile -t ds < <(printf '%s\n' "$LAB"/exercises/"$1"_*/[0-9]*_*); run_many "${ds[@]}" ;;
+  *)    check_one "$@" ;;
+esac

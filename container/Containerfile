@@ -1,0 +1,25 @@
+# Ubuntu lab (user "alumno", password "lab").
+FROM docker.io/library/ubuntu:24.04
+
+ENV DEBIAN_FRONTEND=noninteractive TZ=Europe/Madrid LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8
+
+# Restore man/info/docs that the minimal Docker image strips out.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends unminimize \
+ && yes | unminimize \
+ && apt-get install -y --no-install-recommends \
+      man-db manpages manpages-dev manpages-posix manpages-es info \
+      bash-completion coreutils findutils grep sed gawk diffutils \
+      tar gzip bzip2 xz-utils ncompress zip unzip \
+      tree bc wamerican file less nano vim-tiny \
+      procps psmisc util-linux passwd sudo cron \
+      locales tzdata ncal time iproute2 iputils-ping ca-certificates \
+ && sed -i 's/^# *\(en_US.UTF-8\)/\1/; s/^# *\(es_ES.UTF-8\)/\1/' /etc/locale.gen \
+ && locale-gen \
+ && mandb -q \
+ && rm -rf /var/lib/apt/lists/*
+
+COPY setup/ /opt/lab-setup/
+RUN bash /opt/lab-setup/build.sh
+
+ENTRYPOINT ["/usr/local/sbin/lab-init"]
