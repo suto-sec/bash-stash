@@ -49,3 +49,24 @@ chown alumno:alumno /home/alumno/.bashrc
 install -m 755 "$S/lab-init" /usr/local/sbin/lab-init
 # lab commands (the lab folder is bind-mounted at runtime)
 for c in check play next progress; do ln -s "/home/alumno/lab/bin/$c" "/usr/local/bin/$c"; done
+
+# ---------- VS Code in the browser (code-server): plain, no extensions ----------
+CS=/home/alumno/.local/share/code-server/User
+mkdir -p "$CS"
+cat > "$CS/settings.json" <<'JSON'
+{
+  "workbench.colorTheme": "Default Dark Modern",
+  "workbench.startupEditor": "none",
+  "workbench.tips.enabled": false,
+  "telemetry.telemetryLevel": "off",
+  "security.workspace.trust.enabled": false,
+  "extensions.ignoreRecommendations": true,
+  "update.mode": "none",
+  "terminal.integrated.defaultProfile.linux": "bash",
+  "chat.disableAIFeatures": true,
+  "chat.commandCenter.enabled": false,
+  "workbench.secondarySideBar.defaultVisibility": "hidden"
+}
+JSON
+touch /home/alumno/.sudo_as_admin_successful   # no "To run a command as administrator" hint
+chown -R alumno:alumno /home/alumno/.local /home/alumno/.sudo_as_admin_successful

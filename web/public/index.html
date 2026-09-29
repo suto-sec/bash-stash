@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>bash stash</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' rx='3' fill='%23121417'/><text x='2' y='12' font-size='10' font-family='monospace' fill='%233fb950'>$_</text></svg>">
+  <link rel="stylesheet" href="/vendor/xterm.css">
+  <link rel="stylesheet" href="/style.css">
+  <script>
+    // apply the saved theme before first paint
+    try { const t = localStorage.getItem('theme'); if (t) document.documentElement.dataset.theme = t; } catch {}
+  </script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><span class="prompt">$_</span> bash stash</div>
+    <div class="overall" title="exercises passed">
+      <div class="bar"><div id="overall-fill"></div></div>
+      <span id="overall-text">0/0</span>
+    </div>
+    <div class="spacer"></div>
+    <button id="theme-btn" class="icon-btn" title="Switch light/dark theme" aria-label="Switch theme"></button>
+  </header>
+
+  <div class="layout">
+    <aside class="sidebar">
+      <input id="search" type="search" placeholder="Search id, title or command…" autocomplete="off">
+      <div class="filters">
+        <label><input type="checkbox" id="hide-passed"> hide passed</label>
+      </div>
+      <nav id="topics" aria-label="Exercises"></nav>
+    </aside>
+
+    <main class="main">
+      <section class="statement" id="statement-pane">
+        <div class="ex-head">
+          <div>
+            <div class="ex-topic" id="ex-topic"></div>
+            <h1 id="ex-title">Loading…</h1>
+            <div class="ex-meta"><span id="ex-level" class="stars"></span><span id="ex-cmds"></span></div>
+          </div>
+          <span id="ex-status" class="badge"></span>
+        </div>
+        <div class="actions">
+          <button id="check-btn" class="primary" title="Ctrl+Enter">▶ Check</button>
+          <button id="solution-btn">Show solution</button>
+          <button id="prev-btn" title="Previous exercise">◀</button>
+          <button id="next-btn" title="Next exercise">▶▶</button>
+          <span class="hint" id="answer-path"></span>
+        </div>
+        <div id="result" class="result hidden" aria-live="polite">
+          <div class="result-head"><span id="result-title">Result</span><button id="result-close" class="icon-btn" aria-label="Close">✕</button></div>
+          <pre id="result-body"></pre>
+        </div>
+        <article id="readme" class="readme"></article>
+      </section>
+
+      <div class="splitter" id="splitter" role="separator" aria-orientation="vertical" tabindex="0" title="Drag to resize"></div>
+
+      <section class="workspace" id="workspace">
+        <div class="ws-tabs" role="tablist">
+          <button role="tab" id="tab-term" class="tab active" aria-selected="true">Terminal</button>
+          <button role="tab" id="tab-code" class="tab" aria-selected="false">VS Code</button>
+          <div class="spacer"></div>
+          <button id="cd-btn" class="small" title="cd into the current exercise's folder">cd here</button>
+          <button id="edit-btn" class="small" title="Open answer in nano">nano answer</button>
+          <button id="restart-btn" class="small" title="Start a new terminal session">new session</button>
+          <button id="vsc-reload-btn" class="small hidden" title="Reload VS Code on this exercise">reload</button>
+        </div>
+        <div class="ws-body">
+          <div id="term" class="pane"></div>
+          <div id="code" class="pane hidden">
+            <div id="code-placeholder" class="placeholder">VS Code opens here (first load takes a few seconds).</div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <dialog id="solution-dialog">
+    <form method="dialog">
+      <div class="dlg-head"><strong id="sol-title">Solution</strong><button class="icon-btn" value="close" aria-label="Close">✕</button></div>
+      <p class="hint" id="sol-file"></p>
+      <pre id="sol-body"></pre>
+    </form>
+  </dialog>
+
+  <dialog id="confirm-dialog">
+    <form method="dialog">
+      <p><strong>You haven't solved this exercise yet.</strong></p>
+      <p>Seeing the solution now takes away the practice. The exercise will be marked as
+         <em>solution viewed</em> until you pass it.</p>
+      <div class="dlg-actions">
+        <button value="cancel" class="primary">Keep trying</button>
+        <button value="ok">Show it anyway</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="/vendor/xterm.js"></script>
+  <script src="/vendor/addon-fit.js"></script>
+  <script src="/vendor/marked.js"></script>
+  <script src="/app.js"></script>
+</body>
+</html>

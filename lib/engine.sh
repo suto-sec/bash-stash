@@ -31,9 +31,12 @@ SB=$SBROOT/sb
 RES=$SBROOT/res
 PROGRESS=$LAB/.progress
 
-if [[ -t 1 ]]; then R=$'\e[31m' G=$'\e[32m' Y=$'\e[33m' B=$'\e[1m' D=$'\e[2m' N=$'\e[0m'; else R= G= Y= B= D= N=; fi
+if [[ -t 1 || -n ${LAB_COLOR:-} ]]; then R=$'\e[31m' G=$'\e[32m' Y=$'\e[33m' B=$'\e[1m' D=$'\e[2m' N=$'\e[0m'; else R= G= Y= B= D= N=; fi
 
 die() { echo "${R}$*${N}" >&2; exit 2; }
+
+# one checker at a time: the sandbox path is shared (web UI + terminals)
+lab_lock() { mkdir -p "$SBROOT"; exec 9>"$SBROOT.lock"; flock 9; }
 
 # ---------------------------------------------------------------- lookup
 ex_dir() { # id or id prefix -> exercise dir
@@ -151,7 +154,7 @@ run_side() { # side script seed case
   local -a pre=(); [[ -n $RUN_AS_ROOT ]] && pre=(sudo)
   # always interpreted by bash (this is a bash lab), even without a #!/bin/bash line
   ( cd "$SB/work" && umask 022 && "${pre[@]}" env -i "${envv[@]}" timeout -k 1 "$TIMEOUT" \
-      bash "$SB/bin/$SCRIPT_NAME" "${args[@]}" < "$o/stdin" > "$o/out" 2> "$o/err" )
+      bash "$SB/bin/$SCRIPT_NAME" "${args[@]}" < "$o/stdin" > "$o/out" 2> "$o/err" 9>&- )
   echo $? > "$o/code"
   [[ $(<"$o/code") == 124 ]] && echo "(timed out after ${TIMEOUT}s — waiting for input? infinite loop?)" >> "$o/err"
   if declare -F filter >/dev/null; then filter < "$o/out" > "$o/out.f"; else cp "$o/out" "$o/out.f"; fi

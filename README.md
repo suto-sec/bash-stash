@@ -5,7 +5,34 @@ basic system administration, in an Ubuntu container with a classroom-like setup.
 The goal: be able to write an exam-style script like `deploy_bins.sh` (exercise 1801) from scratch, with
 only a terminal, VS Code and `man`.
 
-## Start
+## Requirements
+
+Linux (or WSL) with **podman** (recommended) or **docker**. Nothing else: the Ubuntu image carries
+everything, including VS Code for the browser. The first start builds the image (a few minutes).
+
+## Start: web UI
+
+```bash
+./lab web        # starts the lab and opens http://localhost:8080
+```
+
+- **Left:** every topic and exercise with its status (✔ passed, ● in progress, ◉ solution viewed,
+  ○ not started), search, and overall progress.
+- **Middle:** the statement, **Check** (`Ctrl+Enter`) with the checker's diff when something is
+  wrong, and **Show solution** (asks for confirmation if you haven't passed the exercise yet; the
+  exercise is then marked *solution viewed* until you pass it).
+- **Right:** your workspace, switchable at any time between
+  - **Terminal**: a real bash shell in the lab, opened in the exercise folder (buttons: `cd here`,
+    `nano answer`, new session), exactly like an exam without a GUI;
+  - **VS Code**: plain VS Code in the browser (no extensions, AI chat disabled), opened on the
+    exercise folder with `answer.sh`, with its own integrated terminal.
+
+  Both edit the same files, so you can switch whenever you like.
+- ☀/☾ switches the light/dark theme of the site, the terminal and VS Code.
+
+The web UI only listens on `127.0.0.1` and only accepts requests from pages served by itself.
+
+## Start: command line
 
 ```bash
 ./lab            # opens a shell in the Ubuntu lab as alumno (builds/starts the container if needed)
@@ -25,17 +52,17 @@ Inside the lab (you land in `~/lab`, which is this folder, shared with your mach
 
 From your own terminal you can also run any of them without entering: `./lab check 0703`.
 Other host commands: `./lab root` (root shell), `./lab reset` (throw the container away; your files
-are safe), `./lab build` (rebuild the image).
+are safe), `./lab build` (rebuild the image). The web UI and the command line share the same
+answers and progress.
 
 ## Workflow
 
-1. Open this folder in VS Code.
-2. Read `exercises/<topic>/<id>_<name>/README.md`.
-3. Write your solution in the `answer.sh` next to it (quizzes: `answer.txt`).
-4. `check <id>` in the lab terminal. On failure you get a diff (expected vs yours), the failing
-   arguments and the fixture seed to reproduce it with `play <id> <seed>`.
-5. Only after passing (or being truly stuck), compare with `solutions/<topic>/<id>_<name>.sh`:
-   they are written to be the clean/idiomatic version.
+1. Open an exercise (web UI, or `exercises/<topic>/<id>_<name>/README.md`).
+2. Write your solution in its `answer.sh` (quizzes: `answer.txt`).
+3. Check it. On failure you get a diff (expected vs yours), the failing arguments and the fixture
+   seed to reproduce it with `play <id> <seed>`.
+4. Only after passing (or being truly stuck), compare with the solution
+   (`solutions/<topic>/<id>_<name>.sh`): they are written to be the clean/idiomatic version.
 
 ## Topics (in study order)
 
@@ -90,7 +117,8 @@ Progress is stored in `.progress/` (delete it to start over).
   `tools/build.sh` regenerates `exercises/` and `solutions/` (never overwrites your answers).
 - `lib/engine.sh` — the checker (spec format documented at the top).
 - `tools/validate.sh [ids]` (inside the lab) — proves every reference passes and an empty answer fails.
-- `container/` — image definition (users, fake logs, sessions).
+- `container/` — image definition (users, fake logs, sessions, code-server).
+- `web/` — web UI: `server.js` (Node: API, terminal over websocket, proxy to code-server) and `public/`.
 
 ## License
 

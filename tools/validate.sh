@@ -4,6 +4,7 @@
 #   2) a do-nothing answer must fail
 # usage: tools/validate.sh [id-prefix...]
 source "$(dirname "$(readlink -f "$0")")/../lib/engine.sh"
+lab_lock
 tmp=$(mktemp -d); printf '#!/bin/bash\ntrue\n' > "$tmp/noop.sh"; printf '1: x\n' > "$tmp/noop.txt"
 bad=0 n=0
 pats=("$@"); [[ ${#pats[@]} -eq 0 ]] && pats=("")
