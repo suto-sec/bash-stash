@@ -1,5 +1,6 @@
 #!/bin/bash
 # play <id> [seed]   build the exercise's test fixture in ~/play/<id> to experiment by hand
 source "$(dirname "$(readlink -f "$0")")/../lib/engine.sh"
+lab_lock
 [[ -n ${1:-} ]] || { sed -n '2p' "$0" | sed 's/^# //'; exit 2; }
 play "$@"

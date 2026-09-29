@@ -1,4 +1,5 @@
 # Ubuntu lab (user "alumno", password "lab").
+# Build context: the repository root (see ./lab build).
 FROM docker.io/library/ubuntu:24.04
 
 ENV DEBIAN_FRONTEND=noninteractive TZ=Europe/Madrid LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8
@@ -19,7 +20,18 @@ RUN apt-get update \
  && mandb -q \
  && rm -rf /var/lib/apt/lists/*
 
-COPY setup/ /opt/lab-setup/
+# Web UI: Node.js server (+ node-pty for the terminal) and code-server (VS Code in the browser,
+# no extensions installed).
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends nodejs npm curl build-essential python3 \
+ && curl -fsSL https://code-server.dev/install.sh | sh \
+ && rm -rf /var/lib/apt/lists/*
+COPY web/package.json /opt/web/package.json
+RUN cd /opt/web && npm install --omit=dev --no-audit --no-fund \
+ && apt-get purge -y build-essential && apt-get autoremove -y
+
+COPY container/setup/ /opt/lab-setup/
 RUN bash /opt/lab-setup/build.sh
 
+EXPOSE 8080
 ENTRYPOINT ["/usr/local/sbin/lab-init"]
