@@ -102,9 +102,18 @@ button:disabled { opacity: .5; cursor: default; }
 
 .main { flex: 1; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
 .main-content { flex: 1; display: grid; min-width: 0; min-height: 0; }
-.statement {
-  min-width: 240px; min-height: 0; overflow-y: auto; padding: 16px 22px 40px; background: var(--bg);
+.cpanel { display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--panel); }
+.cpanel-head {
+  display: none; align-items: center; gap: 8px; padding: 5px 12px; font-size: 12px; font-weight: 600;
+  color: var(--muted); background: var(--panel-2); border-bottom: 1px solid var(--border);
+  flex: none; cursor: grab; user-select: none;
 }
+.cpanel-head:active { cursor: grabbing; }
+.cpanel-head .drag-handle { font-size: 13px; letter-spacing: 1px; }
+.statement {
+  flex: 1; min-width: 240px; min-height: 0; overflow-y: auto; padding: 16px 22px 40px; background: var(--bg);
+}
+#cpanel-term, #cpanel-code, #term, #code { flex: 1; min-height: 0; }
 .splitter { background: var(--border); cursor: col-resize; }
 .splitter.splitter-h { cursor: row-resize; }
 .splitter:hover, .splitter.dragging { background: var(--accent); }
@@ -115,9 +124,11 @@ button:disabled { opacity: .5; cursor: default; }
   grid-template-columns: var(--split-a, 44%) 6px 1fr;
   grid-template-areas: "instr vsplit-a work";
 }
-.main[data-layout="default"] .statement { grid-area: instr; }
+.main[data-layout="default"] #cpanel-instr { grid-area: instr; }
 .main[data-layout="default"] #splitter-a { grid-area: vsplit-a; }
 .main[data-layout="default"] #workspace { grid-area: work; }
+.main[data-layout="default"] #ws-body { position: relative; }
+.main[data-layout="default"] #ws-body .cpanel { position: absolute; inset: 0; }
 
 .main[data-layout="sidebyside"] .main-content {
   grid-template-columns: var(--split-a, 33%) 6px var(--split-b, 33%) 6px 1fr;
@@ -125,13 +136,11 @@ button:disabled { opacity: .5; cursor: default; }
 }
 .main[data-layout="sidebyside"] #workspace,
 .main[data-layout="sidebyside"] #ws-body { display: contents; }
-.main[data-layout="sidebyside"] .statement { grid-area: instr; }
+.main[data-layout="sidebyside"] #cpanel-instr { grid-area: instr; }
 .main[data-layout="sidebyside"] #splitter-a { grid-area: vsplit-a; }
 .main[data-layout="sidebyside"] #splitter-b { grid-area: vsplit-b; }
-.main[data-layout="sidebyside"] #term,
-.main[data-layout="sidebyside"] #code { position: static; min-width: 0; height: auto; background: var(--panel); }
-.main[data-layout="sidebyside"] #term { grid-area: term; }
-.main[data-layout="sidebyside"] #code { grid-area: code; }
+.main[data-layout="sidebyside"] #cpanel-term { grid-area: term; }
+.main[data-layout="sidebyside"] #cpanel-code { grid-area: code; }
 
 .main[data-layout="leftstack"] .main-content {
   grid-template-columns: var(--split-a, 50%) 6px 1fr;
@@ -145,14 +154,26 @@ button:disabled { opacity: .5; cursor: default; }
 }
 .main[data-layout="leftstack"] #workspace, .main[data-layout="leftstack"] #ws-body,
 .main[data-layout="vscodeleft"] #workspace, .main[data-layout="vscodeleft"] #ws-body { display: contents; }
-.main[data-layout="leftstack"] .statement, .main[data-layout="vscodeleft"] .statement { grid-area: instr; }
+.main[data-layout="leftstack"] #cpanel-instr, .main[data-layout="vscodeleft"] #cpanel-instr { grid-area: instr; }
 .main[data-layout="leftstack"] #splitter-a, .main[data-layout="vscodeleft"] #splitter-a { grid-area: vsplit-a; }
 .main[data-layout="leftstack"] #splitter-b, .main[data-layout="vscodeleft"] #splitter-b { grid-area: hsplit-b; }
-.main[data-layout="leftstack"] #term, .main[data-layout="vscodeleft"] #term {
-  grid-area: term; position: static; min-width: 0; height: auto; background: var(--panel); border-top: 1px solid var(--border);
+.main[data-layout="leftstack"] #cpanel-term, .main[data-layout="vscodeleft"] #cpanel-term {
+  grid-area: term; border-top: 1px solid var(--border);
 }
-.main[data-layout="leftstack"] #code, .main[data-layout="vscodeleft"] #code {
-  grid-area: code; position: static; min-width: 0; height: auto;
+.main[data-layout="leftstack"] #cpanel-code, .main[data-layout="vscodeleft"] #cpanel-code { grid-area: code; }
+
+/* ---------- custom layout: freeform drag-to-dock ---------- */
+.main[data-layout="custom"] .main-content { display: block; position: relative; }
+.main[data-layout="custom"] #workspace,
+.main[data-layout="custom"] #ws-body { display: contents; }
+.main[data-layout="custom"] .cpanel { position: absolute; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+.main[data-layout="custom"] .cpanel-head { display: flex; }
+.main[data-layout="custom"] #splitter-a,
+.main[data-layout="custom"] #splitter-b { position: absolute; z-index: 2; }
+.cpanel.drop-target { border-color: var(--accent); }
+#drop-hint {
+  position: absolute; z-index: 41; background: color-mix(in srgb, var(--accent) 30%, transparent);
+  border: 2px solid var(--accent); border-radius: 4px; pointer-events: none; display: none;
 }
 
 /* ---------- statement ---------- */
@@ -190,8 +211,7 @@ button:disabled { opacity: .5; cursor: default; }
 .tab { border-bottom-left-radius: 0; border-bottom-right-radius: 0; border-bottom: none; background: transparent; color: var(--muted); }
 .tab.active { background: var(--panel-2); color: var(--text); border-color: var(--border); }
 .ws-tabs .small { margin-bottom: 4px; }
-.ws-body { flex: 1; position: relative; min-height: 0; }
-.pane { position: absolute; inset: 0; }
+.ws-body { flex: 1; min-height: 0; }
 #term { padding: 6px 0 0 8px; background: var(--code-bg); }
 #code iframe { width: 100%; height: 100%; border: 0; display: block; }
 .placeholder { display: grid; place-items: center; height: 100%; color: var(--muted); }
@@ -208,17 +228,15 @@ dialog::backdrop { background: rgba(0,0,0,.5); }
 #info-dialog { width: 520px; }
 
 /* ---------- sidebar collapse ---------- */
-.layout { position: relative; }
 .sidebar { transition: width .15s, min-width .15s, padding .15s; }
 .sidebar-toggle {
-  position: absolute; top: 12px; left: 276px; z-index: 5; width: 28px; height: 28px; padding: 0;
-  border-radius: 50%; display: grid; place-items: center; font-size: 15px; line-height: 1;
-  background: var(--panel); box-shadow: 0 1px 4px rgba(0,0,0,.25); transition: left .15s;
+  flex: none; width: 34px; align-self: stretch; padding: 0; margin: 0; border: none;
+  border-right: 1px solid var(--border); border-radius: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--panel); color: var(--muted); font-size: 22px; line-height: 1; cursor: pointer;
 }
+.sidebar-toggle:hover { background: var(--panel-2); color: var(--text); border-color: var(--muted); }
 .layout.sidebar-collapsed .sidebar { width: 0; min-width: 0; padding: 0; border: none; overflow: hidden; }
-.layout.sidebar-collapsed .sidebar-toggle { left: 10px; }
-.layout.sidebar-collapsed .statement { padding-left: 46px; }
-.layout.sidebar-collapsed #ws-tabs { padding-left: 46px; }
 .sidebar-toggle .arrow { display: inline-block; transition: transform .15s; }
 .layout.sidebar-collapsed .sidebar-toggle .arrow { transform: rotate(180deg); }
 
@@ -251,6 +269,13 @@ dialog::backdrop { background: rgba(0,0,0,.5); }
 .lm-hint { font-size: 11px; color: var(--muted); white-space: normal; }
 .lm-check { margin-left: auto; flex: none; color: var(--accent); visibility: hidden; }
 .layout-menu-item.current .lm-check { visibility: visible; }
+.layout-menu-label {
+  padding: 6px 8px 4px; font-size: 10.5px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .6px; color: var(--muted);
+}
+.layout-menu-sep { height: 1px; background: var(--border); margin: 4px 4px; }
+.lm-icon-custom rect { fill: none; stroke: var(--muted); stroke-width: 1.5; stroke-dasharray: 3 2; }
+.layout-menu-item.current .lm-icon-custom rect { stroke: var(--accent); }
 .reference-page {
   position: fixed; inset: 0; z-index: 20; background: var(--bg); display: flex; flex-direction: column;
 }
@@ -337,9 +362,10 @@ dialog::backdrop { background: rgba(0,0,0,.5); }
 
 @media (max-width: 900px) {
   .sidebar { width: 220px; }
-  .sidebar-toggle { left: 212px; }
-  .main-content { display: flex !important; flex-direction: column !important; }
+  .main-content { display: flex !important; flex-direction: column !important; position: static !important; }
   #workspace, #ws-body { display: flex !important; }
+  .cpanel { position: static !important; }
+  .cpanel-head { display: none !important; }
   .statement { flex: none !important; height: 45%; }
   .splitter { display: none !important; }
   .reference-nav { width: 220px; }

@@ -454,6 +454,151 @@ $('#tab-term').onclick = () => setMode('term');
 $('#tab-code').onclick = () => setMode('code');
 $('#vsc-reload-btn').onclick = () => { state.codeFor = null; openVSCode(); };
 
+// ------------------------------------------------------------------ custom layout (freeform drag-to-dock)
+const PANEL_EL = { instr: $('#cpanel-instr'), term: $('#cpanel-term'), code: $('#cpanel-code') };
+let customTree = null;
+let customSplitters = []; // rebuilt by computeRects() every render: [{node, axis, rect, parentRect}, ...]
+
+function defaultCustomTree() {
+  return { dir: 'row', ratio: 44,
+    a: { panel: 'instr' },
+    b: { dir: 'row', ratio: 50, a: { panel: 'term' }, b: { panel: 'code' } } };
+}
+function loadCustomTree() {
+  try {
+    const raw = localStorage.getItem('customLayoutTree');
+    customTree = raw ? JSON.parse(raw) : defaultCustomTree();
+  } catch { customTree = defaultCustomTree(); }
+}
+function saveCustomTree() {
+  try { localStorage.setItem('customLayoutTree', JSON.stringify(customTree)); } catch { /* private mode */ }
+}
+function locateNode(root, pred, parent = null, key = null) {
+  if (pred(root)) return { node: root, parent, key };
+  if (root.panel) return null;
+  return locateNode(root.a, pred, root, 'a') || locateNode(root.b, pred, root, 'b');
+}
+function removeLeaf(root, panelName) {
+  const loc = locateNode(root, n => n.panel === panelName);
+  if (!loc || !loc.parent) return root;
+  const sibling = loc.key === 'a' ? loc.parent.b : loc.parent.a;
+  const parentLoc = locateNode(root, n => n === loc.parent);
+  if (!parentLoc || !parentLoc.parent) return sibling;
+  parentLoc.parent[parentLoc.key] = sibling;
+  return root;
+}
+function insertLeaf(root, targetPanel, draggedPanel, edge) {
+  const loc = locateNode(root, n => n.panel === targetPanel);
+  if (!loc) return root;
+  const dir = (edge === 'left' || edge === 'right') ? 'row' : 'col';
+  const dragged = { panel: draggedPanel };
+  const targetCopy = { ...loc.node };
+  const split = (edge === 'left' || edge === 'top')
+    ? { dir, ratio: 50, a: dragged, b: targetCopy }
+    : { dir, ratio: 50, a: targetCopy, b: dragged };
+  if (!loc.parent) return split;
+  loc.parent[loc.key] = split;
+  return root;
+}
+function swapLeaves(root, nameA, nameB) {
+  const la = locateNode(root, n => n.panel === nameA);
+  const lb = locateNode(root, n => n.panel === nameB);
+  if (la && lb) { la.node.panel = nameB; lb.node.panel = nameA; }
+  return root;
+}
+function computeRects(node, rect, out) {
+  if (node.panel) { out[node.panel] = rect; return; }
+  if (node.dir === 'row') {
+    const wA = rect.w * node.ratio / 100;
+    computeRects(node.a, { x: rect.x, y: rect.y, w: wA, h: rect.h }, out);
+    computeRects(node.b, { x: rect.x + wA, y: rect.y, w: rect.w - wA, h: rect.h }, out);
+    customSplitters.push({ node, axis: 'x', rect: { x: rect.x + wA - 0.5, y: rect.y, w: 1, h: rect.h }, parentRect: rect });
+  } else {
+    const hA = rect.h * node.ratio / 100;
+    computeRects(node.a, { x: rect.x, y: rect.y, w: rect.w, h: hA }, out);
+    computeRects(node.b, { x: rect.x, y: rect.y + hA, w: rect.w, h: rect.h - hA }, out);
+    customSplitters.push({ node, axis: 'y', rect: { x: rect.x, y: rect.y + hA - 0.5, w: rect.w, h: 1 }, parentRect: rect });
+  }
+}
+function applyRectStyle(el, rect) {
+  el.style.left = rect.x + '%'; el.style.top = rect.y + '%';
+  el.style.width = rect.w + '%'; el.style.height = rect.h + '%';
+}
+function renderCustom() {
+  if ($('#main').dataset.layout !== 'custom' || !customTree) return;
+  const out = {};
+  customSplitters = [];
+  computeRects(customTree, { x: 0, y: 0, w: 100, h: 100 }, out);
+  for (const key of ['instr', 'term', 'code']) if (out[key]) applyRectStyle(PANEL_EL[key], out[key]);
+  [$('#splitter-a'), $('#splitter-b')].forEach((el, i) => {
+    const s = customSplitters[i];
+    if (!s) { el.classList.add('hidden'); return; }
+    el.classList.remove('hidden');
+    el.classList.toggle('splitter-h', s.axis === 'y');
+    applyRectStyle(el, s.rect);
+  });
+  saveCustomTree();
+}
+
+function edgeFromPoint(rect, x, y) {
+  const relX = (x - rect.left) / rect.width, relY = (y - rect.top) / rect.height;
+  if (relX > 0.25 && relX < 0.75 && relY > 0.25 && relY < 0.75) return 'center';
+  const d = { left: relX, right: 1 - relX, top: relY, bottom: 1 - relY };
+  return Object.keys(d).reduce((a, b) => (d[a] < d[b] ? a : b));
+}
+function showDropHint(rect, edge) {
+  const hint = $('#drop-hint'), mc = $('#main-content').getBoundingClientRect();
+  let x = rect.left - mc.left, y = rect.top - mc.top, w = rect.width, h = rect.height;
+  if (edge === 'left') w /= 2;
+  else if (edge === 'right') { x += rect.width / 2; w /= 2; }
+  else if (edge === 'top') h /= 2;
+  else if (edge === 'bottom') { y += rect.height / 2; h /= 2; }
+  Object.assign(hint.style, { left: x + 'px', top: y + 'px', width: w + 'px', height: h + 'px', display: 'block' });
+}
+function hideDropHint() { $('#drop-hint').style.display = 'none'; }
+
+function startDockDrag(panelName) {
+  document.querySelectorAll('iframe').forEach(f => f.style.pointerEvents = 'none');
+  document.body.style.cursor = 'grabbing';
+  let target = null, edge = null;
+  const move = mv => {
+    target = null; edge = null;
+    for (const key of ['instr', 'term', 'code']) {
+      if (key === panelName) continue;
+      const r = PANEL_EL[key].getBoundingClientRect();
+      if (mv.clientX >= r.left && mv.clientX <= r.right && mv.clientY >= r.top && mv.clientY <= r.bottom) {
+        target = key; edge = edgeFromPoint(r, mv.clientX, mv.clientY);
+        showDropHint(r, edge);
+        break;
+      }
+    }
+    if (!target) hideDropHint();
+  };
+  const up = () => {
+    document.removeEventListener('pointermove', move);
+    document.removeEventListener('pointerup', up);
+    document.querySelectorAll('iframe').forEach(f => f.style.pointerEvents = '');
+    document.body.style.cursor = '';
+    hideDropHint();
+    if (target && target !== panelName) {
+      if (edge === 'center') customTree = swapLeaves(customTree, panelName, target);
+      else { customTree = removeLeaf(customTree, panelName); customTree = insertLeaf(customTree, target, panelName, edge); }
+      renderCustom();
+      setMode(state.mode);
+      requestAnimationFrame(() => { if (fit) try { fit.fit(); } catch { /* hidden */ } });
+    }
+  };
+  document.addEventListener('pointermove', move);
+  document.addEventListener('pointerup', up);
+}
+for (const key of ['instr', 'term', 'code']) {
+  PANEL_EL[key].querySelector('.cpanel-head').onpointerdown = ev => {
+    if ($('#main').dataset.layout !== 'custom') return;
+    ev.preventDefault();
+    startDockDrag(key);
+  };
+}
+
 // ------------------------------------------------------------------ splitters & panel layouts
 function makeSplitter(el, varKey) {
   el.onpointerdown = ev => {
@@ -463,8 +608,19 @@ function makeSplitter(el, varKey) {
   el.onpointermove = ev => {
     if (!el.classList.contains('dragging')) return;
     const layout = $('#main').dataset.layout;
-    const axis = varKey === 'a' ? 'x' : (layout === 'sidebyside' ? 'x' : 'y');
     const r = $('#main-content').getBoundingClientRect();
+    if (layout === 'custom') {
+      const s = customSplitters[varKey === 'a' ? 0 : 1];
+      if (!s) return;
+      const pr = s.parentRect;
+      const ratio = s.axis === 'x'
+        ? 100 * ((100 * (ev.clientX - r.left) / r.width) - pr.x) / pr.w
+        : 100 * ((100 * (ev.clientY - r.top) / r.height) - pr.y) / pr.h;
+      s.node.ratio = Math.min(85, Math.max(15, ratio));
+      renderCustom();
+      return;
+    }
+    const axis = varKey === 'a' ? 'x' : (layout === 'sidebyside' ? 'x' : 'y');
     const pct = axis === 'x'
       ? Math.min(80, Math.max(15, 100 * (ev.clientX - r.left) / r.width))
       : Math.min(80, Math.max(15, 100 * (ev.clientY - r.top) / r.height));
@@ -474,7 +630,9 @@ function makeSplitter(el, varKey) {
     el.classList.remove('dragging');
     document.querySelectorAll('iframe').forEach(f => f.style.pointerEvents = '');
     const layout = $('#main').dataset.layout;
-    try { localStorage.setItem(`split_${layout}_${varKey}`, $('#main-content').style.getPropertyValue(`--split-${varKey}`)); } catch { /* private mode */ }
+    if (layout !== 'custom') {
+      try { localStorage.setItem(`split_${layout}_${varKey}`, $('#main-content').style.getPropertyValue(`--split-${varKey}`)); } catch { /* private mode */ }
+    }
     if (fit && !$('#term').classList.contains('hidden')) try { fit.fit(); } catch { /* hidden */ }
   };
 }
@@ -488,19 +646,29 @@ const LAYOUT_DEFAULTS = {
   vscodeleft: { a: '50%', b: '45%' },
 };
 function applyLayout(name, opts = {}) {
-  if (!LAYOUT_DEFAULTS[name]) name = 'default';
-  const main = $('#main'), mc = $('#main-content'), d = LAYOUT_DEFAULTS[name];
+  if (!LAYOUT_DEFAULTS[name] && name !== 'custom') name = 'default';
+  const main = $('#main'), mc = $('#main-content');
   main.dataset.layout = name;
   document.querySelectorAll('.layout-menu-item').forEach(b => b.classList.toggle('current', b.dataset.layout === name));
-  $('#splitter-b').classList.toggle('hidden', name === 'default');
-  $('#splitter-b').classList.toggle('splitter-h', name === 'leftstack' || name === 'vscodeleft');
-  let a = d.a, b = d.b;
-  try {
-    a = localStorage.getItem(`split_${name}_a`) || d.a;
-    if (d.b) b = localStorage.getItem(`split_${name}_b`) || d.b;
-  } catch { /* private mode */ }
-  mc.style.setProperty('--split-a', a);
-  if (b) mc.style.setProperty('--split-b', b);
+  if (name === 'custom') {
+    if (!customTree) loadCustomTree();
+    renderCustom();
+  } else {
+    for (const el of [PANEL_EL.instr, PANEL_EL.term, PANEL_EL.code, $('#splitter-a'), $('#splitter-b')]) {
+      el.style.left = el.style.top = el.style.width = el.style.height = '';
+    }
+    $('#splitter-a').classList.remove('hidden', 'splitter-h');
+    $('#splitter-b').classList.toggle('hidden', name === 'default');
+    $('#splitter-b').classList.toggle('splitter-h', name === 'leftstack' || name === 'vscodeleft');
+    const d = LAYOUT_DEFAULTS[name];
+    let a = d.a, b = d.b;
+    try {
+      a = localStorage.getItem(`split_${name}_a`) || d.a;
+      if (d.b) b = localStorage.getItem(`split_${name}_b`) || d.b;
+    } catch { /* private mode */ }
+    mc.style.setProperty('--split-a', a);
+    if (b) mc.style.setProperty('--split-b', b);
+  }
   setMode(state.mode);
   if (opts.persist !== false) { try { localStorage.setItem('workLayout', name); } catch { /* private mode */ } }
   $('#layout-menu').classList.add('hidden');

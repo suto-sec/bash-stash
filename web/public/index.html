@@ -24,6 +24,7 @@
     <div class="layout-picker" id="layout-picker">
       <button id="layout-btn" title="Choose how the instructions, terminal and VS Code panels are arranged" aria-haspopup="true" aria-expanded="false">⬚ Layout</button>
       <div class="layout-menu hidden" id="layout-menu" role="menu">
+        <div class="layout-menu-label">Prebuilt</div>
         <button class="layout-menu-item" data-layout="default" role="menuitem">
           <svg class="lm-icon" viewBox="0 0 34 24"><rect x="0" y="0" width="13" height="24" rx="1"/><rect x="15" y="0" width="19" height="5" rx="1" class="dim"/><rect x="15" y="7" width="19" height="17" rx="1"/></svg>
           <span class="lm-text"><span class="lm-title">Default</span><span class="lm-hint">Instructions · Terminal/VS Code tabs</span></span>
@@ -44,13 +45,19 @@
           <span class="lm-text"><span class="lm-title">VS Code / Instructions + Terminal</span><span class="lm-hint">Left: VS Code — right: instructions over terminal</span></span>
           <span class="lm-check">✓</span>
         </button>
+        <div class="layout-menu-sep"></div>
+        <div class="layout-menu-label">Custom</div>
+        <button class="layout-menu-item" data-layout="custom" role="menuitem">
+          <svg class="lm-icon lm-icon-custom" viewBox="0 0 34 24"><rect x="1" y="1" width="12" height="9" rx="1"/><rect x="15" y="1" width="18" height="13" rx="1"/><rect x="1" y="12" width="12" height="11" rx="1"/><rect x="17" y="16" width="16" height="7" rx="1"/></svg>
+          <span class="lm-text"><span class="lm-title">Custom</span><span class="lm-hint">Drag a panel by its header to arrange them yourself</span></span>
+          <span class="lm-check">✓</span>
+        </button>
       </div>
     </div>
     <button id="theme-btn" class="icon-btn" title="Switch light/dark theme" aria-label="Switch theme"></button>
   </header>
 
   <div class="layout">
-    <button id="sidebar-toggle" class="sidebar-toggle" title="Collapse sidebar" aria-label="Collapse sidebar">‹</button>
     <aside class="sidebar" id="sidebar">
       <input id="search" type="search" placeholder="Search id, title or command…" autocomplete="off">
       <div class="filters">
@@ -58,6 +65,8 @@
       </div>
       <nav id="topics" aria-label="Exercises"></nav>
     </aside>
+
+    <button id="sidebar-toggle" class="sidebar-toggle" title="Collapse sidebar" aria-label="Collapse sidebar"><span class="arrow">‹</span></button>
 
     <main class="main" id="main" data-layout="default">
       <div class="ws-tabs" id="ws-tabs" role="tablist">
@@ -71,42 +80,52 @@
       </div>
 
       <div class="main-content" id="main-content">
-        <section class="statement" id="statement-pane">
-          <div class="ex-head">
-            <div>
-              <div class="ex-topic" id="ex-topic"></div>
-              <h1 id="ex-title">Loading…</h1>
-              <div class="ex-meta"><span id="ex-level" class="stars"></span><span id="ex-cmds"></span></div>
+        <div class="cpanel" id="cpanel-instr" data-panel="instr">
+          <div class="cpanel-head"><span class="drag-handle">⠿</span> Instructions</div>
+          <section class="statement" id="statement-pane">
+            <div class="ex-head">
+              <div>
+                <div class="ex-topic" id="ex-topic"></div>
+                <h1 id="ex-title">Loading…</h1>
+                <div class="ex-meta"><span id="ex-level" class="stars"></span><span id="ex-cmds"></span></div>
+              </div>
+              <span id="ex-status" class="badge"></span>
             </div>
-            <span id="ex-status" class="badge"></span>
-          </div>
-          <div class="actions">
-            <button id="check-btn" class="primary" title="Ctrl+Enter">▶ Check</button>
-            <button id="info-btn" title="What the commands used in this exercise do, in general">ℹ Info</button>
-            <button id="solution-btn">Show solution</button>
-            <button id="prev-btn" title="Previous exercise">◀</button>
-            <button id="next-btn" title="Next exercise">▶▶</button>
-            <span class="hint" id="answer-path"></span>
-          </div>
-          <div id="result" class="result hidden" aria-live="polite">
-            <div class="result-head"><span id="result-title">Result</span><button id="result-close" class="icon-btn" aria-label="Close">✕</button></div>
-            <pre id="result-body"></pre>
-          </div>
-          <article id="readme" class="readme"></article>
-        </section>
+            <div class="actions">
+              <button id="check-btn" class="primary" title="Ctrl+Enter">▶ Check</button>
+              <button id="info-btn" title="What the commands used in this exercise do, in general">ℹ Info</button>
+              <button id="solution-btn">Show solution</button>
+              <button id="prev-btn" title="Previous exercise">◀</button>
+              <button id="next-btn" title="Next exercise">▶▶</button>
+              <span class="hint" id="answer-path"></span>
+            </div>
+            <div id="result" class="result hidden" aria-live="polite">
+              <div class="result-head"><span id="result-title">Result</span><button id="result-close" class="icon-btn" aria-label="Close">✕</button></div>
+              <pre id="result-body"></pre>
+            </div>
+            <article id="readme" class="readme"></article>
+          </section>
+        </div>
 
         <div class="splitter splitter-v" id="splitter-a" role="separator" aria-orientation="vertical" tabindex="0" title="Drag to resize"></div>
 
         <section class="workspace" id="workspace">
           <div class="ws-body" id="ws-body">
-            <div id="term" class="pane"></div>
-            <div id="code" class="pane hidden">
-              <div id="code-placeholder" class="placeholder">VS Code opens here (first load takes a few seconds).</div>
+            <div class="cpanel" id="cpanel-term" data-panel="term">
+              <div class="cpanel-head"><span class="drag-handle">⠿</span> Terminal</div>
+              <div id="term"></div>
+            </div>
+            <div class="cpanel" id="cpanel-code" data-panel="code">
+              <div class="cpanel-head"><span class="drag-handle">⠿</span> VS Code</div>
+              <div id="code" class="hidden">
+                <div id="code-placeholder" class="placeholder">VS Code opens here (first load takes a few seconds).</div>
+              </div>
             </div>
           </div>
         </section>
 
         <div class="splitter hidden" id="splitter-b" role="separator" aria-orientation="vertical" tabindex="0" title="Drag to resize"></div>
+        <div id="drop-hint"></div>
       </div>
     </main>
   </div>
