@@ -181,22 +181,46 @@ document.addEventListener('keydown', ev => {
 
 // ------------------------------------------------------------------ solution
 // ------------------------------------------------------------------ info & reference (glossary)
-function glossaryHTML(entries) {
+function glossaryHTML(entries, linkify) {
   const known = entries.filter(e => e.desc);
   if (!known.length) return '<p class="hint">No commands with a write-up yet for this one.</p>';
-  return known.map(e => `<div class="gl-item"><code>${esc(e.name)}</code><p>${esc(e.desc)}</p></div>`).join('');
+  return known.map(e => `<div class="gl-item"><code>${linkify
+    ? `<a href="#" data-goto-cmd="${esc(e.key)}">${esc(e.name)}</a>` : esc(e.name)}</code><p>${esc(e.desc)}</p></div>`).join('');
+}
+
+// The single-command focused view: same name+description, plus a usage line, an options table and
+// worked examples when the glossary entry has them (older/rarer entries fall back gracefully).
+function focusedGlossaryHTML(e) {
+  let html = `<code>${esc(e.name)}</code><p>${esc(e.desc)}</p>`;
+  if (e.usage) html += `<div class="gl-usage">${esc(e.usage)}</div>`;
+  if (e.options && e.options.length) {
+    html += `<h4>Options</h4><div class="gl-opts">${e.options.map(o =>
+      `<div class="opt"><code>${esc(o.flag)}</code><span>${esc(o.desc)}</span></div>`).join('')}</div>`;
+  }
+  if (e.examples && e.examples.length) {
+    html += `<h4>Examples</h4><div class="gl-examples">${e.examples.map(x =>
+      `<div class="ex"><code>${esc(x.cmd)}</code><span>${esc(x.desc)}</span></div>`).join('')}</div>`;
+  }
+  return html;
 }
 $('#info-btn').onclick = () => {
   if (!state.current) return;
   $('#info-title').textContent = `Commands used in ${state.current.id}`;
-  $('#info-body').innerHTML = glossaryHTML(explainCmds(state.current.cmds));
+  $('#info-body').innerHTML = glossaryHTML(explainCmds(state.current.cmds), true);
   $('#info-dialog').showModal();
 };
+$('#info-body').addEventListener('click', ev => {
+  const el = ev.target.closest('[data-goto-cmd]');
+  if (!el) return;
+  $('#info-dialog').close();
+  location.hash = `#/reference/cmd/${encodeURIComponent(el.dataset.gotoCmd)}`;
+});
 
-// An index of every topic's distinct commands, plus which topics each command appears in
-// (so a focused command view can link back to its other categories).
-let refTopics = null;      // [{id, title, cmds: [{key,name,desc}, ...]}]
-let refCmdTopics = null;   // key -> [{id, title}]
+// An index of every topic's distinct commands, and every exercise each command appears in (so a
+// focused command view can both link back to its categories and show per-exercise progress there,
+// the same way the exercise sidebar does for a whole topic).
+let refTopics = null;       // [{id, title, cmds: [{key,name,desc}, ...]}]
+let refCmdExercises = null; // key -> [{id, title, topicId, topicTitle}]
 let refSel = { type: 'all' }; // {type:'all'} | {type:'topic', id} | {type:'cmd', key}
 
 function buildReferenceIndex() {
@@ -205,10 +229,11 @@ function buildReferenceIndex() {
     for (const e of t.exercises) for (const c of explainCmds(e.cmds)) if (c.desc && !cmds.has(c.key)) cmds.set(c.key, c);
     return { id: t.id, title: t.title, cmds: [...cmds.values()].sort((a, b) => a.name.localeCompare(b.name)) };
   });
-  refCmdTopics = new Map();
-  for (const t of refTopics) for (const c of t.cmds) {
-    if (!refCmdTopics.has(c.key)) refCmdTopics.set(c.key, []);
-    refCmdTopics.get(c.key).push({ id: t.id, title: t.title });
+  refCmdExercises = new Map();
+  for (const t of state.index) for (const e of t.exercises) for (const c of explainCmds(e.cmds)) {
+    if (!c.desc) continue;
+    if (!refCmdExercises.has(c.key)) refCmdExercises.set(c.key, []);
+    refCmdExercises.get(c.key).push({ id: e.id, title: e.title, topicId: t.id, topicTitle: t.title });
   }
 }
 
@@ -219,17 +244,34 @@ function topicSection(t) {
   </section>`;
 }
 
+// The "used in" list for a focused command: a progress bar + each exercise with the same pass/
+// attempted/viewed/new dot the exercise sidebar uses, freshly read from state.flat every render.
+function usedInHTML(key) {
+  const uses = refCmdExercises.get(key) || [];
+  if (!uses.length) return '';
+  const live = uses.map(u => ({ ...u, ...state.flat.find(e => e.id === u.id) }));
+  const passed = live.filter(e => e.status === 'pass').length;
+  const rows = live.map(e => `<a href="#/ex/${e.id}"><span class="dot ${e.status}">${STATUS[e.status].dot}</span>
+    <span class="ex-id">${e.id}</span> ${esc(e.title)}<span class="ex-topic-label">${esc(e.topicTitle)}</span></a>`).join('');
+  return `<div class="gl-seealso">
+    <div class="gl-seealso-head">
+      <strong>Used in ${live.length} exercise${live.length === 1 ? '' : 's'}</strong>
+      <div class="bar"><div style="width:${100 * passed / live.length}%"></div></div>
+      <span class="t-count">${passed}/${live.length}</span>
+    </div>
+    <div class="gl-ex-list">${rows}</div>
+  </div>`;
+}
+
 function renderReferenceContent() {
   const content = $('#reference-content');
   if (refSel.type === 'topic') {
     const t = refTopics.find(x => x.id === refSel.id);
     content.innerHTML = t ? topicSection(t) : '<p class="ref-empty">Not found.</p>';
   } else if (refSel.type === 'cmd') {
-    const topics = refCmdTopics.get(refSel.key) || [];
-    const entry = topics.length ? refTopics.find(t => t.id === topics[0].id).cmds.find(c => c.key === refSel.key) : null;
-    content.innerHTML = entry ? `<div class="gl-focus">${glossaryHTML([entry])}
-      <div class="gl-seealso">Used in: ${topics.map(t => `<a href="#" data-action="topic" data-id="${esc(t.id)}">${esc(t.id)} · ${esc(t.title)}</a>`).join('')}</div>
-    </div>` : '<p class="ref-empty">Not found.</p>';
+    const entry = refTopics.flatMap(t => t.cmds).find(c => c.key === refSel.key);
+    content.innerHTML = entry ? `<div class="gl-focus">${focusedGlossaryHTML(entry)}${usedInHTML(refSel.key)}</div>`
+      : '<p class="ref-empty">Not found.</p>';
   } else {
     content.innerHTML = refTopics.map(t => topicSection(t)).join('');
   }
@@ -241,7 +283,7 @@ function renderReferenceNav() {
   $('#reference-tree').innerHTML = refTopics.map(t => `
     <div class="ref-nav-topic${refSel.type !== 'all' ? ' open' : ''}" data-topic="${esc(t.id)} ${esc(t.title.toLowerCase())}">
       <button class="ref-nav-topic-head${refSel.type === 'topic' && refSel.id === t.id ? ' current' : ''}" data-action="topic" data-id="${esc(t.id)}">
-        <span class="chev">▸</span>${esc(t.id)}<span class="count">${t.cmds.length}</span>
+        <span class="chev">▸</span><span class="t-name">${esc(t.id)} · ${esc(t.title)}</span><span class="count">${t.cmds.length}</span>
       </button>
       <div class="ref-nav-cmds">${t.cmds.map(c => `<a href="#" class="ref-nav-cmd${refSel.type === 'cmd' && refSel.key === c.key ? ' current' : ''}"
         data-action="cmd" data-key="${esc(c.key)}" data-name="${esc(c.name.toLowerCase())}" title="${esc(c.name)}">${esc(c.name)}</a>`).join('')}</div>
@@ -275,15 +317,13 @@ $('#reference-content').addEventListener('click', ev => {
   renderReference();
 });
 $('#reference-all').onclick = ev => { ev.preventDefault(); refSel = { type: 'all' }; renderReference(); };
-
-$('#reference-btn').onclick = () => {
-  if (!refTopics) buildReferenceIndex();
-  refSel = { type: 'all' };
-  $('#reference-search').value = '';
-  renderReference();
-  $('#reference-dialog').showModal();
-  setTimeout(() => $('#reference-search').focus(), 50);
+$('#reference-back').onclick = ev => {
+  ev.preventDefault();
+  if (state.lastExerciseId) location.hash = `#/ex/${state.lastExerciseId}`;
+  else if (history.length > 1) history.back();
+  else location.hash = '#/ex/0101';
 };
+$('#theme-btn-ref').onclick = () => applyTheme(currentTheme() === 'dark' ? 'light' : 'dark');
 $('#reference-search').oninput = () => {
   const q = $('#reference-search').value.trim().toLowerCase();
   for (const node of document.querySelectorAll('.ref-nav-topic')) {
@@ -433,13 +473,43 @@ $('#vsc-reload-btn').onclick = () => { state.codeFor = null; openVSCode(); };
 })();
 
 // ------------------------------------------------------------------ routing & start
+function showReferencePage(show) {
+  document.querySelector('.layout').classList.toggle('hidden', show);
+  $('#reference-page').classList.toggle('hidden', !show);
+}
 function route() {
+  const refCmd = location.hash.match(/^#\/reference\/cmd\/([^/]+)$/);
+  const refTopic = location.hash.match(/^#\/reference\/topic\/([^/]+)$/);
+  if (location.hash === '#/reference' || refCmd || refTopic) {
+    showReferencePage(true);
+    if (!refTopics) buildReferenceIndex();
+    if (refCmd) refSel = { type: 'cmd', key: decodeURIComponent(refCmd[1]) };
+    else if (refTopic) refSel = { type: 'topic', id: decodeURIComponent(refTopic[1]) };
+    else { refSel = { type: 'all' }; $('#reference-search').value = ''; }
+    renderReference();
+    return;
+  }
+  showReferencePage(false);
   const m = location.hash.match(/^#\/ex\/(\d{4})$/);
-  if (m) return openExercise(m[1]);
+  if (m) { state.lastExerciseId = m[1]; return openExercise(m[1]); }
   const next = state.flat.find(e => e.status !== 'pass') || state.flat[0];
   if (next) location.replace(`#/ex/${next.id}`);
 }
 window.addEventListener('hashchange', route);
+
+// ------------------------------------------------------------------ sidebar collapse
+$('#sidebar-toggle').innerHTML = '<span class="arrow">‹</span>';
+$('#sidebar-toggle').onclick = () => {
+  const collapsed = document.querySelector('.layout').classList.toggle('sidebar-collapsed');
+  $('#sidebar-toggle').title = collapsed ? 'Expand sidebar' : 'Collapse sidebar';
+  try { localStorage.setItem('sidebarCollapsed', collapsed ? '1' : ''); } catch { /* private mode */ }
+};
+try {
+  if (localStorage.getItem('sidebarCollapsed')) {
+    document.querySelector('.layout').classList.add('sidebar-collapsed');
+    $('#sidebar-toggle').title = 'Expand sidebar';
+  }
+} catch { /* private mode */ }
 
 (async () => {
   applyTheme(currentTheme(), false);
