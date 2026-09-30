@@ -180,6 +180,52 @@ document.addEventListener('keydown', ev => {
 });
 
 // ------------------------------------------------------------------ solution
+// ------------------------------------------------------------------ info & reference (glossary)
+function glossaryHTML(entries) {
+  if (!entries.length) return '<p class="hint">No commands listed for this one.</p>';
+  return entries.map(e => `<div class="gl-item"><code>${esc(e.name)}</code>${e.desc ? `<p>${esc(e.desc)}</p>` : ''}</div>`).join('');
+}
+$('#info-btn').onclick = () => {
+  if (!state.current) return;
+  $('#info-title').textContent = `Commands used in ${state.current.id}`;
+  $('#info-body').innerHTML = glossaryHTML(explainCmds(state.current.cmds));
+  $('#info-dialog').showModal();
+};
+
+let referenceBuilt = false;
+function buildReference() {
+  const body = $('#reference-body');
+  body.innerHTML = state.index.map(t => {
+    const cmds = new Map();
+    for (const e of t.exercises) for (const c of explainCmds(e.cmds)) if (!cmds.has(c.key)) cmds.set(c.key, c);
+    return `<section class="ref-topic" data-topic="${esc(t.id)} ${esc(t.title.toLowerCase())}">
+      <h3>${esc(t.id)} · ${esc(t.title)}</h3>
+      <div class="glossary-list">${glossaryHTML([...cmds.values()])}</div>
+    </section>`;
+  }).join('');
+  referenceBuilt = true;
+}
+$('#reference-btn').onclick = () => {
+  if (!referenceBuilt) buildReference();
+  $('#reference-search').value = '';
+  $('#reference-dialog').showModal();
+  setTimeout(() => $('#reference-search').focus(), 50);
+};
+$('#reference-search').oninput = () => {
+  const q = $('#reference-search').value.trim().toLowerCase();
+  for (const sec of document.querySelectorAll('.ref-topic')) {
+    const hit = !q || sec.dataset.topic.includes(q) || sec.textContent.toLowerCase().includes(q);
+    sec.classList.toggle('hidden', !hit);
+    if (hit && q) {
+      for (const item of sec.querySelectorAll('.gl-item')) {
+        item.classList.toggle('hidden', !item.textContent.toLowerCase().includes(q));
+      }
+    } else {
+      for (const item of sec.querySelectorAll('.gl-item')) item.classList.remove('hidden');
+    }
+  }
+};
+
 $('#solution-btn').onclick = async () => {
   if (!state.current) return;
   let confirm = false;
@@ -234,7 +280,16 @@ function typeInTerminal(cmd) {
 }
 const shq = s => `'${s.replace(/'/g, `'\\''`)}'`;
 $('#restart-btn').onclick = startTerminal;
-$('#cd-btn').onclick = () => state.current && typeInTerminal(`cd ${shq(state.current.dir)}`);
+$('#cd-btn').onclick = async () => {
+  if (!state.current) return;
+  if (!state.current.playDir) { typeInTerminal(`cd ${shq(state.current.dir)}`); return; }
+  $('#cd-btn').disabled = true;
+  try {
+    const r = await fetch(`/api/reset/${state.current.id}`, { method: 'POST' });
+    const j = await r.json();
+    if (j.playDir) { state.current.playDir = j.playDir; typeInTerminal(`cd ${shq(j.playDir)} && clear && ls`); }
+  } finally { $('#cd-btn').disabled = false; }
+};
 $('#edit-btn').onclick = () => state.current && typeInTerminal(`nano ${shq(state.current.answer)}`);
 
 // ------------------------------------------------------------------ VS Code
@@ -250,9 +305,17 @@ function openVSCode() {
     pane.appendChild(frame);
   }
   $('#code-placeholder').classList.add('hidden');
-  // open the exercise folder and the answer file
-  const payload = JSON.stringify([['openFile', `vscode-remote://${location.host}${state.current.answer}`]]);
-  frame.src = `/vscode/?folder=${encodeURIComponent(state.current.dir)}&payload=${encodeURIComponent(payload)}`;
+  // open the practice folder (the real fixture files, plus answer.sh as a symlink to the tracked
+  // file so edits persist) with the answer file open and the file-explorer sidebar out of the way
+  const folder = state.current.playDir || state.current.dir;
+  const answerInFolder = state.current.playDir
+    ? `${state.current.playDir}/${state.current.answer.split('/').pop()}`
+    : state.current.answer;
+  const payload = JSON.stringify([
+    ['openFile', `vscode-remote://${location.host}${answerInFolder}`],
+    ['workbench.action.closeSidebar'],
+  ]);
+  frame.src = `/vscode/?folder=${encodeURIComponent(folder)}&payload=${encodeURIComponent(payload)}`;
 }
 
 function setMode(m) {

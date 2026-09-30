@@ -103,7 +103,7 @@ name, and it must match it entirely. `-regextype posix-extended` lets you use `{
 @@check
 setup() {
   mkdir -p camera/2024-05-01 camera/misc "camera/old stuff"
-  local i d
+  local i d f
   for i in $(seq 14); do
     d="camera/$(pick . 2024-05-01 misc 'old stuff')"
     case $(rand 12) in
@@ -115,7 +115,7 @@ setup() {
       7|8)    touch "$d/$(word) 202$(rand 6)-0$(randr 1 9)-$(randr 10 28).txt" ;;
       9)      touch "$d/backup-2023-11-0$(randr 1 9).tar" ;;
       10)     touch "$d/2024-5-$(randr 1 9) $(word).txt" "$d/$(word)$i.txt" ;;
-      11)     mkdir -p "$d/IMG_$(randr 1000 9999).jpg" ;;
+      11)     f="$d/IMG_$(randr 1000 9999).jpg"; rm -rf "$f"; mkdir -p "$f" ;;
     esac
   done
   touch camera/2024-05-01/notes.txt
@@ -227,7 +227,7 @@ setup() {
   for i in $(seq "$(randr 8 14)"); do
     touch "music/$(pick . rock jazz 'pop hits' 'pop hits/old')/$(pick intro outro 'track one' theme ballad "$(word)").$(pick mp3 ogg mp3)"
   done
-  mkdir -p "music/jazz/intro.mp3"
+  rm -rf "music/jazz/intro.mp3"; mkdir -p "music/jazz/intro.mp3"
 }
 @@solution
 #!/bin/bash

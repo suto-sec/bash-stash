@@ -1,7 +1,7 @@
 # checker spec for 0720 (see lib/engine.sh)
 setup() {
   mkdir -p camera/2024-05-01 camera/misc "camera/old stuff"
-  local i d
+  local i d f
   for i in $(seq 14); do
     d="camera/$(pick . 2024-05-01 misc 'old stuff')"
     case $(rand 12) in
@@ -13,7 +13,7 @@ setup() {
       7|8)    touch "$d/$(word) 202$(rand 6)-0$(randr 1 9)-$(randr 10 28).txt" ;;
       9)      touch "$d/backup-2023-11-0$(randr 1 9).tar" ;;
       10)     touch "$d/2024-5-$(randr 1 9) $(word).txt" "$d/$(word)$i.txt" ;;
-      11)     mkdir -p "$d/IMG_$(randr 1000 9999).jpg" ;;
+      11)     f="$d/IMG_$(randr 1000 9999).jpg"; rm -rf "$f"; mkdir -p "$f" ;;
     esac
   done
   touch camera/2024-05-01/notes.txt
