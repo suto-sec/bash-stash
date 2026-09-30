@@ -85,6 +85,29 @@
 
     <button id="sidebar-toggle" class="sidebar-toggle" title="Collapse sidebar" aria-label="Collapse sidebar"><span class="arrow">‹</span></button>
 
+    <main class="theory-main hidden" id="theory-main" aria-label="Theory quiz">
+      <div class="theory-scroll" id="theory-scroll">
+        <div class="theory-head">
+          <div>
+            <div class="ex-topic" id="th-crumb"></div>
+            <h1 id="th-title">Theory</h1>
+            <div class="ex-meta"><span id="th-type" class="th-type"></span><span id="th-counter"></span></div>
+          </div>
+          <span id="th-status" class="badge"></span>
+        </div>
+        <article id="th-question" class="readme th-question"></article>
+        <div id="th-body" class="th-body"></div>
+        <div class="th-actions" id="th-actions">
+          <button id="th-check" class="primary" title="Enter">Check answer</button>
+          <button id="th-retry" class="hidden">Try again</button>
+          <button id="th-prev" title="Previous question (←)">◀</button>
+          <button id="th-next" title="Next question (→)">Next ▶</button>
+          <span class="hint" id="th-hint"></span>
+        </div>
+        <div id="th-feedback" class="th-feedback hidden" aria-live="polite"></div>
+      </div>
+    </main>
+
     <main class="main" id="main" data-layout="default">
       <div class="ws-tabs" id="ws-tabs" role="tablist">
         <button role="tab" id="tab-term" class="tab active" aria-selected="true">Terminal</button>
@@ -181,6 +204,10 @@
         <div class="track-card-count" data-count="intro-all"></div>
       </button>
       <div class="track-grid" id="intro-grid"></div>
+
+      <h2 class="home-section-title">Theory</h2>
+      <p class="home-intro">Interactive quizzes on the concepts behind the commands: single and multiple choice, fill in the blank, ordering, matching and sorting. Every answer gets instant feedback explaining why each option is right or wrong. Pick a collection to browse its questions in the sidebar.</p>
+      <div class="track-grid" id="theory-grid"></div>
     </div>
   </div>
 
@@ -235,5 +262,6 @@
   <script src="/vendor/marked.js"></script>
   <script src="/glossary.js"></script>
   <script src="/app.js"></script>
+  <script src="/theory.js"></script>
 </body>
 </html>

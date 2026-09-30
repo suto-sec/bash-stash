@@ -10,6 +10,7 @@ const state = {
   activeVSCodeFile: null, // basename of the editor tab currently focused in VS Code, reported via postMessage
   track: 'full',    // 'full' | 'minimal' | 'intermediate' | 'complete'
   introCategory: null, // topic id (e.g. '06') while browsing that category's Introduction refreshers
+  theory: null,     // Theory collection id while browsing quizzes (sidebar + main panel switch to them)
 };
 try { state.track = localStorage.getItem('track') || 'full'; } catch { /* private mode */ }
 if (state.track === 'complete') state.track = 'full'; // "Complete" was dropped as a choice — identical to Full anyway
@@ -99,10 +100,12 @@ function ansiToHtml(text) {
 async function loadIndex() {
   state.index = await (await fetch('/api/index')).json();
   state.flat = state.index.flatMap(t => t.exercises);
+  await Theory.load();
   renderSidebar();
 }
 
 function renderSidebar() {
+  if (state.theory) return Theory.renderSidebar();
   const q = $('#search').value.trim().toLowerCase();
   const hidePassed = $('#hide-passed').checked;
   const openTopics = new Set([...document.querySelectorAll('.topic[open]')].map(d => d.dataset.topic));
@@ -239,6 +242,7 @@ async function runCheck() {
 $('#check-btn').onclick = runCheck;
 $('#result-close').onclick = () => $('#result').classList.add('hidden');
 document.addEventListener('keydown', ev => {
+  if (state.theory) return; // the quiz view has its own keys (theory.js)
   if ((ev.ctrlKey || ev.metaKey) && ev.key === 'Enter') { ev.preventDefault(); runCheck(); }
 });
 
@@ -775,6 +779,12 @@ document.addEventListener('click', ev => {
 const TRACK_LABELS = { minimal: 'Minimal', intermediate: 'Intermediate', complete: 'Complete' };
 function updateTrackBadge() {
   const badge = $('#track-badge');
+  if (state.theory) {
+    const c = Theory.collection(state.theory);
+    badge.textContent = 'Theory: ' + (c ? c.title : state.theory);
+    badge.classList.remove('hidden');
+    return;
+  }
   if (state.introCategory === 'all') { badge.textContent = 'Intro: Full set'; badge.classList.remove('hidden'); return; }
   if (state.introCategory) {
     const t = state.index.find(x => x.id === state.introCategory);
@@ -803,6 +813,7 @@ function renderHomePage() {
   for (const el of document.querySelectorAll('#track-grid .track-card')) el.classList.toggle('current', !state.introCategory && el.dataset.track === state.track);
   $('#intro-all-card').classList.toggle('current', state.introCategory === 'all');
   renderIntroGrid();
+  Theory.renderHomeGrid();
 }
 function renderIntroGrid() {
   const grid = $('#intro-grid');
@@ -817,6 +828,7 @@ function renderIntroGrid() {
   }).join('');
 }
 function selectIntroCategory(id) {
+  state.theory = null;
   state.introCategory = id;
   try { localStorage.setItem('introCategory', id); } catch { /* private mode */ }
   updateTrackBadge();
@@ -829,6 +841,7 @@ $('#track-grid').addEventListener('click', ev => {
   const card = ev.target.closest('.track-card');
   if (!card) return;
   state.track = card.dataset.track;
+  state.theory = null;
   state.introCategory = null;
   try { localStorage.setItem('track', state.track); localStorage.removeItem('introCategory'); } catch { /* private mode */ }
   updateTrackBadge();
@@ -877,6 +890,14 @@ function route() {
   showReferencePage(false);
   if (location.hash === '#/home') { showHomePage(true); return; }
   showHomePage(false);
+  const th = location.hash.match(/^#\/theory\/([\w-]+)(?:\/([\w-]+))?$/);
+  if (th) return Theory.open(th[1], th[2]);
+  if (state.theory) { // leaving the quiz view: back to the exercise panels
+    state.theory = null;
+    Theory.hide();
+    updateTrackBadge();
+    renderSidebar();
+  }
   const m = location.hash.match(/^#\/ex\/(\d{4})$/);
   if (m) { state.lastExerciseId = m[1]; return openExercise(m[1]); }
   const pool = visibleFlat();
@@ -936,6 +957,8 @@ window.addEventListener('hashchange', route);
 })();
 
 (async () => {
+  // theory.js is the last script on the page: wait until every script has run
+  if (document.readyState === 'loading') await new Promise(r => document.addEventListener('DOMContentLoaded', r));
   applyTheme(currentTheme(), false);
   updateTrackBadge();
   await loadIndex();

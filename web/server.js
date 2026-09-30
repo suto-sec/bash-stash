@@ -108,6 +108,40 @@ function solutionFile(ex) {
   return fs.existsSync(base + '.sh') ? base + '.sh' : base + '.txt';
 }
 
+// ------------------------------------------------------------------ theory quizzes
+// Collections are compiled from tools/theory/*.txt into theory/<id>.json (tools/build_theory.js).
+// They are a parallel track to the exercises: graded in the browser (instant feedback), only the
+// per-question result is stored here: .progress/theory/<collection>.json  {qid: {pass, tries}}.
+const THEORY = path.join(LAB, 'theory');
+const THEORY_PROGRESS = path.join(PROGRESS, 'theory');
+const SAFE_ID = /^[\w-]+$/;
+
+function loadCollection(id) {
+  if (!SAFE_ID.test(id)) return null;
+  try { return JSON.parse(fs.readFileSync(path.join(THEORY, id + '.json'), 'utf8')); } catch { return null; }
+}
+function theoryProgress(cid) {
+  try { return JSON.parse(fs.readFileSync(path.join(THEORY_PROGRESS, cid + '.json'), 'utf8')); } catch { return {}; }
+}
+function questionStatus(p) { return !p ? 'new' : p.pass ? 'pass' : 'attempted'; }
+function theoryIndex() {
+  let files = [];
+  try { files = fs.readdirSync(THEORY).filter(f => f.endsWith('.json')).sort(); } catch { /* no theory yet */ }
+  return files.map(f => loadCollection(f.slice(0, -5))).filter(Boolean).map(c => {
+    const prog = theoryProgress(c.id);
+    return { id: c.id, title: c.title, about: c.about, groups: c.groups.map(g => ({
+      id: g.id, title: g.title,
+      questions: g.questions.map(q => ({ id: q.id, title: q.title, type: q.type, status: questionStatus(prog[q.id]) })),
+    })) };
+  });
+}
+function writeTheoryProgress(cid, prog) {
+  fs.mkdirSync(THEORY_PROGRESS, { recursive: true });
+  const file = path.join(THEORY_PROGRESS, cid + '.json');
+  fs.writeFileSync(file + '.tmp', JSON.stringify(prog));
+  fs.renameSync(file + '.tmp', file);
+}
+
 // ------------------------------------------------------------------ practice fixture ("play")
 // exercises/<id>/ only holds README.md, check.sh and answer.sh — the actual files a script
 // needs to read (created by the checker's setup()) live nowhere on disk until built. So that a
@@ -226,6 +260,30 @@ async function api(req, res, url) {
     return send(res, 200, index().map(t => ({
       ...t, exercises: t.exercises.map(({ dir, answer, ...e }) => e),
     })));
+  }
+
+  if (parts[1] === 'theory') {
+    if (req.method === 'GET' && !parts[2]) return send(res, 200, theoryIndex());
+    const col = parts[2] ? loadCollection(parts[2]) : null;
+    if (!col) return send(res, 404, { error: 'no such collection' });
+    if (req.method === 'GET' && !parts[3]) return send(res, 200, col);
+    if (req.method === 'POST' && parts[3] === 'reset') {
+      try { fs.unlinkSync(path.join(THEORY_PROGRESS, col.id + '.json')); } catch { /* nothing stored */ }
+      return send(res, 200, { ok: true });
+    }
+    if (req.method === 'POST' && parts[3] && SAFE_ID.test(parts[3])) {
+      const known = col.groups.some(g => g.questions.some(q => q.id === parts[3]));
+      if (!known) return send(res, 404, { error: 'no such question' });
+      const body = await readBody(req);
+      const prog = theoryProgress(col.id);
+      const cur = prog[parts[3]] || { pass: false, tries: 0 };
+      cur.tries += 1;
+      if (body.ok === true) cur.pass = true; // once passed, it stays passed
+      prog[parts[3]] = cur;
+      writeTheoryProgress(col.id, prog);
+      return send(res, 200, { status: questionStatus(cur) });
+    }
+    return send(res, 404, { error: 'unknown endpoint' });
   }
 
   const ex = parts[2] ? findExercise(parts[2]) : null;
