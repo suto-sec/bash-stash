@@ -191,7 +191,6 @@ const out = [];
 for (const f of files) {
   const c = parse(f);
   out.push(c);
-  if (!errors.length) fs.writeFileSync(path.join(OUT, `${c.id}.json`), JSON.stringify(c) + '\n');
   const n = c.groups.reduce((s, g) => s + g.questions.length, 0);
   const kinds = {};
   c.groups.forEach(g => g.questions.forEach(q => { kinds[q.type] = (kinds[q.type] || 0) + 1; }));
@@ -199,3 +198,4 @@ for (const f of files) {
   for (const w of lengthWarnings(c)) console.warn('  warning: ' + w);
 }
 if (errors.length) { console.error('\n' + errors.join('\n')); console.error(`\n${errors.length} problem(s), nothing written`); process.exit(1); }
+for (const c of out) fs.writeFileSync(path.join(OUT, `${c.id}.json`), JSON.stringify(c) + '\n');

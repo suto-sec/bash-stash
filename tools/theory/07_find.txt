@@ -396,3 +396,59 @@ Why can `locate` miss a file that `find` would find?
 (-) `locate` only searches the current directory and does not go into sub-directories. :: It searches the database of the whole system.
 (-) `locate` refuses file names that contain dots, which `find` accepts without any problem, so such files are never listed. :: No such limit.
 (-) `find` and `locate` always agree, so a file one of them misses is not really there. :: The database can be outdated.
+
+@@group Mixed practice
+@@q fill | Find by name
+List every file below the current directory whose name ends in `.log`: `find . -name '{{*.log}}'`
+(x) .log :: A pattern without `*` matches only a file named exactly `.log`.
+(x) *log :: That also matches names such as `catalog`.
+@@note
+Quote the pattern so the shell does not expand it.
+
+@@q fill | Only directories
+List only the directories below `/srv`: `find /srv -type {{d}}`
+(x) f :: That selects regular files.
+(x) l :: That selects symbolic links.
+@@note
+`-type f` for files, `-type l` for links.
+
+@@q fill | Old and big
+Find regular files in `/var/log` larger than 10 MiB that were modified more than 30 days ago: `find /var/log -type f -size {{+10M}} -mtime {{+30}}`
+(x) 10M :: Without the plus sign, only files of about 10 MiB.
+(x) -30 :: That means *less than* 30 days.
+@@note
+`+` means "more than", `-` means "less than", no sign means "exactly".
+
+@@q sort | Test or action
+@@buckets Test | Action
+Classify each `find` primary.
+(Test) `-mtime -1` :: Selects files changed in the last day.
+(Test) `-perm -u+x` :: Selects files the owner can execute.
+(Test) `-user root` :: Selects files owned by root.
+(Action) `-delete` :: Removes the file.
+(Action) `-exec chmod 644 {} \;` :: Runs a command on the file.
+(Action) `-print0` :: Prints the path, NUL-terminated.
+
+@@q multi | Safe ways to delete found files
+Select the commands that safely delete every `.tmp` file below the current directory, even if names contain spaces.
+(+) `find . -name '*.tmp' -delete` :: `find` removes them itself.
+(+) `find . -name '*.tmp' -print0 | xargs -0 rm` :: NUL separators protect odd names.
+(+) `find . -name '*.tmp' -exec rm {} \;` :: `rm` runs once per file with the exact name.
+(-) `rm $(find . -name '*.tmp')` :: Word splitting breaks names with spaces.
+(-) `find . -name '*.tmp' | xargs rm` :: Spaces split names into wrong arguments.
+
+@@q order | Clean up old files
+Put the steps in order to clean old temporary files safely.
+(>) `find /tmp/work -type f -mtime +7 -print` :: See which files would be removed.
+(>) Check that the list holds only what you expect :: A human review step.
+(>) `find /tmp/work -type f -mtime +7 -delete` :: Same tests, plus the destructive action.
+(>) `find /tmp/work -type f -mtime +7 | wc -l` :: Confirm that nothing is left (prints 0).
+
+@@q match | Time and size tests
+Match each test with the files it selects.
+(=) `-mtime +30` => Modified more than 30 full days ago :: Old files.
+(=) `-mmin -5` => Modified in the last five minutes :: Very recent files.
+(=) `-size +1G` => Larger than one gibibyte :: Huge files.
+(=) `-size 0` => Empty files (zero blocks) :: Zero length.
+(=) `-newer marker` => Modified more recently than the file `marker` :: Compare with another file.
+(-) Owned by the current user :: That is `-user`, not a time or size test.

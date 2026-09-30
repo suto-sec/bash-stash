@@ -418,3 +418,58 @@ Which file usually records authentication events (logins, `sudo`, failed SSH att
 (-) `/etc/passwd` :: Account data, not events.
 (-) `/var/log/boot.log` :: Boot messages.
 (-) `/etc/sudoers` :: Sudo configuration.
+
+@@group Mixed practice
+@@q fill | Usage check
+Print a usage message and stop with status 1 if the script did not get exactly one argument: `[ {{$# ;; "$#"}} -ne 1 ] && { echo "usage: $0 dir" >&2; exit 1; }`
+(x) $1 :: That is the first argument itself, not their number.
+(x) $* :: That is the list of arguments, not their number.
+@@note
+`$#` is the count of the positional parameters.
+
+@@q fill | Read with a prompt
+Ask for a name and store it in `NAME`, showing a prompt: `read {{-p}} "Name: " NAME`
+(x) -s :: That hides what is typed and shows no prompt.
+(x) -n :: That limits the number of characters to read.
+@@note
+Add `-r` so that backslashes are kept as typed.
+
+@@q fill | Make it runnable
+Give the owner permission to execute `backup.sh` and run it from the current directory: `chmod u+x backup.sh && {{./backup.sh}}`
+(x) backup.sh :: Without a slash, bash searches only `PATH`, and `.` is normally not in it.
+(x) source backup.sh :: That runs it in your own shell, not as a separate program.
+@@note
+A name with a slash is used as a path, without any `PATH` search.
+
+@@q sort | Changes my shell or not
+@@buckets Affects the current shell | Does not affect it
+After running, does the command change the current shell (its directory, variables)?
+(Affects the current shell) `source env.sh` :: Runs inside the current shell.
+(Affects the current shell) `. ./env.sh` :: The dot is a synonym for `source`.
+(Affects the current shell) `cd /tmp` typed at the prompt :: A builtin of your shell.
+(Does not affect it) `./env.sh` :: Runs in a child process.
+(Does not affect it) `bash env.sh` :: A new bash is started.
+(Does not affect it) `(cd /tmp; ls)` :: The parentheses create a subshell.
+
+@@q multi | Stop on a missing directory
+Select the lines that correctly stop the script on a missing directory `$1` with exit status 2.
+(+) `[ -d "$1" ] || { echo "no such dir: $1" >&2; exit 2; }` :: Test, then message on stderr, then exit.
+(+) `if [ ! -d "$1" ]; then echo "no such dir" >&2; exit 2; fi` :: The same with `if`.
+(-) `[ -d "$1" ] && exit 2` :: That exits when the directory EXISTS.
+(-) `[ -d "$1" ] || echo "no such dir"` :: It prints a message but the script goes on.
+
+@@q order | Process every argument
+Put the parts of a loop that handles each argument, then reports the count, in order.
+(>) `n=0` :: Initialise the counter.
+(>) `for f in "$@"; do` :: Start the loop over the arguments.
+(>) `n=$((n+1))` :: Count inside the loop.
+(>) `done; echo "$n files"` :: Close the loop and report the total.
+
+@@q match | Crontab lines
+Match each schedule with when it runs.
+(=) `0 2 * * *` => Every day at 02:00 :: Minute 0, hour 2.
+(=) `*/15 * * * *` => Every fifteen minutes :: A step in the minute field.
+(=) `30 6 * * 1` => Mondays at 06:30 :: Day of the week 1.
+(=) `0 0 1 * *` => At midnight on the first day of each month :: Day of the month 1.
+(=) `0 */4 * * *` => Every four hours, on the hour :: A step in the hour field.
+(-) Once per year on the first of January :: That would need the month field set to 1 too.

@@ -469,3 +469,51 @@ Which lines does `true || echo X; false || echo Y; true && echo Z` print?
 (-) `/bin/ls` is slower because running a program by its full path needs root privileges. :: No privilege is needed to run it by its path.
 (-) There is no difference at all: bash always searches `PATH`, even for a word containing a slash. :: A word with a slash is never searched in `PATH`.
 (-) `ls` runs the builtin version of the command and `/bin/ls` runs the external program. :: `ls` is not a builtin in bash.
+
+@@group Mixed practice
+@@q multi | Reserved words of the shell
+Select the words that are part of the shell language itself (keywords), not programs on disk.
+(+) `if` :: A reserved word that starts a conditional.
+(+) `while` :: A reserved word that starts a loop.
+(+) `case` :: A reserved word for pattern matching.
+(+) `[[` :: A keyword of bash for extended tests.
+(-) `ls` :: A program on disk, listed by `type ls` as a file.
+(-) `grep` :: An external program, not part of the language.
+
+@@q fill | Identify a name
+Ask bash how it would interpret the word `ls` (alias, builtin, keyword or file): `{{type ;; type -a}} ls`
+(x) whatis :: It shows the manual description, not how bash resolves the name.
+(x) which :: It searches `PATH` only, so it would not report aliases or builtins.
+@@note
+`type` is itself a builtin; `type -a` shows every match in lookup order.
+
+@@q fill | Search the manuals
+Find the manual pages whose description mentions the word `partition`: `{{apropos ;; man -k}} partition`
+(x) whatis :: It needs the exact name of a page.
+(x) man :: It opens a page by name; it does not search descriptions.
+@@note
+`apropos` and `man -k` are the same search.
+
+@@q sort | Documentation or lookup
+@@buckets Shows documentation | Locates or identifies a command
+Classify each command.
+(Shows documentation) `man ls` :: Opens the manual page.
+(Shows documentation) `info ls` :: Opens the info manual.
+(Shows documentation) `help cd` :: Prints the help of a bash builtin.
+(Locates or identifies a command) `which ls` :: Prints the path found in `PATH`.
+(Locates or identifies a command) `type ls` :: Reports how bash interprets the name.
+(Locates or identifies a command) `whereis ls` :: Prints the locations of the binary and its manual.
+
+@@q order | Recall an older command
+Put the steps in order to re-run a long command you typed earlier, using reverse search.
+(>) Press `Ctrl+R` :: Starts the incremental search in the history.
+(>) Type a few characters that occur in the command :: The most recent match appears.
+(>) Press `Ctrl+R` again if the match shown is not the one you want :: It moves to an older match.
+(>) Press Enter to run it (or an arrow key to edit it first) :: The chosen line is executed or becomes editable.
+
+@@q fill | Manual section number
+Open the page of the system call `write`, in section 2: `man {{2}} write`
+(x) 1 :: Section 1 is the user command `write`.
+(x) 8 :: Section 8 holds administration commands.
+@@note
+Without a number, `man` shows the first section that has the name.

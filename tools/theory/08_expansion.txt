@@ -421,3 +421,59 @@ Why might an alias defined in your `~/.bashrc` not work inside a script?
 (-) Because aliases only work for the root user and scripts run as an ordinary user. :: No.
 (-) Because scripts cannot use commands such as `ls`, which are reserved for the interactive shell and not allowed in files. :: They can.
 (-) Because aliases are deleted as soon as `chmod +x` is run on the script file. :: Unrelated.
+
+@@group Mixed practice
+@@q fill | Print without expanding
+Print the text `$HOME` literally, with the dollar sign: `echo {{'$HOME' ;; \$HOME ;; "\$HOME"}}`
+(x) "$HOME" :: Double quotes still expand the variable.
+(x) $HOME :: It expands to your home directory.
+@@note
+Single quotes stop every expansion; a backslash stops one character.
+
+@@q fill | Arithmetic result
+Store the value of `A * B + 5` in `R` using arithmetic expansion: `R={{$((A*B+5)) ;; $(( A * B + 5 )) ;; $((A * B + 5))}}`
+(x) $(A*B+5) :: Single parentheses are command substitution.
+(x) A*B+5 :: That stores the text, no arithmetic.
+@@note
+Inside `$(( ))` variable names do not need a dollar sign.
+
+@@q fill | Default value
+Print the value of `NAME`, or the word `guest` when it is unset or empty: `echo {{"${NAME:-guest}" ;; ${NAME:-guest}}}`
+(x) ${NAME:+guest} :: That substitutes `guest` only when `NAME` is set, the opposite.
+(x) ${NAME=guest} :: Without the colon it tests only for unset, and it also assigns the default, which is not asked.
+@@note
+`${NAME:=guest}` also assigns the default to `NAME`.
+
+@@q sort | Which expansion applies
+@@buckets File-name expansion (glob) | Brace expansion
+Classify each expression.
+(File-name expansion (glob)) `*.txt` :: Matches existing files by pattern.
+(File-name expansion (glob)) `[ab]?.c` :: A bracket and a question mark look at real names.
+(File-name expansion (glob)) `data[0-9].csv` :: A range is matched against existing files.
+(Brace expansion) `{1..5}` :: Generates five words whether or not files exist.
+(Brace expansion) `file{A,B,C}.txt` :: Generates three names.
+(Brace expansion) `{a..e}` :: Generates letters.
+
+@@q multi | Quoting that stops word splitting
+Select the forms that pass `a  b` (two spaces) to `echo` as a single argument with the spaces kept.
+(+) `echo "a  b"` :: Double quotes keep it as one word.
+(+) `echo 'a  b'` :: Single quotes keep it as one word.
+(+) `echo a\ \ b` :: Escaped spaces are literal.
+(-) `echo a  b` :: Unquoted spaces split into two words and one space is printed.
+(-) `echo $(echo a  b)` :: Word splitting applies to the substitution result.
+
+@@q order | Evaluation of `echo $HOME/*.c`
+Put the steps the shell performs in order.
+(>) Split the line into the words `echo` and `$HOME/*.c` :: Words first.
+(>) Replace `$HOME` by its value :: Variables are substituted.
+(>) Expand `/home/alumno/*.c` into the matching file names :: Wildcards are expanded on the result.
+(>) Start `echo` with the final list of words :: The program only sees the result.
+
+@@q match | Variable commands
+Match each command with its effect.
+(=) `X=5` => Sets a shell variable, not passed to child processes :: Local to the shell.
+(=) `export X=5` => Sets `X` and passes it to child processes :: Environment variable.
+(=) `unset X` => Removes the variable :: It no longer exists.
+(=) `printenv X` => Prints `X` only if it is exported :: Environment only.
+(=) `echo "${#X}"` => Prints the number of characters in the value of `X` :: Length expansion.
+(-) Lists all files starting with X :: That is a glob like `ls X*`.

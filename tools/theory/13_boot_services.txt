@@ -390,3 +390,60 @@ Why do many systems clean `/tmp` at boot?
 (-) Because `/tmp` is stored inside the boot loader, which clears it at every start. :: No.
 (-) Because the kernel cannot mount the file system of `/tmp` while that directory still holds files from the last session. :: No.
 (-) To remove the passwords that the users have typed into programs during the last session. :: No.
+
+@@group Mixed practice
+@@q fill | Restart a service
+Stop and start the service `cron` again in one command: `systemctl {{restart}} cron`
+(x) reload :: That asks the program to re-read its configuration without stopping it.
+(x) enable :: That only sets the automatic start at boot.
+@@note
+`systemctl status cron` shows the result.
+
+@@q fill | Start at boot and now
+Start `nginx` now and also at every boot: `systemctl {{enable --now ;; enable --now}} nginx`
+(x) start :: That starts it now, but it will not start at boot.
+(x) enable :: That sets the start at boot, but does not start it now.
+@@note
+Equivalent to `enable` followed by `start`.
+
+@@q fill | Power off in ten minutes
+Power the machine off in ten minutes: `shutdown {{-h +10 ;; -P +10 ;; -h +10 ;; --poweroff +10}}`
+(x) -r +10 :: That reboots instead.
+(x) -c :: That cancels a scheduled shutdown.
+@@note
+`shutdown -c` cancels it before the time is up.
+
+@@q sort | Boot stage
+@@buckets Before the kernel runs | After the kernel has started
+Classify each step of the boot.
+(Before the kernel runs) The firmware tests the hardware :: Power-on self test.
+(Before the kernel runs) GRUB shows the menu :: The boot loader.
+(Before the kernel runs) The firmware reads the partition table :: Finding the boot code.
+(After the kernel has started) PID 1 starts the services :: systemd.
+(After the kernel has started) The root file system is remounted read-write :: Early user space.
+(After the kernel has started) The login prompt appears :: The last step.
+
+@@q multi | Things systemd can manage
+Select the kinds of unit that systemd can manage.
+(+) A service such as `ssh.service` :: A daemon.
+(+) A mount point such as `home.mount` :: A file system.
+(+) A timer such as `backup.timer` :: A schedule.
+(+) A target such as `multi-user.target` :: A group of units.
+(-) A user password :: Passwords belong to `/etc/shadow`.
+(-) A regular text file in `/home` :: Not a unit.
+
+@@q order | Change the default target
+Put the commands in order to make a server boot without a graphical login from now on.
+(>) `systemctl get-default` :: Look at the current default first.
+(>) `sudo systemctl set-default multi-user.target` :: Change the default for the next boots.
+(>) `sudo reboot` :: Restart so the change takes effect.
+(>) `systemctl get-default` :: Confirm the new default.
+
+@@q match | Shutdown family
+Match each command with its effect.
+(=) `poweroff` => Shuts down and powers off the machine :: Also `systemctl poweroff`.
+(=) `reboot` => Restarts the machine :: Also `systemctl reboot`.
+(=) `shutdown -r now` => Reboots immediately, warning the users :: A shutdown with a message.
+(=) `shutdown -c` => Cancels a pending shutdown :: Only before the time is up.
+(=) `systemctl rescue` => Switches to single-user rescue mode :: Maintenance mode.
+(-) Formats the root file system :: No shutdown command does that.
