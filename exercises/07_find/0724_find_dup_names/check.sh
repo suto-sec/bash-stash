@@ -5,5 +5,5 @@ setup() {
   for i in $(seq "$(randr 8 14)"); do
     touch "music/$(pick . rock jazz 'pop hits' 'pop hits/old')/$(pick intro outro 'track one' theme ballad "$(word)").$(pick mp3 ogg mp3)"
   done
-  mkdir -p "music/jazz/intro.mp3"
+  rm -rf "music/jazz/intro.mp3"; mkdir -p "music/jazz/intro.mp3"
 }

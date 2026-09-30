@@ -20,6 +20,7 @@
       <span id="overall-text">0/0</span>
     </div>
     <div class="spacer"></div>
+    <button id="reference-btn" title="Every command and concept used, grouped by topic">📖 Reference</button>
     <button id="theme-btn" class="icon-btn" title="Switch light/dark theme" aria-label="Switch theme"></button>
   </header>
 
@@ -44,6 +45,7 @@
         </div>
         <div class="actions">
           <button id="check-btn" class="primary" title="Ctrl+Enter">▶ Check</button>
+          <button id="info-btn" title="What the commands used in this exercise do, in general">ℹ Info</button>
           <button id="solution-btn">Show solution</button>
           <button id="prev-btn" title="Previous exercise">◀</button>
           <button id="next-btn" title="Next exercise">▶▶</button>
@@ -63,7 +65,7 @@
           <button role="tab" id="tab-term" class="tab active" aria-selected="true">Terminal</button>
           <button role="tab" id="tab-code" class="tab" aria-selected="false">VS Code</button>
           <div class="spacer"></div>
-          <button id="cd-btn" class="small" title="cd into the current exercise's folder">cd here</button>
+          <button id="cd-btn" class="small" title="Rebuild the practice files fresh and cd into them">reset fixture</button>
           <button id="edit-btn" class="small" title="Open answer in nano">nano answer</button>
           <button id="restart-btn" class="small" title="Start a new terminal session">new session</button>
           <button id="vsc-reload-btn" class="small hidden" title="Reload VS Code on this exercise">reload</button>
@@ -77,6 +79,22 @@
       </section>
     </main>
   </div>
+
+  <dialog id="info-dialog">
+    <form method="dialog">
+      <div class="dlg-head"><strong id="info-title">Commands used here</strong><button class="icon-btn" value="close" aria-label="Close">✕</button></div>
+      <p class="hint">What each one does in general — not how to use it for this exercise.</p>
+      <div id="info-body" class="glossary-list"></div>
+    </form>
+  </dialog>
+
+  <dialog id="reference-dialog" class="wide">
+    <form method="dialog">
+      <div class="dlg-head"><strong>Reference — every command &amp; concept, by topic</strong><button class="icon-btn" value="close" aria-label="Close">✕</button></div>
+      <input id="reference-search" type="search" placeholder="Filter…" autocomplete="off">
+      <div id="reference-body" class="reference-body"></div>
+    </form>
+  </dialog>
 
   <dialog id="solution-dialog">
     <form method="dialog">
@@ -101,6 +119,7 @@
   <script src="/vendor/xterm.js"></script>
   <script src="/vendor/addon-fit.js"></script>
   <script src="/vendor/marked.js"></script>
+  <script src="/glossary.js"></script>
   <script src="/app.js"></script>
 </body>
 </html>

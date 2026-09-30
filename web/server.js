@@ -7,10 +7,11 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
-const { spawn } = require('child_process');
+const { spawn, execFileSync } = require('child_process');
 const { WebSocketServer } = require('ws');
 const pty = require('node-pty');
 const httpProxy = require('http-proxy');
+const zlib = require('zlib');
 
 const LAB = process.env.LAB || '/home/alumno/lab';
 const PORT = Number(process.env.PORT || 8080);
@@ -66,6 +67,25 @@ function findExercise(id) {
 function solutionFile(ex) {
   const base = path.join(LAB, 'solutions', ex.topic.dir, ex.name);
   return fs.existsSync(base + '.sh') ? base + '.sh' : base + '.txt';
+}
+
+// ------------------------------------------------------------------ practice fixture ("play")
+// exercises/<id>/ only holds README.md, check.sh and answer.sh — the actual files a script
+// needs to read (created by the checker's setup()) live nowhere on disk until built. So that a
+// terminal or VS Code opened on an exercise has something real to test against, we build that
+// fixture once per exercise (via `bin/play`, which also symlinks answer.sh — and, when the
+// checker installs it under another name, that name too — plus README.md into it) and route the
+// terminal/editor there instead of the bare exercise folder. Never rebuilt on a plain open, only
+// on an explicit reset, so it doesn't clobber files the learner is experimenting with.
+function playDirFor(id) { return path.join(process.env.HOME || '/home/alumno', 'play', id, 'work'); }
+function buildPlay(id) {
+  execFileSync(path.join(LAB, 'bin/play'), [id], { cwd: LAB, stdio: 'ignore' });
+}
+function ensurePlay(ex) {
+  if (ex.quiz) return null; // nothing to run for a quiz
+  const dir = playDirFor(ex.id);
+  if (!fs.existsSync(dir)) { try { buildPlay(ex.id); } catch { /* leave dir missing, caller cds to LAB */ } }
+  return fs.existsSync(dir) ? dir : null;
 }
 
 // ------------------------------------------------------------------ http helpers
@@ -134,12 +154,19 @@ async function api(req, res, url) {
   }
 
   const ex = parts[2] ? findExercise(parts[2]) : null;
-  if (['exercise', 'check', 'solution'].includes(parts[1]) && !ex) return send(res, 404, { error: 'no such exercise' });
+  if (['exercise', 'check', 'solution', 'reset'].includes(parts[1]) && !ex) return send(res, 404, { error: 'no such exercise' });
 
   if (parts[1] === 'exercise' && req.method === 'GET') {
     const readme = fs.readFileSync(path.join(ex.dir, 'README.md'), 'utf8');
+    const playDir = ensurePlay(ex);
     return send(res, 200, { id: ex.id, title: ex.title, level: ex.level, cmds: ex.cmds, quiz: ex.quiz,
-      status: ex.status, readme, dir: ex.dir, answer: ex.answer, topic: ex.topic.title });
+      status: ex.status, readme, dir: ex.dir, answer: ex.answer, topic: ex.topic.title, playDir });
+  }
+
+  if (parts[1] === 'reset' && req.method === 'POST') {
+    if (ex.quiz) return send(res, 400, { error: 'nothing to reset for a quiz' });
+    try { buildPlay(ex.id); } catch (e) { return send(res, 500, { error: String(e) }); }
+    return send(res, 200, { playDir: playDirFor(ex.id) });
   }
 
   if (parts[1] === 'check' && req.method === 'POST') {
@@ -174,11 +201,49 @@ async function api(req, res, url) {
   return send(res, 404, { error: 'unknown endpoint' });
 }
 
-const proxy = httpProxy.createProxyServer({ target: CODE_SERVER, ws: true, changeOrigin: false });
+// code-server has no setting for "start with the file-explorer sidebar closed" (it is UI state,
+// not a setting), so we inject a tiny script into its HTML that closes it once, right after the
+// workbench renders — a real click on the already-active explorer icon (the same thing closing it
+// by hand does), not a keybinding, since that is far more reliably synthesised.
+const SIDEBAR_FIX = nonce => `<script nonce="${nonce}">(function(){
+  var tries = 0;
+  var t = setInterval(function() {
+    if (++tries > 600) return clearInterval(t); // give up after ~2 minutes
+    var sidebar = document.querySelector('.part.sidebar');
+    if (!sidebar || sidebar.offsetWidth === 0) return; // not rendered yet, keep polling
+    var icon = document.querySelector('.activitybar .action-item.checked, .activitybar .action-item.active');
+    if (icon) { icon.click(); clearInterval(t); }
+  }, 200);
+})();</script>`;
+
+const proxy = httpProxy.createProxyServer({ target: CODE_SERVER, ws: true, changeOrigin: false, selfHandleResponse: true });
 proxy.on('error', (err, req, res) => {
   if (res && res.writeHead && !res.headersSent) {
     send(res, 502, 'VS Code (code-server) is starting or not available. Reload in a few seconds.', 'text/plain');
   } else if (res && res.destroy) res.destroy();
+});
+proxy.on('proxyRes', (proxyRes, req, res) => {
+  const ct = proxyRes.headers['content-type'] || '';
+  if (!ct.includes('text/html')) { res.writeHead(proxyRes.statusCode, proxyRes.headers); return proxyRes.pipe(res); }
+  const chunks = [];
+  proxyRes.on('data', c => chunks.push(c));
+  proxyRes.on('end', () => {
+    const raw = Buffer.concat(chunks);
+    const enc = proxyRes.headers['content-encoding'];
+    const decompress = enc === 'gzip' ? zlib.gunzipSync : enc === 'br' ? zlib.brotliDecompressSync
+      : enc === 'deflate' ? zlib.inflateSync : null;
+    let body;
+    try { body = decompress ? decompress(raw) : raw; } catch { body = raw; }
+    const htmlStr = body.toString('utf8');
+    // code-server's CSP only allows inline scripts carrying its own per-response nonce
+    const nonceMatch = htmlStr.match(/<script nonce="([^"]+)"/);
+    const html = nonceMatch ? htmlStr.replace('</body>', SIDEBAR_FIX(nonceMatch[1]) + '</body>') : htmlStr;
+    const out = Buffer.from(html, 'utf8');
+    const headers = { ...proxyRes.headers, 'content-length': out.length };
+    delete headers['content-encoding'];
+    res.writeHead(proxyRes.statusCode, headers);
+    res.end(out);
+  });
 });
 
 function stripVscodePrefix(req) {
@@ -212,7 +277,7 @@ wss.on('connection', (ws, req) => {
     name: 'xterm-256color',
     cols: Number(url.searchParams.get('cols')) || 80,
     rows: Number(url.searchParams.get('rows')) || 24,
-    cwd: ex ? ex.dir : LAB,
+    cwd: ex ? (ensurePlay(ex) || ex.dir) : LAB,
     env: { ...process.env, TERM: 'xterm-256color', LAB_QUIET: '' },
   });
   term.onData(d => { if (ws.readyState === ws.OPEN) ws.send(d); });

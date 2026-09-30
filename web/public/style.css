@@ -157,6 +157,22 @@ dialog::backdrop { background: rgba(0,0,0,.5); }
 .dlg-head { display: flex; justify-content: space-between; align-items: center; }
 .dlg-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; }
 
+/* ---------- info / reference (glossary) ---------- */
+#info-dialog { width: 520px; }
+dialog.wide { width: min(1000px, 92vw); }
+#reference-search {
+  width: 100%; margin: 10px 0 14px; padding: 7px 12px; border-radius: 6px;
+  background: var(--panel-2); border: 1px solid var(--border); color: var(--text);
+}
+.reference-body { max-height: 70vh; overflow-y: auto; }
+.ref-topic { margin-bottom: 18px; }
+.ref-topic h3 { margin: 0 0 8px; font-size: 14px; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; }
+.ref-topic .glossary-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px; }
+.glossary-list { display: flex; flex-direction: column; gap: 10px; margin-top: 8px; }
+.gl-item { background: var(--panel-2); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; }
+.gl-item code { font-size: 12.5px; color: var(--accent); }
+.gl-item p { margin: 4px 0 0; font-size: 12.5px; color: var(--text); line-height: 1.45; }
+
 @media (max-width: 900px) {
   .sidebar { width: 220px; }
   .main { flex-direction: column; }

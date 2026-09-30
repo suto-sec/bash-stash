@@ -270,6 +270,10 @@ play() { # id [seed] -> build fixture in ~/play/<id>
   chmod -R u+rwx "$P" 2>/dev/null; rm -rf "$P"; mkdir -p "$P/work" "$P/home"
   rng_seed "$seed"
   ( cd "$P/work" && export HOME=$P/home W=$P/work H=$P/home && umask 022 && SEED=$seed && setup ) >/dev/null
+  local ansfile=$dir/answer.sh; [[ $TYPE == quiz ]] && ansfile=$dir/answer.txt
+  ln -sf "$ansfile" "$P/work/$(basename "$ansfile")"
+  [[ $TYPE != quiz && $SCRIPT_NAME != script.sh ]] && ln -sf "$ansfile" "$P/work/$SCRIPT_NAME"
+  ln -sf "$dir/README.md" "$P/work/README.md"
   echo "Fixture for $id (seed $seed) created:"
   echo "  work dir: $P/work"
   echo "  home dir: $P/home   (the checker runs your script with HOME set to this)"
