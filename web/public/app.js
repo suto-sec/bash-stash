@@ -7,7 +7,13 @@ const state = {
   current: null,    // exercise details
   mode: 'term',     // 'term' | 'code'
   codeFor: null,    // exercise id VS Code is currently opened on
+  activeVSCodeFile: null, // basename of the editor tab currently focused in VS Code, reported via postMessage
 };
+
+window.addEventListener('message', ev => {
+  if (ev.origin !== location.origin) return;
+  if (ev.data && ev.data.source === 'bash-stash-vscode') state.activeVSCodeFile = ev.data.activeFile;
+});
 
 // ------------------------------------------------------------------ theme
 function currentTheme() { return document.documentElement.dataset.theme || 'dark'; }
@@ -105,6 +111,7 @@ async function openExercise(id) {
   if (!r.ok) return;
   const ex = await r.json();
   state.current = ex;
+  state.activeVSCodeFile = null; // repopulated once VS Code (re)loads for this exercise and reports its focused tab
   $('#ex-topic').textContent = ex.topic;
   $('#ex-title').textContent = `${ex.id} · ${ex.title}`;
   $('#ex-level').textContent = '★'.repeat(ex.level) + '☆'.repeat(5 - ex.level);
@@ -145,11 +152,16 @@ async function runCheck() {
   btn.disabled = true; btn.textContent = '… checking';
   const box = $('#result'), body = $('#result-body');
   box.classList.remove('hidden', 'pass', 'fail');
-  $('#result-title').textContent = `Checking ${state.current.id}…`;
+  // an attempt focused in VS Code (answer2.sh, ...) is checked instead of the canonical file —
+  // it never updates the exercise's official pass/fail status (see lib/engine.sh: check_one)
+  const canonical = state.current.answer.split('/').pop();
+  const file = state.activeVSCodeFile && state.activeVSCodeFile !== canonical ? state.activeVSCodeFile : null;
+  $('#result-title').textContent = file ? `Checking ${file}…` : `Checking ${state.current.id}…`;
   body.innerHTML = '';
   let text = '';
   try {
-    const r = await fetch(`/api/check/${state.current.id}`, { method: 'POST' });
+    const url = `/api/check/${state.current.id}` + (file ? `?file=${encodeURIComponent(file)}` : '');
+    const r = await fetch(url, { method: 'POST' });
     const reader = r.body.getReader(), dec = new TextDecoder();
     for (;;) {
       const { value, done } = await reader.read();
@@ -161,7 +173,8 @@ async function runCheck() {
   const code = ([...text.matchAll(/\[exit (\d+)\]/g)].pop() || [])[1];
   const ok = code === '0', notAttempted = code === '3';
   box.classList.add(ok ? 'pass' : 'fail');
-  $('#result-title').textContent = ok ? '✔ Passed' : notAttempted ? 'Not attempted yet' : '✘ Not yet';
+  const suffix = file ? ` (${file}, not saved as the exercise's official result)` : '';
+  $('#result-title').textContent = (ok ? '✔ Passed' : notAttempted ? 'Not attempted yet' : '✘ Not yet') + suffix;
   body.innerHTML = ansiToHtml(text.replace(/\n?\x1b\[2m\[exit \d+\]\x1b\[0m\s*$/, ''));
   try {
     await loadIndex();
@@ -404,8 +417,10 @@ $('#cd-btn').onclick = async () => {
 };
 
 // ------------------------------------------------------------------ VS Code
-function openVSCode() {
-  if (!state.current || state.codeFor === state.current.id) return;
+// openPath forces a reload pointed at that specific file (used to jump to a freshly created
+// attempt); with no argument, it's a no-op once already open for this exercise.
+function openVSCode(openPath) {
+  if (!state.current || (!openPath && state.codeFor === state.current.id)) return;
   state.codeFor = state.current.id;
   const pane = $('#code');
   let frame = pane.querySelector('iframe');
@@ -423,11 +438,24 @@ function openVSCode() {
     ? `${state.current.playDir}/${state.current.answer.split('/').pop()}`
     : state.current.answer;
   const payload = JSON.stringify([
-    ['openFile', `vscode-remote://${location.host}${answerInFolder}`],
+    ['openFile', `vscode-remote://${location.host}${openPath || answerInFolder}`],
     ['workbench.action.closeSidebar'],
   ]);
   frame.src = `/vscode/?folder=${encodeURIComponent(folder)}&payload=${encodeURIComponent(payload)}`;
 }
+$('#new-attempt-btn').onclick = async () => {
+  if (!state.current) return;
+  $('#new-attempt-btn').disabled = true;
+  try {
+    const r = await fetch(`/api/attempt/${state.current.id}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ from: state.activeVSCodeFile }),
+    });
+    const j = await r.json();
+    if (j.error) { alert(j.error); return; }
+    openVSCode(j.openPath);
+  } finally { $('#new-attempt-btn').disabled = false; }
+};
 
 function setMode(m) {
   state.mode = m;
@@ -443,6 +471,7 @@ function setMode(m) {
   $('#term').classList.toggle('hidden', !showTerm);
   $('#code').classList.toggle('hidden', !showCode);
   for (const id of ['#cd-btn', '#restart-btn']) $(id).classList.toggle('hidden', layout === 'default' && m !== 'term');
+  $('#new-attempt-btn').classList.toggle('hidden', layout === 'default' && m !== 'code');
   try { localStorage.setItem('mode', m); } catch { /* private mode */ }
   if (showCode) openVSCode();
   if (showTerm) { if (!term) startTerminal(); else { fit.fit(); if (m === 'term') term.focus(); } }
