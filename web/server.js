@@ -28,6 +28,39 @@ function isAttempted(file) {
   } catch { return false; }
 }
 
+// Track tiers: which of the three authoring batches (tools/src/*.txt) an exercise came from —
+// the base file (tier 1, closest to the course material's own examples), its "_exam" companion
+// (tier 2, added specifically to mirror real exam patterns) or its "_more" companion (tier 3, the
+// later bulk-expansion batch, furthest from the original teaching set). A base file's own name can
+// itself end in "_exam" or "_more" (e.g. topic 18 is named "18_exam"), so a file only counts as a
+// companion batch when a base file also exists under its name with that suffix stripped.
+// tracks: minimal = tier 1, intermediate = tiers 1-2, complete = every tier (unfiltered = 'full').
+function buildTierMap() {
+  const dir = path.join(LAB, 'tools/src');
+  const map = {};
+  let files;
+  try { files = fs.readdirSync(dir).filter(f => f.endsWith('.txt')); } catch { return map; }
+  const fileSet = new Set(files);
+  for (const f of files) {
+    let tier = 1;
+    // a file only counts as an "_exam"/"_more" companion batch when a DIFFERENT file exists under
+    // its name with that suffix stripped — otherwise it's a base file whose own name happens to end
+    // that way (e.g. topic 18 is named "18_exam", so "18_exam.txt" is ITS base file, and
+    // "18_exam_more.txt" is correctly its "more" companion, not "18"'s).
+    if (f.endsWith('_exam.txt')) {
+      const base = f.slice(0, -9) + '.txt';
+      if (base !== f && fileSet.has(base)) tier = 2;
+    } else if (f.endsWith('_more.txt')) {
+      const base = f.slice(0, -9) + '.txt';
+      if (base !== f && fileSet.has(base)) tier = 3;
+    }
+    const content = fs.readFileSync(path.join(dir, f), 'utf8');
+    for (const m of content.matchAll(/^@@ex (\d{4})\b/gm)) map[m[1]] = tier;
+  }
+  return map;
+}
+const TIER_MAP = buildTierMap();
+
 function exerciseInfo(topicDir, name) {
   const dir = path.join(topicDir, name);
   const id = name.split('_')[0];
@@ -39,11 +72,12 @@ function exerciseInfo(topicDir, name) {
   const cmds = (meta.match(/\*\*Commands:\*\*\s*(.*)$/) || [, ''])[1];
   const quiz = fs.existsSync(path.join(dir, 'answer.txt'));
   const answer = path.join(dir, quiz ? 'answer.txt' : 'answer.sh');
+  const tier = TIER_MAP[id] || 1;
   let status = 'new';
   if (fs.existsSync(path.join(PROGRESS, id))) status = 'pass';
   else if (fs.existsSync(path.join(PROGRESS, id + '.viewed'))) status = 'viewed';
   else if (isAttempted(answer)) status = 'attempted';
-  return { id, name, title, level, cmds, quiz, dir, answer, status };
+  return { id, name, title, level, cmds, quiz, dir, answer, status, tier };
 }
 
 function index() {

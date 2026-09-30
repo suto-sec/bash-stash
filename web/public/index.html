@@ -14,7 +14,8 @@
 </head>
 <body>
   <header class="topbar">
-    <div class="brand"><span class="prompt">$_</span> bash stash</div>
+    <a href="#/home" class="brand" title="Choose a collection or track"><span class="prompt">$_</span> bash stash</a>
+    <button id="track-badge" class="track-badge hidden" title="Change track"></button>
     <div class="overall" title="exercises passed">
       <div class="bar"><div id="overall-fill"></div></div>
       <span id="overall-text">0/0</span>
@@ -54,14 +55,30 @@
         </button>
       </div>
     </div>
-    <button id="theme-btn" class="icon-btn" title="Switch light/dark theme" aria-label="Switch theme"></button>
+    <div class="layout-picker" id="settings-picker">
+      <button id="settings-btn" class="icon-btn" title="Settings" aria-label="Settings" aria-haspopup="true" aria-expanded="false">⚙</button>
+      <div class="layout-menu settings-menu hidden" id="settings-menu" role="menu">
+        <div class="layout-menu-label">Global theme</div>
+        <button class="settings-row" id="theme-row" role="menuitemradio">
+          <span class="settings-row-label">Light / dark</span>
+          <span class="settings-row-value" id="theme-row-value">Dark</span>
+        </button>
+        <div class="layout-menu-sep"></div>
+        <div class="layout-menu-label">Sidebar</div>
+        <label class="settings-row settings-row-check">
+          <span class="settings-row-label">Hide passed exercises</span>
+          <input type="checkbox" id="hide-passed">
+        </label>
+      </div>
+    </div>
   </header>
 
   <div class="layout">
     <aside class="sidebar" id="sidebar">
       <input id="search" type="search" placeholder="Search id, title or command…" autocomplete="off">
-      <div class="filters">
-        <label><input type="checkbox" id="hide-passed"> hide passed</label>
+      <div class="sidebar-tools">
+        <button id="expand-all-btn" class="small" title="Open every category">Expand all</button>
+        <button id="collapse-all-btn" class="small" title="Close every category">Collapse all</button>
       </div>
       <nav id="topics" aria-label="Exercises"></nav>
     </aside>
@@ -127,6 +144,39 @@
         <div id="drop-hint"></div>
       </div>
     </main>
+  </div>
+
+  <div class="home-page hidden" id="home-page">
+    <div class="ref-page-head">
+      <a href="#/ex/" id="home-back" title="Back to exercises">← Exercises</a>
+      <strong>Choose what to browse</strong>
+      <div class="spacer"></div>
+    </div>
+    <div class="home-body">
+      <p class="home-intro">Pick a collection. It decides which exercises show up in the sidebar — you can change this anytime by clicking the logo again.</p>
+      <div class="track-grid" id="track-grid">
+        <button class="track-card" data-track="full">
+          <div class="track-card-title">Full collection</div>
+          <div class="track-card-desc">Everything — every exercise across every category.</div>
+          <div class="track-card-count" data-count="full"></div>
+        </button>
+        <button class="track-card" data-track="minimal">
+          <div class="track-card-title">Minimal</div>
+          <div class="track-card-desc">Just the essential exercises from each category — enough to barely understand every concept for the exam.</div>
+          <div class="track-card-count" data-count="minimal"></div>
+        </button>
+        <button class="track-card" data-track="intermediate">
+          <div class="track-card-title">Intermediate</div>
+          <div class="track-card-desc">Minimal, plus exercises built to mirror real exam patterns — enough to be confident going in.</div>
+          <div class="track-card-count" data-count="intermediate"></div>
+        </button>
+        <button class="track-card" data-track="complete">
+          <div class="track-card-title">Complete</div>
+          <div class="track-card-desc">Every exercise needed to almost ensure passing — full depth and edge-case practice.</div>
+          <div class="track-card-count" data-count="complete"></div>
+        </button>
+      </div>
+    </div>
   </div>
 
   <div class="reference-page hidden" id="reference-page">
