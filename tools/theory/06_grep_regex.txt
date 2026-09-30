@@ -413,3 +413,60 @@ After `grep -r "TODO" .`, you see many lines from files named `*.bak`. How can y
 (-) `grep -r TODO . -v .bak`, where `-v` excludes the file names that match :: `-v` inverts lines, not file names.
 (-) `grep -r TODO .bak`, which searches the directory called `.bak` only :: That searches a file or directory called `.bak`.
 (-) `grep -r -i TODO .`, which ignores the case of the letters in the files :: Case is not the issue.
+
+@@group Mixed practice
+@@q fill | Lines that start with a capital
+Print the lines of `file` that start with an upper-case letter: `grep '{{^[A-Z]}}' file`
+(x) [A-Z] :: Without `^` it matches a capital anywhere in the line.
+(x) ^A-Z :: Without brackets it looks for the literal text `A-Z` at the start.
+@@note
+`^[[:upper:]]` is the locale-aware spelling.
+
+@@q fill | Lines with a number
+Extract the numbers of one or more digits with `grep -o`: `grep -oE '{{[0-9]+}}' file`
+(x) [0-9] :: That prints one digit per match, not whole numbers.
+(x) [0-9]* :: That can match the empty string and is not what you want here.
+@@note
+`-o` prints each match on its own line.
+
+@@q fill | Invert the match
+Show the lines of `log` that do NOT contain the word `DEBUG`: `grep {{-v}} DEBUG log`
+(x) -c :: That counts the matching lines.
+(x) -l :: That lists file names with a match.
+@@note
+`-v` is often combined with `-i` (`-vi`).
+
+@@q sort | Does the pattern match
+@@buckets Matches | Does not match
+The pattern is `grep -E '^[0-9]{3}-[0-9]{4}$'`. Decide for each line.
+(Matches) `555-1234` :: Three digits, a dash, four digits, nothing else.
+(Matches) `000-0000` :: The digits can be anything.
+(Does not match) `5551234` :: The dash is missing.
+(Does not match) `555-12345` :: Five digits after the dash, but the pattern wants exactly four.
+(Does not match) `call 555-1234` :: The anchors require the whole line to be the number.
+(Does not match) `555-123a` :: The last character is not a digit.
+
+@@q multi | Patterns that match the word cat
+Select the patterns that match the line `a cat here`.
+(+) `cat` :: The literal text is inside the line.
+(+) `c.t` :: The dot stands for the `a`.
+(+) `^a c` :: The line starts with `a c`.
+(+) `[cb]at` :: Either `cat` or `bat`.
+(-) `^cat` :: The line does not start with `cat`.
+(-) `cat$` :: The line does not end with `cat`.
+
+@@q order | Extract failed login addresses
+Put the stages in order to list each IPv4 address that had a failed SSH password, once, most attempts first.
+(>) `grep 'Failed password' auth.log` :: Keep only the failed attempts.
+(>) `grep -oE '[0-9]+(\.[0-9]+){3}'` :: Pull out the address of each line.
+(>) `sort | uniq -c` :: Count the attempts per address.
+(>) `sort -nr` :: Put the most frequent first.
+
+@@q match | Symbols and their meaning
+Match each regular-expression fragment with what it means in extended syntax.
+(=) `a{2,3}` => Two or three `a` :: A bounded repetition.
+(=) `(ab)+` => One or more repetitions of the group `ab` :: The plus applies to the group.
+(=) `[^,]*` => Any number of characters that are not commas :: A negated bracket with a star.
+(=) `\.` => A literal dot :: The backslash removes the special meaning.
+(=) `^$` => An empty line :: Start immediately followed by end.
+(-) Any character :: That is a plain `.`.

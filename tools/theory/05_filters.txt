@@ -428,3 +428,58 @@ What is wrong with `sort -n data | head -n 3` when you want the three *largest* 
 (-) `1 cat`, because the pipeline lists the words in alphabetical order :: `the` appears twice, which is the highest count.
 (-) `4 the cat the dog`, because the line is counted as a whole :: The line is split into words first.
 (-) `the`, because `uniq -c` prints only the repeated word :: `uniq -c` adds the count.
+
+@@group Mixed practice
+@@q fill | Numbers in order
+Sort the lines of `nums` as numbers, largest first: `sort {{-nr ;; -rn ;; -n -r ;; -r -n}} nums`
+(x) -r :: That is a text sort in reverse, so `9` would come after `100`.
+(x) -n :: Numeric, but smallest first.
+@@note
+`sort -k2,2nr` does the same on the second field.
+
+@@q fill | Fourth field
+Print the fourth colon-separated field of each line of `file`: `cut {{-d: -f4 ;; -d':' -f4 ;; -d ':' -f4 ;; -f4 -d: ;; -d":" -f4}} file`
+(x) -c4 :: That selects the fourth *character*, not a field.
+(x) -f4 :: Without `-d:` the delimiter is a tab.
+@@note
+`cut -d: -f4 /etc/passwd` lists the primary group ids.
+
+@@q fill | Delete characters
+Remove every digit from the text arriving on standard input: `tr {{-d}} '0-9'`
+(x) -s :: That squeezes repeated characters into one.
+(x) -c :: That complements the set: it would act on the characters that are NOT digits.
+@@note
+`tr -d '\n'` joins all lines into one.
+
+@@q sort | Which tool
+@@buckets Works on whole lines | Works on characters or fields
+Classify how each command treats its input.
+(Works on whole lines) `sort` :: Orders complete lines.
+(Works on whole lines) `uniq` :: Compares adjacent complete lines.
+(Works on whole lines) `head -n 3` :: Takes complete lines from the start.
+(Works on characters or fields) `tr a-z A-Z` :: Translates single characters.
+(Works on characters or fields) `cut -d: -f1` :: Selects fields of each line.
+(Works on characters or fields) `wc -c` :: Counts bytes.
+
+@@q multi | Commands that never change the input file
+Select the commands that only print their result and leave the input file unchanged.
+(+) `sort names` :: It writes the sorted text to standard output.
+(+) `sed 's/a/b/' names` :: Without `-i` it only prints.
+(+) `tr a-z A-Z < names` :: It reads from standard input and prints.
+(-) `sed -i 's/a/b/' names` :: `-i` edits the file in place.
+(-) `sort names -o names` :: `-o` writes the result back into the file.
+
+@@q order | Top five words
+Put the stages in order to print the five most frequent words of `text`, most frequent first, one per line as `count word`.
+(>) `tr -cs 'a-z' '\n' < text` :: One lower-case word per line.
+(>) `sort` :: Equal words become adjacent.
+(>) `uniq -c` :: Count each run.
+(>) `sort -nr | head -n 5` :: Rank by count and keep five.
+
+@@q match | sed commands
+Match each `sed` command with its effect on a three-line input `a`, `b`, `c`.
+(=) `sed '2d'` => Prints `a` and `c` :: Deletes line 2.
+(=) `sed -n '2p'` => Prints only `b` :: `-n` with `p`.
+(=) `sed '$d'` => Prints `a` and `b` :: Deletes the last line.
+(=) `sed 's/b/X/'` => Prints `a`, `X` and `c` :: Substitutes in the matching line.
+(-) Prints `c` only :: None of the commands above does that.

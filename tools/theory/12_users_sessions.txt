@@ -392,3 +392,59 @@ Which command changes the default login shell of your account?
 (-) `su` :: Switches user.
 (-) `cd` :: Changes directory.
 (-) `passwd -s` :: Shows status.
+
+@@group Mixed practice
+@@q fill | Identity of a user
+Show the numeric uid, gid and all groups of the user `luke`: `{{id}} luke`
+(x) whoami :: That prints only the name of the current user.
+(x) groups :: That prints only the group names, without the numbers.
+@@note
+`id -Gn luke` lists the group names only.
+
+@@q fill | Lock an account
+Lock the password of the account `temp` so no one can log in with it: `passwd {{-l}} temp`
+(x) -u :: That unlocks it.
+(x) -e :: That forces a password change at the next login.
+@@note
+Use `passwd -S temp` to see the status.
+
+@@q fill | Add to a group
+Add the existing user `luke` to the group `devs` without removing his other groups: `usermod {{-aG ;; -a -G ;; -Ga}} devs luke`
+(x) -G :: Without `-a` the other supplementary groups are replaced.
+(x) -g :: That changes the primary group instead.
+@@note
+Debian's `adduser luke devs` does the same.
+
+@@q sort | Readable by everyone or not
+@@buckets Readable by ordinary users | Restricted
+Who can normally read these files on a typical Debian system?
+(Readable by ordinary users) `/etc/passwd` :: Programs need it to map UIDs to names.
+(Readable by ordinary users) `/etc/group` :: Also needed for name lookups.
+(Restricted) `/etc/shadow` :: Holds the password hashes.
+(Restricted) `/etc/sudoers` :: Privilege rules, mode 0440.
+(Restricted) `/var/log/btmp` :: The failed-login records, readable only by root and a group.
+
+@@q multi | Fields of an account line
+Select the statements that are true about `alumno:x:1000:1000:Alumno,,,:/home/alumno:/bin/bash`.
+(+) The user id is 1000. :: Third field.
+(+) The home directory is `/home/alumno`. :: Sixth field.
+(+) The login shell is `/bin/bash`. :: Seventh field.
+(+) The password hash is not in this file. :: The `x` points to `/etc/shadow`.
+(-) The account is locked. :: A locked password shows `!` in shadow; nothing here says so.
+(-) The user is an administrator because the UID is 1000. :: Administrators are UID 0 or members of a group like `sudo`.
+
+@@q order | Give a colleague sudo rights
+Put the steps in order to let the user `ana` run commands as root with `sudo` on a Debian-like system.
+(>) `sudo usermod -aG sudo ana` :: Add her to the administrators group.
+(>) Ask her to log out and in again :: The group list is read at login.
+(>) She runs `id` to check the group list :: `sudo` should now appear.
+(>) She runs `sudo whoami` and sees `root` :: Proof that it works.
+
+@@q match | Session commands
+Match each command with what it shows or does.
+(=) `whoami` => Your effective user name :: Just the name.
+(=) `w` => Logged-in users and what each is running :: With load and idle time.
+(=) `last -n 5` => The last five logins, from the wtmp records :: The history.
+(=) `lastb` => Failed login attempts (as root) :: Reads btmp.
+(=) `su - luke` => A login shell as `luke`, after luke's password :: Starts a full login environment.
+(-) Shows the hashed passwords :: No such command; they are in `/etc/shadow`.

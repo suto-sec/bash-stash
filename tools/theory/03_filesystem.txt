@@ -426,3 +426,56 @@ Immediately after `mkdir -p a/b/c && cd a/b/c && cd ../..`, where are you relati
 (-) In `a/b` :: That would be a single `..`.
 (-) In the starting directory :: That takes three `..`.
 (-) In `c` :: `cd ../..` moved you away from it.
+
+@@group Mixed practice
+@@q fill | Copy a whole directory
+Copy the directory `proj` with everything inside it to `proj_backup`: `cp {{-r ;; -R ;; -a ;; -ra ;; -ar}} proj proj_backup`
+(x) -i :: That only asks before overwriting; `cp` would still refuse a directory.
+(x) -u :: That copies only newer files; it does not make `cp` enter directories.
+@@note
+`-a` also preserves permissions, times and symbolic links.
+
+@@q fill | Symbolic link name
+Make `latest` a symbolic link that points to `release-12`: `ln -s {{release-12}} latest`
+(x) latest :: The first argument is the target; the link name comes second.
+@@note
+`ls -l latest` then shows `latest -> release-12`.
+
+@@q fill | Remove a directory tree
+Delete the directory `old` together with all its contents: `rm {{-r ;; -rf ;; -fr ;; -R ;; -Rf}} old`
+(x) -d :: That removes only empty directories (like `rmdir`).
+(x) -i :: That only asks for confirmation before each removal.
+@@note
+Double-check the name first: there is no undo.
+
+@@q sort | Hard link or copy
+@@buckets Changes show up in both names | Independent after the operation
+After the operation, editing one of the two names.
+(Changes show up in both names) `ln a b` (hard link) :: Both names point to the same inode.
+(Changes show up in both names) `ln -s a b` (symbolic link) :: Opening `b` follows it to `a`.
+(Independent after the operation) `cp a b` :: A new file with its own inode and data.
+(Independent after the operation) `cp -a a b` :: Copies attributes too, but is still a separate file.
+
+@@q multi | Things that change a file's link count
+Select the commands that change the link count of the file `f`.
+(+) `ln f g` :: A new hard link adds one.
+(+) `rm g` (when `g` is a hard link to `f`) :: Removing one name lowers the count.
+(-) `ln -s f s` :: A symbolic link is a separate file; it does not raise the count of `f`.
+(-) `cp f h` :: A copy is a new file with its own count of 1.
+(-) `chmod 600 f` :: Permissions do not change the link count.
+
+@@q order | Safe archive round trip
+Put the commands in order to back up `docs`, check the archive and restore it in another place.
+(>) `tar czf docs.tgz docs` :: Create the compressed archive.
+(>) `tar tzf docs.tgz` :: List it to check the contents without extracting.
+(>) `mkdir restore` :: A clean directory to extract into.
+(>) `tar xzf docs.tgz -C restore` :: Extract into the new directory with `-C`.
+
+@@q match | Disk and file information
+Match each command with what it reports.
+(=) `df -h /` => Free and used space of the file system that holds `/` :: Human-readable sizes.
+(=) `du -sh ~` => The total size of your home directory :: `-s` summarises.
+(=) `stat file` => Inode data: size, permissions, owner, times and link count :: The raw attributes.
+(=) `ls -i file` => The inode number of the file :: Useful to recognise hard links.
+(=) `mount` => The list of mounted file systems :: Devices and mount points.
+(-) The contents of a compressed archive :: That is `tar tzf`.

@@ -432,3 +432,50 @@ After `sleep 100 &`, `ps -o pid,ppid,comm` shows two lines. Which relationship d
 (-) The PID of `sleep` equals the PID of `bash`. :: Every process has a distinct PID.
 (-) The PPID of `sleep` is 0. :: PPID 0 is the kernel's scheduler, not a normal parent.
 (-) The PPID of `bash` equals the PID of `sleep`. :: The parent is the shell, never the other way round.
+
+@@group Mixed practice
+@@q fill | Suspend and resume keys
+Press `{{Ctrl+Z ;; Ctrl-Z ;; ^Z}}` to suspend the foreground job and type `{{bg}}` to let it continue in the background.
+(x) Ctrl+C :: That interrupts (normally ends) the job instead of suspending it.
+(x) fg :: That brings the job to the foreground, not the background.
+@@note
+`jobs` lists the result; `fg` brings it back to the front.
+
+@@q fill | Send a signal by number
+Force the process with PID 4242 to end at once, with signal number 9: `kill {{-9 ;; -KILL ;; -SIGKILL ;; -s 9 ;; -s KILL}} 4242`
+(x) -15 :: That is `SIGTERM`, which the process may handle or ignore.
+(x) -1 :: That is `SIGHUP`.
+@@note
+Try plain `kill 4242` first; it gives the program the chance to clean up.
+
+@@q sort | Who catches it
+@@buckets Can be caught or ignored | Cannot be caught
+Classify each signal.
+(Can be caught or ignored) `SIGINT` :: Programs may handle `Ctrl+C`.
+(Can be caught or ignored) `SIGTERM` :: The polite termination request.
+(Can be caught or ignored) `SIGHUP` :: Often used to reload configuration.
+(Cannot be caught) `SIGKILL` :: The kernel ends the process directly.
+(Cannot be caught) `SIGSTOP` :: The kernel freezes the process directly.
+
+@@q multi | What ps shows
+Select the statements that are true about the output of `ps aux`.
+(+) Every process of the system is listed, not only those of your terminal. :: The `a` and `x` options add other users' processes and those without a terminal.
+(+) The second column is the PID. :: The first is the user.
+(+) A `?` in the TTY column means the process has no controlling terminal. :: Typical for daemons.
+(-) Each line starts with the job number of the shell. :: Job numbers belong to `jobs`.
+(-) Only root-owned processes are shown. :: All users are shown.
+
+@@q order | Tracing a hung program
+A program seems stuck. Put these steps in a sensible order.
+(>) Check whether it still exists with `ps -p PID` :: Confirm it is the process you think it is.
+(>) Look at its state in the `STAT` column :: `D` or `T` tell you very different things.
+(>) Send `SIGTERM` with `kill PID` and wait a little :: Give it the chance to clean up.
+(>) If it is still alive, send `SIGKILL` with `kill -9 PID` :: The forced last resort.
+
+@@q match | Commands and what they change
+Match each command with the effect on a running job.
+(=) `kill -STOP %1` => Freezes job 1, like `Ctrl+Z` :: The job stays in memory.
+(=) `kill -CONT %1` => Lets a stopped job continue :: The job runs again.
+(=) `kill -TERM %1` => Politely asks job 1 to end :: Same as plain `kill %1`.
+(=) `kill -KILL %1` => Ends job 1 without any chance to clean up :: Same as `kill -9 %1`.
+(-) Moves job 1 to the foreground :: That is `fg %1`.

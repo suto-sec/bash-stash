@@ -388,3 +388,59 @@ You want the results of `ls` in `list.txt`, **adding** them to what is already t
 (-) `ls > list.txt` :: Replaces the contents.
 (-) `ls | list.txt` :: A pipe needs a command.
 (-) `ls < list.txt` :: Input, not output.
+
+@@group Mixed practice
+@@q fill | Append both streams
+Append both standard output and standard error of `job.sh` to `out.log`: `./job.sh {{>> out.log 2>&1 ;; >>out.log 2>&1 ;; &>> out.log ;; &>>out.log}}`
+(x) > out.log 2>&1 :: That truncates the log instead of appending.
+(x) 2>&1 >> out.log :: Wrong order: stderr would still go to the terminal.
+@@note
+`&>>` is the bash shorthand for appending both streams.
+
+@@q fill | Discard everything
+Run `noisy` without seeing any output, normal or error: `noisy {{&>/dev/null ;; > /dev/null 2>&1 ;; >/dev/null 2>&1 ;; &> /dev/null}}`
+(x) 2>/dev/null :: That hides only the errors.
+(x) > /dev/null :: That hides only the normal output.
+@@note
+Order matters in the long form: `> /dev/null 2>&1`.
+
+@@q fill | Feed a file to a command
+Count the lines of `data.txt` without the command printing the file name: `wc -l {{< data.txt ;; <data.txt}}`
+(x) data.txt :: With the name as an argument, `wc` prints it after the count.
+(x) | data.txt :: A pipe must end in a command, not a file name.
+@@note
+With `<`, `wc` reads standard input and does not know the name.
+
+@@q sort | Redirection or pipe
+@@buckets Redirection (to or from a file) | Pipe (between programs)
+Classify each construct.
+(Redirection (to or from a file)) `ls > list.txt` :: The output goes to a file.
+(Redirection (to or from a file)) `sort < names` :: The input comes from a file.
+(Redirection (to or from a file)) `make 2>> errors.log` :: Errors are appended to a file.
+(Pipe (between programs)) `ls | wc -l` :: The output of one program is the input of another.
+(Pipe (between programs)) `ps aux | grep sshd` :: Two programs are connected.
+(Pipe (between programs)) `cat f | sort | uniq` :: A chain of programs.
+
+@@q multi | What the pipe carries
+Select the true statements about `cmd1 | cmd2`.
+(+) Only the standard output of `cmd1` enters the pipe. :: stderr stays on the terminal unless redirected.
+(+) `cmd2` reads the data as its standard input. :: That is why filters are useful.
+(+) Both commands run at the same time. :: The data flows as it is produced.
+(-) The output of `cmd1` is first saved in a temporary file. :: No file is needed.
+(-) The exit status of `cmd1` becomes an argument of `cmd2`. :: Only data flows.
+
+@@q order | Log a script run
+Put the steps in order to run a script and keep its output, while still watching it.
+(>) `./backup.sh 2>&1` :: Join the error stream to the normal one.
+(>) `| tee backup.log` :: Copy everything to a file and to the screen.
+(>) Watch the output scroll by :: The screen still shows it.
+(>) Read `backup.log` afterwards with `less backup.log` :: The complete record is saved.
+
+@@q match | Descriptors
+Match each construct with its effect.
+(=) `3< file` (with `exec`) => Opens the file for reading as descriptor 3 :: A custom descriptor.
+(=) `>&2` => Sends the output of the command to standard error :: Used for messages.
+(=) `2>&1` => Makes stderr go where stdout currently goes :: Duplicates a descriptor.
+(=) `<<< "text"` => Uses the string as standard input :: A here-string.
+(=) `> /dev/null` => Throws the normal output away :: The null device.
+(-) Writes standard input to a file named 1 :: No construct above does that.

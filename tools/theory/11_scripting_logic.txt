@@ -504,3 +504,59 @@ What do `x=3; y=4; echo $((x**2 + y**2))` and `echo "$x + $y = $((x+y))"` print?
 (-) `7` and `3 + 4 = 7` :: `**` is the power operator, not multiplication.
 (-) `25` and `7` :: The second command prints the whole string.
 (-) `3 + 4` twice. :: Arithmetic is evaluated inside `$(( ))`.
+
+@@group Mixed practice
+@@q fill | Is it readable
+Check that `$f` is a readable file before using it: `if [ {{-r ;; -f}} "$f" ]; then`
+(x) -x :: That tests whether you may execute it.
+(x) -d :: That tests for a directory.
+@@note
+`-r` tests the permission; `-f` tests that it is a regular file (and `[ -f "$f" ] && [ -r "$f" ]` tests both).
+
+@@q fill | Loop over the arguments
+Loop over every argument, keeping arguments with spaces intact: `for a in {{"$@"}}; do`
+(x) $* :: Unquoted, it splits arguments that contain spaces.
+(x) "$#" :: That is the count as a single word.
+@@note
+`"$@"` keeps each argument as one word.
+
+@@q fill | Count down
+Print 3, 2 and 1 with a `while` loop: `i=3; while [ "$i" {{-gt}} 0 ]; do echo $i; i=$((i-1)); done`
+(x) -lt :: That would loop only while `i` is below 0, which is false at once.
+(x) > :: That is a redirection inside `[ ]`.
+@@note
+Numeric comparisons use `-eq -ne -lt -le -gt -ge`.
+
+@@q sort | Test operator
+@@buckets Checks a file | Compares numbers
+Classify each `test` operator.
+(Checks a file) `-e` :: The path exists.
+(Checks a file) `-s` :: The file is not empty.
+(Checks a file) `-d` :: The path is a directory.
+(Compares numbers) `-ge` :: Greater than or equal.
+(Compares numbers) `-ne` :: Not equal.
+(Compares numbers) `-lt` :: Less than.
+
+@@q multi | Functions and scope
+Select the true statements about bash functions.
+(+) Arguments are read as `$1`, `$2` ... inside the function. :: They hide the script's own parameters while the function runs.
+(+) `return 3` leaves the function with status 3. :: The caller reads it from `$?`.
+(+) A variable assigned in a function is global unless declared `local`. :: Functions share the script's variables.
+(-) A function must be defined after the code that calls it. :: It must be defined before the call is executed.
+(-) `exit` inside a function only leaves the function. :: It ends the whole script.
+
+@@q order | Build a menu with case
+Put the parts of a small menu script in order.
+(>) `read -p "Choice: " c` :: Ask the user first.
+(>) `case "$c" in` :: Start the selection on the answer.
+(>) `a) echo add;; b) echo remove;;` :: The branches for known answers.
+(>) `*) echo unknown;; esac` :: The default branch and the closing word.
+
+@@q match | Loop control
+Match each construct with its behaviour.
+(=) `break` => Leaves the innermost loop :: The script continues after the loop.
+(=) `break 2` => Leaves two nested loops :: A number selects the depth.
+(=) `continue` => Skips to the next iteration of the innermost loop :: The rest of the body is skipped.
+(=) `exit 3` => Ends the script with status 3 :: Not just the loop.
+(=) `return 1` => Leaves the current function with status 1 :: Only valid in a function.
+(-) Restarts the script from the first line :: No construct does that.

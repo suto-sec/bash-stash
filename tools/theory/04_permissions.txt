@@ -435,3 +435,58 @@ What happens when you run `chmod 600 soft` where `soft` is a symbolic link to `f
 (-) Read and write, from the group class. :: You are not in the group.
 (-) None, only the owner may touch the file. :: Others can read.
 (-) Full access, since the file name looks public. :: Names mean nothing.
+
+@@group Mixed practice
+@@q fill | Symbols for 640
+Write the mode 640 in symbolic form for `chmod`: `chmod {{u=rw,g=r,o=}} file`
+(x) u=rwx,g=r,o=r :: That is 744: the owner gets execute and others may read.
+(x) a=r :: That is 444: nobody may write.
+@@note
+`u=rw,g=r,o=` sets each class exactly; leaving `o=` empty removes all permissions for others.
+
+@@q fill | Octal for a private directory
+A directory only its owner may list, enter and modify has the octal mode `{{700}}`.
+(x) 600 :: Without `x` the owner could not even enter the directory.
+(x) 755 :: That lets group and others list and enter it.
+@@note
+Directories need `x` to be entered, so 700 is the private directory, 600 is the private file.
+
+@@q fill | Default file mode
+With `umask 027`, a new regular file gets the mode `{{640}}` and a new directory gets `{{750}}`.
+(x) 750 :: That is the directory mode; files do not get execute bits.
+(x) 600 :: That would be `umask 077`.
+@@note
+Files: 666 minus the umask bits; directories: 777 minus the umask bits.
+
+@@q sort | Files or directories
+@@buckets Needed on a file | Needed on a directory
+Which permission is being used in each case?
+(Needed on a file) `r` to print its contents with `cat` :: Reading the data.
+(Needed on a file) `w` to append a line with `>>` :: Changing the data.
+(Needed on a file) `x` to start it as a program :: Execution of the file itself.
+(Needed on a directory) `x` to `cd` into it :: Traversal.
+(Needed on a directory) `w` to create a file inside it :: Changing the list of names.
+(Needed on a directory) `r` to see the names with `ls` :: Reading the list of names.
+
+@@q multi | Commands that change permissions or owners
+Select the commands that can change who may access `report.txt`.
+(+) `chmod 600 report.txt` :: Changes the permission bits.
+(+) `chown luke report.txt` :: Changes the owner (as root).
+(+) `chgrp devs report.txt` :: Changes the group.
+(-) `touch report.txt` :: It only updates the times (or creates the file).
+(-) `umask 077` :: It affects files created afterwards, not this one.
+
+@@q order | Prepare a script to run
+Put the steps in order to make a downloaded script safe to run.
+(>) Read it with `less script.sh` :: Never run code you have not looked at.
+(>) Check the permissions with `ls -l script.sh` :: See whether it already has an execute bit and who owns it.
+(>) Add execute permission for yourself only with `chmod u+x script.sh` :: Minimum needed.
+(>) Run it with `./script.sh` :: Only now is it executed.
+
+@@q match | Read the mode
+Match each `ls -l` mode string with the most accurate description.
+(=) `-rw-r-----` => A file: the owner reads and writes, the group reads, others have nothing :: 640.
+(=) `drwxr-xr-x` => A directory everybody may enter and list, only the owner may modify :: 755.
+(=) `-rwsr-xr-x` => An executable with the setuid bit set :: The `s` replaces the owner's `x`.
+(=) `drwxrwxrwt` => A world-writable directory with the sticky bit :: Like `/tmp`.
+(-) A symbolic link to a file :: Links start with `l`.
