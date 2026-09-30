@@ -88,6 +88,42 @@ function ensurePlay(ex) {
   return fs.existsSync(dir) ? dir : null;
 }
 
+// ------------------------------------------------------------------ multiple answer attempts
+// Alongside the canonical answer.sh/.txt (attempt "1", implicitly), an exercise directory may hold
+// extra attempts named answer2.sh, answer3.sh, ... — for keeping a previous solve around, or trying
+// a different approach, without losing the one that's already passing. They're plain files living
+// next to answer.sh; the checker (lib/engine.sh: check_one) already accepts a custom answer-file
+// path and, when given one, deliberately skips updating the exercise's pass/fail progress — so
+// checking an attempt never disturbs the exercise's official status.
+function attemptExt(ex) { return ex.quiz ? '.txt' : '.sh'; }
+function attemptRegex(ex) { return new RegExp(`^answer(\\d+)${attemptExt(ex) === '.sh' ? '\\.sh' : '\\.txt'}$`); }
+function isValidAttemptFile(ex, name) {
+  if (!name || name === path.basename(ex.answer)) return false; // that's the canonical file, no override needed
+  return attemptRegex(ex).test(name) && fs.existsSync(path.join(ex.dir, name));
+}
+function createAttempt(ex, fromName) {
+  const ext = attemptExt(ex), re = attemptRegex(ex);
+  let maxN = 1; // answer.sh/.txt is implicitly attempt 1
+  for (const f of fs.readdirSync(ex.dir)) {
+    const m = f.match(re);
+    if (m) maxN = Math.max(maxN, parseInt(m[1], 10));
+  }
+  const name = `answer${maxN + 1}${ext}`;
+  const dest = path.join(ex.dir, name);
+  const src = isValidAttemptFile(ex, fromName) ? path.join(ex.dir, fromName) : ex.answer;
+  fs.copyFileSync(src, dest);
+  fs.chmodSync(dest, 0o755);
+  let openPath = dest;
+  const playDir = ensurePlay(ex);
+  if (playDir) {
+    const link = path.join(playDir, name);
+    try { fs.unlinkSync(link); } catch { /* didn't exist yet */ }
+    fs.symlinkSync(dest, link);
+    openPath = link;
+  }
+  return { name, path: dest, openPath };
+}
+
 // ------------------------------------------------------------------ http helpers
 function send(res, code, body, type = 'application/json') {
   res.writeHead(code, { 'Content-Type': type, 'Cache-Control': 'no-store' });
@@ -154,7 +190,7 @@ async function api(req, res, url) {
   }
 
   const ex = parts[2] ? findExercise(parts[2]) : null;
-  if (['exercise', 'check', 'solution', 'reset'].includes(parts[1]) && !ex) return send(res, 404, { error: 'no such exercise' });
+  if (['exercise', 'check', 'solution', 'reset', 'attempt'].includes(parts[1]) && !ex) return send(res, 404, { error: 'no such exercise' });
 
   if (parts[1] === 'exercise' && req.method === 'GET') {
     const readme = fs.readFileSync(path.join(ex.dir, 'README.md'), 'utf8');
@@ -169,11 +205,22 @@ async function api(req, res, url) {
     return send(res, 200, { playDir: playDirFor(ex.id) });
   }
 
+  if (parts[1] === 'attempt' && req.method === 'POST') {
+    const body = await readBody(req);
+    try { return send(res, 200, createAttempt(ex, body.from)); }
+    catch (e) { return send(res, 500, { error: String(e) }); }
+  }
+
   if (parts[1] === 'check' && req.method === 'POST') {
+    // an explicit ?file=answerN.sh checks that attempt instead of the canonical answer.sh/.txt —
+    // isValidAttemptFile rejects anything else (wrong exercise, made-up name, canonical file itself)
+    const fileArg = url.searchParams.get('file');
+    const args = [ex.id];
+    if (isValidAttemptFile(ex, fileArg)) args.push(path.join(ex.dir, fileArg));
     // stream the real checker's output (with ANSI colours) as it runs
     res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store',
                          'X-Content-Type-Options': 'nosniff' });
-    const p = spawn(path.join(LAB, 'bin/check'), [ex.id], { cwd: LAB, env: { ...process.env, LAB_COLOR: '1' } });
+    const p = spawn(path.join(LAB, 'bin/check'), args, { cwd: LAB, env: { ...process.env, LAB_COLOR: '1' } });
     p.stdout.on('data', d => res.write(d));
     p.stderr.on('data', d => res.write(d));
     p.on('close', code => res.end(`\n\x1b[2m[exit ${code}]\x1b[0m\n`));
@@ -210,6 +257,10 @@ async function api(req, res, url) {
 //    unlike the sidebar there is no single icon to click for "open, at whatever the default height
 //    is", so the keybinding is dispatched instead; VS Code's keybinding service does not require a
 //    trusted event for this one, confirmed empirically.
+// It also reports the currently focused editor tab's filename to the parent page (postMessage),
+// polled from the tab bar's DOM (`.tab.active[data-resource-name]`) since code-server exposes no
+// API for this — the parent uses it to let "Check" run against whichever answer*.sh is focused,
+// instead of only the canonical answer.sh.
 const WORKBENCH_TWEAKS = nonce => `<script nonce="${nonce}">(function(){
   var tries = 0, closedSidebar = false, openedTerminal = false;
   var t = setInterval(function() {
@@ -232,6 +283,15 @@ const WORKBENCH_TWEAKS = nonce => `<script nonce="${nonce}">(function(){
       }
     }
   }, 200);
+  var lastActive = null;
+  setInterval(function() {
+    var tab = document.querySelector('.tabs-container .tab.active');
+    var name = tab ? tab.getAttribute('data-resource-name') : null;
+    if (name !== lastActive) {
+      lastActive = name;
+      try { window.parent.postMessage({ source: 'bash-stash-vscode', activeFile: name }, window.location.origin); } catch (e) {}
+    }
+  }, 500);
 })();</script>`;
 
 const proxy = httpProxy.createProxyServer({ target: CODE_SERVER, ws: true, changeOrigin: false, selfHandleResponse: true });
