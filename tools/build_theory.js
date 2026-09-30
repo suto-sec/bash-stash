@@ -11,7 +11,7 @@
 //   (+) right option :: why it is right  single/multi   (-) wrong option :: why it is wrong
 //   (>) step :: why it goes here         order: steps listed in the CORRECT order
 //   (=) left => right :: why             match: pairs ; (-) distractor :: why it matches nothing
-//   @@buckets A | B | C                  sort: the categories ; (A) item :: why it belongs to A
+//   @@buckets A | B | C                  sort: the categories ; (A) item :: why it belongs to A (names may contain parentheses)
 //   {{answer ;; alt}} in the text        fill: a blank with its accepted answers
 //   (x) wrong answer :: why not          fill: tempting wrong answers and why they fail
 //   @@note                               optional closing takeaway (markdown, until next @@)
@@ -113,6 +113,14 @@ function parse(file) {
     if (section === 'about') { addText(col, 'about', line); continue; }
     if (!q) { if (line.trim()) err('text outside a question'); continue; }
 
+    // sort items: "(Bucket) item :: why", matched against the declared bucket names (they may contain parentheses)
+    if (q.type === 'sort' && section !== 'note') {
+      const b = q.buckets.find(x => line.startsWith('(' + x + ') '));
+      if (b) {
+        const [head, why] = splitWhy(line.slice(b.length + 3));
+        section = 'items'; lastItem = { t: head, bucket: b, why }; q.items.push(lastItem); continue;
+      }
+    }
     // option lines
     if ((m = line.match(/^\(([+\->=x]|[^)\n]{1,40})\)\s+(.*)$/)) && section !== 'note' && (q.type === 'sort' || m[1].length === 1)) {
       const tag = m[1], body = m[2];
