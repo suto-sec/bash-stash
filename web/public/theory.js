@@ -477,7 +477,10 @@ const Theory = (() => {
       const chip = ev.target.closest('[data-chip]');
       if (chip) {
         const id = chip.dataset.chip;
-        if (place[id] !== undefined) put(id, null);            // a placed chip goes back to the bank
+        // with a chip selected, a click inside a bucket/slot means "put it there", even on a chip already in it
+        const into = ev.target.closest('[data-target]');
+        if (selected && selected !== id && into) { put(selected, Number(into.dataset.target)); return; }
+        if (place[id] !== undefined) put(id, null);            // otherwise a placed chip goes back to the bank
         else { selected = selected === id ? null : id; render(); }
         return;
       }
