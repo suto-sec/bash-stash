@@ -307,8 +307,8 @@ Compared with the older `more`, what is an advantage of `less`?
 Select the keys that work at the bash prompt as described.
 (+) `Tab` completes a command or file name. :: Completion saves typing and avoids typos.
 (+) `↑` recalls the previous command from history. :: Repeated presses walk further back.
-(+) `Ctrl+A` moves the cursor to the start of the line. :: Emacs-style editing keys are the default in bash.
-(+) `Ctrl+E` moves the cursor to the end of the line. :: The counterpart of `Ctrl+A`.
+(+) `Ctrl+A` jumps to the beginning of the line you are typing. :: Emacs-style editing keys are the default in bash.
+(+) `Ctrl+E` jumps to the end of the line you are typing. :: The counterpart of `Ctrl+A`.
 (-) `Ctrl+Z` deletes the whole line you are typing :: `Ctrl+Z` suspends the running command; it edits nothing.
 
 @@q single | Reverse search

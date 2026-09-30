@@ -113,12 +113,34 @@ Progress is stored in `.progress/` (delete it to start over).
 
 ## Theory quizzes
 
-Besides the exercises, the web UI has a **Theory** section on the home page: interactive quizzes (single
-and multiple choice, fill in the blank, ordering by drag and drop, matching, sorting into categories)
-graded in the browser with instant feedback. After each answer *every* option is explained: why the
-right ones are right and why each wrong one is not. Clicking a collection replaces the sidebar with its
-questions grouped by subcategory. Results are stored per question in `.progress/theory/` and do not
-count towards the exercise totals. Sources: `tools/theory/*.txt` (see `tools/THEORY_AUTHORING.md`).
+Besides the exercises, the web UI has a **Theory** section on the home page: 13 collections and more
+than 830 interactive questions on the concepts behind the commands. They are graded in the browser with
+instant feedback, in six styles: single choice, multiple choice, fill in the blank, put in order (drag
+or arrows), match the pairs, and sort into categories (drag or click). After each answer *every* option
+is explained: why the right ones are right and why each wrong one is not.
+
+| collection | topics |
+|-----------|--------|
+| 01 shell basics & getting help | what a shell is, builtin vs external, PATH, exit statuses, man / info / less, line editing |
+| 02 jobs, processes & signals | foreground/background, ps/top, PIDs, zombies, signals and kill |
+| 03 files, links & archives | paths, inodes, hard/symbolic links, cp/mv/rm, df/du, tar/gzip |
+| 04 permissions | rwx on files and directories, chmod, umask, chown, setuid/sticky |
+| 05 text filters | wc, cut, sort, uniq, tr, sed, tee, diff and friends |
+| 06 grep & regular expressions | options, BRE/ERE, anchors, groups, globs vs regex |
+| 07 find | tests, sizes and times, operators, exec/delete/xargs, traps |
+| 08 expansion, quoting & variables | quotes, environment, globs, braces, substitution, arithmetic, aliases |
+| 09 redirection, pipes & xargs | streams, redirection order, here-documents, pipes, tee, xargs |
+| 10 scripts: running & parameters | shebang, source vs bash, parameters, exit codes, read, cron |
+| 11 scripts: logic | test, if, case, loops, functions, debugging, typical bugs |
+| 12 users, groups, sessions & sudo | passwd/shadow/group, su and sudo, who/w/last, startup files |
+| 13 boot, GRUB, systemd & shutdown | firmware, UEFI/GPT, GRUB, kernel, systemd units and targets, shutdown |
+
+Clicking a collection replaces the sidebar with its questions grouped by subcategory; the main panel
+shows the question, a **Check answer** button (Enter) and then the explanations. Results are stored per
+question in `.progress/theory/` (a question is ✔ once answered correctly; "Reset progress" clears a
+collection) and do not count towards the exercise totals. They are a separate pipeline from the exercises:
+sources in `tools/theory/*.txt` (format in `tools/THEORY_AUTHORING.md`), compiled by
+`node tools/build_theory.js` into `theory/*.json`; nothing under `exercises/` or `solutions/` is involved.
 
 ## For maintenance
 
