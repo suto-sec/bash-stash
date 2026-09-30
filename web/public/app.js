@@ -8,7 +8,16 @@ const state = {
   mode: 'term',     // 'term' | 'code'
   codeFor: null,    // exercise id VS Code is currently opened on
   activeVSCodeFile: null, // basename of the editor tab currently focused in VS Code, reported via postMessage
+  track: 'full',    // 'full' | 'minimal' | 'intermediate' | 'complete'
 };
+try { state.track = localStorage.getItem('track') || 'full'; } catch { /* private mode */ }
+
+// Track tiers (server-computed from which tools/src/*.txt batch an exercise came from):
+// 1 = base (closest to the course material's own examples), 2 = added to mirror exam patterns,
+// 3 = later bulk-expansion practice. minimal=tier 1, intermediate=tiers 1-2, complete=everything.
+const TRACK_MAX = { minimal: 1, intermediate: 2, complete: 3 };
+function inTrack(e) { return state.track === 'full' || e.tier <= TRACK_MAX[state.track]; }
+function visibleFlat() { return state.flat.filter(inTrack); }
 
 window.addEventListener('message', ev => {
   if (ev.origin !== location.origin) return;
@@ -26,7 +35,7 @@ const XTERM_THEMES = {
 function applyTheme(t, sync = true) {
   document.documentElement.dataset.theme = t;
   try { localStorage.setItem('theme', t); } catch { /* private mode */ }
-  $('#theme-btn').textContent = t === 'dark' ? '☀' : '☾';
+  $('#theme-row-value').textContent = t === 'dark' ? 'Dark' : 'Light';
   if (term) term.options.theme = XTERM_THEMES[t];
   if (sync) fetch('/api/theme', { method: 'POST', headers: { 'Content-Type': 'application/json' },
                                   body: JSON.stringify({ theme: t }) })
@@ -34,7 +43,20 @@ function applyTheme(t, sync = true) {
       if (state.codeFor) { state.codeFor = null; if (state.mode === 'code') openVSCode(); }
     }).catch(() => {});
 }
-$('#theme-btn').onclick = () => applyTheme(currentTheme() === 'dark' ? 'light' : 'dark');
+$('#theme-row').onclick = () => applyTheme(currentTheme() === 'dark' ? 'light' : 'dark');
+
+// ------------------------------------------------------------------ settings popup
+$('#settings-btn').onclick = ev => {
+  ev.stopPropagation();
+  const hidden = $('#settings-menu').classList.toggle('hidden');
+  $('#settings-btn').setAttribute('aria-expanded', String(!hidden));
+};
+document.addEventListener('click', ev => {
+  if (!$('#settings-picker').contains(ev.target)) {
+    $('#settings-menu').classList.add('hidden');
+    $('#settings-btn').setAttribute('aria-expanded', 'false');
+  }
+});
 
 // ------------------------------------------------------------------ helpers
 const STATUS = {
@@ -75,17 +97,19 @@ function renderSidebar() {
   nav.innerHTML = '';
   let total = 0, passed = 0;
   for (const t of state.index) {
-    const ex = t.exercises.filter(e =>
+    const trackEx = t.exercises.filter(inTrack);
+    if (trackEx.length === 0) continue; // this topic has nothing in the current track
+    const ex = trackEx.filter(e =>
       (!q || `${e.id} ${e.title} ${e.cmds}`.toLowerCase().includes(q)) && !(hidePassed && e.status === 'pass'));
-    const p = t.exercises.filter(e => e.status === 'pass').length;
-    total += t.exercises.length; passed += p;
+    const p = trackEx.filter(e => e.status === 'pass').length;
+    total += trackEx.length; passed += p;
     if (ex.length === 0) continue;
     const d = document.createElement('details');
     d.className = 'topic';
     d.dataset.topic = t.id;
     d.open = !!q || openTopics.has(t.id) || (cur && cur.startsWith(t.id));
-    d.innerHTML = `<summary><span class="t-name">${t.id} · ${esc(t.title)}</span><span class="t-count">${p}/${t.exercises.length}</span></summary>
-      <div class="t-bar"><div style="width:${100 * p / t.exercises.length}%"></div></div>`;
+    d.innerHTML = `<summary><span class="t-name">${t.id} · ${esc(t.title)}</span><span class="t-count">${p}/${trackEx.length}</span></summary>
+      <div class="t-bar"><div style="width:${100 * p / trackEx.length}%"></div></div>`;
     for (const e of ex) {
       const a = document.createElement('a');
       a.className = 'ex-item' + (e.id === cur ? ' current' : '');
@@ -104,6 +128,8 @@ function renderSidebar() {
 }
 $('#search').oninput = renderSidebar;
 $('#hide-passed').onchange = renderSidebar;
+$('#expand-all-btn').onclick = () => document.querySelectorAll('.topic').forEach(d => { d.open = true; });
+$('#collapse-all-btn').onclick = () => document.querySelectorAll('.topic').forEach(d => { d.open = false; });
 
 // ------------------------------------------------------------------ exercise view
 async function openExercise(id) {
@@ -731,15 +757,58 @@ document.addEventListener('click', ev => {
   }
 });
 
+// ------------------------------------------------------------------ home page (track picker)
+const TRACK_LABELS = { minimal: 'Minimal', intermediate: 'Intermediate', complete: 'Complete' };
+function updateTrackBadge() {
+  const badge = $('#track-badge');
+  if (state.track === 'full') { badge.classList.add('hidden'); return; }
+  badge.textContent = TRACK_LABELS[state.track];
+  badge.classList.remove('hidden');
+}
+function renderHomePage() {
+  const counts = { full: state.flat.length, minimal: 0, intermediate: 0, complete: 0 };
+  for (const e of state.flat) {
+    if (e.tier <= 1) counts.minimal++;
+    if (e.tier <= 2) counts.intermediate++;
+    if (e.tier <= 3) counts.complete++;
+  }
+  for (const el of document.querySelectorAll('.track-card-count')) el.textContent = `${counts[el.dataset.count]} exercises`;
+  for (const el of document.querySelectorAll('.track-card')) el.classList.toggle('current', el.dataset.track === state.track);
+}
+$('#track-grid').addEventListener('click', ev => {
+  const card = ev.target.closest('.track-card');
+  if (!card) return;
+  state.track = card.dataset.track;
+  try { localStorage.setItem('track', state.track); } catch { /* private mode */ }
+  updateTrackBadge();
+  renderSidebar();
+  const pool = visibleFlat();
+  const next = pool.find(e => e.status !== 'pass') || pool[0];
+  location.hash = next ? `#/ex/${next.id}` : '#/home';
+});
+$('#track-badge').onclick = () => { location.hash = '#/home'; };
+$('#home-back').onclick = ev => {
+  ev.preventDefault();
+  if (state.lastExerciseId) location.hash = `#/ex/${state.lastExerciseId}`;
+  else if (history.length > 1) history.back();
+  else location.hash = '#/ex/0101';
+};
+
 // ------------------------------------------------------------------ routing & start
 function showReferencePage(show) {
   document.querySelector('.layout').classList.toggle('hidden', show);
   $('#reference-page').classList.toggle('hidden', !show);
 }
+function showHomePage(show) {
+  document.querySelector('.layout').classList.toggle('hidden', show);
+  $('#home-page').classList.toggle('hidden', !show);
+  if (show) renderHomePage();
+}
 function route() {
   const refCmd = location.hash.match(/^#\/reference\/cmd\/([^/]+)$/);
   const refTopic = location.hash.match(/^#\/reference\/topic\/([^/]+)$/);
   if (location.hash === '#/reference' || refCmd || refTopic) {
+    showHomePage(false);
     showReferencePage(true);
     if (!refTopics) buildReferenceIndex();
     if (refCmd) refSel = { type: 'cmd', key: decodeURIComponent(refCmd[1]) };
@@ -749,9 +818,12 @@ function route() {
     return;
   }
   showReferencePage(false);
+  if (location.hash === '#/home') { showHomePage(true); return; }
+  showHomePage(false);
   const m = location.hash.match(/^#\/ex\/(\d{4})$/);
   if (m) { state.lastExerciseId = m[1]; return openExercise(m[1]); }
-  const next = state.flat.find(e => e.status !== 'pass') || state.flat[0];
+  const pool = visibleFlat();
+  const next = pool.find(e => e.status !== 'pass') || pool[0];
   if (next) location.replace(`#/ex/${next.id}`);
 }
 window.addEventListener('hashchange', route);
@@ -808,6 +880,7 @@ window.addEventListener('hashchange', route);
 
 (async () => {
   applyTheme(currentTheme(), false);
+  updateTrackBadge();
   await loadIndex();
   await route();
   let mode = 'term';
