@@ -781,7 +781,7 @@ function updateTrackBadge() {
   const badge = $('#track-badge');
   if (state.theory) {
     const c = Theory.collection(state.theory);
-    badge.textContent = 'Theory: ' + (c ? c.title : state.theory);
+    badge.textContent = Theory.t('badge') + (c ? c.title : state.theory);
     badge.classList.remove('hidden');
     return;
   }

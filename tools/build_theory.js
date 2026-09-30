@@ -1,6 +1,11 @@
 #!/usr/bin/env node
 // Compiles tools/theory/*.txt (quiz sources) into theory/<collection>.json and validates them.
-// usage: node tools/build_theory.js [file.txt ...]      (no args: every file in tools/theory/)
+// usage: node tools/build_theory.js [file.txt ...]      (no args: every file in tools/theory/ and tools/theory/es/)
+//
+// Translations: tools/theory/<lang>/<same file>.txt, same format, same collection id. A translation
+// must mirror its English file question by question (same groups, types, option counts, which
+// options are right, buckets, number of blanks); ids are copied from the English file, so the
+// learner's progress is shared across languages. Output: theory/<lang>/<id>.json.
 //
 // Source format (one file per collection, see tools/THEORY_AUTHORING.md):
 //   @@collection <id> | <title>          first line of the file
@@ -22,6 +27,7 @@ const path = require('path');
 const ROOT = path.join(__dirname, '..');
 const SRC = path.join(ROOT, 'tools/theory');
 const OUT = path.join(ROOT, 'theory');
+const LANGS = ['es'];
 const TYPES = ['single', 'multi', 'fill', 'order', 'match', 'sort'];
 const errors = [];
 let curFile = '', curLine = 0;
@@ -74,16 +80,16 @@ function finishQuestion(q, col) {
     for (const b of q.buckets) need(q.items.some(it => it.bucket === b), `bucket "${b}" has no items`);
   }
   q.id = q.id || slug(q.title);
-  if (col.ids.has(q.id)) err(`duplicate question id "${q.id}" (retitle it or give an explicit id)`);
+  if (col.ids.has(q.id) && !col.lang) err(`duplicate question id "${q.id}" (retitle it or give an explicit id)`);
   col.ids.add(q.id);
   const { line, ...clean } = q;
   col.cur.questions.push(clean);
 }
 
-function parse(file) {
-  curFile = path.basename(file);
+function parse(file, lang) {
+  curFile = (lang ? lang + '/' : '') + path.basename(file);
   const lines = fs.readFileSync(file, 'utf8').split('\n');
-  const col = { id: '', title: '', about: '', groups: [], ids: new Set(), cur: null };
+  const col = { id: '', title: '', about: '', groups: [], ids: new Set(), cur: null, lang };
   let q = null, section = null, lastItem = null;
   const addText = (obj, key, line) => { obj[key] = obj[key] ? obj[key] + '\n' + line : line; };
   for (let i = 0; i < lines.length; i++) {
@@ -184,18 +190,64 @@ function lengthWarnings(c) {
   return out;
 }
 
-const files = process.argv.length > 2 ? process.argv.slice(2)
-  : fs.readdirSync(SRC).filter(f => f.endsWith('.txt')).sort().map(f => path.join(SRC, f));
-fs.mkdirSync(OUT, { recursive: true });
+// A translation must have exactly the shape of the English collection; ids are taken from it.
+function align(tr, en, file) {
+  curFile = file; curLine = 1;
+  const where = (g, k) => `group ${g + 1} ("${en.groups[g].title}"), question ${k + 1}`;
+  if (tr.groups.length !== en.groups.length) return err(`${tr.groups.length} groups, English has ${en.groups.length}`);
+  tr.groups.forEach((g, gi) => {
+    const eg = en.groups[gi];
+    g.id = eg.id;
+    if (g.questions.length !== eg.questions.length) return err(`group ${gi + 1} ("${eg.title}"): ${g.questions.length} questions, English has ${eg.questions.length}`);
+    g.questions.forEach((q, k) => {
+      const e = eg.questions[k], bad = msg => err(`${where(gi, k)} "${e.title}": ${msg}`);
+      q.id = e.id;
+      if (q.type !== e.type) return bad(`type ${q.type}, English is ${e.type}`);
+      const len = key => (q[key] || []).length === (e[key] || []).length || bad(`${key}: ${(q[key] || []).length} vs ${(e[key] || []).length} in English`);
+      if (q.type === 'single' || q.type === 'multi') {
+        if (len('options') === true && q.options.some((o, j) => o.ok !== e.options[j].ok)) bad('the right options are not in the same positions as in English');
+      } else if (q.type === 'fill') len('blanks');
+      else if (q.type === 'order') len('items');
+      else if (q.type === 'match') { len('pairs'); len('extras'); }
+      else if (q.type === 'sort') {
+        if (len('buckets') === true && len('items') === true &&
+            q.items.some((it, j) => q.buckets.indexOf(it.bucket) !== e.buckets.indexOf(e.items[j].bucket))) bad('items are not in the same buckets as in English');
+      }
+    });
+  });
+}
+
+const args = process.argv.slice(2);
+const langOf = f => { const d = path.basename(path.dirname(path.resolve(f))); return LANGS.includes(d) ? d : null; };
+const enFiles = fs.readdirSync(SRC).filter(f => f.endsWith('.txt')).sort().map(f => path.join(SRC, f));
+const trFiles = LANGS.flatMap(l => { try { return fs.readdirSync(path.join(SRC, l)).filter(f => f.endsWith('.txt')).sort().map(f => path.join(SRC, l, f)); } catch { return []; } });
+const wanted = args.length ? new Set(args.map(a => path.resolve(a))) : null;
 const out = [];
-for (const f of files) {
+const english = {};
+for (const f of enFiles) {   // English is always parsed: translations are checked against it
   const c = parse(f);
-  out.push(c);
+  english[c.id] = c;
+  if (wanted && !wanted.has(path.resolve(f))) continue;
+  out.push({ c, dir: OUT });
+  report(c, '');
+}
+for (const f of trFiles) {
+  if (wanted && !wanted.has(path.resolve(f))) continue;
+  const lang = langOf(f), c = parse(f, lang);
+  if (!english[c.id]) { curFile = lang + '/' + path.basename(f); curLine = 1; err(`no English collection "${c.id}"`); continue; }
+  align(c, english[c.id], lang + '/' + path.basename(f));
+  out.push({ c, dir: path.join(OUT, lang) });
+  report(c, lang + '/');
+}
+function report(c, prefix) {
   const n = c.groups.reduce((s, g) => s + g.questions.length, 0);
   const kinds = {};
   c.groups.forEach(g => g.questions.forEach(q => { kinds[q.type] = (kinds[q.type] || 0) + 1; }));
-  console.log(`${c.id}: ${n} questions in ${c.groups.length} groups  ${JSON.stringify(kinds)}`);
+  console.log(`${prefix}${c.id}: ${n} questions in ${c.groups.length} groups  ${JSON.stringify(kinds)}`);
   for (const w of lengthWarnings(c)) console.warn('  warning: ' + w);
 }
 if (errors.length) { console.error('\n' + errors.join('\n')); console.error(`\n${errors.length} problem(s), nothing written`); process.exit(1); }
-for (const c of out) fs.writeFileSync(path.join(OUT, `${c.id}.json`), JSON.stringify(c) + '\n');
+for (const { c, dir } of out) {
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(path.join(dir, `${c.id}.json`), JSON.stringify(c) + '\n');
+}

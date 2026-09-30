@@ -308,6 +308,7 @@ dialog::backdrop { background: rgba(0,0,0,.5); }
 .settings-row-check:hover { background: none; }
 .settings-row-value { color: var(--accent); font-weight: 600; font-size: 12px; }
 #hide-passed { cursor: pointer; }
+.settings-note { margin: 0 8px 6px; font-size: 11.5px; line-height: 1.4; color: var(--muted); }
 
 /* ---------- home page (track picker) ---------- */
 .home-page { position: fixed; inset: 0; z-index: 20; background: var(--bg); display: flex; flex-direction: column; }
