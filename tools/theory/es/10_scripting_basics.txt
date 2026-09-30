@@ -1,0 +1,475 @@
+@@collection 10_scripting_basics | Scripts: ejecución, parámetros y valores de retorno
+@@about
+Escribir y ejecutar scripts de shell: la línea shebang, el permiso de ejecución, las formas de lanzar un script y lo que cada una hace a tu shell, los parámetros posicionales, los valores de retorno, leer datos, los mensajes y la planificación con cron.
+
+@@group La forma de un script
+@@q order | De la idea al script en ejecución
+Ordena los pasos para crear y ejecutar tu primer script.
+(>) Escribir los mandatos en un fichero que empiece por `#!/bin/bash` :: Primero tiene que existir el fichero, y la primera línea elige el intérprete.
+(>) Darle permiso de ejecución con `chmod u+x script.sh` :: Sin `x`, el núcleo se niega a ejecutarlo directamente.
+(>) Ejecutarlo con `./script.sh` :: El `./` hace falta cuando el directorio actual no está en el `PATH`.
+(>) Mirar `echo $?` para ver si tuvo éxito :: El valor de retorno del script está disponible justo después.
+
+@@q single | La línea shebang
+¿Qué hace la primera línea `#!/bin/bash` de un script?
+(+) Le dice al núcleo qué intérprete lanzar para ejecutar el fichero cuando el script se ejecuta directamente. :: El núcleo lee los dos caracteres `#!` y ejecuta el programa indicado pasándole el script como argumento.
+(-) Es un comentario normal sin ningún efecto, porque la línea empieza por el carácter `#`. :: Solo cuando el script se ejecuta como `bash script` la línea actúa como comentario.
+(-) Hace ejecutable el script, de modo que no hace falta poner ningún otro permiso al fichero. :: El permiso de ejecución viene de `chmod`.
+(-) Importa la biblioteca de `bash` en el script, para que se puedan usar sus funciones. :: Los scripts de shell no tienen importaciones.
+
+@@q single | Sin shebang
+Un script no tiene línea shebang pero sí permiso de ejecución. Ejecutas `./script.sh` desde bash. ¿Qué suele pasar?
+(+) Bash lo ejecuta consigo mismo (en una shell nueva), tratando el fichero como un script de shell. :: El núcleo no puede identificar un intérprete, así que la shell que lo llama recurre a ejecutarlo como script.
+(-) Falla con «command not found», porque el núcleo no sabe qué ejecutar. :: El fichero se encontró; el fallo sería de permisos.
+(-) Lo ejecuta el intérprete de Python, que es el predeterminado para los scripts desconocidos. :: No se adivina ningún lenguaje.
+(-) Imprime el contenido del fichero, como haría `cat`, y no hace nada más. :: No se imprime nada salvo que lo haga el script.
+
+@@q single | Comentarios
+¿Qué línea de un script es un comentario?
+(+) `# esto se ignora` :: Desde un `#` al principio de una palabra hasta el final de la línea.
+(-) `// esto se ignora` :: No es un comentario en bash.
+(-) `-- esto se ignora` :: No es un comentario en bash.
+(-) `/* esto se ignora */` :: Es sintaxis de C.
+
+@@q fill | Hacerlo ejecutable
+Permite que el propietario ejecute `run.sh` directamente: `chmod {{u+x ;; +x ;; 755 ;; 700 ;; a+x}} run.sh`
+(x) 644 :: Da lectura y escritura, pero no permiso de ejecución.
+(x) u+r :: Lo que falta no es la lectura.
+@@note
+Sin un bit `x`, `./run.sh` falla con «Permission denied».
+
+@@q single | Permiso denegado
+`./run.sh` imprime «Permission denied» aunque el fichero existe y es tuyo. ¿Cuál es la causa más probable y cómo se arregla?
+(+) El fichero no tiene permiso de ejecución; ejecuta `chmod u+x run.sh` y vuelve a probar. :: O lánzalo con `bash run.sh`, que solo necesita permiso de lectura.
+(-) El fichero necesita la extensión `.exe`, que indica al sistema que se puede ejecutar. :: Unix no usa extensiones para eso.
+(-) Primero hay que copiar el script en `/bin`, el único directorio que puede contener programas. :: No hace falta.
+(-) Tienes que ser root, porque los usuarios normales no pueden lanzar scripts. :: Los propietarios pueden ejecutar sus propios scripts.
+
+@@q single | Búsqueda del nombre
+Un script `tool.sh` está en tu directorio actual (no en el `PATH`). Escribir `tool.sh` da «command not found». ¿Por qué funciona `./tool.sh`?
+(+) Un nombre con barra es una ruta, así que no se busca en el `PATH`; un nombre a secas solo se busca en el `PATH`. :: El directorio actual no está en el `PATH` por defecto, a propósito.
+(-) El prefijo `./` activa el permiso de ejecución del fichero para el usuario actual. :: Los permisos no cambian.
+(-) El prefijo `./` le dice a bash que ejecute el fichero con `sudo`, que lo encuentra en cualquier sitio. :: No cambian los privilegios.
+(-) `./tool.sh` solo funciona con ficheros de root, así que los usuarios normales no pueden usarlo con sus propios scripts. :: El propietario es irrelevante.
+
+@@q sort | Cómo se lanza un script
+@@buckets Se ejecuta en una shell hija nueva | Se ejecuta en la shell actual
+Clasifica cada forma de lanzar `script.sh`.
+(Se ejecuta en una shell hija nueva) `./script.sh` :: El núcleo lanza el intérprete como un proceso nuevo.
+(Se ejecuta en una shell hija nueva) `bash script.sh` :: Lanza explícitamente otro bash.
+(Se ejecuta en una shell hija nueva) `script.sh` (encontrado en el `PATH`) :: Igual que ejecutar el fichero.
+(Se ejecuta en la shell actual) `source script.sh` :: Los mandatos se ejecutan como si se escribieran en el prompt.
+(Se ejecuta en la shell actual) `. script.sh` :: El punto es un sinónimo de `source`.
+(Se ejecuta en la shell actual) `source ~/.bashrc` :: Un uso típico: recargar la configuración.
+
+@@q single | cd dentro de un script
+Un script contiene `cd /tmp`. Ejecutas `./script.sh` y después escribes `pwd`. ¿Dónde estás?
+(+) Sigues en el directorio de partida: el `cd` del script cambió el directorio de su propio proceso hijo. :: Usa `source script.sh` para cambiar el directorio de tu shell.
+(-) En `/tmp`, porque el `cd` del script también cambia el directorio de trabajo de la shell que lo ejecutó. :: Eso solo pasa con `source`.
+(-) En tu directorio personal, ya que un script que termina siempre vuelve al directorio personal. :: No tiene relación.
+(-) En ningún sitio: la shell se cierra, porque un script que cambia de directorio termina la sesión. :: No hay motivo para eso.
+
+@@q single | source y cd
+El mismo script (con `cd /tmp`) ejecutado con `source script.sh`. ¿Dónde estás después?
+(+) En `/tmp` :: Los mandatos se ejecutaron en tu propia shell, así que cambió su directorio de trabajo.
+(-) En el directorio original. :: Ese es el comportamiento de `./script.sh`.
+(-) En una subshell nueva en `/tmp`. :: `source` no lanza ninguna subshell.
+(-) En ningún sitio: `source` solo imprime el script. :: Lo ejecuta.
+
+@@q single | Los PID lo cuentan todo
+Un script imprime `$$`. Ejecutado con `bash script.sh` varias veces, el número cambia cada vez; ejecutado con `source script.sh`, coincide con el PID de tu shell. ¿Qué demuestra esto?
+(+) `bash script.sh` crea un proceso nuevo cada vez, mientras que `source` ejecuta los mandatos en la shell que ya existe. :: `$$` es el PID de la shell que ejecuta los mandatos.
+(-) `source` crea un proceso nuevo que casualmente reutiliza el PID de la shell que lo lanzó. :: No crea ninguno.
+(-) `$$` es un número aleatorio que cambia cada vez que el script lo pide, y nunca es un PID. :: Es el identificador de proceso real.
+(-) `bash` y `source` son lo mismo, y la diferencia en los números es solo una casualidad de la asignación de PID. :: Los PID demuestran que son distintos.
+
+@@q multi | Cosas que solo puede hacer `source`
+Marca lo que solo funciona si el script se ejecuta con `source` (o con `.`).
+(+) Cambiar el directorio actual de tu shell interactiva. :: El hijo de `./script` no puede hacerlo.
+(+) Definir una variable que siga disponible después en tu shell. :: Las variables de un hijo mueren con él.
+(+) Definir una función o un alias que puedas usar después desde el prompt. :: Las definiciones viven en la shell que las ejecutó.
+(-) Leer los argumentos dados en la línea de mandatos. :: Las dos formas pueden usar argumentos (con `source` pasan a ser los parámetros del script).
+(-) Imprimir salida en la pantalla. :: Las dos formas pueden.
+
+@@q single | Ejecutar sin bit de ejecución
+¿Qué mandato ejecuta `script.sh` aunque no tenga permiso de ejecución (solo de lectura)?
+(+) `bash script.sh` :: Bash abre el fichero como datos y lo interpreta.
+(-) `./script.sh` :: El núcleo exige un bit `x`.
+(-) `exec script.sh` :: También necesita permiso de ejecución.
+(-) `script.sh` :: El mismo problema, y además el `PATH`.
+
+@@q single | exit con source
+Un script tiene `exit 1` en su primera línea. ¿Qué pasa al ejecutarlo con `source script.sh` en tu terminal?
+(+) Tu shell interactiva termina (el terminal puede cerrarse), porque `exit` termina la shell que ejecutó los mandatos. :: Usa `return` en los scripts que se cargan con source, o ejecútalos de forma normal.
+(-) Solo se detiene el script y recuperas el prompt, igual que pasa con `./script.sh`. :: Eso es lo que pasa con `./script.sh`.
+(-) No pasa nada, porque en los scripts `exit` se ignora salvo que sea el último mandato. :: Se respeta.
+(-) Se imprime un mensaje de error sobre el código de salida, y la sesión sigue como antes con el prompt de la shell. :: No hay error; la shell simplemente termina.
+
+@@group Parámetros posicionales
+@@q match | Parámetros especiales
+Empareja cada parámetro especial con su contenido.
+(=) `$0` => El nombre con el que se llamó al script :: Por ejemplo `./args.sh`.
+(=) `$1` => El primer argumento :: `$2` es el segundo, y así sucesivamente.
+(=) `$#` => El número de argumentos :: No incluye `$0`.
+(=) `$@` => Todos los argumentos, como palabras separadas (entre comillas) :: Respeta los límites de cada argumento.
+(=) `$?` => El valor de retorno del último mandato :: Un número.
+(=) `$$` => El PID de la shell que ejecuta el script :: Único en cada ejecución.
+(-) El usuario que ejecuta el script :: Eso es `$USER` o `whoami`.
+
+@@q single | Número de argumentos
+Para `./s.sh "uno dos" tres`, ¿cuánto vale `$#`?
+(+) 2 :: La cadena entre comillas es un argumento y `tres` es el otro.
+(-) 3 :: Las comillas mantienen juntos `uno dos`.
+(-) 1 :: Hay dos argumentos.
+(-) 0 :: `$#` cuenta los argumentos, no `$0`.
+
+@@q single | Asterisco frente a arroba
+Para `./s.sh "a b" c`, ¿qué diferencia hay entre `for x in "$@"` y `for x in $*`?
+(+) `"$@"` da dos vueltas (`a b` y `c`); `$*` sin comillas se divide por los blancos y da tres vueltas. :: Entrecomilla `"$@"` para conservar intactos los argumentos.
+(-) Los dos dan dos vueltas, porque la shell mantiene cada argumento como una sola palabra en las dos formas, con comillas o sin ellas. :: La versión sin comillas vuelve a dividir.
+(-) Los dos dan tres vueltas, porque la shell siempre divide los argumentos por los blancos. :: `"$@"` conserva los límites.
+(-) `"$@"` da una sola vuelta, sobre todos los argumentos juntos en una única palabra. :: Produce una palabra por argumento.
+
+@@q match | Las cuatro formas
+Para `./s.sh "a b" c`, empareja cada expresión con las palabras que produce.
+(=) `"$@"` => Dos palabras: `a b` y `c` :: Se conservan los límites de los argumentos.
+(=) `"$*"` => Una palabra: `a b c` :: Unidas con el primer carácter de `IFS`.
+(=) `$@` o `$*` sin comillas => Tres palabras: `a`, `b`, `c` :: Las dos sufren la división en palabras, así que se pierden las comillas de los argumentos originales.
+(-) Ninguna palabra :: Ninguna de ellas lo produce.
+
+@@q single | El bucle sin in
+¿Qué recorre `for i; do echo "$i"; done` dentro de un script?
+(+) Los parámetros posicionales, como `for i in "$@"`. :: Cuando se omite `in`, la lista son los argumentos.
+(-) Los ficheros del directorio actual, como haría `for i in *`. :: Para eso hace falta `for i in *`.
+(-) Las líneas que escribe el usuario en el teclado, hasta el fin de la entrada. :: Para eso hace falta `read`.
+(-) Nada: un `for` sin `in` es un error de sintaxis en los scripts de bash. :: Es válido.
+
+@@q single | shift
+¿Qué hace `shift` con los parámetros posicionales?
+(+) Descarta `$1` y renumera: `$2` pasa a ser `$1`, `$3` pasa a ser `$2`, y `$#` baja en uno. :: `shift 2` lo hace dos veces.
+(-) Los rota, pasando `$1` al final de la lista para que no se pierda nada. :: El primero se descarta.
+(-) Desplaza los dígitos de los números de los parámetros, de modo que `$1` pasa a ser `$2`, `$2` pasa a ser `$3`, etc. :: No hay ningún cambio numérico.
+(-) Invierte el orden de la lista, haciendo que el último argumento sea el primero. :: No.
+
+@@q single | Procesar todos los argumentos
+¿Qué bucle procesa uno a uno todos los argumentos de un script, aunque haya más de nueve?
+(+) `while [ $# -gt 0 ]; do ...; shift; done` :: Usa `$1` cada vez y luego pasa al siguiente.
+(-) `for i in 1..$#; do ...; done`, donde la shell expande el rango :: `1..$#` no se expande así.
+(-) `while true; do echo $10; done`, donde `$10` se toma como el décimo argumento :: `$10` es `$1` seguido de `0`.
+(-) `until [ $# -gt 0 ]; do shift; done`, que solo se ejecuta cuando no hay ninguno :: Solo se ejecuta cuando no hay argumentos.
+
+@@q single | El décimo argumento
+¿Por qué el décimo argumento se escribe `${10}` y no `$10`?
+(+) `$10` se lee como `$1` seguido del carácter `0`; las llaves marcan dónde termina el número. :: La misma idea que `${NOMBRE}_x`.
+(-) Porque los números de parámetro mayores que 9 son de solo lectura y no se pueden usar sin llaves. :: No es cierto.
+(-) Porque bash admite como mucho nueve argumentos, y cualquier argumento tras el noveno necesita una sintaxis especial con llaves. :: No existe ese límite.
+(-) Porque `$10` es el valor de retorno del último mandato, que tiene un código de dos cifras. :: Eso es `$?`.
+
+@@q fill | Número y nombre
+Dentro de un script, el número de argumentos que ha recibido está en `{{$#}}`, y el nombre con el que se le llamó está en `{{$0}}`.
+(x) $* :: Es la lista de todos los argumentos, no su número.
+(x) $? :: Es el valor de retorno del último mandato.
+@@note
+`$#` nunca incluye el nombre del script, que es `$0`.
+
+@@q single | Falta un argumento
+El script usa `$1`, pero el usuario lo ejecuta sin argumentos. ¿Qué vale `$1`?
+(+) Vacío, salvo que esté activado `set -u`; bash no protesta por los parámetros posicionales que faltan. :: Por eso los scripts deberían comprobar `$#` antes de usarlos.
+(-) El nombre del script, que bash usa cuando no se ha dado un argumento. :: Eso es `$0`.
+(-) La palabra `null`, que es lo que bash guarda en los parámetros posicionales que no se pasaron al script. :: Un parámetro sin definir simplemente está vacío.
+(-) Indefinido: bash aborta con un mensaje de error en cuanto el script lo usa. :: Solo con `set -u`.
+
+@@q single | Valores por defecto
+¿Qué expresión da `$1` si se proporcionó y el texto `defecto` en caso contrario?
+(+) `${1:-defecto}` :: La forma `:-` pone un valor por defecto cuando el valor no está definido o está vacío.
+(-) `${1:+defecto}` :: Lo contrario: usa `defecto` solo si `$1` tiene valor.
+(-) `${1=defecto}` :: No se permite asignar a un parámetro posicional.
+(-) `$1 o defecto` :: No es sintaxis de la shell.
+
+@@q order | Comprobación de uso al principio
+Ordena los pasos de un comienzo de script bien hecho.
+(>) Comprobar el número de argumentos con `[ $# -ne 1 ]` :: Nada más tiene sentido sin la entrada correcta.
+(>) Imprimir un mensaje de uso por la salida de error estándar :: Decirle al usuario qué se espera.
+(>) Terminar con un valor de retorno distinto de cero :: Indicar el fallo a quien lo llamó.
+(>) Solo entonces seguir con el trabajo de verdad :: La parte principal se ejecuta una vez superada la validación.
+
+@@group Valores de retorno en los scripts
+@@q single | Valores de salida
+¿Cuál es el valor de retorno de un script que termina sin un `exit` explícito?
+(+) El valor del último mandato que ejecutó. :: Así, un `echo` al final hace que un script que falla parezca que ha tenido éxito.
+(-) Siempre 0, porque un script que termina siempre cuenta como exitoso. :: Solo si el último mandato tuvo éxito.
+(-) Siempre 1, porque la shell informa de un fallo genérico con los scripts que terminan solos. :: No es ninguna regla.
+(-) Indefinido: la shell se niega a terminar hasta que el script acabe con un `exit`. :: Está bien definido.
+
+@@q single | Elegir el código
+¿Qué uso de los códigos de salida es el habitual?
+(+) 0 para el éxito y números pequeños distintos de cero (1, 2, 3...) para los distintos tipos de fallo. :: Quien lo llama puede decidir según el número.
+(-) 0 para el fallo y 1 para el éxito, que es por lo que `if` ejecuta su rama con un valor 1. :: Es al revés.
+(-) Números negativos para los errores y positivos para el éxito, como en muchos lenguajes. :: Los valores van de 0 a 255.
+(-) Cualquier número significa éxito; solo la falta de valor se trata como fallo. :: Solo el 0.
+
+@@q single | Rango de los códigos de salida
+¿Qué valor de retorno produce `exit 256` en un script?
+(+) 0, porque los valores de retorno se toman módulo 256 (los 8 bits bajos). :: La misma vuelta explica que `return 300` dé 44.
+(-) 256, porque la shell acepta cualquier número como valor de retorno. :: Los valores son de 8 bits.
+(-) 255, que es el mayor valor que puede tener un valor de retorno. :: Da la vuelta hasta 0.
+(-) Un mensaje de error, porque el número está fuera del rango permitido. :: No hay ningún mensaje.
+
+@@q single | exit frente a return
+¿Qué diferencia hay entre `exit` y `return` dentro de una función de un script?
+(+) `return` solo sale de la función (dando un valor a quien la llamó), mientras que `exit` termina todo el script. :: `return` fuera de una función o de un script cargado con source es un error.
+(-) Son idénticos y se pueden usar en cualquier parte de un script, con el mismo efecto en todos los casos. :: El alcance es distinto.
+(-) `return` termina todo el script y `exit` solo termina la función que lo llama. :: Es al revés.
+(-) `exit` solo funciona dentro de funciones, y `return` solo en el cuerpo del script. :: Funciona en cualquier sitio.
+
+@@q single | Valor del último mandato
+Tras `grep -q root /etc/passwd`, ¿qué imprime `echo $?` si `root` está?
+(+) `0` :: Grep tiene éxito cuando encuentra una coincidencia.
+(-) `1` :: Significa que no hay coincidencia.
+(-) `2` :: Significa un error.
+(-) `root` :: `$?` contiene un número.
+
+@@q single | Guardar el valor de retorno
+¿Por qué hay que guardar el valor con `rc=$?` antes de ejecutar otros mandatos?
+(+) `$?` se sobrescribe con cada mandato, incluido `echo`, así que hay que copiarlo si se va a necesitar después. :: Si no, comprobarías el valor del `echo`.
+(-) Porque `$?` pasa a ser de solo lectura tras su primer uso y ya no se puede volver a leer. :: Se sobrescribe; no se protege.
+(-) Porque bash borra `$?` al final de la línea, antes de que empiece a ejecutarse la siguiente línea del script. :: Se mantiene hasta el siguiente mandato.
+(-) Porque `$?` solo es válido dentro de un `if` y está vacío en cualquier otro sitio. :: Es válido en todas partes.
+
+@@q single | El if y el valor de retorno
+¿Qué comprueba `if cp a b; then echo copiado; fi`?
+(+) El valor de retorno de `cp`: el `echo` se ejecuta cuando es 0. :: Cualquier mandato puede ser la condición de un `if`.
+(-) Si el fichero `b` existe en el directorio actual después de ejecutar el mandato. :: El valor refleja el éxito de `cp`.
+(-) Si el fichero `a` es más nuevo que el fichero `b`, cosa que `cp` compara antes. :: `cp` no comprueba eso.
+(-) Si el texto `cp a b` es una cadena no vacía, que siempre lo es. :: El mandato se ejecuta.
+
+@@q single | Mensajes de error
+¿Por qué los mensajes de error deberían escribirse en la salida de error estándar (`>&2`)?
+(+) Para que no se mezclen con la salida normal cuando quien lo llama redirige stdout o lo manda por una tubería. :: Quien lo llama puede capturar los resultados por separado de los diagnósticos.
+(-) Porque stdout no puede imprimir texto que contenga palabras como «error» o «falló». :: Sí puede.
+(-) Porque stderr es más rápido que stdout, lo que importa cuando un script falla enseguida. :: No es la razón.
+(-) Porque `echo` se niega a escribir en stdout en un script que ya ha fallado una vez. :: No es así.
+
+@@q single | Tras un error, parar
+¿Por qué un script suele terminar justo después de imprimir un error como «fichero no encontrado»?
+(+) Seguir ejecutaría los mandatos siguientes sobre datos que faltan o no son válidos, lo que puede causar daños u ocultar el problema. :: Falla pronto, con un valor distinto de cero.
+(-) Porque bash prohíbe cualquier otro mandato tras un `echo` que imprime un mensaje de error en el terminal. :: No existe esa regla.
+(-) Porque escribir en stderr cierra el script, sean cuales sean los mandatos que vienen detrás. :: Escribir en stderr no detiene nada.
+(-) Porque hay que reiniciar el valor de retorno antes de que el script pueda seguir con su trabajo. :: No.
+
+@@q multi | Buen manejo de la salida
+Marca las afirmaciones que describen buenas prácticas en un script.
+(+) Validar primero los argumentos y terminar con un valor distinto de cero si la entrada es incorrecta. :: Así quien lo llama puede detectar el problema.
+(+) Usar códigos de salida distintos para distintos tipos de error cuando a quien lo llama le pueda importar. :: Por ejemplo 1 para el uso y 2 para un directorio que falta.
+(+) Comprobar el valor de los mandatos cuyo fallo dejaría sin sentido los pasos siguientes. :: `cd dir || exit 1`.
+(-) Terminar siempre con `exit 0`, pase lo que pase. :: Eso oculta los fallos.
+(-) Ignorar el valor de `rm -rf "$DIR"/*` porque obviamente está bien. :: Es peligroso cuando `DIR` está vacía o es incorrecta.
+
+@@q fill | Parar si falla cd
+No sigas si no se puede entrar en el directorio: `cd "$DIR" {{||}} exit 1`
+(x) && :: Terminaría cuando `cd` *tiene éxito*.
+(x) ; :: El script terminaría siempre.
+@@note
+`cd "$DIR" || { echo "no existe el directorio" >&2; exit 1; }` añade un mensaje.
+
+@@q single | Terminar ante cualquier error
+¿Qué hace `set -e` en un script?
+(+) El script termina en cuanto falla un mandato simple (con excepciones, como los mandatos usados en condiciones). :: Una red de seguridad tosca; las comprobaciones explícitas siguen siendo más claras.
+(-) Activa los mensajes de error de la shell, que en los scripts están desactivados por defecto salvo que se dé esa opción. :: Los mensajes están activados por defecto.
+(-) Exporta a los procesos hijos todas las variables que se definan después. :: Eso es `set -a`.
+(-) Imprime cada mandato antes de ejecutarlo, junto con los valores que usa. :: Eso es `set -x`.
+
+@@group Variables y entrada en los scripts
+@@q single | Leer datos
+¿Qué mandato pide una línea al usuario y la guarda en `RESP`?
+(+) `read RESP` :: Lee una línea de la entrada estándar y la guarda en la variable.
+(-) `RESP=read` :: Asigna el texto `read`.
+(-) `input RESP` :: No existe ese mandato.
+(-) `echo $RESP` :: Imprime la variable.
+
+@@q fill | Mensaje en read
+Haz la pregunta y lee la respuesta en una línea: `read {{-p}} "¿Sobrescribir? (s/n) " RESPUESTA`
+(x) -s :: Oculta lo que se escribe (para contraseñas), pero no muestra ningún mensaje.
+(x) -n :: Limita el número de caracteres que se leen.
+@@note
+También conviene `-r`: impide que se interpreten las barras invertidas.
+
+@@q single | División en read
+Tras `read a b c <<< "uno dos tres cuatro"`, ¿qué hay en `c`?
+(+) `tres cuatro` :: Las palabras sobrantes van a la última variable.
+(-) `tres` :: La última variable se queda con el resto.
+(-) `cuatro` :: La última variable recibe todo lo que queda.
+(-) Nada: `read` solo acepta una variable. :: Acepta varias.
+
+@@q single | Leer un fichero línea a línea
+¿Qué bucle lee un fichero línea a línea y conserva después del bucle las variables asignadas dentro?
+(+) `while read linea; do ...; done < fichero` :: La redirección alimenta el bucle sin crear una subshell.
+(-) `cat fichero | while read linea; do ...; done` :: La tubería convierte el bucle en una subshell cuyos cambios se pierden.
+(-) `for linea in fichero; do ...; done` :: Recorre la única palabra `fichero`.
+(-) `read fichero | while linea; do ...; done` :: No es válido.
+
+@@q single | for sobre líneas
+¿Por qué `for linea in $(cat fichero)` es una mala forma de leer líneas?
+(+) Divide el contenido por cualquier blanco, no solo por los saltos de línea, así que las líneas con espacios se parten en varias palabras. :: Usa `while read` para conservar las líneas.
+(-) No puede leer más de diez líneas, porque la lista de palabras que produce la sustitución tiene un tamaño limitado. :: No existe ese límite.
+(-) Modifica el fichero, ya que la sustitución vuelve a escribir las palabras en él. :: Solo lee.
+(-) Es más rápido que `while read`, y esa velocidad es la razón por la que se evita. :: La velocidad no es la razón.
+
+@@q single | Entrecomillar las variables
+¿Por qué deberías escribir `rm "$fichero"` en lugar de `rm $fichero`?
+(+) Sin comillas, un valor con espacios o comodines se divide y se expande, y quizá se borren ficheros equivocados. :: Entrecomilla toda expansión salvo que quieras la división.
+(-) Las comillas hacen que `rm` vaya más rápido, ya que la shell no tiene que dividir antes el valor de la variable en palabras sueltas. :: No tiene efecto.
+(-) Las comillas hacen que `rm` pida confirmación antes de borrar el fichero que designa el nombre. :: Eso es `-i`.
+(-) Las comillas son obligatorias en todo mandato que use una variable, sin ninguna excepción. :: Solo donde la división haría daño.
+
+@@q single | Aritmética con variables
+¿Qué línea guarda `DATOA*DATOB+5` en `R` usando la aritmética de la shell?
+(+) `R=$((DATOA*DATOB+5))` :: La expansión aritmética devuelve el valor.
+(-) `R=$(DATOA*DATOB+5)` :: La sustitución de mandato intentaría ejecutar un mandato.
+(-) `R=DATOA*DATOB+5` :: Guarda el texto.
+(-) `R="DATOA*DATOB+5" | bc` :: Asigna texto; la tubería no hace nada con `R`.
+
+@@q single | Los números son cadenas
+¿Qué valor tiene `X` tras `X=5; X=$X+1`?
+(+) El texto `5+1` :: Sin expansión aritmética, la shell solo concatena.
+(-) `6`, porque la shell calcula la suma :: Para eso hace falta `X=$((X+1))`.
+(-) `51`, porque se pierde el signo más :: El signo más se queda.
+(-) Un error, ya que `X+1` no es válido :: Asignar texto no da ningún problema.
+
+@@q match | Mandatos informativos
+Empareja cada mandato con la información que da, como la que podría mostrar un script al empezar.
+(=) `whoami` => El nombre del usuario que ejecuta el script :: También `$USER`.
+(=) `date` => La fecha y hora actuales :: Se les da formato con `+%F %T`.
+(=) `echo $BASH_VERSION` => La versión del bash en ejecución :: Una variable de la shell.
+(=) `hostname` => El nombre de la máquina :: También `$HOSTNAME`.
+(=) `pwd` => El directorio de trabajo actual :: Desde donde se resuelven las rutas relativas.
+(-) El PID de la shell :: Eso es `$$`.
+
+@@q single | Rutas relativas
+Un script usa la ruta relativa `datos/in.txt`. ¿Desde qué directorio se resuelve?
+(+) Desde el directorio de trabajo actual del proceso que ejecuta el script, que es donde estaba el usuario al lanzarlo. :: No desde el directorio donde está guardado el script.
+(-) Desde el directorio que contiene el fichero del script, lo lance el usuario desde donde lo lance. :: Para eso hace falta `$(dirname "$0")`.
+(-) Desde el directorio personal del usuario que ejecuta el script, que siempre es el punto de partida de cualquier ruta relativa. :: Solo si el usuario estaba ahí.
+(-) Desde el directorio raíz `/`, ya que los scripts no tienen un directorio de trabajo propio. :: No.
+
+@@q single | El directorio del script
+¿Qué expresión da el directorio que contiene el script en ejecución (para un script llamado por su ruta)?
+(+) `$(dirname "$0")` :: `dirname` quita el último componente de `$0`.
+(-) `$(basename "$0")` :: Eso da solo el nombre del fichero.
+(-) `$PWD` :: El directorio actual de quien lo llama.
+(-) `$HOME` :: El directorio personal.
+
+@@q match | Ayudas con las rutas
+Empareja cada mandato con su resultado para `/home/alumno/docs/a.txt`.
+(=) `basename /home/alumno/docs/a.txt` => a.txt :: El último componente.
+(=) `dirname /home/alumno/docs/a.txt` => /home/alumno/docs :: Todo lo anterior.
+(=) `basename /home/alumno/docs/a.txt .txt` => a :: Quitando además un sufijo.
+(=) `realpath ../x` => La forma absoluta de la ruta :: La relativa convertida en completa.
+(-) docs :: Ninguno de los mandatos de arriba devuelve solo el nombre del padre.
+
+@@group Planificación y registros
+@@q match | Los campos de cron
+Empareja cada campo de una línea de `crontab` (`m h dom mon dow mandato`) con su posición y su significado.
+(=) Primer campo => Minuto (0-59) :: `0` significa en punto.
+(=) Segundo campo => Hora (0-23) :: Reloj de veinticuatro horas.
+(=) Tercer campo => Día del mes (1-31) :: `*` para todos los días.
+(=) Cuarto campo => Mes (1-12) :: `*` para todos los meses.
+(=) Quinto campo => Día de la semana (0-7, donde 0 y 7 son domingo) :: `1-5` para los días laborables.
+(-) Año :: Cron no tiene campo de año.
+
+@@q single | Cada cuatro horas
+¿Qué programación de crontab ejecuta un mandato cada cuatro horas, en punto?
+(+) `0 */4 * * *` :: Minuto 0, cada cuatro horas, todos los días.
+(-) `*/4 * * * *` :: Cada cuatro minutos.
+(-) `4 * * * *` :: En el minuto 4 de cada hora.
+(-) `0 4 * * *` :: Una vez al día a las 04:00.
+
+@@q single | Editar tu crontab
+¿Qué mandato abre tu crontab personal para editarlo?
+(+) `crontab -e` :: Las entradas se ejecutan con los privilegios de tu usuario.
+(-) `cron -e` :: `cron` es el demonio, no el editor.
+(-) `nano /etc/cron` :: No existe ese fichero.
+(-) `at -e` :: `at` programa trabajos de una sola vez.
+
+@@q single | Registrar el resultado
+Una línea de crontab debe añadir a un registro tanto la salida normal como los errores de `/home/alumno/ipLog.sh`. ¿Qué campo de mandato es correcto?
+(+) `/home/alumno/ipLog.sh >> /home/alumno/ipLog.log 2>&1` :: Usa rutas absolutas; cron se ejecuta con un entorno mínimo.
+(-) `ipLog.sh > ipLog.log` :: Nombres relativos y sobrescritura; los errores se pierden.
+(-) `2>&1 >> /home/alumno/ipLog.log /home/alumno/ipLog.sh` :: Las redirecciones no pueden ir delante del mandato de esta forma.
+(-) `ipLog.sh | ipLog.log` :: Una tubería necesita un mandato a la derecha.
+
+@@q single | El entorno de cron
+¿Por qué un script que funciona en tu terminal a veces falla cuando lo ejecuta cron?
+(+) Cron usa un entorno mínimo (`PATH` corto, sin ficheros de arranque), así que pueden fallar mandatos o rutas relativas. :: Usa rutas absolutas y define las variables dentro del script.
+(-) Cron usa un sistema de ficheros distinto del que se ve en una sesión interactiva, así que tus ficheros no están. :: Son los mismos ficheros.
+(-) Cron rechaza los scripts de más de diez líneas y se los salta sin avisar. :: No hay límite.
+(-) Cron quita el permiso de ejecución a los scripts que ejecuta, así que fallan al momento. :: No es su comportamiento.
+
+@@q single | Quién ve la salida
+¿Adónde va la salida normal de un trabajo de cron si no la rediriges?
+(+) Normalmente se envía por correo al propietario del trabajo, si hay un sistema de correo configurado. :: Por eso la mayoría de líneas de cron redirigen la salida a un fichero.
+(-) Aparece en el terminal del usuario propietario del trabajo, si ha iniciado sesión. :: Los trabajos de cron no tienen terminal.
+(-) Se tira sin avisar, como si se hubiera redirigido a `/dev/null`. :: Solo si se redirige.
+(-) Se escribe automáticamente en el registro del sistema, y no se envía nada por correo a nadie. :: Lo predeterminado es el correo.
+
+@@q single | Registros
+¿Qué fichero suele registrar los sucesos de autenticación (inicios de sesión, `sudo`, intentos fallidos de SSH) en un sistema basado en Debian?
+(+) `/var/log/auth.log` :: Líneas de texto con fecha, máquina, servicio y mensaje.
+(-) `/etc/passwd` :: Datos de las cuentas, no sucesos.
+(-) `/var/log/boot.log` :: Mensajes del arranque.
+(-) `/etc/sudoers` :: La configuración de sudo.
+
+@@group Práctica variada
+@@q fill | Comprobación de uso
+Imprime un mensaje de uso y termina con valor 1 si el script no ha recibido exactamente un argumento: `[ {{$# ;; "$#"}} -ne 1 ] && { echo "uso: $0 dir" >&2; exit 1; }`
+(x) $1 :: Es el primer argumento, no su número.
+(x) $* :: Es la lista de argumentos, no su número.
+@@note
+`$#` es el número de parámetros posicionales.
+
+@@q fill | Leer con un mensaje
+Pide un nombre y guárdalo en `NOMBRE`, mostrando un mensaje: `read {{-p}} "Nombre: " NOMBRE`
+(x) -s :: Oculta lo que se escribe y no muestra ningún mensaje.
+(x) -n :: Limita el número de caracteres que se leen.
+@@note
+Añade `-r` para que las barras invertidas se conserven tal como se escriben.
+
+@@q fill | Hacerlo ejecutable
+Da al propietario permiso para ejecutar `backup.sh` y ejecútalo desde el directorio actual: `chmod u+x backup.sh && {{./backup.sh}}`
+(x) backup.sh :: Sin barra, bash solo busca en el `PATH`, y `.` normalmente no está en él.
+(x) source backup.sh :: Lo ejecuta en tu propia shell, no como un programa aparte.
+@@note
+Un nombre con barra se usa como ruta, sin buscar en el `PATH`.
+
+@@q sort | ¿Cambia mi shell o no?
+@@buckets Afecta a la shell actual | No le afecta
+Después de ejecutarlo, ¿cambia el mandato la shell actual (su directorio, sus variables)?
+(Afecta a la shell actual) `source env.sh` :: Se ejecuta dentro de la shell actual.
+(Afecta a la shell actual) `. ./env.sh` :: El punto es un sinónimo de `source`.
+(Afecta a la shell actual) `cd /tmp` escrito en el prompt :: Un mandato interno de tu shell.
+(No le afecta) `./env.sh` :: Se ejecuta en un proceso hijo.
+(No le afecta) `bash env.sh` :: Se lanza un bash nuevo.
+(No le afecta) `(cd /tmp; ls)` :: Los paréntesis crean una subshell.
+
+@@q multi | Parar si falta un directorio
+Marca las líneas que detienen correctamente el script con valor de retorno 2 si falta el directorio `$1`.
+(+) `[ -d "$1" ] || { echo "no existe el directorio: $1" >&2; exit 2; }` :: Comprobación, luego mensaje por stderr y luego salida.
+(+) `if [ ! -d "$1" ]; then echo "no existe el directorio" >&2; exit 2; fi` :: Lo mismo con `if`.
+(-) `[ -d "$1" ] && exit 2` :: Termina cuando el directorio SÍ existe.
+(-) `[ -d "$1" ] || echo "no existe el directorio"` :: Imprime un mensaje, pero el script sigue.
+
+@@q order | Procesar todos los argumentos
+Ordena las partes de un bucle que trata cada argumento y después informa de cuántos había.
+(>) `n=0` :: Inicializar el contador.
+(>) `for f in "$@"; do` :: Empezar el bucle sobre los argumentos.
+(>) `n=$((n+1))` :: Contar dentro del bucle.
+(>) `done; echo "$n ficheros"` :: Cerrar el bucle e informar del total.
+
+@@q match | Líneas de crontab
+Empareja cada programación con cuándo se ejecuta.
+(=) `0 2 * * *` => Todos los días a las 02:00 :: Minuto 0, hora 2.
+(=) `*/15 * * * *` => Cada quince minutos :: Un paso en el campo de los minutos.
+(=) `30 6 * * 1` => Los lunes a las 06:30 :: Día de la semana 1.
+(=) `0 0 1 * *` => A medianoche del primer día de cada mes :: Día del mes 1.
+(=) `0 */4 * * *` => Cada cuatro horas, en punto :: Un paso en el campo de las horas.
+(-) Una vez al año, el 1 de enero :: Para eso también habría que poner a 1 el campo del mes.
