@@ -133,7 +133,7 @@ Match each example with its kind.
 (=) You run `find / -name x` in your terminal => Interactive process :: You interact with it and can suspend or kill it from the shell.
 (=) `sshd` waiting for connections => Daemon :: Serves requests in the background from boot until shutdown.
 (=) A nightly backup script run by `cron` => Batch process :: Launched by a scheduler with no terminal.
-(-) A finished process whose exit status nobody has read yet => Daemon :: It is a zombie, not a service.
+(-) A service that keeps running in the background :: That describes none of the examples above; a finished process nobody has collected is a zombie, which is not a kind of daemon.
 
 @@q single | Parent after death
 What happens to a running child when its parent process dies?
