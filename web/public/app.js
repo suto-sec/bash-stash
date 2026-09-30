@@ -9,15 +9,28 @@ const state = {
   codeFor: null,    // exercise id VS Code is currently opened on
   activeVSCodeFile: null, // basename of the editor tab currently focused in VS Code, reported via postMessage
   track: 'full',    // 'full' | 'minimal' | 'intermediate' | 'complete'
+  introCategory: null, // topic id (e.g. '06') while browsing that category's Introduction refreshers
 };
 try { state.track = localStorage.getItem('track') || 'full'; } catch { /* private mode */ }
+if (state.track === 'complete') state.track = 'full'; // "Complete" was dropped as a choice — identical to Full anyway
+try { state.introCategory = localStorage.getItem('introCategory') || null; } catch { /* private mode */ }
 
 // Track tiers (server-computed from which tools/src/*.txt batch an exercise came from):
-// 1 = base (closest to the course material's own examples), 2 = added to mirror exam patterns,
-// 3 = later bulk-expansion practice. minimal=tier 1, intermediate=tiers 1-2, complete=everything.
+// 0 = tiny one-concept "Introduction" refresher, never part of any track, only reachable by picking
+// its category from the home page. 1 = base (closest to the course material's own examples),
+// 2 = added to mirror exam patterns, 3 = later bulk-expansion practice.
+// minimal=tier 1, intermediate=tiers 1-2, complete/full=everything except tier 0.
 const TRACK_MAX = { minimal: 1, intermediate: 2, complete: 3 };
-function inTrack(e) { return state.track === 'full' || e.tier <= TRACK_MAX[state.track]; }
-function visibleFlat() { return state.flat.filter(inTrack); }
+function visibleInTopic(t, e) {
+  if (state.introCategory) return state.introCategory === t.id && e.tier === 0;
+  if (e.tier === 0) return false;
+  return state.track === 'full' || e.tier <= TRACK_MAX[state.track];
+}
+function visibleFlat() {
+  const out = [];
+  for (const t of state.index) for (const e of t.exercises) if (visibleInTopic(t, e)) out.push(e);
+  return out;
+}
 
 window.addEventListener('message', ev => {
   if (ev.origin !== location.origin) return;
@@ -97,7 +110,7 @@ function renderSidebar() {
   nav.innerHTML = '';
   let total = 0, passed = 0;
   for (const t of state.index) {
-    const trackEx = t.exercises.filter(inTrack);
+    const trackEx = t.exercises.filter(e => visibleInTopic(t, e));
     if (trackEx.length === 0) continue; // this topic has nothing in the current track
     const ex = trackEx.filter(e =>
       (!q || `${e.id} ${e.title} ${e.cmds}`.toLowerCase().includes(q)) && !(hidePassed && e.status === 'pass'));
@@ -761,25 +774,56 @@ document.addEventListener('click', ev => {
 const TRACK_LABELS = { minimal: 'Minimal', intermediate: 'Intermediate', complete: 'Complete' };
 function updateTrackBadge() {
   const badge = $('#track-badge');
+  if (state.introCategory) {
+    const t = state.index.find(x => x.id === state.introCategory);
+    badge.textContent = 'Intro: ' + (t ? t.title : state.introCategory);
+    badge.classList.remove('hidden');
+    return;
+  }
   if (state.track === 'full') { badge.classList.add('hidden'); return; }
   badge.textContent = TRACK_LABELS[state.track];
   badge.classList.remove('hidden');
 }
 function renderHomePage() {
-  const counts = { full: state.flat.length, minimal: 0, intermediate: 0, complete: 0 };
+  const counts = { full: 0, minimal: 0, intermediate: 0 };
   for (const e of state.flat) {
+    if (e.tier === 0) continue; // Introduction refreshers never count toward a track
+    counts.full++;
     if (e.tier <= 1) counts.minimal++;
     if (e.tier <= 2) counts.intermediate++;
-    if (e.tier <= 3) counts.complete++;
   }
   for (const el of document.querySelectorAll('.track-card-count')) el.textContent = `${counts[el.dataset.count]} exercises`;
-  for (const el of document.querySelectorAll('.track-card')) el.classList.toggle('current', el.dataset.track === state.track);
+  for (const el of document.querySelectorAll('#track-grid .track-card')) el.classList.toggle('current', !state.introCategory && el.dataset.track === state.track);
+  renderIntroGrid();
+}
+function renderIntroGrid() {
+  const grid = $('#intro-grid');
+  grid.innerHTML = state.index.filter(t => t.id !== '18' && t.id !== '19').map(t => {
+    const n = t.exercises.filter(e => e.tier === 0).length;
+    const cur = state.introCategory === t.id;
+    return `<button class="track-card${cur ? ' current' : ''}" data-intro-topic="${esc(t.id)}">
+      <div class="track-card-title">${esc(t.id)} · ${esc(t.title)}</div>
+      <div class="track-card-count">${n} exercise${n === 1 ? '' : 's'}</div>
+    </button>`;
+  }).join('');
 }
 $('#track-grid').addEventListener('click', ev => {
   const card = ev.target.closest('.track-card');
   if (!card) return;
   state.track = card.dataset.track;
-  try { localStorage.setItem('track', state.track); } catch { /* private mode */ }
+  state.introCategory = null;
+  try { localStorage.setItem('track', state.track); localStorage.removeItem('introCategory'); } catch { /* private mode */ }
+  updateTrackBadge();
+  renderSidebar();
+  const pool = visibleFlat();
+  const next = pool.find(e => e.status !== 'pass') || pool[0];
+  location.hash = next ? `#/ex/${next.id}` : '#/home';
+});
+$('#intro-grid').addEventListener('click', ev => {
+  const card = ev.target.closest('[data-intro-topic]');
+  if (!card) return;
+  state.introCategory = card.dataset.introTopic;
+  try { localStorage.setItem('introCategory', state.introCategory); } catch { /* private mode */ }
   updateTrackBadge();
   renderSidebar();
   const pool = visibleFlat();
@@ -882,6 +926,7 @@ window.addEventListener('hashchange', route);
   applyTheme(currentTheme(), false);
   updateTrackBadge();
   await loadIndex();
+  updateTrackBadge(); // re-run now state.index is populated, for the Intro category title lookup
   await route();
   let mode = 'term';
   try { mode = localStorage.getItem('mode') || 'term'; } catch { /* private mode */ }
