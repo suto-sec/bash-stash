@@ -1,0 +1,834 @@
+@@topic 03_files_links | Files, copies & links
+@@ex 0316 cp_no_clobber | Copying without overwriting
+@@level 3
+@@cmds cp, test -e, basename, for
+@@readme
+The directory `nuevos` contains new files; some of them already exist (same name, maybe different
+content) in the directory `archivo`.
+
+Copy every **regular file** directly inside `nuevos` into `archivo`, but **never overwrite** a file
+that already exists in `archivo`. Subdirectories of `nuevos` are ignored (not copied, not printed).
+
+Output, following the order of the `nuevos/*` glob:
+
+- `skipped <name>` for every file that was not copied because it already existed in `archivo`
+  (`<name>` is the file name without the directory)
+
+and finally the line `copied N` with the number of files actually copied. File names may contain spaces.
+@@check
+COMPARE="stdout exit files"
+setup() {
+  mkdir -p nuevos archivo "nuevos/$(word)_dir"
+  local i n w
+  n=$(randr 4 7)
+  for ((i = 1; i <= n; i++)); do
+    w="$(word)$i"; (( i % 3 == 0 )) && w="$(word) $w"
+    randtext 2 > "nuevos/$w.txt"
+    if (( i == 1 || $(rand 3) == 0 )); then randtext 1 > "archivo/$w.txt"; fi
+  done
+  randtext 2 > "archivo/$(word)_old.txt"
+}
+@@solution
+#!/bin/bash
+n=0
+for f in nuevos/*; do
+  [ -f "$f" ] || continue
+  name=$(basename "$f")
+  if [ -e "archivo/$name" ]; then
+    echo "skipped $name"
+  else
+    cp "$f" archivo/
+    n=$((n + 1))
+  fi
+done
+echo "copied $n"
+
+@@ex 0317 cp_preserve | Backups that keep their dates
+@@level 3
+@@cmds cp -p, mv, test -e, touch -d
+@@readme
+The current directory contains several `*.conf` files (and other files). For every file `X.conf`
+directly in the current directory:
+
+1. if `X.conf.bak` already exists, rename it to `X.conf.bak.old` (replacing any previous `.old`)
+2. copy `X.conf` to `X.conf.bak` **preserving** its permissions and modification time (`man cp`)
+
+Nothing is printed. The checker compares permissions, contents and modification times of every file.
+@@check
+COMPARE="stdout exit files mtime"
+setup() {
+  local i n w
+  n=$(randr 3 5)
+  for ((i = 1; i <= n; i++)); do
+    w="$(word)$i"; (( i == 2 )) && w="my $w"
+    randtext 3 > "$w.conf"; chmod "$(pick 600 640 644 666 664)" "$w.conf"
+    touch -d "20$(randr 15 24)-0$(randr 1 9)-1$(randr 0 9) 1$(randr 0 9):$(randr 10 59)" "$w.conf"
+    if (( i == 1 || $(rand 2) == 1 )); then
+      randtext 1 > "$w.conf.bak"; touch -d "2014-02-0$(randr 1 9) 10:00" "$w.conf.bak"
+      (( $(rand 2) )) && { echo old > "$w.conf.bak.old"; touch -d "2013-01-01 08:00" "$w.conf.bak.old"; }
+    fi
+  done
+  randtext 2 > "$(word).txt"; touch -d "2019-05-05 05:05" ./*.txt
+  randtext 2 > "$(word).conf.orig"; touch -d "2018-01-01 01:01" ./*.conf.orig
+}
+@@solution
+#!/bin/bash
+for f in *.conf; do
+  [ -f "$f" ] || continue
+  [ -e "$f.bak" ] && mv -f "$f.bak" "$f.bak.old"
+  cp -p "$f" "$f.bak"
+done
+
+@@ex 0318 symlink_farm | A directory of symbolic links
+@@level 3
+@@cmds mkdir, ln -s, basename, readlink
+@@readme
+The directory `scripts` contains shell scripts (`*.sh`) and other files. Create the directory `bin`
+and, inside it, for every **regular file** `scripts/NAME.sh`, a symbolic link `bin/NAME` (the name
+without `.sh`) whose **stored target** is the relative path `../scripts/NAME.sh`.
+
+Then print one line `NAME -> TARGET` for every link in `bin`, in the order of the `bin/*` glob,
+where `TARGET` is the target stored in the link. Names may contain spaces.
+@@check
+COMPARE="stdout exit files"
+setup() {
+  mkdir scripts "scripts/$(word).sh"
+  local i n w
+  n=$(randr 3 6)
+  for ((i = 1; i <= n; i++)); do
+    w="$(word)$i"; (( i == 2 )) && w="$(word) $w"
+    printf '#!/bin/bash\necho %s\n' "$w" > "scripts/$w.sh"
+  done
+  randtext 2 > "scripts/$(word).txt"; randtext 1 > "scripts/$(word).sh.bak"
+}
+@@solution
+#!/bin/bash
+mkdir bin
+for f in scripts/*.sh; do
+  [ -f "$f" ] || continue
+  name=$(basename "$f" .sh)
+  ln -s "../scripts/$name.sh" "bin/$name"
+done
+for l in bin/*; do
+  echo "$(basename "$l") -> $(readlink "$l")"
+done
+
+@@ex 0319 fix_broken_links | Repairing broken links
+@@level 3
+@@cmds test -L -e, readlink, basename, ln -sf, rm
+@@readme
+The directory `links` contains symbolic links (some of them **broken**) and regular files. The directory
+`repuesto` contains replacement files.
+
+For every **broken** symbolic link directly inside `links` (order of the `links/*` glob), let `T` be the
+last component (basename) of its stored target:
+
+- if `repuesto/T` exists, replace the link by a new symbolic link with the same name whose stored
+  target is `../repuesto/T`, and print `fixed NAME -> ../repuesto/T`
+- otherwise delete the link and print `removed NAME`
+
+(`NAME` is the link's name without the directory.) Working links and regular files are left alone.
+Finish with the line `N fixed, M removed`.
+@@check
+COMPARE="stdout exit files"
+setup() {
+  mkdir -p links repuesto data
+  local i w
+  for i in 1 2 3; do w="$(word)$i.txt"; randtext 1 > "data/$w"; ln -s "../data/$w" "links/ok $i"; done
+  for i in 4 5 6 7 8; do
+    w="$(word)$i.$(pick txt csv)"
+    (( i == 4 || $(rand 2) )) && randtext 1 > "repuesto/$w"
+    ln -s "$(pick ../old /tmp/nothere/sub ../data/gone)/$w" "links/$(pick "l$i" "link $i" "$(word)$i")"
+  done
+  ln -s "../missing/zz9" "links/zz 9"
+  randtext 2 > "links/$(word).txt"; randtext 1 > "repuesto/$(word)99.txt"
+}
+@@solution
+#!/bin/bash
+fixed=0 removed=0
+for l in links/*; do
+  [ -L "$l" ] && [ ! -e "$l" ] || continue     # only broken links
+  name=$(basename "$l")
+  t=$(basename "$(readlink "$l")")
+  if [ -e "repuesto/$t" ]; then
+    ln -sf "../repuesto/$t" "$l"
+    echo "fixed $name -> ../repuesto/$t"
+    fixed=$((fixed + 1))
+  else
+    rm "$l"
+    echo "removed $name"
+    removed=$((removed + 1))
+  fi
+done
+echo "$fixed fixed, $removed removed"
+
+@@ex 0320 find_hardlinks | Who else is this file?
+@@level 3
+@@cmds test -ef, test -L, stat -c %h %i
+@@readme
+The directory `datos` contains a file `master` and many other entries: some are **hard links** to
+`master`, some are copies with the same content, some are symbolic links to it.
+
+1. Print the name (without the directory) of every entry directly inside `datos`, other than `master`
+   itself, that is a **hard link** to the same file as `datos/master` (same inode). Symbolic links do
+   **not** count. Follow the order of the `datos/*` glob.
+2. Print `links: N`, where `N` is the link count of `datos/master` (`stat`). It may be bigger than what
+   you found: hard links can live in other directories too.
+@@check
+setup() {
+  mkdir -p datos otros
+  randtext 3 > datos/master
+  local i n
+  n=$(randr 1 4)
+  for ((i = 1; i <= n; i++)); do ln datos/master "datos/$(pick "$(word)$i" "copy $i" "$(word) $(word)$i")"; done
+  for ((i = 1; i <= $(randr 1 3); i++)); do cp datos/master "datos/$(word)_cp$i"; done
+  ln -s master "datos/$(word)_sym"; ln -s "$PWD/datos/master" "datos/abs link"
+  (( $(rand 2) )) && ln datos/master "otros/$(word)"
+  randtext 1 > "datos/$(word).txt"; mkdir "datos/$(word)_dir"
+}
+extra_check() { must_use stat; }
+@@solution
+#!/bin/bash
+for f in datos/*; do
+  [ "$f" = datos/master ] && continue
+  [ -L "$f" ] && continue                 # -ef follows symbolic links: exclude them
+  [ "$f" -ef datos/master ] && basename "$f"
+done
+echo "links: $(stat -c %h datos/master)"
+
+@@ex 0321 flatten | Flattening a directory
+@@level 3
+@@cmds mv, basename, dirname, rmdir
+@@readme
+The directory `caos` contains some regular files and some subdirectories (names may contain spaces).
+Each subdirectory contains only regular files (no deeper levels), or nothing at all.
+
+1. Move every file `caos/D/F` to `caos/D_F` (the subdirectory name, an underscore, the file name).
+2. Remove all the subdirectories, which are now empty (use `rmdir`, not `rm -r`).
+3. Print `N files moved`.
+
+Files that were already directly in `caos` stay where they are.
+@@check
+COMPARE="stdout exit files"
+setup() {
+  mkdir caos
+  local i j d n
+  n=$(randr 2 4)
+  for ((i = 1; i <= n; i++)); do
+    d="caos/$(word)$i"; (( i == 2 )) && d="caos/$(word) $i"
+    mkdir "$d"
+    for ((j = 1; j <= $(randr 1 3); j++)); do randtext 1 > "$d/$(pick "$(word)$j.txt" "$(word) $j.log")"; done
+  done
+  mkdir "caos/$(word)_empty"
+  randtext 1 > "caos/$(word).md"
+}
+extra_check() { must_use rmdir; must_not_use 'rm -r'; }
+@@solution
+#!/bin/bash
+n=0
+for d in caos/*/; do
+  d=${d%/}
+  for f in "$d"/*; do
+    [ -f "$f" ] || continue
+    mv "$f" "caos/$(basename "$d")_$(basename "$f")"
+    n=$((n + 1))
+  done
+  rmdir "$d"
+done
+echo "$n files moved"
+
+@@ex 0322 file_sort | Sorting files by their real type
+@@level 3
+@@cmds file -b, mkdir, mv, case / [[ == *text* ]]
+@@readme
+The directory `mezcla` contains files whose extensions lie. Create `mezcla/texto` and `mezcla/otros`
+and move every **regular file** of `mezcla` into:
+
+- `mezcla/texto` if its type, as described by `file -b`, contains the word `text`
+- `mezcla/otros` otherwise (including empty files)
+
+Finally print `text: N` and `other: M` (two lines). Names may contain spaces.
+@@check
+COMPARE="stdout exit files"
+setup() {
+  mkdir mezcla
+  local i
+  for i in $(seq "$(randr 1 3)"); do randtext 3 > "mezcla/$(word)$i.$(pick jpg bin dat)"; done
+  printf '#!/bin/bash\necho hi\n' > "mezcla/$(word) script"
+  for i in $(seq "$(randr 1 3)"); do gzip -c /etc/hostname > "mezcla/$(word)$i.$(pick txt md '')"; done
+  cp /usr/bin/true "mezcla/$(word).txt"
+  touch "mezcla/$(word) empty.txt"
+  (( $(rand 2) )) && printf 'a,b\n1,2\n' > "mezcla/$(word).csv"
+}
+@@solution
+#!/bin/bash
+mkdir mezcla/texto mezcla/otros
+t=0 o=0
+for f in mezcla/*; do
+  [ -f "$f" ] || continue
+  if [[ $(file -b "$f") == *text* ]]; then
+    mv "$f" mezcla/texto/; t=$((t + 1))
+  else
+    mv "$f" mezcla/otros/; o=$((o + 1))
+  fi
+done
+echo "text: $t"
+echo "other: $o"
+
+@@ex 0323 touch_times | Playing with timestamps
+@@level 3
+@@cmds touch -d, touch -r, ls -t
+@@readme
+The current directory contains `a.txt`, `b.txt`, `c.txt`, `d.txt` and a file `fecha` holding one
+date like `2021-03-14 09:26`.
+
+1. Set the modification time of `c.txt` to the date written in `fecha`.
+2. Give `b.txt` exactly the same modification time as `a.txt`.
+3. Create the file `nuevo.txt` with the same modification time as `c.txt` (after step 1).
+4. Print the names of all the `*.txt` files, one per line, **newest first**; files with the same
+   time are printed in alphabetical order (`ls -t` does exactly this).
+
+The checker compares the modification times of every file.
+@@check
+COMPARE="stdout exit files mtime"
+setup() {
+  local f
+  for f in a b c d; do randtext 2 > "$f.txt"; touch -d "20$(randr 10 24)-0$(randr 1 9)-1$(randr 0 9) 1$(randr 0 9):$(randr 10 59)" "$f.txt"; done
+  echo "20$(randr 10 24)-0$(randr 1 9)-2$(randr 0 8) 1$(randr 0 9):$(randr 10 59)" > fecha
+  touch -d "2009-09-09 09:09" fecha
+}
+@@solution
+#!/bin/bash
+touch -d "$(cat fecha)" c.txt
+touch -r a.txt b.txt
+touch -r c.txt nuevo.txt
+ls -t *.txt
+
+@@ex 0324 trash | trash.sh (a recycle bin)
+@@level 4
+@@cmds mv, mkdir, basename, test -e -d, while (name collisions), exit codes
+@@readme
+Write `trash.sh`, a safe replacement for `rm`:
+
+```
+trash.sh FILE...
+```
+
+It **moves** every FILE into the trash directory `$HOME/.papelera`.
+
+- If `$HOME/.papelera` does not exist, create it and print `Created <full path of the trash>`
+  (only when at least one file is going to be processed, i.e. after checking there are arguments).
+- The name inside the trash is the basename of FILE. If that name is already taken in the trash, use
+  `NAME.1`, or `NAME.2` if `NAME.1` is also taken, and so on (the first free number).
+- For every file moved print `trashed <FILE> as <name in trash>` (FILE exactly as given).
+- An argument that does not exist: error message on stderr **including its name**; continue with the
+  rest.
+- An argument that is a directory: error message on stderr **including its name**, it is not moved;
+  continue with the rest.
+- At the end print `N trashed, M errors`.
+
+Exit codes: **1** if there are no arguments (usage message on stderr, nothing else happens); **2** if at
+least one argument produced an error; **0** otherwise. Arguments are processed in the order given and
+may contain spaces.
+@@check
+SCRIPT_NAME=trash.sh
+SEEDS=3
+COMPARE="stdout exit errmsg files"
+setup() {
+  mkdir -p sub "my dir"
+  local f
+  for f in a b "x y.txt" sub/a "sub/x y.txt" c.log; do randtext 2 > "$f"; done
+  ln -s c.log enlace
+  if (( $(rand 2) )); then
+    mkdir "$H/.papelera"; randtext 1 > "$H/.papelera/a"
+    (( $(rand 2) )) && randtext 1 > "$H/.papelera/a.1"
+    (( $(rand 2) )) && randtext 1 > "$H/.papelera/x y.txt"
+  fi
+}
+ARGS=('a' '"x y.txt" b' 'a sub/a "$W/sub/a"' 'noexiste a' '"my dir" "x y.txt" enlace' '"$W/sub/x y.txt" "x y.txt" c.log' '')
+extra_check() {
+  if [[ $CASE == 'noexiste a' ]]; then mentions noexiste; fi
+  if [[ $CASE == '"my dir"'* ]]; then mentions "my dir"; fi
+}
+@@solution
+#!/bin/bash
+# trash.sh FILE... - move files to $HOME/.papelera instead of deleting them
+if [ $# -eq 0 ]; then
+  echo "Usage: $(basename "$0") FILE..." >&2
+  exit 1
+fi
+
+TRASH=$HOME/.papelera
+if [ ! -d "$TRASH" ]; then
+  mkdir -p "$TRASH" || exit 3
+  echo "Created $TRASH"
+fi
+
+ok=0 errors=0
+for f in "$@"; do
+  if [ ! -e "$f" ]; then
+    echo "Error: '$f' does not exist" >&2; errors=$((errors + 1)); continue
+  fi
+  if [ -d "$f" ]; then
+    echo "Error: '$f' is a directory" >&2; errors=$((errors + 1)); continue
+  fi
+  name=$(basename "$f")
+  dest=$name
+  i=1
+  while [ -e "$TRASH/$dest" ]; do
+    dest=$name.$i
+    i=$((i + 1))
+  done
+  mv "$f" "$TRASH/$dest"
+  echo "trashed $f as $dest"
+  ok=$((ok + 1))
+done
+
+echo "$ok trashed, $errors errors"
+[ $errors -eq 0 ] || exit 2
+
+@@ex 0325 relink | relink.sh (fixing links after a move)
+@@level 4
+@@cmds find -type l, readlink, ln -sfn, ${var#prefix}, sort
+@@readme
+A directory was moved and many symbolic links still point to its old location. Write:
+
+```
+relink.sh DIR OLD NEW
+```
+
+For every symbolic link under `DIR` (recursively, `find`), look at its **stored target** (`readlink`).
+If the target is exactly `OLD`, or starts with `OLD/`, replace the link by one whose target has that
+`OLD` prefix replaced by `NEW` (the rest of the target is kept). Example with `OLD=/srv/datos`,
+`NEW=/mnt/datos`: `/srv/datos/a/b.txt` becomes `/mnt/datos/a/b.txt`, but `/srv/datos2/x` and
+`/srv/datos_old` are **not** touched.
+
+Output: for every changed link, sorted by its path (as `find DIR` prints it, sorted with `sort`):
+
+```
+<link path>: <old target> -> <new target>
+```
+
+then the summary `Relinked N of M links`, where `M` is the total number of symbolic links under `DIR`.
+Links must keep their names (which may contain spaces); some links point to directories.
+
+Errors (message on stderr):
+
+- not exactly 3 arguments → usage, exit **1**
+- `DIR` is not a directory → exit **2** (the message includes `DIR`)
+- `OLD` or `NEW` is an empty string → exit **3**
+@@check
+SCRIPT_NAME=relink.sh
+SEEDS=3
+COMPARE="stdout exit errmsg files"
+setup() {
+  mkdir -p "enl/sub dir/deep" enl/x
+  local i d t
+  for i in $(seq 1 9); do
+    d=$(pick enl "enl/sub dir" "enl/sub dir/deep" enl/x)
+    t=$(pick "/srv/datos/$(word)$i.txt" "/srv/datos/$(word)/$(word)$i" /srv/datos "/srv/datos2/$(word)$i" \
+             "/srv/datos_old/$(word)" "../datos/$(word)$i" "/opt/srv/datos/$(word)" "../datos" "$(word)$i")
+    ln -s "$t" "$d/$(pick "l$i" "link $i" "$(word)$i")"
+  done
+  ln -s /srv/datos/dir "enl/first"
+  ln -s ../datos/q "enl/second one"
+  mkdir -p "$W/datos" "$W/nuevo/sub"; ln -s ../../datos "enl/x/todir"
+  randtext 1 > "enl/$(word).txt"
+  touch fich
+}
+ARGS=('enl /srv/datos /mnt/datos' '"$W/enl" ../datos ../nuevo' '"enl/sub dir" /srv/datos /srv/nuevo' 'enl ../../datos ../../nuevo/sub' 'enl /srv/datos' '' 'fich /a /b' 'noexiste /a /b' 'enl "" /b' 'enl /a ""')
+extra_check() {
+  [[ $REF_CODE == 2 ]] && mentions "$(eval "set -- $CASE"; echo "$1")"
+  true
+}
+@@solution
+#!/bin/bash
+# relink.sh DIR OLD NEW - rewrite symbolic links that point below OLD so they point below NEW
+if [ $# -ne 3 ]; then
+  echo "Usage: $(basename "$0") DIR OLD NEW" >&2
+  exit 1
+fi
+DIR=$1 OLD=$2 NEW=$3
+[ -d "$DIR" ] || { echo "Error: '$DIR' is not a directory" >&2; exit 2; }
+[ -n "$OLD" ] && [ -n "$NEW" ] || { echo "Error: OLD and NEW must not be empty" >&2; exit 3; }
+
+n=0 total=0
+while IFS= read -r l; do
+  total=$((total + 1))
+  t=$(readlink "$l")
+  if [ "$t" = "$OLD" ] || [[ $t == "$OLD"/* ]]; then
+    new=$NEW${t#"$OLD"}
+    ln -sfn "$new" "$l"          # -n: do not follow the old link if it points to a directory
+    echo "$l: $t -> $new"
+    n=$((n + 1))
+  fi
+done < <(find "$DIR" -type l | sort)
+echo "Relinked $n of $total links"
+
+@@ex 0326 dedup | dedup.sh (hard-linking duplicates)
+@@level 4
+@@cmds cmp -s, ln -f, test -ef -L -s, stat -c %s
+@@readme
+Write `dedup.sh DIR` that saves space by replacing duplicate files with **hard links**.
+
+Consider the **regular, non-empty** files directly inside `DIR` (symbolic links, directories and empty
+files are ignored), in the order of the `DIR/*` glob. For each file `F`, look for the **first earlier**
+file (in that order) with exactly the same content (`cmp`):
+
+- if `F` is **already** a hard link to it (same inode, `test -ef`), do nothing
+- otherwise replace `F` by a hard link to that earlier file (`ln -f`) and print `NAME => FIRST`
+  (both names without the directory)
+
+Finally print `Linked N files, saved B bytes`, where `B` is the sum of the sizes of the replaced files.
+Names may contain spaces.
+
+Errors (message on stderr): not exactly one argument → usage, exit **1**; `DIR` is not a directory →
+exit **2**, with a message including `DIR`.
+@@check
+SCRIPT_NAME=dedup.sh
+SEEDS=3
+COMPARE="stdout exit errmsg files"
+setup() {
+  mkdir -p d/sub vacio
+  local i n c=() t
+  for i in 1 2 3; do c+=("$(randtext "$(randr 1 4)")"); done
+  n=$(randr 6 9)
+  for ((i = 1; i <= n; i++)); do
+    t=${c[$(rand 3)]}
+    (( $(rand 4) == 0 )) && t="$t$(word)"
+    printf '%s\n' "$t" > "d/$(pick "$(word)$i" "$(word) $i" "f$i.txt")"
+    (( $(rand 5) == 0 )) && chmod 600 "d/f$i.txt" 2>/dev/null
+  done
+  printf '%s\n' "${c[0]}" > "d/aa first"
+  ln "d/aa first" "d/ab hard"
+  ln -s "aa first" "d/ac sym"
+  printf '%s\n' "${c[0]}" > d/sub/copy
+  touch d/e1 d/e2
+  touch fich
+}
+ARGS=('d' '"$W/d"' 'vacio' '' 'd vacio' 'fich' 'noexiste')
+extra_check() {
+  [[ $REF_CODE == 2 ]] && mentions "$(eval "set -- $CASE"; echo "$1")"
+  true
+}
+@@solution
+#!/bin/bash
+# dedup.sh DIR - replace duplicate files by hard links to the first copy
+[ $# -eq 1 ] || { echo "Usage: $(basename "$0") DIR" >&2; exit 1; }
+DIR=$1
+[ -d "$DIR" ] || { echo "Error: '$DIR' is not a directory" >&2; exit 2; }
+
+n=0 bytes=0
+for f in "$DIR"/*; do
+  [ -f "$f" ] && [ ! -L "$f" ] && [ -s "$f" ] || continue
+  for g in "$DIR"/*; do
+    [ "$g" = "$f" ] && break                       # only files before f
+    [ -f "$g" ] && [ ! -L "$g" ] && [ -s "$g" ] || continue
+    if cmp -s "$f" "$g"; then
+      if [ ! "$f" -ef "$g" ]; then
+        size=$(stat -c %s "$f")
+        ln -f "$g" "$f"
+        echo "$(basename "$f") => $(basename "$g")"
+        n=$((n + 1)); bytes=$((bytes + size))
+      fi
+      break
+    fi
+  done
+done
+echo "Linked $n files, saved $bytes bytes"
+
+@@ex 0327 skeleton | skeleton.sh (an empty copy of a tree)
+@@level 4
+@@cmds find, mkdir -p, touch -r, ${p#prefix}
+@@readme
+Write `skeleton.sh SRC DST` that creates in `DST` an "empty copy" of the tree `SRC`:
+
+- every directory under `SRC` (recursively, hidden ones included) is created at the same relative path
+  under `DST`
+- every **regular file** under `SRC` becomes an **empty** file at the same relative path under `DST`,
+  with the **same modification time** as the original (`touch -r`)
+- symbolic links and anything else are ignored
+
+`DST` must not exist: the script creates it (and its missing parents). At the end print
+`N directories, M files`, counting what was created **inside** `DST` (not `DST` itself).
+Names may contain spaces.
+
+Errors (message on stderr):
+
+- not exactly 2 arguments → usage, exit **1**
+- `SRC` is not a directory → exit **2**
+- `DST` already exists → exit **3** (nothing is modified)
+
+(`SRC` is given without a trailing `/`.) The checker compares contents, permissions and the modification
+times of the files created.
+@@check
+SCRIPT_NAME=skeleton.sh
+SEEDS=3
+COMPARE="stdout exit errmsg files"
+setup() {
+  mkdir -p "src/a b/c" src/.oculto src/d/e/f existe
+  local i f
+  for i in $(seq 1 8); do
+    f="src/$(pick . "a b" "a b/c" .oculto d/e d/e/f)/$(pick "$(word)$i.txt" "$(word) $i" ".h$i")"
+    randtext 2 > "$f"
+    touch -d "20$(randr 10 24)-0$(randr 1 9)-1$(randr 0 9) 1$(randr 0 9):$(randr 10 59)" "$f"
+  done
+  chmod 600 "$f"
+  ln -s ../../etc "src/a b/link"
+  ln -s "$(basename "$f")" "src/d/l2"
+  touch fich
+}
+ARGS=('src copia' 'src "$W/out/new copy"' '"src/a b" "x y"' 'src existe' 'fich z' 'noexiste z' 'src' '')
+capture() { find . -type f -newermt 2025-01-01 -printf 'recent %p\n' | grep -v '^recent ./src/' | sort; find . -type f ! -newermt 2025-01-01 -printf '%p %TY-%Tm-%Td_%TH:%TM\n' | sort; }
+@@solution
+#!/bin/bash
+# skeleton.sh SRC DST - copy the directory structure of SRC with empty files
+[ $# -eq 2 ] || { echo "Usage: $(basename "$0") SRC DST" >&2; exit 1; }
+SRC=$1 DST=$2
+[ -d "$SRC" ] || { echo "Error: '$SRC' is not a directory" >&2; exit 2; }
+[ -e "$DST" ] && { echo "Error: '$DST' already exists" >&2; exit 3; }
+
+mkdir -p "$DST"
+nd=0 nf=0
+while IFS= read -r -d '' d; do
+  mkdir -p "$DST/${d#"$SRC"/}"
+  nd=$((nd + 1))
+done < <(find "$SRC" -mindepth 1 -type d -print0)
+while IFS= read -r -d '' f; do
+  touch -r "$f" "$DST/${f#"$SRC"/}"
+  nf=$((nf + 1))
+done < <(find "$SRC" -type f -print0)
+echo "$nd directories, $nf files"
+
+@@ex 0328 versions | versions.sh (numbered copies)
+@@level 4
+@@cmds cp -p, cmp -s, basename, for, [[ =~ ]], exit codes
+@@readme
+Write a tiny version keeper:
+
+```
+versions.sh FILE [DIR]
+```
+
+Versions of `FILE` are kept in `DIR` (default `$HOME/versions`) as `<name>.v1`, `<name>.v2`, ... where
+`<name>` is the basename of `FILE`. Numbers may have gaps (`v1 v2 v5`); the **latest** version is the
+one with the biggest number (numerically: `v10` > `v9`). Other files in `DIR` (e.g. `<name>.vold`,
+`<name>.v3.bak`, versions of other files) are not versions and must be ignored.
+
+1. If `DIR` does not exist, create it (with parents) and print `Created <DIR>`.
+2. If there is a latest version and its content is identical to `FILE`, print `No changes since v<N>`
+   and copy nothing.
+3. Otherwise copy `FILE` as version latest+1 (or `v1` if there is none) preserving its mode and
+   modification time (`cp -p`), and print `Saved <FILE> as <DIR>/<name>.v<K>`.
+4. Finally print `<V> versions of <name>` (how many versions exist now).
+
+`<DIR>` and `<FILE>` are printed as given (or the default `$HOME/versions` fully expanded).
+
+Errors (message on stderr): no arguments or more than 2 → usage, exit **1**; `FILE` is not a regular
+file → exit **2**; `DIR` exists but is not a directory → exit **3**.
+@@check
+SCRIPT_NAME=versions.sh
+SEEDS=4
+COMPARE="stdout exit errmsg files"
+setup() {
+  local v i n name
+  randtext 3 > notas.txt; randtext 2 > "mis notas.txt"; mkdir dir; touch fich
+  mkdir -p vers
+  for name in notas.txt "mis notas.txt"; do
+    for v in "$H/versions" vers; do
+      (( $(rand 3) == 0 )) && continue
+      mkdir -p "$v"
+      n=0
+      for i in $(seq "$(randr 1 11)"); do
+        (( $(rand 3) == 0 )) && continue
+        randtext 2 > "$v/$name.v$i"; n=$i
+      done
+      (( n > 0 && $(rand 2) == 0 )) && cp "$name" "$v/$name.v$n"
+      randtext 1 > "$v/$name.vold"; randtext 1 > "$v/$name.v3.bak"; randtext 1 > "$v/otro.txt.v99"
+    done
+  done
+}
+ARGS=('notas.txt' '"mis notas.txt"' '"mis notas.txt" vers' '"$W/notas.txt" "$W/nuevo/sub"' 'notas.txt vers' 'noexiste' 'dir' 'notas.txt fich' '' 'a b c')
+@@solution
+#!/bin/bash
+# versions.sh FILE [DIR] - keep numbered versions of a file
+if [ $# -lt 1 ] || [ $# -gt 2 ]; then
+  echo "Usage: $(basename "$0") FILE [DIR]" >&2
+  exit 1
+fi
+FILE=$1
+DIR=${2:-$HOME/versions}
+[ -f "$FILE" ] || { echo "Error: '$FILE' is not a regular file" >&2; exit 2; }
+if [ -e "$DIR" ] && [ ! -d "$DIR" ]; then
+  echo "Error: '$DIR' is not a directory" >&2; exit 3
+fi
+if [ ! -d "$DIR" ]; then
+  mkdir -p "$DIR" || exit 4
+  echo "Created $DIR"
+fi
+
+name=$(basename "$FILE")
+last=0 count=0
+for v in "$DIR/$name".v*; do
+  num=${v##*.v}
+  [[ $num =~ ^[0-9]+$ ]] || continue       # skips .vold, .v3.bak and an unmatched glob
+  count=$((count + 1))
+  (( num > last )) && last=$num
+done
+
+if [ $last -gt 0 ] && cmp -s "$FILE" "$DIR/$name.v$last"; then
+  echo "No changes since v$last"
+else
+  cp -p "$FILE" "$DIR/$name.v$((last + 1))"
+  echo "Saved $FILE as $DIR/$name.v$((last + 1))"
+  count=$((count + 1))
+fi
+echo "$count versions of $name"
+
+@@ex 0329 materialize | materialize.sh (links into real copies)
+@@level 4
+@@cmds test -L -e -d, readlink -f, cp -r, rm, exit codes
+@@readme
+Write `materialize.sh DIR` that replaces every **symbolic link directly inside** `DIR` by a real copy of
+what it points to, so the directory can be shipped without its links:
+
+- link to a regular file → the link is replaced by a copy of the file (same name as the link);
+  print `NAME: file`
+- link to a directory → replaced by a recursive copy of the directory; print `NAME: dir`
+- **broken** link → left as it is; print `broken: NAME` on **stderr**
+
+(`NAME` is the link's name, without the directory.) Links are processed in the order of the `DIR/*`
+glob; links may point to other links. Use plain `cp` / `cp -r` (no `-p`). Other entries are not
+touched. Finally print `Replaced N links, M broken`.
+
+Exit codes: **1** not exactly one argument (usage on stderr); **2** `DIR` is not a directory (stderr);
+**3** if at least one broken link was found; **0** otherwise.
+@@check
+SCRIPT_NAME=materialize.sh
+SEEDS=3
+COMPARE="stdout exit errmsg files"
+setup() {
+  mkdir -p pack "store/lib dir/inner" store/conf limpio
+  local i f l first=
+  for i in 1 2 3 4; do
+    f="store/$(pick "$(word)$i.txt" "$(word) $i.cfg")"; randtext 2 > "$f"; chmod "$(pick 644 600 755)" "$f"
+    l=$(pick "l$i" "link $i"); ln -s "../$f" "pack/$l"; first=${first:-$l}
+  done
+  randtext 1 > "store/lib dir/a.so"; randtext 1 > "store/lib dir/inner/b"
+  ln -s "../store/lib dir" "pack/libs"
+  ln -s "$PWD/store/conf" "pack/conf dir"; randtext 1 > store/conf/main.conf
+  ln -s "$first" "pack/$(pick chain zchain)"
+  (( $(rand 2) )) && ln -s "../store/nothere" "pack/rota $(word)"
+  (( $(rand 2) )) && ln -s /nonexistent/x pack/zz_broken
+  randtext 2 > "pack/$(word).md"
+  ln -s ../store/conf/main.conf limpio/main.conf
+  touch fich
+}
+ARGS=('pack' '"$W/pack"' 'limpio' 'fich' 'noexiste' '' 'pack limpio')
+@@solution
+#!/bin/bash
+# materialize.sh DIR - replace symbolic links by copies of their targets
+[ $# -eq 1 ] || { echo "Usage: $(basename "$0") DIR" >&2; exit 1; }
+DIR=$1
+[ -d "$DIR" ] || { echo "Error: '$DIR' is not a directory" >&2; exit 2; }
+
+n=0 broken=0
+for l in "$DIR"/*; do
+  [ -L "$l" ] || continue
+  name=$(basename "$l")
+  if [ ! -e "$l" ]; then
+    echo "broken: $name" >&2
+    broken=$((broken + 1))
+    continue
+  fi
+  target=$(readlink -f "$l")      # resolve before removing the link (relative targets!)
+  rm "$l"
+  if [ -d "$target" ]; then
+    cp -r "$target" "$l"; echo "$name: dir"
+  else
+    cp "$target" "$l"; echo "$name: file"
+  fi
+  n=$((n + 1))
+done
+echo "Replaced $n links, $broken broken"
+[ $broken -eq 0 ] || exit 3
+
+@@ex 0330 bigmove | bigmove.sh (moving the big files away)
+@@level 4
+@@cmds stat -c %s, mv, sort -n, mkdir -p, [[ =~ ]], exit codes
+@@readme
+Write:
+
+```
+bigmove.sh DIR SIZE DEST
+```
+
+It moves every **regular file** directly inside `DIR` (not symbolic links, not directories, hidden files
+ignored) whose size is **strictly greater** than `SIZE` bytes (`stat -c %s`) into the directory `DEST`.
+
+- If `DEST` does not exist, create it (with parents) and print `Created <DEST>` first.
+- If a file with the same name already exists in `DEST`, the file is **not** moved: print
+  `<name> already exists in <DEST>` on **stderr**, and don't count it.
+- For each file moved print `<size> <name>` (name without directory), ordered by size **descending**,
+  ties by name as `sort` orders them.
+- Finally print `Moved N files (B bytes)`. Exit code 0 (even if some file was skipped).
+
+Errors (message on stderr):
+
+- not exactly 3 arguments → usage, exit **1**
+- `DIR` is not a directory → exit **2**
+- `SIZE` is not a non-negative integer (digits only) → exit **3**
+- `DEST` exists but is not a directory → exit **4**
+
+Names may contain spaces (but not tabs or newlines).
+@@check
+SCRIPT_NAME=bigmove.sh
+SEEDS=3
+COMPARE="stdout exit errmsg files"
+setup() {
+  mkdir -p "src/sub dir" grandes
+  local i s
+  for i in $(seq 1 9); do
+    s=$(pick 100 500 1000 1500 "$(randr 1 3000)")
+    bigfile "src/$(pick "$(word)$i.dat" "$(word) $i.iso" "f$i")" "$s"
+  done
+  bigfile src/exact1000 1000
+  bigfile src/.hidden 5000
+  bigfile "src/sub dir/huge" 9000
+  bigfile target 4000; ln -s ../target src/biglink
+  bigfile "grandes/f$(randr 1 9)" 10
+  touch fich
+}
+ARGS=('src 1000 grandes' 'src 0 "$W/out/big files"' 'src 2000 nuevo' 'noexiste 1 x' 'src 10k x' 'src -5 x' 'src 10 fich' 'src 10' '')
+@@solution
+#!/bin/bash
+# bigmove.sh DIR SIZE DEST - move files bigger than SIZE bytes into DEST
+[ $# -eq 3 ] || { echo "Usage: $(basename "$0") DIR SIZE DEST" >&2; exit 1; }
+DIR=$1 SIZE=$2 DEST=$3
+[ -d "$DIR" ] || { echo "Error: '$DIR' is not a directory" >&2; exit 2; }
+[[ $SIZE =~ ^[0-9]+$ ]] || { echo "Error: '$SIZE' is not a valid size" >&2; exit 3; }
+if [ -e "$DEST" ] && [ ! -d "$DEST" ]; then
+  echo "Error: '$DEST' is not a directory" >&2; exit 4
+fi
+if [ ! -d "$DEST" ]; then
+  mkdir -p "$DEST" || exit 5
+  echo "Created $DEST"
+fi
+
+n=0 total=0
+while IFS=$'\t' read -r size name; do
+  if [ -e "$DEST/$name" ]; then
+    echo "$name already exists in $DEST" >&2
+    continue
+  fi
+  mv "$DIR/$name" "$DEST/"
+  echo "$size $name"
+  n=$((n + 1)); total=$((total + size))
+done < <(
+  for f in "$DIR"/*; do
+    [ -f "$f" ] && [ ! -L "$f" ] || continue
+    s=$(stat -c %s "$f")
+    [ "$s" -gt "$SIZE" ] && printf '%s\t%s\n' "$s" "$(basename "$f")"
+  done | sort -t $'\t' -k1,1nr -k2
+)
+echo "Moved $n files ($total bytes)"

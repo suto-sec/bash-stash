@@ -1,0 +1,1202 @@
+@@topic 15_loops_read | Loops: for, while, until, read
+@@ex 1519 pipe_subshell | The pipe-subshell pitfall
+@@level 3
+@@cmds while read, < <( ), grep -v
+@@readme
+`pedidos.txt` contains orders, one per line: `ID CUSTOMER AMOUNT` (AMOUNT is an integer). It also has
+comment lines (starting with `#`) and blank lines. This script always prints `orders: 0`:
+
+```bash
+n=0; total=0
+grep -v '^#' pedidos.txt | while read -r id cliente importe; do
+  n=$((n + 1)); total=$((total + importe))
+done
+echo "orders: $n"
+```
+
+The loop runs in a **subshell** (every part of a pipeline does), so its variables are lost when it
+ends. Fix it (for example with `done < <(grep ...)`) so that the script prints:
+
+```
+orders: N
+total: S
+max: ID (AMOUNT)
+```
+
+- blank lines and comment lines are not orders
+- `max` is the order with the biggest amount (the first one in the file if tied)
+
+Keep a `while read` loop.
+@@check
+SEEDS=4
+setup() {
+  local i
+  { echo "# $(words 3)"
+    for i in $(seq "$(randr 3 8)"); do
+      case $(rand 5) in 0) echo "# $(words 2)" ;; 1) echo ;; esac
+      echo "P$(randr 100 999) $(word) $(randr 5 500)"
+    done; } > pedidos.txt
+}
+extra_check() { must_use while read; }
+@@solution
+#!/bin/bash
+n=0; total=0; max=-1
+while read -r id cliente importe; do
+  [ -z "$id" ] && continue                 # blank line
+  n=$((n + 1))
+  total=$((total + importe))
+  if [ "$importe" -gt "$max" ]; then max=$importe; maxid=$id; fi
+done < <(grep -v '^#' pedidos.txt)
+echo "orders: $n"
+echo "total: $total"
+echo "max: $maxid ($max)"
+
+@@ex 1520 config_parse | Parsing KEY=VALUE lines with IFS
+@@level 3
+@@cmds while IFS= read -r, IFS='=' read, [[ == ]]
+@@readme
+`app.conf` is a configuration file. Read it line by line and, in file order:
+
+- ignore blank lines and lines starting with `#` (they print nothing)
+- a line containing `=` whose part **before the first** `=` (the key) is not empty is a setting:
+  print `KEY=[VALUE]`, where VALUE is everything after the first `=` (it may be empty, contain
+  spaces or even more `=` characters)
+- any other line (no `=` at all, or an empty key) prints `line N: ignored` (N = line number in the
+  file, counting every line)
+
+Finally print `K settings, B ignored`.
+
+Hint: `IFS='=' read -r key value <<< "$line"` puts the first field in `key` and **the rest of the
+line** in the last variable.
+@@check
+SEEDS=4
+setup() {
+  local i
+  for i in $(seq "$(randr 5 11)"); do
+    case $(rand 7) in
+      0) echo "# $(words 3)" ;;
+      1) echo ;;
+      2) echo "$(words 2)" ;;
+      3) echo "=$(word)" ;;
+      4) echo "$(word)=" ;;
+      5) echo "$(word)=$(word)=$(word)" ;;
+      *) echo "$(word)=$(words "$(randr 1 3)")" ;;
+    esac
+  done > app.conf
+}
+extra_check() { must_use read; }
+@@solution
+#!/bin/bash
+n=0; k=0; b=0
+while IFS= read -r line; do
+  n=$((n + 1))
+  [[ -z $line || $line == \#* ]] && continue
+  key=${line%%=*}
+  if [[ $line != *=* || -z $key ]]; then
+    echo "line $n: ignored"; b=$((b + 1)); continue
+  fi
+  echo "$key=[${line#*=}]"
+  k=$((k + 1))
+done < app.conf
+echo "$k settings, $b ignored"
+
+@@ex 1521 read_array | Splitting a line into an array with read -a
+@@level 3
+@@cmds read -ra, ${#arr[@]}, for
+@@readme
+For every line of `frases.txt` (words separated by any amount of spaces or tabs) print:
+
+```
+N: W words, longest: WORD
+```
+
+where N is the line number, W the number of words and WORD the longest word (the first one of that
+length if tied). Empty lines print `N: 0 words`. Finally print `total: T words`.
+
+Use `read -ra words` to split each line into an array.
+@@check
+SEEDS=4
+setup() {
+  local i j l
+  for i in $(seq "$(randr 3 7)"); do
+    if [[ $(rand 5) == 0 ]]; then echo; continue; fi
+    l=$(pick '' '  ' '	')
+    for j in $(seq "$(randr 1 6)"); do l+="$(word)$(pick ' ' '   ' '	' ' ')"; done
+    echo "$l"
+  done > frases.txt
+}
+extra_check() { must_use read; }
+@@solution
+#!/bin/bash
+n=0; t=0
+while read -ra w; do
+  n=$((n + 1))
+  if [ ${#w[@]} -eq 0 ]; then echo "$n: 0 words"; continue; fi
+  long=
+  for x in "${w[@]}"; do [ ${#x} -gt ${#long} ] && long=$x; done
+  echo "$n: ${#w[@]} words, longest: $long"
+  t=$((t + ${#w[@]}))
+done < frases.txt
+echo "total: $t words"
+
+@@ex 1522 collatz_until | until: the Collatz sequence
+@@level 3
+@@cmds until, $(( )), %
+@@readme
+The script receives a positive integer N. Starting from N, repeatedly apply: if the number is even,
+halve it; if it is odd, replace it by `3*n + 1`, **until** it becomes 1. Print:
+
+```
+N a b c ... 1
+steps: S, max: M
+```
+
+The first line is the whole sequence (N included, separated by single spaces), S is the number of
+steps applied and M the biggest value reached. For N = 1 the sequence is just `1` (0 steps).
+Use an `until` loop.
+@@check
+SEEDS=1
+ARGS=('1' '6' '7' '27' '16')
+extra_check() { must_use until; }
+@@solution
+#!/bin/bash
+n=$1; seq=$n; s=0; max=$n
+until [ "$n" -eq 1 ]; do
+  if (( n % 2 == 0 )); then n=$((n / 2)); else n=$((3 * n + 1)); fi
+  seq+=" $n"; s=$((s + 1))
+  [ "$n" -gt "$max" ] && max=$n
+done
+echo "$seq"
+echo "steps: $s, max: $max"
+
+@@ex 1523 break_levels | break, continue and break 2
+@@level 3
+@@cmds while read -ra, for, break 2, continue
+@@readme
+Each line of `matriz.txt` is a row of space-separated tokens (integers, and maybe the word `FIN`).
+Process the rows in order, adding up the values of each row from left to right:
+
+- a negative value is skipped (`continue`)
+- a `0` ends the current row: the values after it are ignored (`break`)
+- `FIN` ends the row **and the whole processing**: print that row's line (with its partial sum)
+  and read no more rows (`break 2`)
+
+For each processed row print `row R: S`, and at the end `rows: N, total: T` (N = rows printed,
+T = sum of all the printed sums).
+@@check
+SEEDS=5
+setup() {
+  local i j l
+  for i in $(seq "$(randr 3 7)"); do
+    l=
+    for j in $(seq "$(randr 2 6)"); do
+      case $(rand 12) in 0) l+="0 " ;; 1) [[ $i -gt 1 ]] && l+="FIN " || l+="1 " ;; *) l+="$(randr -9 20) " ;; esac
+    done
+    echo "${l% }"
+  done > matriz.txt
+}
+extra_check() { must_use break continue; }
+@@solution
+#!/bin/bash
+r=0; total=0
+while read -ra nums; do
+  r=$((r + 1)); s=0; fin=
+  for x in "${nums[@]}"; do
+    [ "$x" = FIN ] && { fin=1; break; }
+    [ "$x" -lt 0 ] && continue
+    [ "$x" -eq 0 ] && break
+    s=$((s + x))
+  done
+  echo "row $r: $s"
+  total=$((total + s))
+  [ -n "$fin" ] && break
+done < matriz.txt
+echo "rows: $r, total: $total"
+
+@@ex 1524 select_files | select over a dynamic list
+@@level 3
+@@cmds select, $REPLY, break, wc -l
+@@readme
+Show a menu with `select f in *.txt quit` (the `.txt` files of the current directory in glob order,
+plus a last option `quit`). The menu and the `PS3` prompt go to stderr; the choices come from stdin.
+For each choice:
+
+- a file: print `NAME: L lines`
+- `quit`: print `bye` and leave the loop
+- an invalid number or text (`$f` is empty): print `invalid choice: X`, where X is what the user
+  typed (`$REPLY`)
+
+After the loop (by `quit` or because stdin ended) print `shown K files` (K = how many times a file
+was shown). File names may contain spaces.
+@@check
+SEEDS=4
+setup() { local i; for i in $(seq "$(randr 2 4)"); do randtext "$(randr 0 6)" > "$(word)$(pick '' ' ' ' de ')$i.txt"; done; touch notas.md; }
+input() {
+  local n i m
+  m=( *.txt ); n=${#m[@]}
+  for i in $(seq "$(randr 2 6)"); do pick "$(randr 1 "$n")" "$(randr 1 "$n")" 0 $((n + 2)) abc; done
+  [[ $(rand 3) != 0 ]] && echo $((n + 1))
+  echo 1
+}
+extra_check() { must_use select; }
+@@solution
+#!/bin/bash
+k=0
+select f in *.txt quit; do
+  if [ -z "$f" ]; then
+    echo "invalid choice: $REPLY"
+  elif [ "$f" = quit ]; then
+    echo bye; break
+  else
+    echo "$f: $(wc -l < "$f") lines"; k=$((k + 1))
+  fi
+done
+echo "shown $k files"
+
+@@ex 1525 mini_wc | Counters: a wc written with loops
+@@level 3
+@@cmds while IFS= read -r, ${#var}, counters
+@@readme
+Without using `wc`, compute for `texto.txt` (ASCII text that ends with a newline):
+
+```
+lines: L
+words: W
+chars: C
+longest: N chars (line K)
+```
+
+- words are separated by spaces/tabs; C counts every character **including the newlines**
+  (the same as `wc -c`)
+- `longest` is the line with the most characters (newline not counted), the first one if tied
+- leading spaces are part of a line
+@@check
+SEEDS=4
+setup() { local i; for i in $(seq "$(randr 2 9)"); do echo "$(pick '' '' '   ' '	')$(pick "$(words "$(randr 1 7)")" '' "$(word)  $(word)")"; done > texto.txt; }
+extra_check() { must_not_use wc; must_use read; }
+@@solution
+#!/bin/bash
+l=0; w=0; c=0; max=-1
+while IFS= read -r line; do
+  l=$((l + 1))
+  read -ra ws <<< "$line"
+  w=$((w + ${#ws[@]}))
+  c=$((c + ${#line} + 1))
+  if [ ${#line} -gt $max ]; then max=${#line}; ml=$l; fi
+done < texto.txt
+echo "lines: $l"
+echo "words: $w"
+echo "chars: $c"
+echo "longest: $max chars (line $ml)"
+
+@@ex 1526 find_newlines | find -print0 with really weird names
+@@level 3
+@@cmds find -print0, sort -z, read -d '', stat
+@@readme
+Under `datos` there are files whose names contain spaces and even a **newline**. The script
+receives a size MIN (bytes). For every regular file under `datos` with size **≥ MIN**, in the order
+given by `sort -z`, print:
+
+```
+PATH (SIZE bytes)
+```
+
+where every newline in PATH is shown as `?`. Finally print `N files, S bytes` (the listed files).
+
+A `for f in $(find ...)` breaks on these names: use `find ... -print0` and
+`while IFS= read -r -d '' f`, and make sure the counters survive the loop.
+@@check
+SEEDS=3
+setup() {
+  mkdir -p "datos/sub dir/x"
+  local i
+  for i in $(seq 5); do bigfile "datos/$(pick . 'sub dir' 'sub dir/x')/$(word)$(pick '' ' ' ' - ')$i" "$(randr 0 400)"; done
+  bigfile "datos/sub dir/raro"$'\n'"nombre" "$(randr 0 400)"
+  bigfile "datos/$(word)"$'\n'"x.txt" "$(randr 0 400)"
+}
+ARGS=('0' '150' '300')
+extra_check() { must_use read; }
+@@solution
+#!/bin/bash
+n=0; s=0
+while IFS= read -r -d '' f; do
+  size=$(stat -c %s "$f")
+  [ "$size" -ge "$1" ] || continue
+  echo "${f//$'\n'/?} ($size bytes)"
+  n=$((n + 1)); s=$((s + size))
+done < <(find datos -type f -print0 | sort -z)
+echo "$n files, $s bytes"
+
+@@ex 1527 score_table | Formatting a table read from stdin
+@@level 3
+@@cmds while read, printf, [[ =~ ]], counters
+@@readme
+Read lines `NAME SCORE` from **standard input** (SCORE integer 0–100). A valid line has exactly two
+fields separated by blanks, and SCORE made only of digits with a value ≤ 100. For every valid line
+print
+
+```
+printf '%-10s %3d %s\n' NAME SCORE STARS
+```
+
+where STARS is one `*` per full 10 points (SCORE / 10 stars). Every invalid line (including blank
+ones) prints `skipped line N` on **stderr** (N = input line number).
+
+Finally print `count: N, average: A` where A is the average with exactly 2 decimals, **truncated**
+(not rounded), e.g. `66.66`; if there were no valid lines print `count: 0, average: -`.
+@@check
+SEEDS=5
+COMPARE="stdout exit errmsg"
+input() {
+  local i
+  for i in $(seq "$(randr 0 7)"); do
+    case $(rand 8) in
+      0) echo "$(word)" ;; 1) echo "$(word) abc" ;; 2) echo "$(word) $(randr 101 200)" ;;
+      3) echo "$(word) 5 $(word)" ;; 4) echo ;; *) echo "$(word) $(randr 0 100)" ;;
+    esac
+  done
+}
+extra_check() { must_use read printf; }
+@@solution
+#!/bin/bash
+n=0; sum=0; ln=0
+while read -r name score extra; do
+  ln=$((ln + 1))
+  if [[ -z $name || -n $extra || ! $score =~ ^[0-9]+$ ]] || (( 10#$score > 100 )); then
+    echo "skipped line $ln" >&2; continue
+  fi
+  stars=
+  for ((i = 0; i < score / 10; i++)); do stars+='*'; done
+  printf '%-10s %3d %s\n' "$name" "$score" "$stars"
+  n=$((n + 1)); sum=$((sum + score))
+done
+if [ $n -eq 0 ]; then
+  echo "count: 0, average: -"
+else
+  a=$((sum * 100 / n))
+  printf 'count: %d, average: %d.%02d\n' "$n" $((a / 100)) $((a % 100))
+fi
+
+@@ex 1528 moving_avg | Arrays and C-style loops: moving average
+@@level 3
+@@cmds mapfile / while read, for (( )), arrays
+@@readme
+`temps.txt` has one integer temperature per line (they may be negative; there are at least 4).
+Load them into an array and print:
+
+1. for every line i from 3 to the end: `i: a b c -> AVG`, where a, b, c are the values of lines
+   i-2, i-1 and i, and AVG is `$(( (a + b + c) / 3 ))` (bash integer division)
+2. `max rise: D (line i -> j)`: the biggest difference `next - current` between two consecutive
+   lines (it can be negative), the first pair if tied; j = i + 1
+@@check
+SEEDS=4
+setup() { local i; for i in $(seq "$(randr 4 9)"); do randr -5 35; done > temps.txt; }
+@@solution
+#!/bin/bash
+t=()
+while read -r x; do t+=("$x"); done < temps.txt
+n=${#t[@]}
+for ((i = 2; i < n; i++)); do
+  a=${t[i-2]} b=${t[i-1]} c=${t[i]}
+  echo "$((i + 1)): $a $b $c -> $(( (a + b + c) / 3 ))"
+done
+best=
+for ((i = 0; i < n - 1; i++)); do
+  d=$(( t[i+1] - t[i] ))
+  if [ -z "$best" ] || [ $d -gt $best ]; then best=$d; bi=$((i + 1)); fi
+done
+echo "max rise: $best (line $bi -> $((bi + 1)))"
+
+@@ex 1529 line_range | lineas.sh: printing a range of lines
+@@level 4
+@@cmds while IFS= read -r, break, [[ =~ ]], exit codes
+@@readme
+Write `lineas.sh FILE FROM TO` that prints lines FROM to TO (both included, the first line is 1) of
+FILE, each as `N: text` (the text exactly as in the file: leading spaces, tabs and backslashes
+included), using a `while read` loop that **stops reading** (`break`) once line TO is printed.
+The last line of the file may not end with a newline; it still counts. If the file has fewer lines,
+print what exists. Finally print `printed K lines`.
+
+Errors (message on **stderr**, wording free, checked in this order):
+
+| situation | exit |
+|-----------|------|
+| not exactly 3 arguments (show the usage) | 1 |
+| FILE is not a readable regular file (name it) | 2 |
+| FROM or TO is not a positive integer (digits only, ≥ 1) (name the bad value) | 3 |
+| FROM > TO | 4 |
+@@check
+SCRIPT_NAME=lineas.sh
+SEEDS=2
+COMPARE="stdout exit errmsg"
+setup() {
+  local f i
+  for f in "mis notas.txt" texto.txt; do
+    { for i in $(seq "$(randr 4 9)"); do echo "$(pick '' '  ' '	')$(words "$(randr 1 5)")$(pick '' ' \n' ' C:\dir')"; done
+      [[ $(rand 2) == 1 ]] && printf '%s' "$(words 2)"; } > "$f"
+  done
+  mkdir dir; echo x > secreto.txt; chmod 000 secreto.txt
+}
+ARGS=('"mis notas.txt" 2 5' 'texto.txt 1 3' 'texto.txt 4 100' '"mis notas.txt" 3 3' '' 'texto.txt 1'
+      'nada.txt 1 2' 'dir 1 2' 'secreto.txt 1 2' 'texto.txt 0 2' 'texto.txt 1 x7' 'texto.txt 5 2')
+extra_check() {
+  local a; eval "a=( $CASE )"
+  [[ $REF_CODE == 2 ]] && mentions "${a[0]}"
+  if [[ $REF_CODE == 3 ]]; then [[ ${a[1]} =~ ^[0-9]+$ ]] && (( ${a[1]} > 0 )) && mentions "${a[2]}" || mentions "${a[1]}"; fi
+  must_use while read break
+}
+@@solution
+#!/bin/bash
+# lineas.sh FILE FROM TO
+if [ $# -ne 3 ]; then
+  echo "usage: $(basename "$0") FILE FROM TO" >&2; exit 1
+fi
+if [ ! -f "$1" ] || [ ! -r "$1" ]; then
+  echo "error: '$1' is not a readable file" >&2; exit 2
+fi
+for v in "$2" "$3"; do
+  if [[ ! $v =~ ^[0-9]+$ ]] || (( 10#$v < 1 )); then
+    echo "error: '$v' is not a positive integer" >&2; exit 3
+  fi
+done
+from=$((10#$2)); to=$((10#$3))
+[ $from -le $to ] || { echo "error: FROM ($from) > TO ($to)" >&2; exit 4; }
+
+n=0; k=0
+while IFS= read -r line || [ -n "$line" ]; do
+  n=$((n + 1))
+  [ $n -lt $from ] && continue
+  echo "$n: $line"; k=$((k + 1))
+  [ $n -ge $to ] && break
+done < "$1"
+echo "printed $k lines"
+
+@@ex 1530 inventory | inventario.sh: validating a ;-separated file
+@@level 4
+@@cmds while IFS=';' read -r, [[ =~ ]], counters, exit codes
+@@readme
+Write `inventario.sh FILE [MIN]`. FILE has a header line (always skipped, whatever it contains) and
+then lines `PRODUCT;QUANTITY;PRICE`. A line is **valid** when it has exactly 3 fields, PRODUCT is not
+empty (it may contain spaces) and QUANTITY and PRICE are non-negative integers (digits only).
+MIN (default `5`) is the low-stock threshold.
+
+For each valid line, in file order, print
+
+```
+PRODUCT: QUANTITY x PRICE = VALUE
+```
+
+(VALUE = QUANTITY × PRICE), adding ` (low stock)` at the end when QUANTITY < MIN. For each invalid
+line print `line N: invalid` on **stderr** (N = line number in the file; the header is line 1).
+Finally print:
+
+```
+TOTAL: P products, U units, V euros, L low
+```
+
+Exit codes: 0 if all lines were valid, **4** if there was some invalid line (after printing
+everything). Errors that stop the script before reading (stderr, wording free):
+0 or more than 2 arguments → **1** (show the usage); FILE not a readable regular file → **2** (name
+it); MIN not a non-negative integer → **3** (name it).
+@@check
+SCRIPT_NAME=inventario.sh
+SEEDS=3
+COMPARE="stdout exit errmsg"
+setup() {
+  local f i
+  for f in inventario.csv "almacen 2.csv" limpio.csv; do
+    echo "producto;cantidad;precio" > "$f"
+    for i in $(seq "$(randr 3 8)"); do
+      if [[ $f != limpio.csv && $(rand 4) == 0 ]]; then
+        pick "x;;3" "$(word);abc;2" ";3;4" "$(word)" "$(word);1;2;9" "$(word);-1;2" "$(word) $(word);5"
+      else
+        echo "$(pick "$(word)" "$(word) $(word)" "$(word) M$(randr 2 12)");$(randr 0 20);$(randr 1 50)"
+      fi
+    done >> "$f"
+  done
+}
+ARGS=('inventario.csv' '"almacen 2.csv" 10' 'limpio.csv 0' 'limpio.csv' '"almacen 2.csv"' ''
+      'a b c' 'nada.csv' 'limpio.csv x' 'limpio.csv -3')
+extra_check() {
+  local a; eval "a=( $CASE )"
+  [[ $REF_CODE == 2 ]] && mentions "${a[0]}"
+  [[ $REF_CODE == 3 ]] && mentions "${a[1]}"
+  true
+}
+@@solution
+#!/bin/bash
+# inventario.sh FILE [MIN]
+if [ $# -lt 1 ] || [ $# -gt 2 ]; then
+  echo "usage: $(basename "$0") FILE [MIN]" >&2; exit 1
+fi
+F=$1; MIN=${2:-5}
+[ -f "$F" ] && [ -r "$F" ] || { echo "error: cannot read '$F'" >&2; exit 2; }
+[[ $MIN =~ ^[0-9]+$ ]] || { echo "error: MIN '$MIN' is not a non-negative integer" >&2; exit 3; }
+
+n=1; P=0; U=0; V=0; L=0; bad=0
+while IFS=';' read -r prod qty price extra; do
+  n=$((n + 1))
+  if [ -z "$prod" ] || [ -n "$extra" ] || [[ ! $qty =~ ^[0-9]+$ || ! $price =~ ^[0-9]+$ ]]; then
+    echo "line $n: invalid" >&2; bad=1; continue
+  fi
+  val=$((qty * price))
+  low=
+  if [ "$qty" -lt "$MIN" ]; then low=" (low stock)"; L=$((L + 1)); fi
+  echo "$prod: $qty x $price = $val$low"
+  P=$((P + 1)); U=$((U + qty)); V=$((V + val))
+done < <(tail -n +2 "$F")
+echo "TOTAL: $P products, $U units, $V euros, $L low"
+[ $bad -eq 0 ] || exit 4
+
+@@ex 1531 backup_list | backup_list.sh: copying the files named in a list
+@@level 4
+@@cmds while IFS= read -r, cp, basename, continue, exit codes
+@@readme
+Write `backup_list.sh LIST DEST`. LIST contains one path per line (relative to the current
+directory; they may contain spaces). Blank lines and lines starting with `#` are ignored. Read LIST
+**line by line** and, for each path, in order:
+
+- it does not exist: print `missing: PATH` on **stderr**
+- it exists but is not a regular file: print `skipped PATH (not a file)`
+- a file with the **same base name** was already copied during this run:
+  print `skipped PATH (duplicate name)`
+- otherwise copy it into DEST (as `DEST/<basename>`, overwriting) and print `copied PATH`
+
+If DEST does not exist, create it (with its parents) before the loop and print `created DEST`
+(DEST exactly as given). Finally print `copied C, missing M, skipped S` and exit with **5** if some
+path was missing, 0 otherwise.
+
+Errors (stderr, wording free): not exactly 2 arguments → **1** (show the usage); LIST not a readable
+regular file → **2** (name it); DEST exists but is not a directory → **3** (name it).
+@@check
+SCRIPT_NAME=backup_list.sh
+SEEDS=3
+COMPARE="stdout exit errmsg files"
+setup() {
+  mkdir -p docs "otros/sub dir" vacio
+  local i f all=()
+  for i in $(seq 5); do
+    f="$(pick docs otros 'otros/sub dir')/$(word)$(pick '' ' ' ' de ')$i.$(pick txt md)"
+    randtext "$(randr 1 3)" > "$f"; all+=("$f")
+  done
+  dup=$(word).txt; randtext 1 > "docs/$dup"; randtext 2 > "otros/$dup"
+  all+=("docs/$dup" "otros/$dup")
+  echo x > archivo.txt
+  for f in lista.txt "mi lista.txt"; do
+    { echo "# backup list"
+      for i in $(seq "$(randr 4 8)"); do
+        case $(rand 6) in 0) echo ;; 1) echo "docs/$(word) nada.txt" ;; 2) pick vacio otros ;; *) pick "${all[@]}" ;; esac
+      done
+      echo "docs/$(pick "$dup" "$dup" nada.txt)"; echo "otros/$dup"; } > "$f"
+  done
+  if [[ $(rand 2) == 1 ]]; then mkdir backup; echo old > backup/old.txt; fi
+}
+ARGS=('lista.txt backup' '"mi lista.txt" "copia nueva"' 'lista.txt "$W/abs/dest"' '' 'lista.txt'
+      'nada.txt backup' 'lista.txt archivo.txt' 'docs backup')
+extra_check() {
+  local a; eval "a=( $CASE )"
+  [[ $REF_CODE == 2 ]] && mentions "${a[0]}"
+  [[ $REF_CODE == 3 ]] && mentions "${a[1]}"
+  true
+}
+@@solution
+#!/bin/bash
+# backup_list.sh LIST DEST
+[ $# -eq 2 ] || { echo "usage: $(basename "$0") LIST DEST" >&2; exit 1; }
+LIST=$1; DEST=$2
+[ -f "$LIST" ] && [ -r "$LIST" ] || { echo "error: cannot read list '$LIST'" >&2; exit 2; }
+if [ -e "$DEST" ] && [ ! -d "$DEST" ]; then echo "error: '$DEST' is not a directory" >&2; exit 3; fi
+if [ ! -d "$DEST" ]; then mkdir -p "$DEST" && echo "created $DEST"; fi
+
+C=0; M=0; S=0
+seen=$'\n'                               # base names copied so far, one per line
+while IFS= read -r p; do
+  [[ -z $p || $p == \#* ]] && continue
+  if [ ! -e "$p" ]; then echo "missing: $p" >&2; M=$((M + 1)); continue; fi
+  if [ ! -f "$p" ]; then echo "skipped $p (not a file)"; S=$((S + 1)); continue; fi
+  b=$(basename "$p")
+  if [[ $seen == *$'\n'"$b"$'\n'* ]]; then echo "skipped $p (duplicate name)"; S=$((S + 1)); continue; fi
+  cp "$p" "$DEST/$b" && { echo "copied $p"; C=$((C + 1)); seen+="$b"$'\n'; }
+done < "$LIST"
+echo "copied $C, missing $M, skipped $S"
+[ $M -eq 0 ] || exit 5
+
+@@ex 1532 group_members | miembros.sh: nested loops over a group file
+@@level 4
+@@cmds while IFS=: read -r, IFS=, read -ra, nested for, [[ =~ ]]
+@@readme
+Write `miembros.sh GROUPFILE USER...`. GROUPFILE has the format of `/etc/group`:
+`name:x:gid:member1,member2,...` (the member list may be empty). For each USER, in argument order,
+print
+
+```
+USER: g1 g2 ...
+```
+
+with the names of the groups whose **member list** contains exactly USER, in file order, separated
+by one space, or `USER: -` if none. (Only the member list counts, not the group name, and `ana` is
+not a member of a group that lists `anabel`.)
+
+A USER that is not a valid user name (`^[a-z_][a-z0-9_-]*$`) prints `invalid user name: USER` on
+**stderr** and is skipped. Finally print `N users checked, M without groups` (valid users only).
+
+Exit codes: fewer than 2 arguments → **1** (usage on stderr); GROUPFILE not a readable regular file →
+**2** (stderr, name it); otherwise **3** if some user name was invalid, else 0.
+@@check
+SCRIPT_NAME=miembros.sh
+SEEDS=3
+COMPARE="stdout exit errmsg"
+setup() {
+  local f i j m
+  for f in grupos "mis grupos"; do
+    echo "ana:x:1000:" > "$f"
+    for i in $(seq "$(randr 5 8)"); do
+      m=()
+      for j in $(seq "$(randr 0 4)"); do m+=("$(pick ana anabel luis pedro eva_1 root juan)"); done
+      m=$(printf '%s,' "${m[@]}"); m=${m%,}
+      echo "$(word)$i:x:$((1000 + i)):$m"
+    done >> "$f"
+  done
+}
+ARGS=('grupos ana luis' '"mis grupos" anabel ana Eva pedro' 'grupos nadie eva_1 juan' '' 'grupos'
+      'nada ana' 'grupos "ana luis" root')
+extra_check() {
+  [[ $REF_CODE == 2 ]] && mentions nada
+  [[ $CASE == *Eva* ]] && [[ $ERR != *Eva* ]] && fail "the message should mention 'Eva'"
+  must_use read
+}
+@@solution
+#!/bin/bash
+# miembros.sh GROUPFILE USER...
+[ $# -ge 2 ] || { echo "usage: $(basename "$0") GROUPFILE USER..." >&2; exit 1; }
+G=$1; shift
+[ -f "$G" ] && [ -r "$G" ] || { echo "error: cannot read '$G'" >&2; exit 2; }
+
+N=0; M=0; rc=0
+for u in "$@"; do
+  if [[ ! $u =~ ^[a-z_][a-z0-9_-]*$ ]]; then
+    echo "invalid user name: $u" >&2; rc=3; continue
+  fi
+  N=$((N + 1)); out=
+  while IFS=: read -r name x gid members; do
+    IFS=, read -ra mem <<< "$members"
+    for m in "${mem[@]}"; do
+      if [ "$m" = "$u" ]; then out+=" $name"; break; fi
+    done
+  done < "$G"
+  if [ -z "$out" ]; then echo "$u: -"; M=$((M + 1)); else echo "$u:$out"; fi
+done
+echo "$N users checked, $M without groups"
+exit $rc
+
+@@ex 1533 trash_menu | papelera.sh: a select menu that moves files
+@@level 4
+@@cmds select, read, mv, case, counters
+@@readme
+Write `papelera.sh DIR`, an interactive trash can driven by a menu:
+`select op in list delete restore quit` (menu and prompt go to stderr; choices come from stdin).
+
+- `list`: print `- NAME` for every regular file directly in DIR (glob `DIR/*` order, hidden files not
+  included) or `(no files)` if there are none; then print `trash: N` (N = entries in `DIR/.trash`,
+  0 if it does not exist)
+- `delete`: read the **next line** of stdin as a file NAME. If `DIR/NAME` is a regular file, move it
+  into `DIR/.trash/` (create it if needed; overwrite a file with the same name there) and print
+  `deleted NAME`; otherwise print `no such file: NAME`
+- `restore`: read the next line as NAME. If `DIR/.trash/NAME` does not exist print
+  `not in trash: NAME`; else if `DIR/NAME` already exists print `cannot restore NAME: exists`;
+  else move it back to DIR and print `restored NAME`
+- `quit`: leave the menu; any invalid choice: print `invalid option`
+
+When the menu ends (by `quit` or end of input) print `deleted D, restored R`.
+Names may contain spaces (read the whole line). Errors (stderr): not exactly 1 argument → **1**;
+DIR not a directory → **2** (name it).
+@@check
+SCRIPT_NAME=papelera.sh
+SEEDS=4
+COMPARE="stdout exit errmsg files"
+setup() {
+  local d i n
+  for d in caja "mi carpeta"; do
+    mkdir -p "$d"
+    for i in $(seq "$(randr 1 4)"); do randtext 1 > "$d/$(word)$(pick '' ' ' ' de ')$i.txt"; done
+    touch "$d/.oculto"; mkdir "$d/sub"
+  done
+  mkdir "caja/.trash"; n=$(word); echo a > "caja/.trash/$n.txt"; echo b > "caja/$n.txt"; echo c > "caja/.trash/viejo.txt"
+}
+input() {
+  local i names=()
+  while IFS= read -r i; do names+=("${i##*/}"); done < <(find . -type f | sort)
+  for i in $(seq "$(randr 4 9)"); do
+    case $(rand 6) in
+      0) echo 1 ;;
+      1|2) echo 2; pick "${names[@]}" "${names[@]}" "nada.txt" ;;
+      3|4) echo 3; pick "${names[@]}" "viejo.txt" ;;
+      5) pick 7 x ;;
+    esac
+  done
+  [[ $(rand 3) != 0 ]] && echo 4
+  echo 1
+}
+ARGS=('caja' '"mi carpeta"' '' 'caja x' 'nada')
+extra_check() { [[ $CASE == nada ]] && mentions nada; must_use select; }
+@@solution
+#!/bin/bash
+# papelera.sh DIR
+[ $# -eq 1 ] || { echo "usage: $(basename "$0") DIR" >&2; exit 1; }
+D=$1
+[ -d "$D" ] || { echo "error: '$D' is not a directory" >&2; exit 2; }
+T=$D/.trash
+del=0; res=0
+select op in list delete restore quit; do
+  case $op in
+    list)
+      n=0
+      for f in "$D"/*; do
+        [ -f "$f" ] && { echo "- ${f##*/}"; n=$((n + 1)); }
+      done
+      [ $n -eq 0 ] && echo "(no files)"
+      if [ -d "$T" ]; then echo "trash: $(ls -A "$T" | wc -l)"; else echo "trash: 0"; fi
+      ;;
+    delete)
+      IFS= read -r name
+      if [ -f "$D/$name" ]; then
+        mkdir -p "$T"; mv -f "$D/$name" "$T/"; echo "deleted $name"; del=$((del + 1))
+      else
+        echo "no such file: $name"
+      fi
+      ;;
+    restore)
+      IFS= read -r name
+      if [ ! -e "$T/$name" ]; then echo "not in trash: $name"
+      elif [ -e "$D/$name" ]; then echo "cannot restore $name: exists"
+      else mv "$T/$name" "$D/"; echo "restored $name"; res=$((res + 1))
+      fi
+      ;;
+    quit) break ;;
+    *) echo "invalid option" ;;
+  esac
+done
+echo "deleted $del, restored $res"
+
+@@ex 1534 column_stats | stats_col.sh: statistics of one column
+@@level 4
+@@cmds read -ra, arrays, for (( )), [[ =~ ]], printf
+@@readme
+Write `stats_col.sh FILE COL`. FILE has a header line with the column names and then data lines;
+fields are separated by blanks. COL selects a column either by **number** (only digits, 1-based) or
+by **name** (the first header field equal to it). Values in the selected column that are
+non-negative integers (digits only) are used; any other value, or a missing field, is skipped.
+Print:
+
+```
+column: NAME
+count: N
+min: X
+max: Y
+sum: S
+avg: A
+skipped: K
+```
+
+NAME is the header of the column, A the average with exactly 2 decimals **truncated** (e.g. `12.66`).
+If no value was usable, print only the `column`, `count: 0` and `skipped` lines and exit with **4**.
+
+Errors (stderr, wording free): not exactly 2 arguments → **1** (usage); FILE not a readable regular
+file → **2** (name it); COL is a number out of range or a name that is not in the header → **3**
+(name it).
+@@check
+SCRIPT_NAME=stats_col.sh
+SEEDS=3
+COMPARE="stdout exit errmsg"
+setup() {
+  local f i c l
+  for f in medidas.txt "datos 2.txt"; do
+    echo "id temp hum pres nota" > "$f"
+    for i in $(seq "$(randr 3 9)"); do
+      l="$i"
+      for c in 1 2 3; do
+        [[ $(rand 9) == 0 ]] && { echo "$l"; continue 2; }
+        l+=" $(pick "$(randr 0 999)" "$(randr 0 999)" "$(randr 0 99)" NA -4 x1)"
+      done
+      echo "$l NA"
+    done >> "$f"
+  done
+}
+ARGS=('medidas.txt 2' 'medidas.txt temp' '"datos 2.txt" 3' '"datos 2.txt" pres' 'medidas.txt 1'
+      'medidas.txt nota' '' 'medidas.txt' 'nada.txt temp' 'medidas.txt 9' 'medidas.txt 0' 'medidas.txt viento')
+extra_check() {
+  local a; eval "a=( $CASE )"
+  [[ $REF_CODE == 2 ]] && mentions "${a[0]}"
+  [[ $REF_CODE == 3 ]] && mentions "${a[1]}"
+  true
+}
+@@solution
+#!/bin/bash
+# stats_col.sh FILE COL
+[ $# -eq 2 ] || { echo "usage: $(basename "$0") FILE COL" >&2; exit 1; }
+F=$1; COL=$2
+[ -f "$F" ] && [ -r "$F" ] || { echo "error: cannot read '$F'" >&2; exit 2; }
+
+read -ra head < "$F"
+idx=-1
+if [[ $COL =~ ^[0-9]+$ ]]; then
+  (( 10#$COL >= 1 && 10#$COL <= ${#head[@]} )) && idx=$((10#$COL - 1))
+else
+  for ((i = 0; i < ${#head[@]}; i++)); do
+    [ "${head[i]}" = "$COL" ] && { idx=$i; break; }
+  done
+fi
+[ $idx -ge 0 ] || { echo "error: no column '$COL'" >&2; exit 3; }
+
+n=0; sum=0; skip=0; min=; max=
+while read -ra f; do
+  v=${f[idx]}
+  if [[ ! $v =~ ^[0-9]+$ ]]; then skip=$((skip + 1)); continue; fi
+  v=$((10#$v))
+  n=$((n + 1)); sum=$((sum + v))
+  [ -z "$min" ] || [ $v -lt $min ] && min=$v
+  [ -z "$max" ] || [ $v -gt $max ] && max=$v
+done < <(tail -n +2 "$F")
+
+echo "column: ${head[idx]}"
+echo "count: $n"
+if [ $n -eq 0 ]; then echo "skipped: $skip"; exit 4; fi
+echo "min: $min"
+echo "max: $max"
+echo "sum: $sum"
+a=$((sum * 100 / n))
+printf 'avg: %d.%02d\n' $((a / 100)) $((a % 100))
+echo "skipped: $skip"
+
+@@ex 1535 dirs_summary | resumen_dirs.sh: looping over arguments and find results
+@@level 4
+@@cmds for "$@", continue, find -print0, sort -z, stat
+@@readme
+Write `resumen_dirs.sh DIR...`. For each argument, in order:
+
+- if it is not a directory: print `not a directory: ARG` on **stderr** and continue with the next
+- otherwise print
+
+  ```
+  ARG: F files, D dirs, S bytes, largest: PATH
+  ```
+
+  where F = regular files under ARG (any depth, hidden ones included), D = directories under ARG
+  (ARG itself not counted), S = total size in bytes of those files, and PATH = the biggest file as
+  `find ARG` prints it (the first one in `sort -z` order if tied), or `none` if there are no files
+
+Finally print `TOTAL: N dirs, F files, S bytes` (N = valid arguments, F and S added up over them).
+Exit codes: no arguments → **1** (usage on stderr); **2** if some argument was not a directory
+(after processing all); 0 otherwise.
+@@check
+SCRIPT_NAME=resumen_dirs.sh
+SEEDS=3
+COMPARE="stdout exit errmsg"
+setup() {
+  mkdir -p "proy a/src/x" "proy a/doc" b/c/d vacio/sub
+  local i
+  for i in $(seq "$(randr 3 7)"); do
+    bigfile "$(pick 'proy a' 'proy a/src' 'proy a/src/x' 'proy a/doc' b b/c b/c/d)/$(pick '' .)$(word)$(pick '' ' ')$i" "$(randr 0 3)00"
+  done
+  echo x > f.txt
+}
+ARGS=('"proy a"' '"proy a" b' 'b vacio' '' 'b f.txt nada' '"$W/b"' 'vacio/sub')
+extra_check() {
+  [[ $CASE == *f.txt* ]] && { mentions f.txt; mentions nada; }
+  true
+}
+@@solution
+#!/bin/bash
+# resumen_dirs.sh DIR...
+[ $# -ge 1 ] || { echo "usage: $(basename "$0") DIR..." >&2; exit 1; }
+N=0; TF=0; TS=0; rc=0
+for d in "$@"; do
+  if [ ! -d "$d" ]; then echo "not a directory: $d" >&2; rc=2; continue; fi
+  f=0; s=0; big=none; bs=-1
+  while IFS= read -r -d '' p; do
+    sz=$(stat -c %s "$p")
+    f=$((f + 1)); s=$((s + sz))
+    [ "$sz" -gt $bs ] && { bs=$sz; big=$p; }
+  done < <(find "$d" -type f -print0 | sort -z)
+  nd=$(find "$d" -mindepth 1 -type d | wc -l)
+  echo "$d: $f files, $nd dirs, $s bytes, largest: $big"
+  N=$((N + 1)); TF=$((TF + f)); TS=$((TS + s))
+done
+echo "TOTAL: $N dirs, $TF files, $TS bytes"
+exit $rc
+
+@@ex 1536 calendar | calendario.sh: nested loops and printf
+@@level 4
+@@cmds for (( )), printf %2d, [[ =~ ]], exit codes
+@@readme
+Write `calendario.sh DAYS FIRST` that prints a month calendar. DAYS is the number of days (28–31)
+and FIRST the weekday of day 1 (1 = Monday … 7 = Sunday). Output:
+
+```
+Mo Tu We Th Fr Sa Su
+       1  2  3  4  5
+ 6  7  8  9 10 11 12
+...
+weeks: W, weekend days: E
+```
+
+Every cell is 2 characters wide (days with `printf %2d`, empty cells as 2 spaces) and cells are
+separated by one space; lines have no trailing spaces. The last week ends at day DAYS. W = number of
+week lines, E = number of days that fall on Saturday or Sunday.
+
+Errors (stderr, checked in this order): not exactly 2 arguments → **1** (usage); an argument that is
+not an integer (digits only; check DAYS first) → **2** (name it); DAYS not in 28–31 or FIRST not in
+1–7 → **3** (name the bad value).
+@@check
+SCRIPT_NAME=calendario.sh
+SEEDS=1
+COMPARE="stdout exit errmsg"
+ARGS=('31 1' '30 7' '28 1' '29 4' '31 6' '' '31' '31 x' 'dos 1' '32 1' '30 8' '31 0' 'a b c')
+extra_check() {
+  local a; eval "a=( $CASE )"
+  if [[ $REF_CODE == 2 ]]; then [[ ${a[0]} =~ ^[0-9]+$ ]] && mentions "${a[1]}" || mentions "${a[0]}"; fi
+  if [[ $REF_CODE == 3 ]]; then (( a[0] >= 28 && a[0] <= 31 )) && mentions "${a[1]}" || mentions "${a[0]}"; fi
+  true
+}
+@@solution
+#!/bin/bash
+# calendario.sh DAYS FIRST
+[ $# -eq 2 ] || { echo "usage: $(basename "$0") DAYS FIRST" >&2; exit 1; }
+for v in "$1" "$2"; do
+  [[ $v =~ ^[0-9]+$ ]] || { echo "error: '$v' is not an integer" >&2; exit 2; }
+done
+D=$((10#$1)); F=$((10#$2))
+(( D >= 28 && D <= 31 )) || { echo "error: bad number of days '$1'" >&2; exit 3; }
+(( F >= 1 && F <= 7 )) || { echo "error: bad weekday '$2'" >&2; exit 3; }
+
+echo "Mo Tu We Th Fr Sa Su"
+W=0; E=0; day=1; col=1
+line=
+for ((col = 1; col < F; col++)); do line+="   "; done
+for ((day = 1; day <= D; day++)); do
+  line+=$(printf '%2d ' $day)
+  (( col >= 6 )) && E=$((E + 1))
+  if (( col == 7 || day == D )); then
+    echo "${line% }"; W=$((W + 1)); line=; col=1
+  else
+    col=$((col + 1))
+  fi
+done
+echo "weeks: $W, weekend days: $E"
+
+@@ex 1537 hour_histogram | histograma.sh: counting per hour
+@@level 4
+@@cmds while read -r, arrays, 10#, for (( )), printf
+@@readme
+Write `histograma.sh LOG [LEVEL]`. Every line of LOG should look like
+`YYYY-MM-DD HH:MM:SS LEVEL message...`. A line is **malformed** unless its 1st field matches
+`^[0-9]{4}-[0-9]{2}-[0-9]{2}$`, its 2nd field is a valid time `HH:MM:SS` (HH 00–23, MM and SS 00–59)
+and its 3rd field is `INFO`, `WARN` or `ERROR`. Count the well-formed entries per hour (only those of
+LEVEL, if given; LEVEL is case-insensitive). For every hour with at least one entry, from 00 to 23,
+print
+
+```
+printf '%s %3d %s\n' HH COUNT BAR
+```
+
+where BAR is one `#` per entry. Then, if there was some entry, `busiest: HH (N)` (the earliest hour
+if tied), and always `total: T entries, H hours, M malformed` (M counts every malformed line,
+whatever LEVEL is).
+
+Careful: `$((08 + 1))` is an error in bash (leading 0 = octal): use `$((10#08))`.
+
+Errors (stderr): no arguments or more than 2 → **1** (usage); LOG not a readable regular file →
+**2** (name it); LEVEL not one of info/warn/error in any case → **3** (name it).
+@@check
+SCRIPT_NAME=histograma.sh
+SEEDS=3
+COMPARE="stdout exit errmsg"
+setup() {
+  local f i hs
+  for f in app.log "log viejo.log"; do
+    hs=("$(printf %02d "$(randr 0 23)")" 08 09 "$(printf %02d "$(randr 10 23)")")
+    for i in $(seq "$(randr 8 25)"); do
+      case $(rand 10) in
+        0) echo "$(words 3)" ;;
+        1) echo "2024-05-0$(randr 1 9) $(pick 24 7 "${hs[0]}"):$(pick 00 61 15):$(pick 00 5 30) INFO $(words 2)" ;;
+        2) echo "2024-05-01 $(pick "${hs[@]}"):$(randr 10 59):$(randr 10 59) $(pick DEBUG info) $(words 2)" ;;
+        *) echo "2024-0$(randr 1 9)-1$(randr 0 9) $(pick "${hs[@]}"):$(randr 10 59):$(randr 10 59) $(pick INFO WARN ERROR ERROR) $(words "$(randr 1 4)")" ;;
+      esac
+    done > "$f"
+  done
+}
+ARGS=('app.log' 'app.log error' '"log viejo.log" WARN' '"log viejo.log"' '' 'a b c' 'nada.log' 'app.log debug')
+extra_check() {
+  local a; eval "a=( $CASE )"
+  [[ $REF_CODE == 2 ]] && mentions "${a[0]}"
+  [[ $REF_CODE == 3 ]] && mentions "${a[1]}"
+  true
+}
+@@solution
+#!/bin/bash
+# histograma.sh LOG [LEVEL]
+if [ $# -lt 1 ] || [ $# -gt 2 ]; then echo "usage: $(basename "$0") LOG [LEVEL]" >&2; exit 1; fi
+LOG=$1; LEVEL=${2^^}
+[ -f "$LOG" ] && [ -r "$LOG" ] || { echo "error: cannot read '$LOG'" >&2; exit 2; }
+if [ $# -eq 2 ] && [[ ! $LEVEL =~ ^(INFO|WARN|ERROR)$ ]]; then
+  echo "error: unknown level '$2'" >&2; exit 3
+fi
+
+c=(); M=0; T=0
+while read -r date time lvl rest; do
+  if [[ ! $date =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ || ! $time =~ ^([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$ ||
+        ! $lvl =~ ^(INFO|WARN|ERROR)$ ]]; then
+    M=$((M + 1)); continue
+  fi
+  [ -n "$LEVEL" ] && [ "$lvl" != "$LEVEL" ] && continue
+  h=$((10#${time:0:2}))
+  c[h]=$(( ${c[h]:-0} + 1 ))
+  T=$((T + 1))
+done < "$LOG"
+
+H=0; best=-1
+for ((h = 0; h < 24; h++)); do
+  n=${c[h]:-0}
+  [ $n -eq 0 ] && continue
+  bar=; for ((i = 0; i < n; i++)); do bar+='#'; done
+  printf '%02d %3d %s\n' $h $n "$bar"
+  H=$((H + 1))
+  [ $n -gt $best ] && { best=$n; bh=$h; }
+done
+[ $T -gt 0 ] && printf 'busiest: %02d (%d)\n' $bh $best
+echo "total: $T entries, $H hours, $M malformed"
+
+@@ex 1538 validate_users | valida_usuarios.sh: validating records line by line
+@@level 4
+@@cmds while IFS= read -r, IFS=: read, [[ =~ ]], case, exit codes
+@@readme
+Write `valida_usuarios.sh FILE`. FILE contains records `user:uid:shell`, one per line; blank lines
+and lines starting with `#` are ignored (but they count for line numbers). For each record line N,
+apply these checks **in this order** and print the first one that fails (all on stdout):
+
+| check | message |
+|-------|---------|
+| exactly 3 fields (exactly two `:`) | `line N: ERROR wrong field count` |
+| user matches `^[a-z][a-z0-9]*$` | `line N: ERROR bad user name` |
+| user not used by an earlier **OK** line | `line N: ERROR duplicate user USER` |
+| uid only digits, value 1000–60000 | `line N: ERROR bad uid` |
+| uid not used by an earlier **OK** line | `line N: ERROR duplicate uid UID` |
+| shell is `/bin/bash`, `/bin/sh` or `/usr/sbin/nologin` | `line N: ERROR bad shell` |
+
+If all pass print `line N: OK USER`. Finally print `valid V, invalid I` and exit with **4** if some
+line was invalid, 0 otherwise.
+Errors (stderr): not exactly 1 argument → **1** (usage); FILE not a readable regular file → **2**
+(name it).
+@@check
+SCRIPT_NAME=valida_usuarios.sh
+SEEDS=3
+COMPARE="stdout exit errmsg"
+setup() {
+  local f i u id us=() ids=()
+  for i in 1 2 3; do us+=("$(word)$i"); ids+=("$(randr 1000 3000)"); done
+  for f in usuarios.txt "alta usuarios.txt"; do
+    { echo "# user:uid:shell"
+      for i in $(seq "$(randr 5 10)"); do
+        u=$(pick "${us[@]}" "${us[@]}" "$(word)" "$(word)$i" "Ana" "3po" "$(word).x")
+        id=$(pick "${ids[@]}" "$(randr 1000 60000)" "$(randr 1000 60000)" 999 "12a" 60001)
+        case $(rand 9) in
+          0) echo ;; 1) echo "$u:$id" ;; 2) echo "$u:$id:/bin/bash:x" ;;
+          *) echo "$u:$id:$(pick /bin/bash /bin/bash /bin/sh /usr/sbin/nologin /bin/zsh)" ;;
+        esac
+      done; } > "$f"
+  done
+  printf '%s\n' "root$(randr 1 9):1000:/bin/bash" "$(word)z:2000:/bin/sh" > limpio.txt
+}
+ARGS=('usuarios.txt' '"alta usuarios.txt"' 'limpio.txt' '' 'a b' 'nada.txt')
+extra_check() { [[ $CASE == nada.txt ]] && mentions nada.txt; true; }
+@@solution
+#!/bin/bash
+# valida_usuarios.sh FILE
+[ $# -eq 1 ] || { echo "usage: $(basename "$0") FILE" >&2; exit 1; }
+[ -f "$1" ] && [ -r "$1" ] || { echo "error: cannot read '$1'" >&2; exit 2; }
+
+n=0; V=0; I=0
+users=' '; uids=' '                    # space-separated lists of what OK lines used
+while IFS= read -r line; do
+  n=$((n + 1))
+  [[ -z $line || $line == \#* ]] && continue
+  IFS=: read -r u id sh <<< "$line"
+  err=
+  if [[ ! $line =~ ^[^:]*:[^:]*:[^:]*$ ]]; then err="wrong field count"
+  elif [[ ! $u =~ ^[a-z][a-z0-9]*$ ]]; then err="bad user name"
+  elif [[ $users == *" $u "* ]]; then err="duplicate user $u"
+  elif [[ ! $id =~ ^[0-9]+$ ]] || (( 10#$id < 1000 || 10#$id > 60000 )); then err="bad uid"
+  elif [[ $uids == *" $id "* ]]; then err="duplicate uid $id"
+  else
+    case $sh in /bin/bash|/bin/sh|/usr/sbin/nologin) ;; *) err="bad shell" ;; esac
+  fi
+  if [ -n "$err" ]; then
+    echo "line $n: ERROR $err"; I=$((I + 1))
+  else
+    echo "line $n: OK $u"; V=$((V + 1)); users+="$u "; uids+="$id "
+  fi
+done < "$1"
+echo "valid $V, invalid $I"
+[ $I -eq 0 ] || exit 4
+
+@@ex 1539 renumber | renumera.sh: renaming to the lowest free number
+@@level 4
+@@cmds for glob, until, printf %03d, mv, [[ == ]]
+@@readme
+Write `renumera.sh DIR EXT PREFIX`. It renames the regular files directly in DIR whose name ends in
+`.EXT` (case-sensitive; hidden files excluded) to `PREFIX-NNN.EXT`, with NNN a 3-digit number:
+
+- files whose name is **already** of the form `PREFIX-NNN.EXT` (exactly 3 digits) are left alone
+- the others are processed in the order of the glob `DIR/*.EXT`; each one gets the **lowest** number
+  starting at `001` such that `DIR/PREFIX-NNN.EXT` does not exist at that moment (an `until` loop is
+  natural here)
+- print `OLD -> NEW` (base names) for every rename, and finally `renamed N files`
+
+Errors (stderr, checked in this order): not exactly 3 arguments → **1** (usage); DIR not a directory
+→ **2** (name it); EXT not matching `^[a-z0-9]+$` → **3** (name it); PREFIX not matching
+`^[A-Za-z0-9_]+$` → **4** (name it).
+@@check
+SCRIPT_NAME=renumera.sh
+SEEDS=3
+COMPARE="stdout exit errmsg files"
+setup() {
+  local d i
+  for d in "fotos viaje" img; do
+    mkdir -p "$d/album.jpg"
+    for i in $(seq "$(randr 2 5)"); do randtext 1 > "$d/$(word)$(pick '' ' ' ' de ')$i.$(pick jpg jpg png)"; done
+    touch "$d/x.JPG" "$d/y.jpgx" "$d/.oculta.jpg" "$d/IMG-7.jpg" "$d/IMG-0003.jpg"
+    [[ $(rand 2) == 1 ]] && echo old > "$d/IMG-002.jpg"
+    [[ $(rand 2) == 1 ]] && echo old > "$d/IMG-001.jpg"
+    [[ $(rand 2) == 1 ]] && echo old > "$d/foto_-003.png"
+  done
+}
+ARGS=('"fotos viaje" jpg IMG' 'img png foto_' 'img jpg IMG' '' 'img jpg' 'nada jpg IMG'
+      'img JPG IMG' 'img jpg "a/b"')
+extra_check() {
+  local a; eval "a=( $CASE )"
+  [[ $REF_CODE == 2 ]] && mentions "${a[0]}"
+  [[ $REF_CODE == 3 ]] && mentions "${a[1]}"
+  [[ $REF_CODE == 4 ]] && mentions "${a[2]}"
+  true
+}
+@@solution
+#!/bin/bash
+# renumera.sh DIR EXT PREFIX
+[ $# -eq 3 ] || { echo "usage: $(basename "$0") DIR EXT PREFIX" >&2; exit 1; }
+D=$1 EXT=$2 P=$3
+[ -d "$D" ] || { echo "error: '$D' is not a directory" >&2; exit 2; }
+[[ $EXT =~ ^[a-z0-9]+$ ]] || { echo "error: bad extension '$EXT'" >&2; exit 3; }
+[[ $P =~ ^[A-Za-z0-9_]+$ ]] || { echo "error: bad prefix '$P'" >&2; exit 4; }
+
+n=0; num=1
+for f in "$D"/*."$EXT"; do
+  [ -f "$f" ] || continue
+  b=${f##*/}
+  [[ $b == "$P"-[0-9][0-9][0-9]."$EXT" ]] && continue
+  until [ ! -e "$D/$(printf '%s-%03d.%s' "$P" $num "$EXT")" ]; do num=$((num + 1)); done
+  new=$(printf '%s-%03d.%s' "$P" $num "$EXT")
+  mv "$f" "$D/$new"
+  echo "$b -> $new"
+  n=$((n + 1))
+done
+echo "renamed $n files"

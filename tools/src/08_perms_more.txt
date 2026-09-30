@@ -1,0 +1,876 @@
+@@topic 08_permissions | Permissions, chmod, umask, chown
+@@ex 0813 perm_copy | Copying permissions from another tree
+@@level 3
+@@cmds stat -c %a, chmod, basename, test -e
+@@readme
+The directories `orig` and `dest` contain files with the same names (plus some extra files in `dest`).
+For every **regular file** `dest/NAME` (order of the `dest/*` glob):
+
+- its wanted mode is the mode of `orig/NAME` if that file exists, or `600` otherwise
+- if its current mode is different, change it and print `NAME: OLD -> NEW` (octal, as `stat -c %a`
+  shows them)
+
+Finally print `N changed`. Names may contain spaces.
+@@check
+COMPARE="stdout exit files"
+setup() {
+  mkdir orig dest
+  local i n w
+  n=$(randr 4 7)
+  for ((i = 1; i <= n; i++)); do
+    w="$(word)$i"; (( i == 2 )) && w="$(word) $w"
+    touch "orig/$w" "dest/$w"
+    chmod "$(pick 644 600 755 640 700 750 664)" "orig/$w"
+    chmod "$(pick 644 600 755 666 777)" "dest/$w"
+  done
+  touch "dest/$(word)_extra" "dest/$(word) extra2"; chmod "$(pick 600 644)" dest/*extra*
+  mkdir "dest/$(word)_dir"
+}
+@@solution
+#!/bin/bash
+n=0
+for f in dest/*; do
+  [ -f "$f" ] || continue
+  name=$(basename "$f")
+  if [ -e "orig/$name" ]; then want=$(stat -c %a "orig/$name"); else want=600; fi
+  old=$(stat -c %a "$f")
+  if [ "$old" != "$want" ]; then
+    chmod "$want" "$f"
+    echo "$name: $old -> $want"
+    n=$((n + 1))
+  fi
+done
+echo "$n changed"
+
+@@ex 0814 chmod_classes | Copying permissions between classes
+@@level 3
+@@cmds chmod g=u, o=g, o-w
+@@readme
+For every entry directly inside `equipo` (files and directories; names may contain spaces):
+
+1. the **group** must get exactly the same permissions as the **user** (owner)
+2. then **others** must get exactly the group's permissions **without write**
+
+The user's permissions do not change. Then print `stat -c '%a %n'` of every entry of `equipo`, in the
+order of the `equipo/*` glob.
+
+Hint: `chmod` accepts `u`, `g` or `o` on the right side of `=` (`man chmod`): `chmod g=u f` copies the
+user's permissions to the group. Clauses separated by commas are applied in order.
+@@check
+COMPARE="stdout exit files"
+setup() {
+  mkdir equipo
+  local i f
+  for i in $(seq "$(randr 4 7)"); do
+    f="equipo/$(pick "$(word)$i" "$(word) $i.txt")"
+    if (( $(rand 4) == 0 )); then mkdir "$f"; chmod "$(pick 700 750 755 711)" "$f"
+    else touch "$f"; chmod "$(pick 600 644 700 755 640 400 500 604 611)" "$f"; fi
+  done
+}
+@@solution
+#!/bin/bash
+chmod g=u,o=g,o-w equipo/*
+stat -c '%a %n' equipo/*
+
+@@ex 0815 umask_subshell | umask only lives in its shell
+@@level 3
+@@cmds umask, ( ), stat -c
+@@readme
+The script runs with umask `022`. Without using `chmod`:
+
+1. In a **subshell** (`( ... )`), set the umask to `077` and create the file `secreto.txt` and the
+   directory `privado`.
+2. Back in the main script (where the umask is still `022`), create `normal.txt`.
+3. Set the umask so that the **group** keeps every permission and **others** get none; create
+   `grupo.txt` and the directory `grupo_dir`.
+4. Print the current umask (`umask`), then `stat -c '%A %n'` of `secreto.txt privado normal.txt
+   grupo.txt grupo_dir` in that order.
+@@check
+COMPARE="stdout exit files"
+extra_check() { must_use umask; must_not_use chmod; }
+@@solution
+#!/bin/bash
+( umask 077; touch secreto.txt; mkdir privado )
+touch normal.txt
+umask 007
+touch grupo.txt
+mkdir grupo_dir
+umask
+stat -c '%A %n' secreto.txt privado normal.txt grupo.txt grupo_dir
+
+@@ex 0816 special_bits | setuid, setgid and sticky
+@@level 3
+@@cmds chmod u+s g+s +t, 4755, find -perm /6000
+@@readme
+Set these **exact** modes (the entries exist, with other permissions):
+
+| entry | wanted |
+|-------|--------|
+| `tmpcomun` (directory) | `rwxrwxrwt` (everyone writes, sticky bit: only the owner of a file can delete it) |
+| `herramienta` (file) | `rwsr-xr-x` (setuid) |
+| `compartido` (directory) | `rwxrws---` (setgid: new files inherit the directory's group) |
+| `raro` (file) | `rwSr--r--` (setuid **without** execute: capital `S`) |
+
+Then print `stat -c '%A %a %n'` of `tmpcomun herramienta compartido raro` (in that order), a line
+`---`, and the sorted list of entries under the current directory (`find .`, any depth) that have the
+setuid **or** setgid bit.
+@@check
+COMPARE="stdout exit files"
+setup() {
+  mkdir tmpcomun compartido otros; touch herramienta raro
+  chmod "$(pick 755 700 775)" tmpcomun compartido; chmod "$(pick 755 700 644)" herramienta; chmod "$(pick 600 644 664)" raro
+  local i f
+  for i in 1 2 3 4 5; do
+    f="$(pick . otros)/$(word)$i"; touch "$f"; chmod "$(pick 755 4755 2755 1755 644 2711 6750)" "$f"
+  done
+}
+@@solution
+#!/bin/bash
+chmod 1777 tmpcomun
+chmod 4755 herramienta
+chmod 2770 compartido
+chmod 4644 raro
+stat -c '%A %a %n' tmpcomun herramienta compartido raro
+echo ---
+find . -perm /6000 | sort
+
+@@ex 0817 path_access | Sharing one folder of a private tree
+@@level 3
+@@cmds chmod -R go=, g+x, g+r, stat -c %A
+@@readme
+To read a file you need `r` on the file **and** `x` on every directory of its path (not `r`: `r` on
+a directory only lets you list it).
+
+1. Remove **every** permission of group and others from `privado` and everything below it.
+2. Let the **group** read the files `privado/compartir/*.txt` (and nothing else): give the group `r`
+   on those files and **only** `x` on the directories `privado` and `privado/compartir`.
+3. Print `stat -c '%A %n'` of `privado`, `privado/compartir` and then the `privado/compartir/*.txt` files
+   (glob order).
+@@check
+COMPARE="stdout exit files"
+setup() {
+  mkdir -p privado/compartir "privado/$(word)" privado/compartir/sub
+  local i
+  for i in $(seq "$(randr 2 4)"); do touch "privado/compartir/$(pick "$(word)$i.txt" "$(word) $i.txt")"; done
+  touch "privado/compartir/$(word).md" "privado/$(word).txt" "privado/compartir/sub/$(word).txt"
+  chmod -R "$(pick go+r go+rw a+rwX)" privado 2>/dev/null
+  chmod 755 privado privado/compartir
+}
+@@solution
+#!/bin/bash
+chmod -R go= privado
+chmod g+x privado privado/compartir
+chmod g+r privado/compartir/*.txt
+stat -c '%A %n' privado privado/compartir privado/compartir/*.txt
+
+@@ex 0818 exit_126 | Permission denied: exit codes 126 and 127
+@@level 3
+@@cmds chmod u+x, $?, bash script.sh
+@@readme
+The script `hola.sh` has no execute permission, and the directory `cerrado` has mode `600` (no `x`).
+Run these steps, hiding error messages with `2>/dev/null` where it says so:
+
+1. run `./hola.sh` (hide errors) and print `exit: N` with its exit code
+2. run it as `bash hola.sh` (it works: reading is enough for `bash`)
+3. run `./nada.sh`, which does not exist (hide errors), and print `exit: N`
+4. give the owner execute permission on `hola.sh` and run `./hola.sh` again
+5. `cat cerrado/dato` (hide errors) and print `exit: N`
+6. give the owner execute permission on `cerrado` and `cat cerrado/dato` again
+
+Notice the codes: **126** = found but cannot be executed, **127** = command not found.
+@@check
+COMPARE="stdout exit files"
+setup() {
+  printf '#!/bin/bash\necho "hello from %s"\n' "$(word)" > hola.sh; chmod 644 hola.sh
+  mkdir cerrado; randtext 1 > cerrado/dato; chmod 600 cerrado
+}
+@@solution
+#!/bin/bash
+./hola.sh 2>/dev/null
+echo "exit: $?"
+bash hola.sh
+./nada.sh 2>/dev/null
+echo "exit: $?"
+chmod u+x hola.sh
+./hola.sh
+cat cerrado/dato 2>/dev/null
+echo "exit: $?"
+chmod u+x cerrado
+cat cerrado/dato
+
+@@ex 0819 chgrp_setgid | Groups without root, and setgid directories
+@@level 3
+@@cmds chgrp, chgrp -R, find -type d, chmod g+s, stat -c %G
+@@readme
+You don't need root to change the group of **your** files to a group **you belong to**
+(`id -Gn`). The user running the script (`alumno`) belongs to `adm` and `secops`.
+
+1. Change the group of every `*.log` file in `logs` to `adm`.
+2. Change the group of the directory `equipo` and everything inside it to `secops`.
+3. Set the **setgid** bit on `equipo` and on every directory below it (only directories).
+4. Create the files `equipo/nuevo.txt` and `equipo/sub/otro.txt`.
+5. Print `stat -c '%G %n'` of those two new files. Thanks to setgid they belong to `secops`.
+@@check
+COMPARE="stdout exit files owner"
+setup() {
+  mkdir -p logs "equipo/sub/deep" "equipo/$(word) dir"
+  local i
+  for i in $(seq "$(randr 2 4)"); do touch "logs/$(pick "$(word)$i.log" "$(word) $i.log")" "logs/$(word)$i.txt"; done
+  for i in 1 2 3; do touch "equipo/$(pick . sub sub/deep)/$(word)$i"; done
+}
+@@solution
+#!/bin/bash
+chgrp adm logs/*.log
+chgrp -R secops equipo
+find equipo -type d -exec chmod g+s {} +
+touch equipo/nuevo.txt equipo/sub/otro.txt
+stat -c '%G %n' equipo/nuevo.txt equipo/sub/otro.txt
+
+@@ex 0820 new_perms | Where do new permissions come from?
+@@level 3
+@@cmds umask, cp, cp -p, mkdir -m, stat -c %a
+@@readme
+`script.sh` exists with some permissions. In this order:
+
+1. set the umask to `077`
+2. `cp script.sh copia1.sh` (a new file: the source's mode, filtered by the umask)
+3. `cp -p script.sh copia2.sh` (mode preserved as it is)
+4. `cat script.sh > copia3.sh` (a brand new file: `666` filtered by the umask)
+5. `mkdir -m 750 d` (explicit mode: the umask is not applied)
+6. `mkdir d2`
+7. print `stat -c '%a %n'` of `script.sh copia1.sh copia2.sh copia3.sh d d2`
+
+Predict each line before running it.
+@@check
+COMPARE="stdout exit files"
+setup() { printf '#!/bin/bash\necho %s\n' "$(word)" > script.sh; chmod "$(pick 755 750 775 644 664 711)" script.sh; }
+@@solution
+#!/bin/bash
+umask 077
+cp script.sh copia1.sh
+cp -p script.sh copia2.sh
+cat script.sh > copia3.sh
+mkdir -m 750 d
+mkdir d2
+stat -c '%a %n' script.sh copia1.sh copia2.sh copia3.sh d d2
+
+@@ex 0821 fixperms | fixperms.sh (normalising a tree)
+@@level 4
+@@cmds find, stat -c %a, chmod, [[ =~ ]], sort, exit codes
+@@readme
+Write:
+
+```
+fixperms.sh DIR FILEMODE DIRMODE
+```
+
+It sets every **regular file** under `DIR` (recursively) to `FILEMODE` and every **directory** under
+`DIR` (recursively, `DIR` itself included) to `DIRMODE`. Symbolic links are ignored.
+
+Output: for every entry whose mode actually changes, sorted by path (paths as `find DIR` prints them,
+sorted with `sort`):
+
+```
+<path>: <old> -> <new>
+```
+
+(`<old>` as `stat -c %a` prints it, `<new>` as given), then `Changed N of M entries`, where `M` is the
+number of files + directories examined.
+
+Errors (message on stderr), checked in this order:
+
+- not exactly 3 arguments → usage, exit **1**
+- `DIR` is not a directory → exit **2**
+- `FILEMODE` or `DIRMODE` is not exactly 3 octal digits → exit **3**, message including the wrong mode
+- `DIRMODE` does not start with `7` (the owner must keep `rwx` on directories) → exit **4**
+
+Names may contain spaces.
+@@check
+SCRIPT_NAME=fixperms.sh
+SEEDS=3
+COMPARE="stdout exit errmsg files"
+setup() {
+  mkdir -p "web/css" "web/img/icons" "web/mis docs" fotos
+  local i f
+  for i in $(seq 1 9); do
+    f="web/$(pick . css img img/icons "mis docs")/$(pick "$(word)$i.html" "$(word) $i.txt" "$(word)$i.sh")"
+    touch "$f"; chmod "$(pick 644 600 755 666 640 700 777)" "$f"
+  done
+  chmod "$(pick 755 700 775)" web/css "web/mis docs"; chmod "$(pick 755 777)" web/img
+  ln -s ../index.html web/css/link
+  touch fotos/a.jpg; chmod 644 fotos/a.jpg; chmod 755 fotos
+  touch fich
+}
+ARGS=('web 644 755' '"$W/web" 600 700' '"web/mis docs" 640 750' 'fotos 644 755' 'web 644' '' 'noexiste 644 755' 'fich 644 755' 'web 64 755' 'web 644 855' 'web rw- 755' 'web 644 655')
+extra_check() {
+  [[ $REF_CODE == 3 ]] && { local a; eval "set -- $CASE"; [[ $2 =~ ^[0-7]{3}$ ]] && a=$3 || a=$2; mentions "$a"; }
+  true
+}
+@@solution
+#!/bin/bash
+# fixperms.sh DIR FILEMODE DIRMODE - normalise the permissions of a tree
+[ $# -eq 3 ] || { echo "Usage: $(basename "$0") DIR FILEMODE DIRMODE" >&2; exit 1; }
+DIR=$1 FM=$2 DM=$3
+[ -d "$DIR" ] || { echo "Error: '$DIR' is not a directory" >&2; exit 2; }
+for m in "$FM" "$DM"; do
+  [[ $m =~ ^[0-7]{3}$ ]] || { echo "Error: '$m' is not a valid mode" >&2; exit 3; }
+done
+[[ $DM == 7* ]] || { echo "Error: directories must keep rwx for the owner" >&2; exit 4; }
+
+n=0 total=0
+while IFS= read -r p; do
+  total=$((total + 1))
+  if [ -d "$p" ]; then new=$DM; else new=$FM; fi
+  old=$(stat -c %a "$p")
+  if [ "$old" != "$new" ]; then
+    chmod "$new" "$p"
+    echo "$p: $old -> $new"
+    n=$((n + 1))
+  fi
+done < <(find "$DIR" \( -type f -o -type d \) | sort)
+echo "Changed $n of $total entries"
+
+@@ex 0822 perm_diff | perm_diff.sh (comparing permissions of two trees)
+@@level 4
+@@cmds find, stat -c %a, sort -u, test -f, exit codes
+@@readme
+After restoring a backup you want to know whether permissions survived. Write:
+
+```
+perm_diff.sh DIR1 DIR2
+```
+
+Consider the **regular files** under each directory (recursively), identified by their path
+**relative** to that directory (e.g. `sub/a.txt`, no leading `./`). For every relative path that exists
+in either tree, in the order given by `sort` over all the relative paths, print:
+
+- `DIFF <path>: <mode1> <mode2>` if it is a regular file in both and the modes differ (`stat -c %a`)
+- `ONLY1 <path>` if it is only in `DIR1`, `ONLY2 <path>` if it is only in `DIR2`
+- nothing if the modes are equal
+
+Then print `Summary: D different, A only in DIR1, B only in DIR2` (with the words `DIR1`/`DIR2`
+literally).
+
+Exit codes: **0** if the trees have no differences at all (`D`, `A` and `B` are 0), **1** if they have
+some; **2** if there are not exactly 2 arguments (usage on stderr); **3** if one of them is not a directory
+(stderr message including its name). Names may contain spaces.
+@@check
+SCRIPT_NAME=perm_diff.sh
+SEEDS=3
+COMPARE="stdout exit errmsg"
+setup() {
+  mkdir -p "orig/sub dir" orig/x copia
+  local i f m
+  for i in $(seq 1 8); do
+    f="$(pick . "sub dir" x)/$(pick "$(word)$i.txt" "$(word) $i")"
+    touch "orig/$f"; m=$(pick 644 600 755 640 700); chmod "$m" "orig/$f"
+  done
+  cp -r orig/. copia/
+  (cd orig && find . -type f) | while IFS= read -r f; do
+    case $(rand 5) in
+      0) chmod "$(pick 666 604 750)" "copia/$f" ;;
+      1) rm "copia/$f" ;;
+    esac
+  done
+  mkdir -p "copia/sub dir"; touch "copia/sub dir/$(word)_new"
+  cp -rp orig igual; touch fich
+}
+ARGS=('orig copia' '"$W/copia" orig' 'orig igual' 'orig' '' 'orig fich' 'noexiste orig' 'a b c')
+extra_check() {
+  [[ $REF_CODE == 3 ]] && { eval "set -- $CASE"; if [ -d "$W/$1" ]; then mentions "$2"; else mentions "$1"; fi; }
+  true
+}
+@@solution
+#!/bin/bash
+# perm_diff.sh DIR1 DIR2 - compare the permissions of the files of two trees
+[ $# -eq 2 ] || { echo "Usage: $(basename "$0") DIR1 DIR2" >&2; exit 2; }
+for d in "$1" "$2"; do
+  [ -d "$d" ] || { echo "Error: '$d' is not a directory" >&2; exit 3; }
+done
+D1=$1 D2=$2
+
+rel_files() { (cd "$1" && find . -type f | sed 's#^\./##'); }
+
+diff=0 only1=0 only2=0
+while IFS= read -r p; do
+  if [ -f "$D1/$p" ] && [ -f "$D2/$p" ]; then
+    m1=$(stat -c %a "$D1/$p") m2=$(stat -c %a "$D2/$p")
+    if [ "$m1" != "$m2" ]; then echo "DIFF $p: $m1 $m2"; diff=$((diff + 1)); fi
+  elif [ -f "$D1/$p" ]; then
+    echo "ONLY1 $p"; only1=$((only1 + 1))
+  else
+    echo "ONLY2 $p"; only2=$((only2 + 1))
+  fi
+done < <({ rel_files "$D1"; rel_files "$D2"; } | sort -u)
+
+echo "Summary: $diff different, $only1 only in DIR1, $only2 only in DIR2"
+[ $((diff + only1 + only2)) -eq 0 ]
+
+@@ex 0823 permsave | permsave.sh (saving and restoring permissions)
+@@level 4
+@@cmds find, stat -c %a, chmod, while read, case, exit codes
+@@readme
+Write a tool to save the permissions of a tree and restore them later:
+
+```
+permsave.sh save DIR FILE
+permsave.sh restore DIR FILE
+```
+
+**save**: write into `FILE` one line `MODE PATH` for every regular file and directory **under** `DIR`
+(recursively, not `DIR` itself; symbolic links ignored), where `MODE` is `stat -c %a` and `PATH` is the
+path relative to `DIR` without a leading `./` (e.g. `644 sub/a b.txt`). Lines are ordered by `PATH`, in
+the order `sort` gives to the paths. Then print `Saved N entries to FILE` (`FILE` as given).
+
+**restore**: read `FILE` line by line; for each `MODE PATH`:
+
+- if `DIR/PATH` does not exist: print `missing PATH` on **stderr**
+- otherwise, if its current mode differs from `MODE`, `chmod` it and print `restored PATH: OLD -> MODE`
+
+Then print `Restored N entries, M missing` (`N` = entries whose mode was changed).
+
+Errors (message on stderr), checked in this order: not exactly 3 arguments → exit **1**; first argument
+neither `save` nor `restore` → exit **2**; `DIR` is not a directory → exit **3**; for `restore`, `FILE`
+is not a readable regular file → exit **4**. Names may contain spaces (not newlines).
+@@check
+SCRIPT_NAME=permsave.sh
+SEEDS=3
+COMPARE="stdout exit errmsg files"
+setup() {
+  mkdir -p "proj/src/mis cosas" proj/doc proj/.git
+  local i f
+  for i in $(seq 1 8); do
+    f="proj/$(pick . src "src/mis cosas" doc .git)/$(pick "$(word)$i.c" "$(word) $i.md" ".$(word)$i")"
+    touch "$f"; chmod "$(pick 644 600 755 640 700 664 444)" "$f"
+  done
+  chmod "$(pick 755 700 750)" proj/doc "proj/src/mis cosas"
+  ln -s src proj/link
+  (cd proj && find . -mindepth 1 \( -type f -o -type d \) | sed 's#^\./##' | sort |
+     while IFS= read -r p; do echo "$(stat -c %a "$p") $p"; done) > "saved modes.txt"
+  (cd proj && find . -mindepth 1 -type f) | while IFS= read -r p; do
+    (( $(rand 3) == 0 )) && chmod "$(pick 777 600 666 640)" "proj/$p"
+  done
+  chmod "$(pick 777 711 755)" proj/src
+  rm -f "$(find proj -type f | sort | head -n 1)"
+  touch proj/src/nuevo.c fich
+}
+ARGS=('save proj modos.txt' 'save "$W/proj/src" "$W/src modes"' 'restore proj "saved modes.txt"' 'restore "$W/proj" "$W/saved modes.txt"' 'backup proj x' 'save fich x' 'restore proj noexiste' 'restore proj' '')
+@@solution
+#!/bin/bash
+# permsave.sh save|restore DIR FILE
+[ $# -eq 3 ] || { echo "Usage: $(basename "$0") save|restore DIR FILE" >&2; exit 1; }
+ACTION=$1 DIR=$2 FILE=$3
+case $ACTION in
+  save|restore) ;;
+  *) echo "Error: unknown action '$ACTION'" >&2; exit 2 ;;
+esac
+[ -d "$DIR" ] || { echo "Error: '$DIR' is not a directory" >&2; exit 3; }
+
+if [ "$ACTION" = save ]; then
+  n=0
+  while IFS= read -r p; do
+    echo "$(stat -c %a "$DIR/$p") $p"
+    n=$((n + 1))
+  done < <(cd "$DIR" && find . -mindepth 1 \( -type f -o -type d \) | sed 's#^\./##' | sort) > "$FILE"
+  echo "Saved $n entries to $FILE"
+  exit 0
+fi
+
+[ -f "$FILE" ] && [ -r "$FILE" ] || { echo "Error: cannot read '$FILE'" >&2; exit 4; }
+n=0 missing=0
+while read -r mode p; do
+  if [ ! -e "$DIR/$p" ]; then
+    echo "missing $p" >&2
+    missing=$((missing + 1))
+    continue
+  fi
+  old=$(stat -c %a "$DIR/$p")
+  if [ "$old" != "$mode" ]; then
+    chmod "$mode" "$DIR/$p"
+    echo "restored $p: $old -> $mode"
+    n=$((n + 1))
+  fi
+done < "$FILE"
+echo "Restored $n entries, $missing missing"
+
+@@ex 0824 effective | effective.sh (what can this user do?)
+@@level 4
+@@cmds id -Gn, stat -c %U %G %A, ${s:i:n}, exit codes
+@@readme
+Write:
+
+```
+effective.sh USER FILE...
+```
+
+For every FILE, print which permissions `USER` gets on it according to the classic Unix rule, which
+picks **one** class only:
+
+1. if `USER` is the **owner** of the file → the owner's permissions (even if group or others have more!)
+2. else, if `USER` belongs to the file's **group** (primary or supplementary: `id -Gn USER`) → the
+   group's permissions
+3. else → the permissions of **others**
+
+Output one line per file: `FILE: rwx (class)` where `rwx` are the 3 characters of that class as
+`ls -l` shows them (e.g. `r-x`) and `class` is `owner`, `group` or `other`. The files have no special
+bits (setuid, setgid, sticky). Finally print `N files checked` (only existing files count).
+
+Errors (message on stderr):
+
+- fewer than 2 arguments → usage, exit **1**
+- `USER` does not exist → exit **2**, message including the name
+- `USER` is `root` (uid 0 bypasses permissions) → exit **3**
+- a FILE that does not exist → message including its name, skip it and continue; at the end exit **4**
+  (otherwise exit **0**)
+@@check
+SCRIPT_NAME=effective.sh
+SEEDS=3
+COMPARE="stdout exit errmsg"
+setup() {
+  local f
+  mkdir "d i r"
+  for f in a b "c d" e "d i r"; do
+    [ -e "$f" ] || touch "$f"
+    chmod "$(pick 640 604 644 600 750 705 044 070 007 755 460 406 066)" "$f"
+    chgrp "$(pick alumno adm secops audio video cdrom)" "$f"
+  done
+}
+ARGS=('jgarcia a b "c d" e "d i r" /etc/shadow' 'alumno a b "c d" e "d i r"' 'luke a b "c d" e /etc/passwd' 'sally a b "c d" e' 'rod a "c d" /etc/shadow' 'jgarcia a noexiste b' 'nadie a' 'root a' 'jgarcia' '')
+extra_check() {
+  [[ $CASE == 'nadie a' ]] && mentions nadie
+  [[ $CASE == *noexiste* ]] && mentions noexiste
+  true
+}
+@@solution
+#!/bin/bash
+# effective.sh USER FILE... - effective permissions of USER on each FILE
+[ $# -ge 2 ] || { echo "Usage: $(basename "$0") USER FILE..." >&2; exit 1; }
+U=$1; shift
+id "$U" > /dev/null 2>&1 || { echo "Error: user '$U' does not exist" >&2; exit 2; }
+[ "$(id -u "$U")" -eq 0 ] && { echo "Error: root bypasses permissions" >&2; exit 3; }
+GROUPS_OF_U=" $(id -Gn "$U") "
+
+n=0 missing=0
+for f in "$@"; do
+  if [ ! -e "$f" ]; then
+    echo "Error: '$f' does not exist" >&2
+    missing=1
+    continue
+  fi
+  owner=$(stat -c %U "$f") group=$(stat -c %G "$f") perm=$(stat -c %A "$f")
+  if [ "$owner" = "$U" ]; then
+    echo "$f: ${perm:1:3} (owner)"
+  elif [[ $GROUPS_OF_U == *" $group "* ]]; then
+    echo "$f: ${perm:4:3} (group)"
+  else
+    echo "$f: ${perm:7:3} (other)"
+  fi
+  n=$((n + 1))
+done
+echo "$n files checked"
+[ $missing -eq 0 ] || exit 4
+
+@@ex 0825 share | share.sh (a shared group folder, as root)
+@@level 4
+@@cmds getent group, chgrp -R, chmod 2770, find -perm /111, cut, exit codes
+@@readme
+This script is run **as root** by the checker. Write:
+
+```
+share.sh GROUP DIR
+```
+
+It prepares `DIR` to be shared by the members of `GROUP`:
+
+1. print `Members of GROUP: <list>` with the member list of the group as `/etc/group` stores it
+   (the 4th field of `getent group GROUP`, e.g. `luke,sally,rmartin`), or `(none)` if it is empty
+2. the group of `DIR` and of everything inside it becomes `GROUP` (owners do not change)
+3. every directory (`DIR` included) gets mode `2770` (`rwxrws---`)
+4. every regular file that has **some** execute bit gets `770`; every other regular file gets `660`
+5. print `Shared N directories and M files (K executable) with GROUP` (`N` includes `DIR` itself)
+
+Errors (message on stderr), checked in this order: not exactly 2 arguments → usage, exit **1**;
+`GROUP` does not exist → exit **2**, message including its name; `DIR` is not a directory → exit **3**.
+Names may contain spaces. (There are no symbolic links in `DIR`.)
+@@check
+SCRIPT_NAME=share.sh
+SEEDS=2
+RUN_AS_ROOT=1
+COMPARE="stdout exit errmsg files owner"
+setup() {
+  mkdir -p "proyecto/src/mi modulo" proyecto/doc vacio
+  local i f
+  for i in $(seq 1 7); do
+    f="proyecto/$(pick . src "src/mi modulo" doc)/$(pick "$(word)$i.c" "$(word) $i.sh" "$(word)$i")"
+    touch "$f"; chmod "$(pick 644 600 755 700 640 744 604)" "$f"
+  done
+  chmod "$(pick 755 700)" proyecto/doc
+  touch fich
+}
+ARGS=('devs proyecto' 'secops "$W/proyecto/src"' 'scanner vacio' 'rod proyecto' 'nogroup_xyz proyecto' 'devs fich' 'devs' '')
+extra_check() {
+  [[ $CASE == nogroup_xyz* ]] && mentions nogroup_xyz
+  true
+}
+@@solution
+#!/bin/bash
+# share.sh GROUP DIR - make DIR a shared folder for GROUP (run as root)
+[ $# -eq 2 ] || { echo "Usage: $(basename "$0") GROUP DIR" >&2; exit 1; }
+G=$1 DIR=$2
+line=$(getent group "$G") || { echo "Error: group '$G' does not exist" >&2; exit 2; }
+[ -d "$DIR" ] || { echo "Error: '$DIR' is not a directory" >&2; exit 3; }
+
+members=$(echo "$line" | cut -d: -f4)
+echo "Members of $G: ${members:-(none)}"
+
+chgrp -R "$G" "$DIR"
+nd=$(find "$DIR" -type d | wc -l)
+find "$DIR" -type d -exec chmod 2770 {} +
+nx=$(find "$DIR" -type f -perm /111 | wc -l)
+nf=$(find "$DIR" -type f | wc -l)
+find "$DIR" -type f -perm /111 -exec chmod 770 {} +
+find "$DIR" -type f ! -perm /111 -exec chmod 660 {} +
+echo "Shared $nd directories and $nf files ($nx executable) with $G"
+
+@@ex 0826 sshcheck | sshcheck.sh (like sshd's StrictModes)
+@@level 4
+@@cmds stat -c %a, test, chmod go= go-w, $HOME, options, exit codes
+@@readme
+`sshd` refuses keys whose files have unsafe permissions. Write `sshcheck.sh [-f]` that checks the
+user's own files, in this order:
+
+1. `$HOME`: must not be **writable** by group or others. Fix: `chmod go-w`.
+2. `$HOME/.ssh`: group and others must have **no** permission at all. Fix: `chmod go=`.
+3. `$HOME/.ssh/authorized_keys` (only if it exists): no permission for group/others. Fix: `chmod go=`.
+4. every **regular file** `$HOME/.ssh/id_*` **not** ending in `.pub` (private keys, glob order): no
+   permission for group/others. Fix: `chmod go=`.
+5. every **regular file** `$HOME/.ssh/*.pub` (glob order): not writable by group or others.
+   Fix: `chmod go-w`.
+
+Other files are not checked. For each problem print `BAD <path>: <mode>` or, with `-f`, fix it and print
+`FIXED <path>: <old> -> <new>` (modes as `stat -c %a`; paths start with `$HOME` expanded, e.g.
+`/home/alumno/.ssh/id_rsa`). Finally print `N problems found` (or with `-f`: `N problems fixed`).
+
+Exit codes: **0** if there were no problems or `-f` fixed them; **1** if problems were found without
+`-f`; **2** for wrong usage (any argument other than a single `-f`; usage on stderr); **3** if
+`$HOME/.ssh` is not a directory (stderr message, nothing else is printed).
+@@check
+SCRIPT_NAME=sshcheck.sh
+SEEDS=4
+COMPARE="stdout exit errmsg files"
+setup() {
+  chmod "$(pick 755 775 757 750 700)" "$H"
+  (( SEED / 7919 == 4 )) && { mkdir "$H/ssh_old"; return 0; }
+  mkdir "$H/.ssh"; chmod "$(pick 700 755 750 711 700)" "$H/.ssh"
+  local k
+  for k in id_rsa id_ed25519 "id_ecdsa $(word)"; do
+    (( $(rand 4) == 0 )) && continue
+    randtext 1 > "$H/.ssh/$k"; chmod "$(pick 600 400 644 640 604 600)" "$H/.ssh/$k"
+    randtext 1 > "$H/.ssh/$k.pub"; chmod "$(pick 644 664 666 600 646 644)" "$H/.ssh/$k.pub"
+  done
+  (( $(rand 3) )) && { randtext 1 > "$H/.ssh/authorized_keys"; chmod "$(pick 600 644 640 600)" "$H/.ssh/authorized_keys"; }
+  randtext 1 > "$H/.ssh/known_hosts"; chmod 666 "$H/.ssh/known_hosts"
+  mkdir "$H/.ssh/id_old"; chmod 777 "$H/.ssh/id_old"
+  touch "$H/.ssh/config"; chmod 644 "$H/.ssh/config"
+}
+ARGS=('' '-f' '-x' '-f -f' 'extra')
+capture() { stat -c 'home %a' "$H"; }
+@@solution
+#!/bin/bash
+# sshcheck.sh [-f] - check (and fix) the permissions of ~/.ssh
+FIX=0
+if [ $# -eq 1 ] && [ "$1" = -f ]; then
+  FIX=1
+elif [ $# -ne 0 ]; then
+  echo "Usage: $(basename "$0") [-f]" >&2
+  exit 2
+fi
+SSH=$HOME/.ssh
+[ -d "$SSH" ] || { echo "Error: $SSH is not a directory" >&2; exit 3; }
+
+N=0
+# check PATH FORBIDDEN_BITS(octal) FIX_MODE
+check() {
+  local old new
+  old=$(stat -c %a "$1")
+  (( 8#$old & 8#$2 )) || return 0
+  N=$((N + 1))
+  if [ $FIX -eq 1 ]; then
+    chmod "$3" "$1"
+    new=$(stat -c %a "$1")
+    echo "FIXED $1: $old -> $new"
+  else
+    echo "BAD $1: $old"
+  fi
+}
+
+check "$HOME" 022 go-w
+check "$SSH" 077 go=
+[ -e "$SSH/authorized_keys" ] && check "$SSH/authorized_keys" 077 go=
+for k in "$SSH"/id_*; do
+  [ -f "$k" ] || continue
+  [[ $k == *.pub ]] && continue
+  check "$k" 077 go=
+done
+for k in "$SSH"/*.pub; do
+  [ -f "$k" ] && check "$k" 022 go-w
+done
+
+if [ $FIX -eq 1 ]; then
+  echo "$N problems fixed"
+else
+  echo "$N problems found"
+  [ $N -eq 0 ] || exit 1
+fi
+
+@@ex 0827 runall | runall.sh (run the executable scripts of a folder)
+@@level 4
+@@cmds test -x -f -L, "${@:2}", $?, exit codes
+@@readme
+Write:
+
+```
+runall.sh DIR [ARG...]
+```
+
+For every entry of `DIR` in the order of the `DIR/*` glob (symbolic links and anything that is not a
+regular file are ignored silently):
+
+- if **you** can execute it (`test -x`): print `== NAME ==`, run it passing all the `ARG`s (its output
+  appears as it is; its stderr is not redirected), then print `exit: N` with its exit code
+- otherwise print `skip NAME (not executable)`
+
+(`NAME` is the file name without the directory.) Finally print `ran R, skipped S, failed F`, where
+`F` counts the scripts that ended with a non-zero exit code.
+
+Exit codes: **1** no arguments (usage on stderr); **2** `DIR` is not a directory (stderr, including its
+name); **3** if at least one script failed; **0** otherwise. Names and arguments may contain spaces.
+@@check
+SCRIPT_NAME=runall.sh
+SEEDS=3
+COMPARE="stdout exit errmsg files"
+setup() {
+  mkdir -p tareas "tareas/$(word)_dir" solo
+  local i f c
+  for i in $(seq 1 6); do
+    f="tareas/$(pick "$(word)$i.sh" "$(word) $i" "t$i")"
+    c=$(pick 0 0 1 3)
+    printf '#!/bin/bash\necho "%s: $# args: $*"\nexit %s\n' "$(basename "$f")" "$c" > "$f"
+    chmod "$(pick 755 700 644 600 744 711 755)" "$f"
+  done
+  printf '#!/bin/bash\necho "unreadable"\n' > "tareas/zz locked"; chmod 311 "tareas/zz locked"
+  printf 'echo "no shebang: $1"\n' > tareas/noshebang; chmod 755 tareas/noshebang
+  ln -s noshebang "tareas/$(word)_link"
+  chmod 755 "tareas/$(word)_dir" 2>/dev/null
+  printf '#!/bin/bash\necho solo ok\n' > solo/uno; chmod 755 solo/uno
+  touch fich
+}
+ARGS=('tareas' 'tareas "hola mundo" 2' '"$W/tareas" x' 'solo' 'fich' 'noexiste a' '')
+extra_check() {
+  [[ $REF_CODE == 2 ]] && mentions "$(eval "set -- $CASE"; echo "$1")"
+  true
+}
+@@solution
+#!/bin/bash
+# runall.sh DIR [ARG...] - run every executable file of DIR
+[ $# -ge 1 ] || { echo "Usage: $(basename "$0") DIR [ARG...]" >&2; exit 1; }
+DIR=$1; shift
+[ -d "$DIR" ] || { echo "Error: '$DIR' is not a directory" >&2; exit 2; }
+
+ran=0 skipped=0 failed=0
+for f in "$DIR"/*; do
+  [ -f "$f" ] && [ ! -L "$f" ] || continue
+  name=$(basename "$f")
+  if [ -x "$f" ]; then
+    echo "== $name =="
+    "$f" "$@"
+    code=$?
+    echo "exit: $code"
+    ran=$((ran + 1))
+    [ $code -ne 0 ] && failed=$((failed + 1))
+  else
+    echo "skip $name (not executable)"
+    skipped=$((skipped + 1))
+  fi
+done
+echo "ran $ran, skipped $skipped, failed $failed"
+[ $failed -eq 0 ] || exit 3
+
+@@ex 0828 umask_audit | umask_audit.sh (files more open than the umask)
+@@level 4
+@@cmds $(( 8#... & ... )), printf %03o, find, chmod, options, exit codes
+@@readme
+Write:
+
+```
+umask_audit.sh [-f] UMASK DIR
+```
+
+A file or directory "exceeds" a umask when it has some permission bit that the umask would remove
+(`mode & umask` is not 0). For every regular file and directory **under** `DIR` (recursively, not `DIR`
+itself; symbolic links ignored), sorted by path (as `find DIR` prints them, sorted with `sort`), that
+exceeds `UMASK`:
+
+- without `-f`: print `<path>: <mode> (extra <bits>)`, where `<bits>` = `mode & umask`
+- with `-f`: remove those bits (`mode & ~umask`) and print `<path>: <mode> -> <new mode>`
+
+All modes are printed as **3 octal digits** (`printf '%03o'`). Finally print
+`N of M entries exceed umask UMASK` (`UMASK` as given; `M` = entries examined).
+
+`UMASK` is 3 or 4 octal digits whose user digit is `0` (`022`, `0027`, `077`...). Errors (message on
+stderr), checked in this order:
+
+- wrong arguments (not `[-f] UMASK DIR`, e.g. an unknown option or a wrong count) → usage, exit **1**
+- `DIR` is not a directory → exit **2**
+- `UMASK` is not valid → exit **3**, message including it
+@@check
+SCRIPT_NAME=umask_audit.sh
+SEEDS=3
+COMPARE="stdout exit errmsg files"
+setup() {
+  mkdir -p "datos/sub dir/x" datos/pub limpio/a
+  local i f
+  for i in $(seq 1 8); do
+    f="datos/$(pick . "sub dir" "sub dir/x" pub)/$(pick "$(word)$i" "$(word) $i.txt")"
+    touch "$f"; chmod "$(pick 644 600 755 666 664 640 777 700 604)" "$f"
+  done
+  chmod "$(pick 775 777 750 755)" "datos/sub dir"; chmod "$(pick 755 700)" datos/pub
+  ln -s ../pub "datos/sub dir/link"
+  touch limpio/a/f; chmod 600 limpio/a/f; chmod 700 limpio/a
+  touch fich
+}
+ARGS=('022 datos' '-f 022 datos' '-f 0077 "$W/datos"' '027 "datos/sub dir"' '-f 002 datos' '077 limpio' '022' '-x 022 datos' '022 fich' '22 datos' '099 datos' '722 datos' '' '-f 022 datos extra')
+extra_check() {
+  [[ $REF_CODE == 3 ]] && { eval "set -- $CASE"; [ "$1" = -f ] && shift; mentions "$1"; }
+  true
+}
+@@solution
+#!/bin/bash
+# umask_audit.sh [-f] UMASK DIR - find (and fix) entries more open than a umask
+usage() { echo "Usage: $(basename "$0") [-f] UMASK DIR" >&2; exit 1; }
+FIX=0
+if [ "$1" = -f ]; then FIX=1; shift; fi
+[ $# -eq 2 ] || usage
+[[ $1 == -* ]] && usage
+U=$1 DIR=$2
+[ -d "$DIR" ] || { echo "Error: '$DIR' is not a directory" >&2; exit 2; }
+[[ $U =~ ^0?0[0-7][0-7]$ ]] || { echo "Error: '$U' is not a valid umask" >&2; exit 3; }
+
+n=0 total=0
+# sort reads all of find's output before printing anything, so the chmods below
+# cannot disturb the traversal
+while IFS= read -r p; do
+  total=$((total + 1))
+  mode=$(( 8#$(stat -c %a "$p") ))
+  extra=$(( mode & 8#$U ))
+  (( extra )) || continue
+  n=$((n + 1))
+  if [ $FIX -eq 1 ]; then
+    new=$(printf '%03o' $(( mode & ~8#$U )))
+    chmod "$new" "$p"
+    printf '%s: %03o -> %s\n' "$p" "$mode" "$new"
+  else
+    printf '%s: %03o (extra %03o)\n' "$p" "$mode" "$extra"
+  fi
+done < <(find "$DIR" -mindepth 1 \( -type f -o -type d \) | sort)
+echo "$n of $total entries exceed umask $U"

@@ -1,0 +1,624 @@
+@@topic 02_directories | Directories & navigation
+@@ex 0215 mkdir_units | A course folder from a description
+@@level 3
+@@cmds mkdir -p, seq -f, head, tail, ls
+@@readme
+The file `course.txt` has two lines: the **name** of a course (it may contain spaces) and a number
+`N` of units. For example:
+
+```
+sistemas operativos
+4
+```
+
+Create, inside the current directory, the directory named after the course with:
+
+- `unit_01`, `unit_02`, ... `unit_N` (number zero-padded to 2 digits)
+- `exams/partial` and `exams/final`
+- `notes`
+
+Then print the listing of the course directory (`ls` of it, one entry per line).
+@@check
+COMPARE="stdout exit files"
+setup() { printf '%s %s\n%s\n' "$(word)" "$(word)" "$(randr 3 12)" > course.txt; mkdir -p "$(word) old"; }
+@@solution
+#!/bin/bash
+C=$(head -n 1 course.txt)
+N=$(tail -n 1 course.txt)
+mkdir -p "$C/exams/partial" "$C/exams/final" "$C/notes"
+for u in $(seq -f 'unit_%02g' "$N"); do
+  mkdir "$C/$u"
+done
+ls "$C"
+
+@@ex 0216 rmdir_parents | rmdir -p: removing a branch
+@@level 3
+@@cmds rmdir -p, dirname, test -d, while
+@@readme
+The file `leaf.txt` contains the relative path of an **empty** directory, several levels deep
+(e.g. `alpha/bravo/charlie/delta`). Some of its ancestors may contain other things (files or other
+directories).
+
+1. Remove the leaf and, going up, every ancestor that becomes empty, with **one** `rmdir -p`
+   command. `rmdir -p` stops (with an error message) at the first ancestor that is not empty:
+   discard that message.
+2. Then, for the path in the file and each of its ancestors (from the longest to the shortest,
+   i.e. `a/b/c/d`, `a/b/c`, `a/b`, `a`), print `removed <path>` if it no longer exists or
+   `kept <path>` if it is still there.
+
+Hint: `dirname a/b/c` is `a/b`, and `dirname a` is `.`.
+@@check
+COMPARE="stdout exit files"
+SEEDS=4
+setup() {
+  local n p="" i k
+  n=$(randr 3 5)
+  for ((i = 1; i <= n; i++)); do p="$p${p:+/}$(word)$i"; done
+  mkdir -p "$p"; echo "$p" > leaf.txt
+  k=$(randr 0 $((n - 1)))
+  if ((k > 0)); then
+    local q; q=$(echo "$p" | cut -d/ -f1-"$k")
+    if [[ $(rand 2) == 1 ]]; then echo data > "$q/$(word).txt"; else mkdir "$q/.$(word)"; fi
+  fi
+  mkdir -p "other/$(word)"
+}
+extra_check() { must_use rmdir; must_not_use 'rm'; }
+@@solution
+#!/bin/bash
+P=$(cat leaf.txt)
+rmdir -p "$P" 2> /dev/null
+while [ "$P" != . ]; do
+  if [ -d "$P" ]; then echo "kept $P"; else echo "removed $P"; fi
+  P=$(dirname "$P")
+done
+
+@@ex 0217 link_count | The link count of a directory
+@@level 3
+@@cmds stat -c %h, ls -ld, for d in */
+@@readme
+The link count of a directory (2nd column of `ls -ld`, or `stat -c %h`) is **2 + the number of
+subdirectories** it contains: one link is its name in the parent, one is its own `.` and each
+subdirectory has a `..` pointing to it. Hidden subdirectories count too, files don't.
+
+For each directory directly inside `proj` (in the order of the glob `proj/*/`, hidden ones not
+listed), print:
+
+```
+<name>: links=<L> subdirs=<L-2>
+```
+
+and finally one line `proj: links=<L> subdirs=<L-2>` for `proj` itself.
+Use the link count: **don't** count the subdirectories by listing them.
+@@check
+setup() {
+  local i j d
+  mkdir proj
+  for i in $(seq "$(randr 2 5)"); do
+    d="proj/$(word)$i"; mkdir "$d"
+    for j in $(seq 0 "$(randr 0 4)"); do
+      case $(rand 3) in 0) mkdir "$d/$(word)$j" ;; 1) mkdir "$d/.$(word)$j" ;; *) touch "$d/$(word)$j.txt" ;; esac
+    done
+  done
+  mkdir "proj/.hidden$(word)"; touch "proj/file.txt"
+}
+extra_check() { must_not_use find tree; }
+@@solution
+#!/bin/bash
+for d in proj/*/; do
+  L=$(stat -c %h "$d")
+  echo "$(basename "$d"): links=$L subdirs=$((L - 2))"
+done
+L=$(stat -c %h proj)
+echo "proj: links=$L subdirs=$((L - 2))"
+
+@@ex 0218 tree_filters | tree: patterns, pruning and full paths
+@@level 3
+@@cmds tree -P, --prune, -I, -a, -f, -i
+@@readme
+The directory `proyecto` contains sources, headers, objects, a `build` directory and a `docs`
+directory with hidden files. Print, each one **without** the final summary line (`--noreport`):
+
+1. the tree of `proyecto` showing **only** the `*.c` files, and **not** showing directories that end up
+   with no `.c` inside (`-P` and `--prune`)
+2. a line `---`
+3. the tree of `proyecto` **ignoring** everything named `build` or ending in `.o` (`-I` with the
+   pattern `build|*.o`)
+4. a line `---`
+5. the content of `proyecto/docs` **including hidden files**, as a flat list of **full paths**
+   without indentation lines (`-a`, `-f`, `-i`)
+@@check
+setup() {
+  mkdir -p proyecto/{src/net,src/util,include,build/obj,docs}
+  local i f
+  for i in 1 2 3 4 5 6; do
+    f=$(word)$i
+    touch "proyecto/$(pick src src/net src/util)/$f.c" "proyecto/build/obj/$f.o" "proyecto/include/$f.h"
+  done
+  touch "proyecto/src/util/$(word).o" proyecto/build/app proyecto/docs/README.md "proyecto/docs/.$(word)" proyecto/docs/.notes
+  local ddir; ddir=$(word); mkdir -p "proyecto/docs/$ddir"; touch "proyecto/docs/$ddir/index.md"
+}
+extra_check() { must_use tree; }
+@@solution
+#!/bin/bash
+tree --noreport -P '*.c' --prune proyecto
+echo ---
+tree --noreport -I 'build|*.o' proyecto
+echo ---
+tree --noreport -a -f -i proyecto/docs
+
+@@ex 0219 mkdir_mode | Creating directories with permissions
+@@level 3
+@@cmds mkdir -m, mkdir -p -m, stat -c
+@@readme
+Using the `-m` option of `mkdir` (no `chmod`), create in the current directory:
+
+1. `privado` with permissions `rwx------` (700)
+2. `web/html/img` with **one** `mkdir -p -m 750` command. Notice that `-m` only applies to the
+   **last** directory (`img`); `web` and `html` get the default permissions.
+3. `buzon` with permissions `rwx-wx-wx` plus the **sticky bit** (1733), like `/tmp` but without
+   read permission for others
+
+Finally print, for `privado`, `web`, `web/html`, `web/html/img` and `buzon` (in this order), one line
+with the permissions in `ls -l` style and the name: `stat -c '%A %n'`.
+@@check
+SEEDS=1
+COMPARE="stdout exit files"
+extra_check() { must_use mkdir; must_not_use chmod; }
+@@solution
+#!/bin/bash
+mkdir -m 700 privado
+mkdir -p -m 750 web/html/img
+mkdir -m 1733 buzon
+stat -c '%A %n' privado web web/html web/html/img buzon
+
+@@ex 0220 pwd_physical | Symlinked directories: pwd -L vs pwd -P
+@@level 3
+@@cmds cd, cd -P, pwd -P, ln -s
+@@readme
+The current directory contains a directory tree `real/X/Y` and a **symbolic link** `atajo` that points
+to `real/X/Y` (`X` and `Y` change on every run). The shell remembers **how** you reached a
+directory (the logical path) unless you ask for the physical one.
+
+Print, in this order:
+
+1. after `cd atajo`: the output of `pwd` (logical: ends in `/atajo`)
+2. the output of `pwd -P` (physical: ends in `/real/X/Y`)
+3. after `cd ..` (from there): `pwd` (logical `..` goes back to the directory that contains `atajo`)
+4. after going **physically** into the link with `cd -P atajo` and then `cd ..`: `pwd`
+   (now `..` is `real/X`)
+@@check
+setup() { local x y; x=$(word)1 y=$(word)2; mkdir -p "real/$x/$y" "real/$(word)3"; ln -s "real/$x/$y" atajo; }
+extra_check() { must_use '-P'; }
+@@solution
+#!/bin/bash
+cd atajo
+pwd
+pwd -P
+cd ..
+pwd
+cd -P atajo
+cd ..
+pwd
+
+@@ex 0221 mkskel | mkskel.sh: a directory skeleton from a spec file
+@@level 4
+@@cmds while IFS= read -r, mkdir -p, [[ ]], exit codes
+@@readme
+Write `mkskel.sh`:
+
+```
+mkskel.sh SPECFILE DEST
+```
+
+`SPECFILE` lists, one per line, directory paths **relative to** `DEST`, which may contain spaces.
+Empty lines and lines starting with `#` are ignored; the other lines are used exactly as written.
+
+- If `DEST` does not exist, create it (with parents) and print `Created DEST`.
+- Then, for each path line, in file order:
+  - if it is **absolute** (starts with `/`) or has a `..` component (the line is `..`, or starts with
+    `../`, ends with `/..` or contains `/../`): print `skipped: <line>` on **stderr**
+    (`a..b` is a normal name, not a `..` component)
+  - else, if `DEST/<line>` is already a directory: print `exists: <line>`
+  - else create it with `mkdir -p`: `created: <line>` on success, or `error: <line>` on **stderr**
+    if it fails (e.g. a part of the path is a regular file; discard `mkdir`'s own message)
+- Last line: `Created C, existing E, skipped S, errors X`
+
+Exit codes:
+
+- not exactly 2 arguments: usage on stderr, exit **1**
+- `SPECFILE` is not a readable regular file: stderr (mention it), exit **2**
+- `DEST` exists but is not a directory: stderr (mention it), exit **3**
+- otherwise: **0** if every line was skipped-free and error-free, **4** if S + X > 0
+@@check
+SCRIPT_NAME=mkskel.sh
+SEEDS=3
+COMPARE="stdout exit errmsg files"
+setup() {
+  local a b c
+  a=$(word) b=$(word) c=$(word)
+  {
+    echo "# skeleton for $(word)"
+    echo "$a/src"
+    echo "$a/src/$b"
+    echo ""
+    echo "docs/user guide"
+    echo "$(pick "/etc/$c" "/tmp/$c")"
+    echo "$(pick "../$c" "$a/../$c" "$a/.." "..")"
+    echo "v1..2/$c"
+    echo "notes.txt/$b"
+    echo "   # not a comment: starts with spaces"
+    echo "$a/src"
+    echo "$(pick "tests/$c" "tests/$c $b" "$b/$c/data")"
+  } > spec.txt
+  printf '%s\n' "# nothing" "" "$a/lib" "$b/bin" > ok.txt
+  mkdir -p "out/$a/src" "destino existente/docs"
+  touch out/notes.txt "destino existente/notes.txt" fichero
+  cp spec.txt nolee.txt; chmod 000 nolee.txt
+}
+ARGS=('spec.txt out' 'spec.txt "destino existente"' 'ok.txt "nuevo/proyecto 1"' 'ok.txt "$W/out"' 'nolee.txt out' 'noexiste out' 'out out' 'spec.txt fichero' 'spec.txt' '')
+extra_check() {
+  local a=(); mapfile -t a < <(cd "$W" && eval "set -- $CASE" && printf '%s\n' "$@")
+  [[ $REF_CODE == 2 ]] && mentions "${a[0]}"
+  [[ $REF_CODE == 3 ]] && mentions "${a[1]}"
+  true
+}
+@@solution
+#!/bin/bash
+# mkskel.sh SPECFILE DEST - creates the directories listed in SPECFILE under DEST
+if [ $# -ne 2 ]; then
+  echo "Usage: $(basename "$0") SPECFILE DEST" >&2
+  exit 1
+fi
+SPEC=$1 DEST=$2
+if [ ! -f "$SPEC" ] || [ ! -r "$SPEC" ]; then
+  echo "Error: cannot read spec file '$SPEC'" >&2
+  exit 2
+fi
+if [ -e "$DEST" ] && [ ! -d "$DEST" ]; then
+  echo "Error: '$DEST' exists and is not a directory" >&2
+  exit 3
+fi
+if [ ! -d "$DEST" ]; then
+  mkdir -p "$DEST" && echo "Created $DEST"
+fi
+
+C=0 E=0 S=0 X=0
+while IFS= read -r line; do
+  [[ -z $line || $line == \#* ]] && continue
+  if [[ $line == /* || $line == .. || $line == ../* || $line == */.. || $line == */../* ]]; then
+    echo "skipped: $line" >&2
+    S=$((S + 1))
+  elif [ -d "$DEST/$line" ]; then
+    echo "exists: $line"
+    E=$((E + 1))
+  elif mkdir -p "$DEST/$line" 2> /dev/null; then
+    echo "created: $line"
+    C=$((C + 1))
+  else
+    echo "error: $line" >&2
+    X=$((X + 1))
+  fi
+done < "$SPEC"
+echo "Created $C, existing $E, skipped $S, errors $X"
+[ $((S + X)) -eq 0 ] || exit 4
+
+@@ex 0222 lsd | lsd.sh: listing several directories
+@@level 4
+@@cmds ls -p, ls -A, grep -c, for "$@", shift, exit codes
+@@readme
+Write `lsd.sh`:
+
+```
+lsd.sh [-a] DIR...
+```
+
+For each `DIR` argument, in order:
+
+- if it is a directory, print a header line `DIR:` (as given), then its entries **directly inside**, one
+  per line, **indented with two spaces**, in the order `ls` gives them, with a `/` appended to the
+  directories (that is what `ls -p` does). Hidden entries are listed only with `-a` (never `.` and
+  `..`: think `ls -A`). Then a line `  (D dirs, F other)` with the number of listed entries that are
+  directories and the number of the rest.
+- if it is not a directory: print `lsd.sh: cannot list 'DIR'` on **stderr** and go on with the next one.
+
+After all of them print `Listed N directories, E errors`.
+
+- `-a` is only recognised as the **first** argument.
+- no `DIR` given (no arguments, or only `-a`): usage on stderr, exit **1**
+- exit **2** if at least one argument could not be listed, **0** otherwise
+
+The example below is `lsd.sh -a docs empty nothing`:
+
+```
+docs:
+  .config/
+  guide.pdf
+  images/
+  my notes.txt
+  (2 dirs, 2 other)
+empty:
+  (0 dirs, 0 other)
+Listed 2 directories, 1 errors
+```
+@@check
+SCRIPT_NAME=lsd.sh
+SEEDS=3
+COMPARE="stdout exit errmsg"
+setup() {
+  local d i
+  for d in docs "mis cosas" vacio; do mkdir -p "$d"; done
+  for d in docs "mis cosas"; do
+    for i in $(seq "$(randr 2 5)"); do
+      case $(rand 4) in
+        0) mkdir "$d/$(word)$i" ;;
+        1) touch "$d/$(word) $(word)$i.txt" ;;
+        2) touch "$d/.$(word)$i" ;;
+        *) mkdir "$d/.$(word)$i.d" ;;
+      esac
+    done
+    touch "$d/$(word).pdf"
+  done
+  mkdir vacio/.solo; touch fichero.txt
+}
+ARGS=('docs' '-a docs' 'docs "mis cosas" vacio' '-a vacio "mis cosas" fichero.txt' 'noexiste docs' '"$W/docs" -a' '-a' '')
+extra_check() { [[ $REF_CODE == 2 ]] && mentions "cannot list"; true; }
+@@solution
+#!/bin/bash
+# lsd.sh [-a] DIR... - lists several directories
+OPT=
+if [ "$1" = -a ]; then
+  OPT=-A
+  shift
+fi
+if [ $# -eq 0 ]; then
+  echo "Usage: $(basename "$0") [-a] DIR..." >&2
+  exit 1
+fi
+N=0 E=0
+for d in "$@"; do
+  if [ ! -d "$d" ]; then
+    echo "lsd.sh: cannot list '$d'" >&2
+    E=$((E + 1))
+    continue
+  fi
+  echo "$d:"
+  LIST=$(ls -p $OPT "$d")
+  if [ -n "$LIST" ]; then
+    echo "$LIST" | sed 's/^/  /'
+    DIRS=$(echo "$LIST" | grep -c '/$')
+    ALL=$(echo "$LIST" | wc -l)
+  else
+    DIRS=0 ALL=0
+  fi
+  echo "  ($DIRS dirs, $((ALL - DIRS)) other)"
+  N=$((N + 1))
+done
+echo "Listed $N directories, $E errors"
+[ "$E" -eq 0 ] || exit 2
+
+@@ex 0223 clean_empty | cleanempty.sh: removing empty directory trees
+@@level 4
+@@cmds rmdir, find -depth, du, sort, exit codes
+@@readme
+Write `cleanempty.sh`:
+
+```
+cleanempty.sh DIR
+```
+
+It removes every **empty directory** under `DIR` (recursively), **including** directories that only
+become empty after their empty subdirectories are removed. `DIR` itself is never removed. A directory
+that contains anything else (a file, a hidden file, a symbolic link...) is kept.
+
+Output: `removed <path>` for each removed directory, **sorted** (`sort`), with paths written as
+`DIR/...` (`DIR` exactly as given, without a trailing `/`), then
+`Removed N directories, M remain`, where M is the number of directories that remain **under** `DIR`
+(not counting `DIR` itself).
+
+Errors (message on stderr, mentioning `DIR` when there is one):
+
+- not exactly one argument: usage, exit **1**
+- `DIR` does not exist: exit **2**
+- `DIR` exists but is not a directory: exit **3**
+
+Hint: process the directories **deepest first** (`find -depth`, or the order `du` prints them) and try
+`rmdir` on each one: it fails harmlessly on non-empty directories.
+@@check
+SCRIPT_NAME=cleanempty.sh
+SEEDS=3
+COMPARE="stdout exit errmsg files"
+setup() {
+  local i p
+  mkdir -p "datos/con espacio/vacío" datos/.oculto
+  for i in $(seq 8); do
+    p="datos/$(pick a b "con espacio")/$(word)$i"
+    [[ $(rand 2) == 1 ]] && p="$p/$(word)"
+    mkdir -p "$p"
+    case $(rand 4) in 0) touch "$p/$(word).txt" ;; 1) touch "$p/.keep" ;; 2) ln -s /nowhere "$p/link" ;; esac
+  done
+  mkdir -p solo/vacio; touch fichero
+}
+ARGS=('datos' 'datos/' '"$W/datos/con espacio"' 'solo' 'noexiste' 'fichero' '' 'datos solo')
+extra_check() {
+  local a=(); mapfile -t a < <(cd "$W" && eval "set -- $CASE" && printf '%s\n' "$@")
+  [[ $REF_CODE == [23] ]] && mentions "${a[0]}"
+  true
+}
+@@solution
+#!/bin/bash
+# cleanempty.sh DIR - removes the empty directories under DIR
+if [ $# -ne 1 ]; then
+  echo "Usage: $(basename "$0") DIR" >&2
+  exit 1
+fi
+DIR=${1%/}
+[ -z "$DIR" ] && DIR=/
+[ -e "$DIR" ] || { echo "Error: '$DIR' does not exist" >&2; exit 2; }
+[ -d "$DIR" ] || { echo "Error: '$DIR' is not a directory" >&2; exit 3; }
+
+REMOVED=$(find "$DIR" -mindepth 1 -depth -type d | while IFS= read -r d; do
+  rmdir "$d" 2> /dev/null && echo "removed $d"
+done | sort)
+[ -n "$REMOVED" ] && echo "$REMOVED"
+N=$(echo -n "$REMOVED" | grep -c '^')
+M=$(find "$DIR" -mindepth 1 -type d | wc -l)
+echo "Removed $N directories, $M remain"
+
+@@ex 0224 mirror | mirror.sh: copying only the directory structure
+@@level 4
+@@cmds cd && pwd -P, find -type d, mkdir -p, dirname, exit codes
+@@readme
+Write `mirror.sh`:
+
+```
+mirror.sh SRC DEST
+```
+
+It creates `DEST` and, inside it, every directory that exists under `SRC` (recursively, hidden ones
+included) with the same relative paths, but **no files**. For example, if `SRC` contains
+`a/b/file.txt` and `c/`, then `DEST/a/b` and `DEST/c` are created.
+
+Print `Mirrored N directories from SRC into DEST` (N = number of directories under `SRC`, not counting
+`SRC` itself; `SRC` and `DEST` exactly as given).
+
+Errors (message on stderr, nothing created), checked in this order:
+
+- not exactly 2 arguments: usage, exit **1**
+- `SRC` is not a directory: exit **2** (mention it)
+- `DEST` already exists, or the directory that would contain it (`dirname DEST`) does not exist: exit
+  **3** (mention `DEST`)
+- `DEST` would be **inside** `SRC` (its parent directory, resolved to a physical absolute path, is
+  `SRC` or below `SRC`, also resolved; e.g. `mirror.sh a a/copy` or `mirror.sh a ./a/b/../copy`):
+  exit **4**
+
+Careful: `SRC` and `DEST` may be relative paths, and may contain spaces.
+@@check
+SCRIPT_NAME=mirror.sh
+SEEDS=3
+COMPARE="stdout exit errmsg files"
+setup() {
+  local i p
+  mkdir -p "src tree/.git/objects" otros
+  for i in $(seq "$(randr 4 8)"); do
+    p="src tree/$(pick "$(word)" "$(word) $(word)" "$(word)/$(word)")$i"
+    mkdir -p "$p"
+    touch "$p/$(word).txt"
+  done
+  touch "src tree/top.txt" fichero
+  ln -s "src tree" enlace
+}
+ARGS=('"src tree" copia' '"src tree" "otros/mi copia"' '"src tree/" "$W/nuevo"' '"./src tree/.git" otros/git' 'noexiste copia' 'fichero copia' '"src tree" otros' '"src tree" "nada/copia"' '"src tree" "src tree/copia"' '"src tree" "./otros/../src tree/.git/../copia"' 'enlace "src tree/copia"' '"src tree"' '')
+extra_check() {
+  local a=(); mapfile -t a < <(cd "$W" && eval "set -- $CASE" && printf '%s\n' "$@")
+  [[ $REF_CODE == 2 ]] && mentions "${a[0]}"
+  [[ $REF_CODE == 3 ]] && mentions "${a[1]}"
+  true
+}
+@@solution
+#!/bin/bash
+# mirror.sh SRC DEST - recreates the directory structure of SRC in DEST
+if [ $# -ne 2 ]; then
+  echo "Usage: $(basename "$0") SRC DEST" >&2
+  exit 1
+fi
+SRC=$1 DEST=$2
+[ -d "$SRC" ] || { echo "Error: '$SRC' is not a directory" >&2; exit 2; }
+PARENT=$(dirname "$DEST")
+if [ -e "$DEST" ] || [ ! -d "$PARENT" ]; then
+  echo "Error: '$DEST' already exists or its parent directory does not exist" >&2
+  exit 3
+fi
+SRC_ABS=$(cd "$SRC" && pwd -P)
+PARENT_ABS=$(cd "$PARENT" && pwd -P)
+if [[ $PARENT_ABS == "$SRC_ABS" || $PARENT_ABS == "$SRC_ABS"/* ]]; then
+  echo "Error: '$DEST' is inside '$SRC'" >&2
+  exit 4
+fi
+
+mkdir "$DEST"
+DEST_ABS=$(cd "$DEST" && pwd -P)
+N=0
+while IFS= read -r d; do
+  mkdir -p "$DEST_ABS/$d"
+  N=$((N + 1))
+done < <(cd "$SRC" && find . -mindepth 1 -type d)
+echo "Mirrored $N directories from $SRC into $DEST"
+
+@@ex 0225 quota | cuota.sh: which directories are over the limit
+@@level 4
+@@cmds du -sk, cut, for d in "$DIR"/*/, [[ =~ ]], $(( ))
+@@readme
+Write `cuota.sh`:
+
+```
+cuota.sh DIR LIMIT
+```
+
+`LIMIT` is a size: a positive integer optionally followed by `K` (KiB, the default unit) or `M` (MiB,
+i.e. × 1024 KiB), e.g. `300`, `300K`, `2M`.
+
+For each subdirectory **directly inside** `DIR` (not hidden; in the order of the glob `DIR/*/`),
+compute its disk usage in KiB with `du -sk` and print
+
+```
+<name>: <S> KiB ok
+<name>: <S> KiB OVER
+```
+
+(`<name>` is the subdirectory name without path; `OVER` when S is **strictly greater** than the limit).
+Then print `N of M directories over the limit (L KiB)` where L is the limit converted to KiB.
+
+Errors (message on stderr, nothing on stdout), checked in this order:
+
+- not exactly 2 arguments: usage, exit **1**
+- `DIR` is not a directory: exit **2** (mention it)
+- `LIMIT` is not valid (`0`, `0M`, `-5`, `5G`, `2.5M`, `abc`, `M`...): exit **3** (mention it)
+@@check
+SCRIPT_NAME=cuota.sh
+SEEDS=3
+COMPARE="stdout exit errmsg"
+setup() {
+  local i d
+  mkdir -p home2 vacio
+  for i in $(seq "$(randr 3 6)"); do
+    d="home2/$(pick "$(word)" "$(word) $(word)")$i"
+    mkdir -p "$d/sub"
+    bigfile "$d/data" $(( $(randr 1 50) * 8192 ))
+    bigfile "$d/sub/more" $(( $(randr 0 30) * 8192 ))
+  done
+  mkdir home2/.cache; bigfile home2/.cache/big $((900 * 1024)); bigfile home2/suelto $((700 * 1024))
+  touch fichero
+}
+ARGS=('home2 200' 'home2 200K' 'home2 1M' '"$W/home2" 64' 'vacio 10' 'home2 0' 'home2 5G' 'home2 2.5M' 'home2 M' 'home2 -5' 'fichero 10' 'noexiste 10' 'home2' '')
+extra_check() {
+  local a=(); mapfile -t a < <(cd "$W" && eval "set -- $CASE" && printf '%s\n' "$@")
+  [[ $REF_CODE == 2 ]] && mentions "${a[0]}"
+  [[ $REF_CODE == 3 ]] && mentions "${a[1]}"
+  true
+}
+@@solution
+#!/bin/bash
+# cuota.sh DIR LIMIT - subdirectories of DIR bigger than LIMIT
+if [ $# -ne 2 ]; then
+  echo "Usage: $(basename "$0") DIR LIMIT[K|M]" >&2
+  exit 1
+fi
+DIR=$1 LIMIT=$2
+[ -d "$DIR" ] || { echo "Error: '$DIR' is not a directory" >&2; exit 2; }
+if [[ $LIMIT =~ ^([0-9]+)([KM]?)$ ]] && [ "${BASH_REMATCH[1]}" -gt 0 ]; then
+  L=${BASH_REMATCH[1]}
+  [ "${BASH_REMATCH[2]}" = M ] && L=$((L * 1024))
+else
+  echo "Error: invalid limit '$LIMIT'" >&2
+  exit 3
+fi
+
+N=0 M=0
+for d in "$DIR"/*/; do
+  [ -d "$d" ] || continue
+  S=$(du -sk "$d" | cut -f1)
+  if [ "$S" -gt "$L" ]; then STATE=OVER; N=$((N + 1)); else STATE=ok; fi
+  echo "$(basename "$d"): $S KiB $STATE"
+  M=$((M + 1))
+done
+echo "$N of $M directories over the limit ($L KiB)"

@@ -1,0 +1,1448 @@
+@@topic 14_test_if_case | test, if & case
+@@ex 1415 triangle | Classifying a triangle
+@@level 3
+@@cmds test -eq -le, if elif, &&, ||
+@@readme
+Write `triangle.sh a b c`, where `a`, `b`, `c` are the lengths of three sides (non-negative integers
+written with digits only). Print exactly one line:
+
+- `not a triangle` if some side is 0 or some side is **greater than or equal to** the sum of the
+  other two; in this case exit with code **2**
+- otherwise `equilateral` (3 equal sides), `isosceles` (exactly 2 equal) or `scalene` (all different),
+  followed by ` right` if it is a right triangle (the square of one side equals the sum of the squares
+  of the other two), e.g. `scalene right`; exit **0**
+
+If there are not exactly 3 arguments or one of them is not made of digits only, print
+`Usage: triangle.sh a b c` on **stderr** (use `$(basename "$0")`) and exit **1**.
+@@check
+SEEDS=1
+SCRIPT_NAME=triangle.sh
+COMPARE="stdout stderr exit"
+ARGS=('3 3 3' '3 4 5' '5 3 4' '5 5 8' '2 3 4' '1 2 3' '1 1 5' '0 4 4' '6 8 10' '13 5 12' '10 6 8' '' '1 2' '1 2 x' '1 2 3 4' '-1 2 2' '4 4 7')
+@@solution
+#!/bin/bash
+usage() {
+  echo "Usage: $(basename "$0") a b c" >&2
+  exit 1
+}
+[ $# -eq 3 ] || usage
+for s in "$@"; do
+  [[ $s =~ ^[0-9]+$ ]] || usage
+done
+a=$1 b=$2 c=$3
+if [ "$a" -eq 0 ] || [ "$b" -eq 0 ] || [ "$c" -eq 0 ] ||
+   [ "$a" -ge $((b + c)) ] || [ "$b" -ge $((a + c)) ] || [ "$c" -ge $((a + b)) ]; then
+  echo "not a triangle"
+  exit 2
+fi
+if [ "$a" -eq "$b" ] && [ "$b" -eq "$c" ]; then
+  t=equilateral
+elif [ "$a" -eq "$b" ] || [ "$a" -eq "$c" ] || [ "$b" -eq "$c" ]; then
+  t=isosceles
+else
+  t=scalene
+fi
+if (( a*a + b*b == c*c || a*a + c*c == b*b || b*b + c*c == a*a )); then
+  t="$t right"
+fi
+echo "$t"
+
+@@ex 1416 version_cmp | Comparing version numbers
+@@level 3
+@@cmds [[ =~ ]], IFS=. read, test -lt -gt -ne
+@@readme
+Write `vercmp.sh v1 v2`. A version is `MAJOR.MINOR.PATCH`: three non-negative integers (digits only)
+separated by dots. Compare them **numerically**, part by part from left to right (so `1.10.0` is
+greater than `1.9.9`), and print one line: `v1 < v2`, `v1 = v2` or `v1 > v2` (with the versions
+as given).
+
+Errors (stderr, exact text): not exactly 2 arguments → `Usage: vercmp.sh v1 v2` (use
+`$(basename "$0")`), exit **1**; a version with the wrong format → `Invalid version: <v>` (the first
+invalid one), exit **2**.
+@@check
+SEEDS=1
+SCRIPT_NAME=vercmp.sh
+COMPARE="stdout stderr exit"
+ARGS=('1.2.3 1.2.3' '1.2.10 1.2.9' '1.10.0 1.9.9' '2.0.0 10.0.0' '0.0.1 0.1.0' '3.4.5 3.4.50' '10.20.30 10.20.30' '5.0.1 5.0.0' '1.2 1.2.3' '1.2.3 1.x.3' 'v1.2.3 1.2.3' '' '1.2.3' '1.2.3.4 1.2.3' '1.2.3 "1.2.3 "')
+@@solution
+#!/bin/bash
+if [ $# -ne 2 ]; then
+  echo "Usage: $(basename "$0") v1 v2" >&2
+  exit 1
+fi
+for v in "$@"; do
+  if [[ ! $v =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    echo "Invalid version: $v" >&2
+    exit 2
+  fi
+done
+IFS=. read -r a1 a2 a3 <<< "$1"
+IFS=. read -r b1 b2 b3 <<< "$2"
+r="="
+if [ "$a1" -ne "$b1" ]; then
+  [ "$a1" -lt "$b1" ] && r="<" || r=">"
+elif [ "$a2" -ne "$b2" ]; then
+  [ "$a2" -lt "$b2" ] && r="<" || r=">"
+elif [ "$a3" -ne "$b3" ]; then
+  [ "$a3" -lt "$b3" ] && r="<" || r=">"
+fi
+echo "$1 $r $2"
+
+@@ex 1417 case_classify | case: what kind of argument is it?
+@@level 3
+@@cmds case, glob patterns [ ] [! ] * ?
+@@readme
+For each argument print `'<arg>': <kind>` (the argument between single quotes), where `<kind>` is
+given by the **first** matching row:
+
+| argument | kind |
+|----------|------|
+| empty (`""`) | `empty` |
+| exactly `--` | `end of options` |
+| starts with `--` | `long option` |
+| `-` followed by exactly one letter (a-z, A-Z) | `short option` |
+| only digits (at least one) | `number` |
+| starts with `.` | `hidden` |
+| contains `/` | `path` |
+| ends in `.sh` | `script` |
+| anything else | `word` |
+
+Use `case` (hint: "only digits" is "does not match `*[!0-9]*`"). Careful with arguments like `*`.
+@@check
+SEEDS=1
+ARGS=('"" -- --help -v -vv -5 123 007 .bashrc .. ./run.sh /etc a/b.sh run.sh hello "two words" "*"' '- --x -Z x.sh.txt 0 "1 2" "-" "?"' '')
+extra_check() { must_use case; }
+@@solution
+#!/bin/bash
+for a in "$@"; do
+  case $a in
+    '') k=empty ;;
+    --) k="end of options" ;;
+    --*) k="long option" ;;
+    -[a-zA-Z]) k="short option" ;;
+    *[!0-9]*)
+      case $a in
+        .*) k=hidden ;;
+        */*) k=path ;;
+        *.sh) k=script ;;
+        *) k=word ;;
+      esac
+      ;;
+    *) k=number ;;
+  esac
+  echo "'$a': $k"
+done
+
+@@ex 1418 newest_oldest | The newest and the oldest
+@@level 3
+@@cmds test -nt -ot -e, for
+@@readme
+Write `ages.sh file...`. Among the arguments that exist (files, directories...), find the **newest**
+(latest modification time) and the **oldest**, comparing with `-nt` / `-ot`, and print:
+
+```
+newest: <name>
+oldest: <name>
+```
+
+On ties, the one that appears **first** among the arguments wins. Every argument that does not
+exist is reported on **stderr** as `ignored: <name>` (in order) and otherwise ignored. If no argument
+exists (or there are none), print `no files` on stderr and exit **1**.
+@@check
+SEEDS=3
+SCRIPT_NAME=ages.sh
+COMPARE="stdout stderr exit"
+setup() {
+  local f
+  mkdir dir1
+  for f in a.txt "b c.txt" d.log e dir1; do
+    [[ -e $f ]] || echo "$(word)" > "$f"
+    touch -d "2025-0$(randr 1 3)-0$(randr 1 3) 10:00" "$f"
+  done
+}
+ARGS=('a.txt "b c.txt" d.log e' 'e d.log "b c.txt" a.txt' 'a.txt nope "b c.txt" dir1' 'nope' '' 'd.log' 'a.txt a.txt' 'dir1 e a.txt')
+extra_check() { ans_code | grep -qE -- '-nt|-ot' || fail "compare the files with -nt / -ot"; }
+@@solution
+#!/bin/bash
+newest= oldest=
+for f in "$@"; do
+  if [ ! -e "$f" ]; then
+    echo "ignored: $f" >&2
+    continue
+  fi
+  if [ -z "$newest" ]; then
+    newest=$f oldest=$f
+    continue
+  fi
+  [ "$f" -nt "$newest" ] && newest=$f
+  [ "$f" -ot "$oldest" ] && oldest=$f
+done
+if [ -z "$newest" ]; then
+  echo "no files" >&2
+  exit 1
+fi
+echo "newest: $newest"
+echo "oldest: $oldest"
+
+@@ex 1419 num_vs_str | Numbers compared as numbers and as strings
+@@level 3
+@@cmds test -lt -gt, [[ < > ]]
+@@readme
+Write `cmp2.sh a b` where `a` and `b` are non-negative integers (digits only). Print two lines:
+
+```
+numeric: a OP b
+string: a OP b
+```
+
+where `OP` is `<`, `=` or `>`: in the first line comparing them as **numbers** (`-lt`, `-gt`), in the
+second one comparing them as **strings** (`[[ $a < $b ]]`, `[[ $a > $b ]]`, `==`). For example
+`cmp2.sh 10 9` prints `numeric: 10 > 9` and `string: 10 < 9`.
+
+(Beware: inside `[ ]` a bare `<` is a redirection!)
+
+If there are not exactly 2 arguments or one is not made of digits only, print
+`Usage: cmp2.sh a b` on stderr (use `$(basename "$0")`) and exit **1**.
+@@check
+SEEDS=1
+SCRIPT_NAME=cmp2.sh
+COMPARE="stdout stderr exit"
+ARGS=('10 9' '9 10' '007 7' '5 5' '100 99' '12 12' '0 00' '3 30' '2 11' '' '1' 'a 1' '1 -2' '1 2 3')
+extra_check() { ans_code | grep -qE -- '-lt|-gt' || fail "compare the numbers with -lt / -gt"; }
+@@solution
+#!/bin/bash
+if [ $# -ne 2 ] || [[ ! $1 =~ ^[0-9]+$ || ! $2 =~ ^[0-9]+$ ]]; then
+  echo "Usage: $(basename "$0") a b" >&2
+  exit 1
+fi
+if [ "$1" -lt "$2" ]; then n="<"
+elif [ "$1" -gt "$2" ]; then n=">"
+else n="="
+fi
+if [[ $1 < $2 ]]; then s="<"
+elif [[ $1 > $2 ]]; then s=">"
+else s="="
+fi
+echo "numeric: $1 $n $2"
+echo "string: $1 $s $2"
+
+@@ex 1420 backup_names | Parsing dated backup names with BASH_REMATCH
+@@level 3
+@@cmds [[ =~ ]], BASH_REMATCH, test -ge -le
+@@readme
+Backups are named `NAME_YYYY-MM-DD.tar.gz` or `NAME_YYYY-MM-DD.tgz`, where NAME is one or more
+letters, digits or `-` (no `_`, no spaces). For each argument print
+
+- `<NAME>: DD/MM/YYYY (<ext>)` if it is valid (`<ext>` is `tar.gz` or `tgz`), e.g.
+  `web_2024-08-09.tgz` → `web: 09/08/2024 (tgz)`
+- `invalid: <argument>` otherwise
+
+Valid also requires month `01`-`12` and day `01`-`31` (do not check days per month). Careful with
+`08` and `09`: they are not valid numbers **inside `$(( ))`** (octal!), but `[ 08 -le 12 ]` works.
+
+At the end print `V valid, I invalid`. Use one `=~` with groups and `BASH_REMATCH`.
+@@check
+SEEDS=1
+ARGS=('web_2024-08-09.tgz db-main_2023-12-31.tar.gz' 'x_2024-13-01.tgz y_2024-00-10.tgz z_2024-02-32.tar.gz w_2024-02-00.tgz v_2024-09-30.tgz' '"bad name_2024-01-01.tgz" a_2024-1-01.tgz a_2024-01-01.tar a_2024-01-01.tar.gz.bak _2024-01-01.tgz app_v2_2024-05-05.tgz A-1_1999-01-08.tar.gz' '')
+extra_check() { must_use BASH_REMATCH; }
+@@solution
+#!/bin/bash
+v=0 i=0
+for a in "$@"; do
+  if [[ $a =~ ^([A-Za-z0-9-]+)_([0-9]{4})-([0-9]{2})-([0-9]{2})\.(tar\.gz|tgz)$ ]] &&
+     [ "${BASH_REMATCH[3]}" -ge 1 ] && [ "${BASH_REMATCH[3]}" -le 12 ] &&
+     [ "${BASH_REMATCH[4]}" -ge 1 ] && [ "${BASH_REMATCH[4]}" -le 31 ]; then
+    echo "${BASH_REMATCH[1]}: ${BASH_REMATCH[4]}/${BASH_REMATCH[3]}/${BASH_REMATCH[2]} (${BASH_REMATCH[5]})"
+    v=$((v + 1))
+  else
+    echo "invalid: $a"
+    i=$((i + 1))
+  fi
+done
+echo "$v valid, $i invalid"
+
+@@ex 1421 can_i | Can I do it? (case + permission tests)
+@@level 3
+@@cmds case, test -f -d -r -w -x -e, dirname, $?
+@@readme
+Write `cani.sh action path`. Print `yes` (exit **0**) or `no` (exit **1**) depending on the action:
+
+| action | yes when |
+|--------|----------|
+| `read` | `path` is a regular file and you can read it |
+| `write` | `path` is a regular file and you can write it |
+| `run` | `path` is a regular file and you can execute it |
+| `enter` | `path` is a directory and you can enter it (`x`) |
+| `list` | `path` is a directory and you can read it (`r`) |
+| `create` | `path` does not exist, and its parent (`dirname`) is a directory you can write **and** enter |
+
+Errors (stderr, exact text, exit **2**): not exactly 2 arguments → `Usage: cani.sh action path`
+(use `$(basename "$0")`); unknown action → `unknown action: <action>`.
+
+Use one `case` on the action. (Tip: the exit status of a `case` is the one of the last command it ran.)
+@@check
+SEEDS=1
+SCRIPT_NAME=cani.sh
+COMPARE="stdout stderr exit"
+setup() {
+  echo r > r.txt; chmod 444 r.txt
+  echo w > w.txt; chmod 200 w.txt
+  echo x > x.sh; chmod 755 x.sh
+  echo n > nox.sh; chmod 644 nox.sh
+  mkdir "open dir" "locked dir" "ro dir" wx
+  echo in > "locked dir/in.txt"; chmod 000 "locked dir"
+  chmod 555 "ro dir"; chmod 300 wx
+}
+ARGS=('read r.txt' 'write r.txt' 'read w.txt' 'write w.txt' 'run x.sh' 'run nox.sh' 'run "open dir"' 'read "open dir"' 'enter "open dir"' 'list "open dir"' 'enter "locked dir"' 'list wx' 'enter wx' 'read "locked dir/in.txt"' 'create "open dir/new file"' 'create "ro dir/new"' 'create "open dir"' 'create nodir/x' 'create newfile' 'create "wx/new"' 'delete r.txt' '' 'read' 'read a b')
+@@solution
+#!/bin/bash
+if [ $# -ne 2 ]; then
+  echo "Usage: $(basename "$0") action path" >&2
+  exit 2
+fi
+p=$2
+case $1 in
+  read)   [ -f "$p" ] && [ -r "$p" ] ;;
+  write)  [ -f "$p" ] && [ -w "$p" ] ;;
+  run)    [ -f "$p" ] && [ -x "$p" ] ;;
+  enter)  [ -d "$p" ] && [ -x "$p" ] ;;
+  list)   [ -d "$p" ] && [ -r "$p" ] ;;
+  create) d=$(dirname "$p"); [ ! -e "$p" ] && [ -d "$d" ] && [ -w "$d" ] && [ -x "$d" ] ;;
+  *)      echo "unknown action: $1" >&2; exit 2 ;;
+esac
+if [ $? -eq 0 ]; then
+  echo yes
+else
+  echo no
+  exit 1
+fi
+
+@@ex 1422 time_of_day | Morning, afternoon, evening or night
+@@level 3
+@@cmds [[ =~ ]], test -le -lt, $((10#...)), if elif
+@@readme
+Write `when.sh time...`. Each argument must be a time `HH:MM` (exactly two digits, a colon and two
+digits, with `HH` ≤ 23 and `MM` ≤ 59). For each valid one print
+
+```
+HH:MM <period> (<N> min)
+```
+
+where N is the number of minutes since midnight and the period is `night` (00:00-05:59), `morning`
+(06:00-11:59), `afternoon` (12:00-19:59) or `evening` (20:00-23:59). For each invalid one print
+`invalid time: <arg>` on **stderr** and go on.
+
+Exit code: **0** if all were valid, **1** if some was invalid. With no arguments print
+`Usage: when.sh HH:MM...` on stderr (use `$(basename "$0")`) and exit **2**.
+
+Careful: `08` and `09` are invalid numbers in `$(( ))` (octal); use `$((10#$h))`.
+@@check
+SEEDS=1
+SCRIPT_NAME=when.sh
+COMPARE="stdout stderr exit"
+ARGS=('08:30 09:59 00:00 23:59 12:00 05:59 06:00 19:59 20:00 11:08' '24:00 7:30 12:60 ab:cd 1200 "" 08:09 " 08:09"' '' '09:09')
+@@solution
+#!/bin/bash
+if [ $# -eq 0 ]; then
+  echo "Usage: $(basename "$0") HH:MM..." >&2
+  exit 2
+fi
+status=0
+for t in "$@"; do
+  if [[ $t =~ ^([0-9]{2}):([0-9]{2})$ ]] && [ "${BASH_REMATCH[1]}" -le 23 ] && [ "${BASH_REMATCH[2]}" -le 59 ]; then
+    h=$((10#${BASH_REMATCH[1]}))
+    m=$((10#${BASH_REMATCH[2]}))
+    if [ $h -lt 6 ]; then p=night
+    elif [ $h -lt 12 ]; then p=morning
+    elif [ $h -lt 20 ]; then p=afternoon
+    else p=evening
+    fi
+    echo "$t $p ($((h * 60 + m)) min)"
+  else
+    echo "invalid time: $t" >&2
+    status=1
+  fi
+done
+exit $status
+
+@@ex 1423 dir_state | Is the directory empty?
+@@level 3
+@@cmds test -e -d -r -x, ls -A, wc -l
+@@readme
+For each argument print exactly one line, the first that applies:
+
+- `<name>: not found` (does not exist)
+- `<name>: not a directory`
+- `<name>: no access` (a directory you cannot both read and enter)
+- `<name>: empty` (no entries at all, hidden ones included)
+- `<name>: N entries` (number of entries, **hidden ones included**, not counting `.` and `..`)
+
+(A symbolic link to a directory is treated as the directory.)
+@@check
+SEEDS=3
+setup() {
+  local i
+  mkdir "full dir" "hidden only" "empty dir" locked nox
+  for ((i = 0; i < $(randr 1 6); i++)); do touch "full dir/$(word)$i"; done
+  [[ $(rand 2) == 1 ]] && touch "full dir/.dot"
+  mkdir "full dir/sub"
+  touch "hidden only/.x$(rand 9)"
+  chmod 000 locked; chmod 600 nox
+  echo f > file.txt
+  ln -s "full dir" link
+  ln -s nothere broken
+}
+ARGS=('"full dir" "hidden only" "empty dir" locked nox file.txt nope link broken' '.')
+@@solution
+#!/bin/bash
+for d in "$@"; do
+  if [ ! -e "$d" ]; then
+    echo "$d: not found"
+  elif [ ! -d "$d" ]; then
+    echo "$d: not a directory"
+  elif [ ! -r "$d" ] || [ ! -x "$d" ]; then
+    echo "$d: no access"
+  else
+    n=$(ls -A "$d" | wc -l)
+    if [ "$n" -eq 0 ]; then
+      echo "$d: empty"
+    else
+      echo "$d: $n entries"
+    fi
+  fi
+done
+
+@@ex 1424 inventory | inventory.sh: classifying directory entries
+@@level 4
+@@cmds test -L -e -d -f -x -s, ls -A, while read, exit codes
+@@readme
+Write `inventory.sh`:
+
+```
+inventory.sh [directory]
+```
+
+For every entry directly inside `directory` (default: the current directory), **hidden ones
+included** (not `.` and `..`), in the order `ls -A` lists them, print `[<tag>] <name>` with the tag
+given by the **first** matching rule:
+
+| rule | tag |
+|------|-----|
+| symbolic link whose target does not exist | `broken link` |
+| any other symbolic link | `link` |
+| directory | `dir` |
+| regular file you can execute | `exec` |
+| empty regular file | `empty` |
+| other regular file | `file` |
+| anything else (pipes, devices...) | `other` |
+
+Finally print `Total: N (dirs D, files F, links L, other O)` where `files` counts the `exec`,
+`empty` and `file` entries and `links` both kinds of links.
+
+Errors (message on **stderr**, wording free), checked in this order:
+
+| error | exit |
+|-------|------|
+| more than one argument (show the usage) | 1 |
+| `directory` does not exist (name it) | 2 |
+| it is not a directory (name it) | 3 |
+| you cannot read it or enter it (name it) | 4 |
+@@check
+SCRIPT_NAME=inventory.sh
+SEEDS=3
+COMPARE="stdout exit errmsg"
+setup() {
+  local d="my stuff" i f
+  mkdir "$d"
+  for ((i = 1; i <= $(randr 2 5); i++)); do
+    f="$d/$(pick "$(word)$i" "my $(word)$i").$(pick txt sh log)"
+    randtext 2 > "$f"; chmod "$(pick 644 755 600 700 311 000)" "$f"
+  done
+  : > "$d/empty$(rand 9)"
+  [[ $(rand 2) == 1 ]] && { : > "$d/run empty"; chmod 755 "$d/run empty"; }
+  mkdir "$d/sub dir" "$d/.cache"
+  echo x > "$d/.hidden"
+  ln -s "sub dir" "$d/to sub"
+  ln -s "nothere$(rand 9)" "$d/broken$(rand 9)"
+  [[ $(rand 2) == 1 ]] && ln -s ".hidden" "$d/link to hidden"
+  mkfifo "$d/pipe"
+  echo t > file.txt
+  mkdir locked; chmod 000 locked
+}
+ARGS=('"my stuff"' '' '"$W/my stuff"' 'nodir' 'file.txt' 'locked' '"my stuff" file.txt')
+extra_check() {
+  local tok
+  if [[ $REF_CODE == [234] ]]; then
+    tok=$(sed -n "s/^[^']*'\(.*\)'.*$/\1/p" <<< "$REF_ERR" | head -n 1)
+    [[ -n $tok ]] && mentions "$tok"
+  fi
+  true
+}
+@@solution
+#!/bin/bash
+# inventory.sh [directory] - classify the entries of a directory
+
+if [ $# -gt 1 ]; then
+  echo "Error: too many arguments" >&2
+  echo "Usage: $(basename "$0") [directory]" >&2
+  exit 1
+fi
+dir=${1:-.}
+if [ ! -e "$dir" ]; then
+  echo "Error: '$dir' does not exist" >&2
+  exit 2
+fi
+if [ ! -d "$dir" ]; then
+  echo "Error: '$dir' is not a directory" >&2
+  exit 3
+fi
+if [ ! -r "$dir" ] || [ ! -x "$dir" ]; then
+  echo "Error: cannot read '$dir'" >&2
+  exit 4
+fi
+
+d=0 f=0 l=0 o=0
+while IFS= read -r name; do
+  p=$dir/$name
+  if [ -L "$p" ] && [ ! -e "$p" ]; then tag="broken link"; l=$((l + 1))
+  elif [ -L "$p" ]; then tag=link; l=$((l + 1))
+  elif [ -d "$p" ]; then tag=dir; d=$((d + 1))
+  elif [ -f "$p" ]; then
+    f=$((f + 1))
+    if [ -x "$p" ]; then tag=exec
+    elif [ ! -s "$p" ]; then tag=empty
+    else tag=file
+    fi
+  else tag=other; o=$((o + 1))
+  fi
+  echo "[$tag] $name"
+done < <(ls -A "$dir")
+echo "Total: $((d + f + l + o)) (dirs $d, files $f, links $l, other $o)"
+
+@@ex 1425 safe_copy | safe_copy.sh: copying without losing newer work
+@@level 4
+@@cmds test -e -f -r -d -ef -nt, cmp -s, dirname, basename, exit codes
+@@readme
+Write `safe_copy.sh`, a careful `cp`:
+
+```
+safe_copy.sh [-f] src dst
+```
+
+If `dst` is a directory the target is `<dst>/<name of src>` (built literally, e.g. `out/a.txt`);
+otherwise the target is `dst` itself. Then, checking in this order:
+
+1. the target does not exist: copy, print `Copied <src> -> <target>`
+2. the target has the same content as `src` (`cmp -s`): do nothing, print `Unchanged <target>`
+3. the target is **newer** than `src` (`-nt`) and `-f` was not given: do nothing, print
+   `Kept <target> (newer than <src>)`
+4. otherwise overwrite it, print `Updated <target>`
+
+All four end with exit code 0. `-f` is only recognised as the first argument.
+
+Errors (message on **stderr**, wording free, nothing copied), checked in this order:
+
+| error | exit |
+|-------|------|
+| not `[-f] src dst` (show the usage) | 1 |
+| `src` does not exist (name it) | 2 |
+| `src` is not a regular file (name it) | 3 |
+| `src` is not readable (name it) | 4 |
+| `dst` is not a directory and its parent directory does not exist (name `dst`) | 5 |
+| the target is the same file as `src` (`-ef`) | 6 |
+@@check
+SCRIPT_NAME=safe_copy.sh
+SEEDS=4
+COMPARE="stdout exit errmsg files"
+setup() {
+  local n
+  mkdir out
+  for n in a.txt "b c.txt" d.txt; do
+    words 3 > "$n"; touch -d "2025-03-10 10:00" "$n"
+    case $(rand 4) in
+      1) cp "$n" "out/$n"; touch -d "2025-0$(pick 1 6)-01 10:00" "out/$n" ;;
+      2) words 2 > "out/$n"; touch -d "2025-01-01 10:00" "out/$n" ;;
+      3) words 2 > "out/$n"; touch -d "2025-06-01 10:00" "out/$n" ;;
+    esac
+  done
+  echo s > locked.txt; chmod 000 locked.txt
+}
+ARGS=('a.txt out' '"b c.txt" out' 'd.txt out' '-f d.txt out' '-f "b c.txt" out' 'a.txt "out/a.txt"' 'a.txt new.txt' 'a.txt nodir/x.txt' 'nope out' 'out a.txt' 'locked.txt out' 'a.txt a.txt' 'a.txt .' '' 'a' '-f a' '-f a b c' '"$W/b c.txt" "$W/out"')
+extra_check() {
+  local tok
+  if [[ $REF_CODE == [2345] ]]; then
+    tok=$(sed -n "s/^[^']*'\(.*\)'.*$/\1/p" <<< "$REF_ERR" | head -n 1)
+    [[ -n $tok ]] && mentions "$tok"
+  fi
+  true
+}
+@@solution
+#!/bin/bash
+# safe_copy.sh [-f] src dst - copy src to dst without overwriting newer files
+
+force=0
+if [ "$1" = "-f" ]; then
+  force=1
+  shift
+fi
+if [ $# -ne 2 ]; then
+  echo "Usage: $(basename "$0") [-f] src dst" >&2
+  exit 1
+fi
+src=$1 dst=$2
+
+if [ ! -e "$src" ]; then
+  echo "Error: '$src' does not exist" >&2; exit 2
+fi
+if [ ! -f "$src" ]; then
+  echo "Error: '$src' is not a regular file" >&2; exit 3
+fi
+if [ ! -r "$src" ]; then
+  echo "Error: cannot read '$src'" >&2; exit 4
+fi
+if [ -d "$dst" ]; then
+  target=$dst/$(basename "$src")
+else
+  target=$dst
+  if [ ! -d "$(dirname "$dst")" ]; then
+    echo "Error: the directory of '$dst' does not exist" >&2; exit 5
+  fi
+fi
+if [ "$src" -ef "$target" ]; then
+  echo "Error: $src and $target are the same file" >&2; exit 6
+fi
+
+if [ ! -e "$target" ]; then
+  cp "$src" "$target"
+  echo "Copied $src -> $target"
+elif cmp -s "$src" "$target"; then
+  echo "Unchanged $target"
+elif [ "$target" -nt "$src" ] && [ $force -eq 0 ]; then
+  echo "Kept $target (newer than $src)"
+else
+  cp "$src" "$target"
+  echo "Updated $target"
+fi
+
+@@ex 1426 check_users | check_users.sh: validating user records
+@@level 4
+@@cmds [[ =~ ]], case, IFS=: read, test -ge -le, exit codes
+@@readme
+Write `check_users.sh file`. Every line of `file` should be a user record
+
+```
+name:uid:shell:home
+```
+
+Blank lines and lines starting with `#` are ignored. For every other line (numbered counting
+**all** lines of the file) print either `line N: OK (<name>)` or `line N: <reason>`, where the
+reason is the **first** failing rule of:
+
+| rule | reason |
+|------|--------|
+| exactly 4 fields (3 colons) | `wrong number of fields` |
+| `name`: a lowercase letter or `_`, followed by up to 15 lowercase letters, digits, `_` or `-` | `bad name` |
+| `uid`: an integer from 1000 to 60000 (digits, not starting with 0) | `bad uid` |
+| `shell`: one of `/bin/bash`, `/bin/sh`, `/usr/bin/zsh`, `/usr/sbin/nologin` | `bad shell` |
+| `home`: exactly `/home/<name>` | `bad home` |
+
+Finally print `Valid: V, invalid: I`.
+
+Exit codes:
+
+| situation | exit |
+|-----------|------|
+| every record valid | 0 |
+| some record invalid | 1 |
+| not exactly one argument (usage on stderr) | 2 |
+| `file` is not a readable regular file (stderr, name it) | 3 |
+| the file has no records at all (only blank/comment lines; stderr message, nothing on stdout) | 4 |
+@@check
+SCRIPT_NAME=check_users.sh
+SEEDS=3
+COMPARE="stdout exit errmsg"
+setup() {
+  local i n u s h
+  {
+    echo "# user list"
+    for ((i = 0; i < $(randr 6 10); i++)); do
+      n=$(word)$(rand 99) u=$(randr 1000 60000) s=$(pick /bin/bash /bin/sh /usr/bin/zsh /usr/sbin/nologin) h=/home/$n
+      case $(rand 8) in
+        1) echo "$n:$u:$s:$h:extra" ; continue ;;
+        2) n=$(pick Pepe 9abc "a b" averyveryverylongname1 "" "x.y") ;;
+        3) u=$(pick 999 60001 abc 0100 "" 1e3) ;;
+        4) s=$(pick /bin/csh bash /bin/bash2 "") ;;
+        5) h=$(pick "/home/other" "/home/$n/" "/root") ;;
+        6) echo; continue ;;
+        7) echo "#$n:$u:$s:$h"; continue ;;
+      esac
+      echo "$n:$u:$s:$h"
+    done
+    echo "_svc-1:60000:/usr/sbin/nologin:/home/_svc-1"
+  } > "users list.txt"
+  printf '%s\n' "# nothing" "" "#x:1000:/bin/sh:/home/x" > comments.txt
+  printf '%s\n' "ana:1000:/bin/bash:/home/ana" "luis:2000:/bin/sh:/home/luis" > good.txt
+  echo "a:1:b:c" > locked.txt; chmod 000 locked.txt
+  mkdir sub
+}
+ARGS=('"users list.txt"' 'good.txt' 'comments.txt' '' '"users list.txt" good.txt' 'nofile' 'locked.txt' 'sub' '"$W/users list.txt"')
+extra_check() {
+  local tok
+  if [[ $REF_CODE == 3 ]]; then
+    tok=$(sed -n "s/^[^']*'\(.*\)'.*$/\1/p" <<< "$REF_ERR" | head -n 1)
+    [[ -n $tok ]] && mentions "$tok"
+  fi
+  true
+}
+@@solution
+#!/bin/bash
+# check_users.sh file - validate name:uid:shell:home records
+
+if [ $# -ne 1 ]; then
+  echo "Usage: $(basename "$0") file" >&2
+  exit 2
+fi
+file=$1
+if [ ! -f "$file" ] || [ ! -r "$file" ]; then
+  echo "Error: '$file' is not a readable regular file" >&2
+  exit 3
+fi
+if ! grep -qv -e '^$' -e '^#' "$file"; then
+  echo "Error: '$file' has no records" >&2
+  exit 4
+fi
+
+num=0 v=0 i=0
+while IFS= read -r line; do
+  num=$((num + 1))
+  [ -z "$line" ] && continue
+  [[ $line == \#* ]] && continue
+  colons=${line//[^:]/}
+  IFS=: read -r name uid shell home <<< "$line"
+  reason=
+  if [ ${#colons} -ne 3 ]; then
+    reason="wrong number of fields"
+  elif [[ ! $name =~ ^[a-z_][a-z0-9_-]{0,15}$ ]]; then
+    reason="bad name"
+  elif [[ ! $uid =~ ^[1-9][0-9]*$ ]] || [ "$uid" -lt 1000 ] || [ "$uid" -gt 60000 ]; then
+    reason="bad uid"
+  elif [ "$home" != "/home/$name" ]; then
+    reason="bad home"
+  fi
+  # the shell rule goes before the home rule
+  if [[ -z $reason || $reason == "bad home" ]]; then
+    case $shell in
+      /bin/bash | /bin/sh | /usr/bin/zsh | /usr/sbin/nologin) ;;
+      *) reason="bad shell" ;;
+    esac
+  fi
+  if [ -z "$reason" ]; then
+    echo "line $num: OK ($name)"
+    v=$((v + 1))
+  else
+    echo "line $num: $reason"
+    i=$((i + 1))
+  fi
+done < "$file"
+echo "Valid: $v, invalid: $i"
+[ $i -eq 0 ] || exit 1
+
+@@ex 1427 ip_classify | ip_classify.sh: what kind of IPv4 address?
+@@level 4
+@@cmds [[ =~ ]], case, test -ge -le, option -f, exit codes
+@@readme
+Write `ip_classify.sh`:
+
+```
+ip_classify.sh ip...
+ip_classify.sh -f file
+```
+
+The addresses come from the arguments or, with `-f` (only as the first argument), from the lines of
+`file` (every line, as is, is one address; empty lines are skipped). For each address print
+`<address>: <class>`, with the class given by the **first** matching rule:
+
+| rule | class |
+|------|-------|
+| not a valid IPv4: 4 numbers 0-255 separated by dots, each `0` or digits not starting with `0` | `invalid` |
+| first number 127 | `loopback` |
+| `10.x.x.x`, `172.16.x.x`-`172.31.x.x`, `192.168.x.x` | `private` |
+| `169.254.x.x` | `link-local` |
+| first number 224-239 | `multicast` |
+| first number 0 or 240-255 | `reserved` |
+| anything else | `public` |
+
+Finally print `N addresses: V valid, I invalid`.
+
+Exit codes:
+
+| situation | exit |
+|-----------|------|
+| no invalid address | 0 |
+| some invalid address | 1 |
+| no arguments, or `-f` not followed by exactly one file (usage on stderr) | 2 |
+| the file is not a readable regular file (stderr, name it) | 3 |
+@@check
+SCRIPT_NAME=ip_classify.sh
+SEEDS=3
+COMPARE="stdout exit errmsg"
+setup() {
+  local i gen
+  gen() {
+    pick "10.$(rand 256).$(rand 256).$(rand 256)" "172.$(randr 14 33).$(rand 256).$(randr 1 254)" \
+         "192.$(pick 168 169).$(rand 256).$(randr 1 254)" "127.0.0.$(randr 1 254)" "169.$(pick 254 253).$(rand 256).1" \
+         "$(randr 223 240).$(rand 256).0.$(randr 1 9)" "$(randr 240 255).1.2.3" "0.$(rand 256).0.1" "$(ip_rand)" "$(ip_rand)" \
+         "$(randr 256 300).1.1.1" "1.2.$(rand 9)" "01.2.3.4" "a.b.c.d" "1.2.3.4.5" "8.8.8.$(randr 256 999)" "1.2.3.-4"
+  }
+  for ((i = 0; i < $(randr 8 14); i++)); do gen; done > "ips list.txt"
+  printf '%s\n' "" "10.0.0.1 " "255.255.255.255" >> "ips list.txt"
+  for ((i = 0; i < 6; i++)); do gen; done | tr '\n' ' ' > args
+  printf '%s\n' 8.8.8.8 192.168.1.1 > ok.txt
+  echo 1.1.1.1 > locked.txt; chmod 000 locked.txt
+}
+ARGS=('-f "ips list.txt"' '$(cat args)' '10.0.0.1 172.31.255.255 172.32.0.1 172.15.0.1 192.168.0.0 169.254.1.1 224.0.0.1 239.255.255.255 240.0.0.1 0.0.0.0 127.0.0.1 8.8.8.8' '-f ok.txt' '-f nofile' '-f locked.txt' '-f' '' '-f ok.txt extra' '"1.2.3.4 " 1.2.3.04 256.0.0.1 1.2.3' '-f "$W/ok.txt"')
+extra_check() {
+  local tok
+  if [[ $REF_CODE == 3 ]]; then
+    tok=$(sed -n "s/^[^']*'\(.*\)'.*$/\1/p" <<< "$REF_ERR" | head -n 1)
+    [[ -n $tok ]] && mentions "$tok"
+  fi
+  true
+}
+@@solution
+#!/bin/bash
+# ip_classify.sh ip... | -f file - classify IPv4 addresses
+
+usage() {
+  echo "Usage: $(basename "$0") ip... | $(basename "$0") -f file" >&2
+  exit 2
+}
+
+classify() { # ip -> class
+  local o='(0|[1-9][0-9]{0,2})' a b
+  if [[ ! $1 =~ ^$o\.$o\.$o\.$o$ ]]; then echo invalid; return; fi
+  a=${BASH_REMATCH[1]} b=${BASH_REMATCH[2]}
+  local i
+  for i in 1 2 3 4; do
+    [ "${BASH_REMATCH[i]}" -le 255 ] || { echo invalid; return; }
+  done
+  if [ "$a" -eq 127 ]; then echo loopback
+  elif [ "$a" -eq 10 ] || { [ "$a" -eq 172 ] && [ "$b" -ge 16 ] && [ "$b" -le 31 ]; } ||
+       { [ "$a" -eq 192 ] && [ "$b" -eq 168 ]; }; then echo private
+  elif [ "$a" -eq 169 ] && [ "$b" -eq 254 ]; then echo link-local
+  elif [ "$a" -ge 224 ] && [ "$a" -le 239 ]; then echo multicast
+  elif [ "$a" -eq 0 ] || [ "$a" -ge 240 ]; then echo reserved
+  else echo public
+  fi
+}
+
+[ $# -ge 1 ] || usage
+ips=()
+if [ "$1" = "-f" ]; then
+  [ $# -eq 2 ] || usage
+  if [ ! -f "$2" ] || [ ! -r "$2" ]; then
+    echo "Error: '$2' is not a readable regular file" >&2
+    exit 3
+  fi
+  while IFS= read -r line; do
+    [ -n "$line" ] && ips+=("$line")
+  done < "$2"
+else
+  ips=("$@")
+fi
+
+v=0 inv=0
+for ip in "${ips[@]}"; do
+  c=$(classify "$ip")
+  echo "$ip: $c"
+  if [ "$c" = invalid ]; then inv=$((inv + 1)); else v=$((v + 1)); fi
+done
+echo "${#ips[@]} addresses: $v valid, $inv invalid"
+[ $inv -eq 0 ] || exit 1
+
+@@ex 1428 newer_than | newer_than.sh: files changed since a reference
+@@level 4
+@@cmds find -type f, sort, test -nt -ot -ef, exit codes
+@@readme
+Write `newer_than.sh`:
+
+```
+newer_than.sh ref directory
+```
+
+Compare the modification time of every **regular file** under `directory` (recursively; as found by
+`find directory -type f`, sorted with `sort`) with the one of `ref`, and print three sections:
+
+```
+Newer than <ref>:
+  <path>
+Older than <ref>:
+  <path>
+Same age as <ref>:
+  <path>
+Summary: N newer, O older, S same
+```
+
+(paths indented by two spaces; a section with no files is just its header line). `ref` itself is
+skipped if it is one of the files (`-ef`). Use `-nt` / `-ot`.
+
+Errors (message on **stderr**, wording free), checked in this order:
+
+| error | exit |
+|-------|------|
+| not exactly 2 arguments (show the usage) | 1 |
+| `ref` does not exist (name it) | 2 |
+| `directory` is not a directory (name it) | 3 |
+@@check
+SCRIPT_NAME=newer_than.sh
+SEEDS=3
+COMPARE="stdout exit errmsg"
+setup() {
+  local i f d dates=("2025-01-10 10:00" "2025-02-10 10:00" "2025-03-10 10:00")
+  mkdir -p "project/src" "project/doc s/old" "project/empty"
+  for d in project "project/src" "project/doc s" "project/doc s/old"; do
+    for ((i = 1; i <= $(randr 1 3); i++)); do
+      f="$d/$(pick "$(word)$i" "my $(word)$i").$(pick txt c md)"
+      echo "$i" > "$f"; touch -d "$(pick "${dates[@]}")" "$f"
+    done
+  done
+  echo r > "project/doc s/ref.txt"; touch -d "${dates[1]}" "project/doc s/ref.txt"
+  echo s > stamp; touch -d "$(pick "${dates[@]}")" stamp
+  ln -s "doc s/ref.txt" "project/link.txt"
+  mkdir "project/dir.txt"; touch -d "2025-02-10 10:00" "project/dir.txt"
+}
+ARGS=('stamp project' '"project/doc s/ref.txt" project' '"project/doc s/ref.txt" "$W/project"' 'stamp "project/doc s"' 'stamp project/empty' 'nostamp project' 'stamp stamp' 'stamp nodir' '' 'stamp' 'a b c')
+extra_check() {
+  local tok
+  if [[ $REF_CODE == [23] ]]; then
+    tok=$(sed -n "s/^[^']*'\(.*\)'.*$/\1/p" <<< "$REF_ERR" | head -n 1)
+    [[ -n $tok ]] && mentions "$tok"
+  fi
+  true
+}
+@@solution
+#!/bin/bash
+# newer_than.sh ref directory - classify files by age relative to ref
+
+if [ $# -ne 2 ]; then
+  echo "Usage: $(basename "$0") ref directory" >&2
+  exit 1
+fi
+ref=$1 dir=$2
+if [ ! -e "$ref" ]; then
+  echo "Error: '$ref' does not exist" >&2
+  exit 2
+fi
+if [ ! -d "$dir" ]; then
+  echo "Error: '$dir' is not a directory" >&2
+  exit 3
+fi
+
+newer=() older=() same=()
+while IFS= read -r f; do
+  [ "$f" -ef "$ref" ] && continue
+  if [ "$f" -nt "$ref" ]; then newer+=("$f")
+  elif [ "$f" -ot "$ref" ]; then older+=("$f")
+  else same+=("$f")
+  fi
+done < <(find "$dir" -type f | sort)
+
+echo "Newer than $ref:"
+for f in "${newer[@]}"; do echo "  $f"; done
+echo "Older than $ref:"
+for f in "${older[@]}"; do echo "  $f"; done
+echo "Same age as $ref:"
+for f in "${same[@]}"; do echo "  $f"; done
+echo "Summary: ${#newer[@]} newer, ${#older[@]} older, ${#same[@]} same"
+
+@@ex 1429 config_check | config_check.sh: validating a configuration file
+@@level 4
+@@cmds [[ =~ ]], BASH_REMATCH, case, test -d, exit codes
+@@readme
+Write `config_check.sh file`, which validates a `key=value` configuration file. Process the lines in
+order (numbered counting **all** lines); blank lines and lines starting with `#` are ignored. For
+each other line, report the **first** problem of this list (if any), all on stdout:
+
+1. the line is not `key=value` with `key` made only of lowercase letters and `_` (at least one) and
+   `value` anything (possibly empty): `line N: syntax error`
+2. the key already appeared on an earlier line without a syntax error: `line N: duplicate key 'key'`
+3. the key is not one of the known keys below: `line N: unknown key 'key'`
+4. the value is not valid for that key: `line N: bad value for key: 'value'`
+
+| key | valid values |
+|-----|--------------|
+| `port` | integer 1-65535 (digits, not starting with 0) |
+| `mode` | `on` or `off` |
+| `name` | non-empty, without spaces |
+| `logdir` | an existing directory (relative to the current directory) |
+| `level` | `debug`, `info`, `warn` or `error` |
+
+After the last line, for each of the **required** keys `name` and `port` (in that order) that never
+appeared (without syntax error) print `missing key: <key>`. Finally print `OK` if there were no
+problems, or `P problems` (P = number of problem lines printed).
+
+Exit codes: **0** no problems, **1** some problem, **2** not exactly one argument (usage on stderr),
+**3** `file` is not a readable regular file (stderr, name it).
+@@check
+SCRIPT_NAME=config_check.sh
+SEEDS=4
+COMPARE="stdout exit errmsg"
+setup() {
+  local i
+  mkdir logs "var log"; echo x > "log file"
+  {
+    echo "# $(word) settings"
+    for ((i = 0; i < $(randr 6 11); i++)); do
+      pick "port=$(randr 1 65535)" "port=$(pick 0 65536 08 80a '' ' 80')" "mode=$(pick on off On yes '')" \
+           "name=$(word)" "name=$(pick "" "$(word) $(word)")" "logdir=$(pick logs "var log" "log file" nodir)" \
+           "level=$(pick debug info warn error INFO trace)" "$(pick Port=80 "port = 80" =x "user=$(word)" "log-dir=logs" "just text")" \
+           "" "# $(word)" "timeout=$(randr 1 60)"
+    done
+  } > "app.conf"
+  printf '%s\n' "# good" "name=server1" "" "port=8080" "mode=on" "logdir=logs" "level=info" > good.conf
+  printf '%s\n' "mode=off" "level=warn" "mode=on" "name=a=b" > partial.conf
+  echo x > locked.conf; chmod 000 locked.conf
+}
+ARGS=('app.conf' 'good.conf' 'partial.conf' '"$W/app.conf"' '' 'a b' 'nofile' 'locked.conf' 'logs')
+extra_check() {
+  local tok
+  if [[ $REF_CODE == 3 ]]; then
+    tok=$(sed -n "s/^[^']*'\(.*\)'.*$/\1/p" <<< "$REF_ERR" | head -n 1)
+    [[ -n $tok ]] && mentions "$tok"
+  fi
+  true
+}
+@@solution
+#!/bin/bash
+# config_check.sh file - validate a key=value configuration file
+
+if [ $# -ne 1 ]; then
+  echo "Usage: $(basename "$0") file" >&2
+  exit 2
+fi
+file=$1
+if [ ! -f "$file" ] || [ ! -r "$file" ]; then
+  echo "Error: '$file' is not a readable regular file" >&2
+  exit 3
+fi
+
+p=0
+seen=" "      # keys already seen, separated by spaces
+num=0
+problem() { echo "$1"; p=$((p + 1)); }
+
+while IFS= read -r line; do
+  num=$((num + 1))
+  [ -z "$line" ] && continue
+  [[ $line == \#* ]] && continue
+  if [[ ! $line =~ ^([a-z_]+)=(.*)$ ]]; then
+    problem "line $num: syntax error"
+    continue
+  fi
+  k=${BASH_REMATCH[1]} v=${BASH_REMATCH[2]}
+  if [[ $seen == *" $k "* ]]; then
+    problem "line $num: duplicate key '$k'"
+    continue
+  fi
+  seen+="$k "
+  ok=1
+  case $k in
+    port)   [[ $v =~ ^[1-9][0-9]*$ ]] && [ "$v" -le 65535 ] || ok=0 ;;
+    mode)   [ "$v" = on ] || [ "$v" = off ] || ok=0 ;;
+    name)   [[ -n $v && $v != *" "* ]] || ok=0 ;;
+    logdir) [ -d "$v" ] || ok=0 ;;
+    level)
+      case $v in
+        debug | info | warn | error) ;;
+        *) ok=0 ;;
+      esac
+      ;;
+    *) problem "line $num: unknown key '$k'"; continue ;;
+  esac
+  [ $ok -eq 1 ] || problem "line $num: bad value for $k: '$v'"
+done < "$file"
+
+for k in name port; do
+  [[ $seen == *" $k "* ]] || problem "missing key: $k"
+done
+if [ $p -eq 0 ]; then
+  echo OK
+else
+  echo "$p problems"
+  exit 1
+fi
+
+@@ex 1430 date_check | datecheck.sh: validating calendar dates
+@@level 4
+@@cmds [[ =~ ]], case, $((10#...)), leap years, exit codes
+@@readme
+Write `datecheck.sh`:
+
+```
+datecheck.sh date...
+datecheck.sh -          (read the dates from stdin, one per line)
+```
+
+With `-` as the **only** argument the dates are the non-empty lines of standard input; otherwise
+they are the arguments. For each date print `<date>: ok` or `<date>: invalid <what>`, where
+`<what>` is the **first** failing check:
+
+1. `format`: must be exactly `YYYY-MM-DD` (4, 2 and 2 digits)
+2. `year`: 1900 to 2099
+3. `month`: 01 to 12
+4. `day`: 01 to the number of days of that month (February has 29 days in leap years: divisible by
+   4 and not by 100, or divisible by 400)
+
+Finally print `V valid, I invalid`.
+
+Exit codes: **0** all dates valid (also when there are none), **1** some invalid, **2** no arguments
+(usage on stderr). Careful with `08`/`09` in `$(( ))`.
+@@check
+SCRIPT_NAME=datecheck.sh
+SEEDS=3
+COMPARE="stdout exit errmsg"
+input() {
+  local i
+  for ((i = 0; i < $(randr 8 14); i++)); do
+    pick "$(randr 1890 2110)-$(printf %02d "$(randr 0 13)")-$(printf %02d "$(randr 0 32)")" \
+         "$(randr 1995 2030)-$(printf %02d "$(randr 1 12)")-$(printf %02d "$(randr 28 31)")" \
+         "$(pick 1900 2000 2004 2023 2024 2096 2100)-02-$(pick 28 29 30)" \
+         "2024-2-01" "24-01-01" "2024/01/01" "2024-01-01x" "" "2024-08-09" "2023-09-31"
+  done
+}
+ARGS=('-' '2024-02-29 2023-02-29 2000-02-29 1900-02-29 2096-02-29' '2024-04-31 2024-06-30 2024-08-09 2024-09-31 2024-12-31 2024-13-01 2024-00-10 2024-11-00' '1899-12-31 1900-01-01 2100-01-01 2099-12-31' '"2024-01-01 " x - 2024-1-1 ""' '' '- -' '2025-08-31')
+@@solution
+#!/bin/bash
+# datecheck.sh date... | datecheck.sh -   - validate YYYY-MM-DD dates
+
+if [ $# -eq 0 ]; then
+  echo "Usage: $(basename "$0") date... | $(basename "$0") -" >&2
+  exit 2
+fi
+
+dates=()
+if [ $# -eq 1 ] && [ "$1" = "-" ]; then
+  while IFS= read -r line; do
+    [ -n "$line" ] && dates+=("$line")
+  done
+else
+  dates=("$@")
+fi
+
+check() { # date -> "ok" or "invalid <what>"
+  if [[ ! $1 =~ ^([0-9]{4})-([0-9]{2})-([0-9]{2})$ ]]; then echo "invalid format"; return; fi
+  local y=$((10#${BASH_REMATCH[1]})) m=$((10#${BASH_REMATCH[2]})) d=$((10#${BASH_REMATCH[3]})) max
+  if [ $y -lt 1900 ] || [ $y -gt 2099 ]; then echo "invalid year"; return; fi
+  if [ $m -lt 1 ] || [ $m -gt 12 ]; then echo "invalid month"; return; fi
+  case $m in
+    4 | 6 | 9 | 11) max=30 ;;
+    2) if (( (y % 4 == 0 && y % 100 != 0) || y % 400 == 0 )); then max=29; else max=28; fi ;;
+    *) max=31 ;;
+  esac
+  if [ $d -lt 1 ] || [ $d -gt $max ]; then echo "invalid day"; return; fi
+  echo ok
+}
+
+v=0 i=0
+for dt in "${dates[@]}"; do
+  r=$(check "$dt")
+  echo "$dt: $r"
+  if [ "$r" = ok ]; then v=$((v + 1)); else i=$((i + 1)); fi
+done
+echo "$v valid, $i invalid"
+[ $i -eq 0 ] || exit 1
+
+@@ex 1431 pwcheck | pwcheck.sh: password strength
+@@level 4
+@@cmds [[ =~ ]], [[:lower:]] [[:upper:]] [[:digit:]], ${#var}, ${1:-8}, exit codes
+@@readme
+Write `pwcheck.sh [minlen]`. It reads candidate passwords from **standard input**, one per line
+(empty lines are skipped; a line is used exactly as it is), and prints one line per password:
+
+- `<pw>: rejected (spaces)` if it contains a space
+- `<pw>: rejected (too short)` if it has fewer than `minlen` characters (default **8**)
+- otherwise `<pw>: <label> (<score>/4)`, where score is how many of these classes it contains:
+  lowercase letter, uppercase letter, digit, symbol (any other character); label is `strong` for
+  4, `medium` for 3 and `weak` for 0-2
+
+(Use the classes `[[:lower:]]`, `[[:upper:]]`, `[[:digit:]]`, `[^[:alnum:]]`.) Finally print
+`strong S, medium M, weak W, rejected R`.
+
+Exit codes:
+
+| situation | exit |
+|-----------|------|
+| every password strong or medium (also when there are none) | 0 |
+| some password weak or rejected | 1 |
+| more than one argument (usage on stderr) | 2 |
+| `minlen` is not an integer from 4 to 64 (digits, not starting with 0) (stderr, name it) | 3 |
+@@check
+SCRIPT_NAME=pwcheck.sh
+SEEDS=4
+COMPARE="stdout exit errmsg"
+input() {
+  local i w
+  for ((i = 0; i < $(randr 6 10); i++)); do
+    w=$(word)
+    pick "$w" "${w^}$(randr 1 99)" "${w^}$(randr 1 99)$(pick '!' '#' '*' '.' '_' '\' '?')" "$w$(randr 100 999)" \
+         "$(pick '*' '-' '@')$w$(rand 9)" "${w^^}" "$w ${w^}1!" "" "${w:0:3}A1!" "$(randr 10000000 99999999)" "${w^}$(word)"
+  done
+}
+ARGS=('' '12' '4' '6' '3' '65' 'x' '08' '8 9')
+extra_check() {
+  local tok
+  if [[ $REF_CODE == 3 ]]; then
+    tok=$(sed -n "s/^[^']*'\(.*\)'.*$/\1/p" <<< "$REF_ERR" | head -n 1)
+    [[ -n $tok ]] && mentions "$tok"
+  fi
+  true
+}
+@@solution
+#!/bin/bash
+# pwcheck.sh [minlen] - rate the passwords read from stdin
+
+if [ $# -gt 1 ]; then
+  echo "Usage: $(basename "$0") [minlen]" >&2
+  exit 2
+fi
+min=${1:-8}
+if [[ ! $min =~ ^[1-9][0-9]*$ ]] || [ "$min" -lt 4 ] || [ "$min" -gt 64 ]; then
+  echo "Error: invalid minimum length '$min' (4-64)" >&2
+  exit 3
+fi
+
+s=0 m=0 w=0 r=0
+while IFS= read -r pw; do
+  [ -z "$pw" ] && continue
+  if [[ $pw == *" "* ]]; then
+    echo "$pw: rejected (spaces)"; r=$((r + 1)); continue
+  fi
+  if [ ${#pw} -lt "$min" ]; then
+    echo "$pw: rejected (too short)"; r=$((r + 1)); continue
+  fi
+  score=0
+  [[ $pw =~ [[:lower:]] ]] && score=$((score + 1))
+  [[ $pw =~ [[:upper:]] ]] && score=$((score + 1))
+  [[ $pw =~ [[:digit:]] ]] && score=$((score + 1))
+  [[ $pw =~ [^[:alnum:]] ]] && score=$((score + 1))
+  case $score in
+    4) label=strong; s=$((s + 1)) ;;
+    3) label=medium; m=$((m + 1)) ;;
+    *) label=weak; w=$((w + 1)) ;;
+  esac
+  echo "$pw: $label ($score/4)"
+done
+echo "strong $s, medium $m, weak $w, rejected $r"
+[ $((w + r)) -eq 0 ] || exit 1
+
+@@ex 1432 size_classes | size_classes.sh: small, ok and big files
+@@level 4
+@@cmds test -f -r -s -gt -lt, stat -c %s, [[ =~ ]], exit codes
+@@readme
+Write `size_classes.sh`:
+
+```
+size_classes.sh directory min max
+```
+
+For every **regular file** directly inside `directory` (not hidden, in the order of the `*` glob;
+anything that is not a regular file is ignored) print `<name>: <class> (<size> bytes)` with the class
+given by the **first** matching rule:
+
+| rule | class |
+|------|-------|
+| you cannot read it | `unreadable` |
+| it is empty | `empty` |
+| size < `min` | `small` |
+| size > `max` | `big` |
+| otherwise | `ok` |
+
+(size in bytes, e.g. `stat -c %s`; `<name>` without the directory). Finally print
+`Files: N (unreadable U, empty E, small S, ok O, big B)`.
+
+Errors (message on **stderr**, wording free), checked in this order:
+
+| error | exit |
+|-------|------|
+| not exactly 3 arguments (show the usage) | 1 |
+| `directory` is not a directory (name it) | 2 |
+| `min` or `max` is not a non-negative integer (digits only) (name it) | 3 |
+| `min` > `max` | 4 |
+@@check
+SCRIPT_NAME=size_classes.sh
+SEEDS=3
+COMPARE="stdout exit errmsg"
+setup() {
+  local d="data files" i f
+  mkdir "$d"
+  for ((i = 1; i <= $(randr 4 8); i++)); do
+    f="$d/$(pick "$(word)$i" "my $(word)$i").$(pick dat txt bin)"
+    bigfile "$f" "$(pick "$(randr 1 99)" "$(randr 100 2000)" "$(randr 2001 5000)")"
+  done
+  bigfile "$d/edge low" 100; bigfile "$d/edge high" 2000
+  : > "$d/empty$(rand 9).txt"
+  bigfile "$d/secret.dat" "$(randr 1 3000)"; chmod 000 "$d/secret.dat"
+  mkdir "$d/sub dir"; bigfile "$d/.hidden" 5000
+  echo x > file.txt
+}
+ARGS=('"data files" 100 2000' '"data files" 0 0' '"data files" 1000 1000' '"$W/data files" 50 4000' 'file.txt 1 2' 'nodir 1 2' '"data files" x 10' '"data files" 10 -5' '"data files" 2000 100' '' '"data files" 1' 'a b c d')
+extra_check() {
+  local tok
+  if [[ $REF_CODE == [23] ]]; then
+    tok=$(sed -n "s/^[^']*'\(.*\)'.*$/\1/p" <<< "$REF_ERR" | head -n 1)
+    [[ -n $tok ]] && mentions "$tok"
+  fi
+  true
+}
+@@solution
+#!/bin/bash
+# size_classes.sh directory min max - classify files by size
+
+if [ $# -ne 3 ]; then
+  echo "Usage: $(basename "$0") directory min max" >&2
+  exit 1
+fi
+dir=$1 min=$2 max=$3
+if [ ! -d "$dir" ]; then
+  echo "Error: '$dir' is not a directory" >&2
+  exit 2
+fi
+for n in "$min" "$max"; do
+  if [[ ! $n =~ ^[0-9]+$ ]]; then
+    echo "Error: '$n' is not a non-negative integer" >&2
+    exit 3
+  fi
+done
+if [ "$min" -gt "$max" ]; then
+  echo "Error: min ($min) is greater than max ($max)" >&2
+  exit 4
+fi
+
+u=0 e=0 s=0 o=0 b=0
+for f in "$dir"/*; do
+  [ -f "$f" ] || continue
+  size=$(stat -c %s "$f")
+  if [ ! -r "$f" ]; then c=unreadable; u=$((u + 1))
+  elif [ ! -s "$f" ]; then c=empty; e=$((e + 1))
+  elif [ "$size" -lt "$min" ]; then c=small; s=$((s + 1))
+  elif [ "$size" -gt "$max" ]; then c=big; b=$((b + 1))
+  else c=ok; o=$((o + 1))
+  fi
+  echo "$(basename "$f"): $c ($size bytes)"
+done
+echo "Files: $((u + e + s + o + b)) (unreadable $u, empty $e, small $s, ok $o, big $b)"
+
+@@ex 1433 cmp_dirs | cmp_dirs.sh: comparing two directories
+@@level 4
+@@cmds test -f -e -nt -ef, cmp -s, basename, exit codes
+@@readme
+Write `cmp_dirs.sh dir1 dir2`, which compares the **regular files** directly inside two directories
+(not recursive, hidden files ignored).
+
+First, for every regular file `name` in `dir1` (order of the `*` glob), print the first that applies:
+
+| situation | line |
+|-----------|------|
+| `dir2/name` does not exist | `only in <dir1>: name` |
+| `dir2/name` exists but is not a regular file | `not comparable: name` |
+| same content (`cmp -s`) | `same: name` |
+| `dir1/name` is newer (`-nt`) | `newer in <dir1>: name` |
+| `dir2/name` is newer | `newer in <dir2>: name` |
+| otherwise (different content, same age) | `differs: name` |
+
+Then, for every regular file `name` in `dir2` (glob order) for which **nothing** called `name`
+exists in `dir1`, print `only in <dir2>: name`. (Entries of `dir1` that are not regular files are
+ignored.) `<dir1>` and `<dir2>` are the arguments as given.
+
+Finally print `Same: S, different: D, only in <dir1>: A, only in <dir2>: B` (different = newer,
+differs and not comparable).
+
+Exit codes:
+
+| situation | exit |
+|-----------|------|
+| everything the same (D, A and B are 0) | 0 |
+| some difference | 1 |
+| not exactly 2 arguments (usage on stderr) | 2 |
+| `dir1` is not a directory (stderr, name it) | 3 |
+| `dir2` is not a directory (stderr, name it) | 4 |
+| both are the same directory (`-ef`) (stderr) | 5 |
+@@check
+SCRIPT_NAME=cmp_dirs.sh
+SEEDS=4
+COMPARE="stdout exit errmsg"
+setup() {
+  local i n
+  mkdir left "right side"
+  for ((i = 1; i <= $(randr 4 7); i++)); do
+    n=$(pick "$(word)$i" "my $(word)$i").txt
+    case $(rand 7) in
+      0) words 3 > "left/$n"; touch -d "2025-02-0$(randr 1 3) 10:00" "left/$n" ;;
+      1) words 3 > "right side/$n"; touch -d "2025-02-01 10:00" "right side/$n" ;;
+      2) words 3 > "left/$n"; cp "left/$n" "right side/$n"
+         touch -d "2025-02-0$(randr 1 3) 10:00" "left/$n" "right side/$n" ;;
+      3) words 3 > "left/$n"; words 2 > "right side/$n"
+         touch -d "2025-02-0$(randr 1 3) 10:00" "left/$n"; touch -d "2025-02-0$(randr 1 3) 10:00" "right side/$n" ;;
+      4) words 3 > "left/$n"; mkdir "right side/$n" ;;
+      5) mkdir "left/$n"; words 1 > "right side/$n" ;;
+      6) words 3 > "left/$n"; words 2 > "right side/$n"; touch -d "2025-02-02 10:00" "left/$n" "right side/$n" ;;
+    esac
+  done
+  echo h > "left/.hidden"
+  cp -rp left copy
+  echo x > file.txt
+}
+ARGS=('left "right side"' '"right side" left' 'left copy' 'left left' 'left "$W/left"' 'left nodir' 'file.txt left' 'nodir nodir2' '' 'left' 'a b c' '"$W/right side" copy')
+extra_check() {
+  local tok
+  if [[ $REF_CODE == [34] ]]; then
+    tok=$(sed -n "s/^[^']*'\(.*\)'.*$/\1/p" <<< "$REF_ERR" | head -n 1)
+    [[ -n $tok ]] && mentions "$tok"
+  fi
+  true
+}
+@@solution
+#!/bin/bash
+# cmp_dirs.sh dir1 dir2 - compare the regular files of two directories
+
+if [ $# -ne 2 ]; then
+  echo "Usage: $(basename "$0") dir1 dir2" >&2
+  exit 2
+fi
+d1=$1 d2=$2
+if [ ! -d "$d1" ]; then
+  echo "Error: '$d1' is not a directory" >&2
+  exit 3
+fi
+if [ ! -d "$d2" ]; then
+  echo "Error: '$d2' is not a directory" >&2
+  exit 4
+fi
+if [ "$d1" -ef "$d2" ]; then
+  echo "Error: both arguments are the same directory" >&2
+  exit 5
+fi
+
+s=0 d=0 a=0 b=0
+for f in "$d1"/*; do
+  [ -f "$f" ] || continue
+  name=$(basename "$f")
+  g=$d2/$name
+  if [ ! -e "$g" ]; then echo "only in $d1: $name"; a=$((a + 1))
+  elif [ ! -f "$g" ]; then echo "not comparable: $name"; d=$((d + 1))
+  elif cmp -s "$f" "$g"; then echo "same: $name"; s=$((s + 1))
+  elif [ "$f" -nt "$g" ]; then echo "newer in $d1: $name"; d=$((d + 1))
+  elif [ "$g" -nt "$f" ]; then echo "newer in $d2: $name"; d=$((d + 1))
+  else echo "differs: $name"; d=$((d + 1))
+  fi
+done
+for g in "$d2"/*; do
+  [ -f "$g" ] || continue
+  name=$(basename "$g")
+  if [ ! -e "$d1/$name" ]; then
+    echo "only in $d2: $name"
+    b=$((b + 1))
+  fi
+done
+echo "Same: $s, different: $d, only in $d1: $a, only in $d2: $b"
+[ $((d + a + b)) -eq 0 ] || exit 1

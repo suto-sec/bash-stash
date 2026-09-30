@@ -1,0 +1,514 @@
+@@topic 01_echo_quoting | Echo, quoting & substitution
+@@ex 0113 printf_receipt | A receipt with printf
+@@level 3
+@@cmds printf %s %d %02d %8s, read, $(( ))
+@@readme
+The file `order.txt` contains one line with three fields separated by one space:
+an item name, a quantity and a unit price **in cents** (e.g. `kernel 3 1250`).
+
+Print this receipt with `printf` (the example is for `kernel 3 1250`):
+
+```
+Item      : kernel
+Quantity  :        3
+Unit price:    12.50 EUR
+Total     :    37.50 EUR
+```
+
+- The labels are written exactly as shown (`Item` and `Total` are padded with spaces so that
+  every `:` is in column 11).
+- Quantity, unit price and total are **right-aligned in a field of 8 characters** after `: `.
+- Prices are euros with **exactly two decimals** (`105` cents → `1.05`, `7` cents → `0.07`).
+  Total = quantity × unit price.
+
+Hint: `read NAME QTY PRICE < order.txt`; euros and cents are `$((P / 100))` and `$((P % 100))`,
+and `%02d` pads with zeros.
+@@check
+SEEDS=4
+setup() { echo "$(word) $(randr 1 60) $(pick "$(randr 1 99)" "$(randr 100 9999)" "$(randr 10000 99999)")" > order.txt; }
+extra_check() { must_use printf; }
+@@solution
+#!/bin/bash
+read -r NAME QTY PRICE < order.txt
+TOTAL=$((QTY * PRICE))
+printf 'Item      : %s\n' "$NAME"
+printf 'Quantity  : %8d\n' "$QTY"
+printf 'Unit price: %8s EUR\n' "$((PRICE / 100)).$(printf '%02d' $((PRICE % 100)))"
+printf 'Total     : %8s EUR\n' "$((TOTAL / 100)).$(printf '%02d' $((TOTAL % 100)))"
+
+@@ex 0114 case_expansion | Changing case with ${VAR^} and ${VAR,,}
+@@level 3
+@@cmds ${v^}, ${v^^}, ${v,,}, ${#v}, ${v:0:1}
+@@readme
+The file `person.txt` contains a first name and a last name separated by one space, written with
+random upper/lower case (e.g. `aDA LoveLACE`). Using **parameter expansion** for the case changes
+(no `tr`, `sed`...), print:
+
+```
+Name    : Ada Lovelace
+Reversed: LOVELACE, Ada
+Initials: A.L.
+Login   : alovelace
+Length  : 12
+```
+
+- `Name`: each word with its first letter uppercase and the rest lowercase, separated by one space
+- `Reversed`: the last name all uppercase, a comma and a space, then the first name as in `Name`
+- `Initials`: the two initials in uppercase, each followed by a dot
+- `Login`: the first initial followed by the whole last name, all lowercase
+- `Length`: the number of characters of the `Name` value (including the space)
+
+Hint: `${v,,}` lowercases, `${v^}` uppercases the first letter, `${v^^}` everything, `${#v}` is the length.
+@@check
+SEEDS=4
+mixcase() { local a=${1:0:2} b=${1:2:2} c=${1:4}; echo "${a,,}${b^^}${c,,}"; }
+setup() {
+  local f l
+  f=$(word); l=$(word)$(word)
+  f=$(pick "$f" "${f^^}" "${f^}" "$(mixcase "$f")"); l=$(pick "${l^^}" "${l^}" "$(mixcase "$l")" "$(mixcase "${l^^}")")
+  echo "$f $l" > person.txt
+}
+extra_check() { must_not_use tr sed; }
+@@solution
+#!/bin/bash
+read -r FIRST LAST < person.txt
+FIRST=${FIRST,,}; FIRST=${FIRST^}
+LAST=${LAST,,}; LAST=${LAST^}
+NAME="$FIRST $LAST"
+I1=${FIRST:0:1} I2=${LAST:0:1}
+LOGIN="${I1}${LAST}"
+echo "Name    : $NAME"
+echo "Reversed: ${LAST^^}, $FIRST"
+echo "Initials: ${I1^^}.${I2^^}."
+echo "Login   : ${LOGIN,,}"
+echo "Length  : ${#NAME}"
+
+@@ex 0115 printf_reuse | printf reuses its format
+@@level 3
+@@cmds printf, $(cat ...), word splitting
+@@readme
+The file `scores.txt` contains **one line** with pairs `name score` separated by single spaces
+(e.g. `alpha 87 bravo 5 kilo 100`).
+
+Print a table like this one:
+
+```
+NAME          SCORE
+alpha            87
+bravo             5
+kilo            100
+Players: 3
+```
+
+- header and rows use the format `%-10s %8s` / `%-10s %8d` (name left-aligned in 10 columns, a space,
+  score right-aligned in 8 columns)
+- the last line is `Players: N` with the number of pairs
+
+Hint: when `printf` receives more arguments than its format uses, it **repeats the format**:
+`printf '%s=%s\n' a 1 b 2` prints two lines. An **unquoted** `$(cat scores.txt)` is split into words.
+No loops are needed.
+@@check
+SEEDS=4
+setup() { local i o=(); for i in $(seq "$(randr 2 6)"); do o+=("$(word)$i" "$(randr 0 1000)"); done; echo "${o[*]}" > scores.txt; }
+extra_check() { must_use printf; }
+@@solution
+#!/bin/bash
+printf '%-10s %8s\n' NAME SCORE
+printf '%-10s %8d\n' $(cat scores.txt)
+echo "Players: $(( $(wc -w < scores.txt) / 2 ))"
+
+@@ex 0116 printf_safe | Printing arbitrary text safely
+@@level 3
+@@cmds printf '%s\n', ${#v}, ${v//x/y}
+@@readme
+The file `raw.txt` contains **one line** of text that you must print **exactly** as it is. Be careful:
+the text can start with `-n` or `-e`, and can contain backslashes (`\t`, `\c`, `\\`) and `%` signs,
+which `echo` (options!) and `printf "$TEXT"` (format!) would interpret.
+
+Read the line into a variable (`TEXT=$(cat raw.txt)`) and print:
+
+```
+<the text, exactly>
+Length: <number of characters of the text>
+Backslashes: <number of \ characters in the text>
+```
+
+Hint: the safe way is `printf '%s\n' "$TEXT"`. To count characters, remember `${#VAR}` and that
+`${VAR//pattern/}` deletes every match of a pattern.
+@@check
+SEEDS=6
+setup() {
+  local t=('-n' '-e' '-E -n' '100% of' 'tab\there' '-e back\\slash\c' 'say %s and %d\n' '-n\t-e')
+  local s=${t[$(rand ${#t[@]})]}
+  printf '%s %s\n' "$s" "$(pick "$(word)" "$(word)\\n$(word)" "50%" "\\\\$(word)")" > raw.txt
+}
+@@solution
+#!/bin/bash
+TEXT=$(cat raw.txt)
+printf '%s\n' "$TEXT"
+echo "Length: ${#TEXT}"
+ONLY=${TEXT//[^\\]/}
+echo "Backslashes: ${#ONLY}"
+
+@@ex 0117 dynamic_ranges | Ranges whose limit is a variable
+@@level 3
+@@cmds seq, seq -f, seq -s, printf, $( )
+@@readme
+The file `n.txt` contains a number N (between 3 and 15). Brace expansion **cannot** use variables
+(`{1..$N}` stays literally `{1..5}`: braces are expanded **before** variables), so use `seq` and/or
+`printf` to print these four lines (example for N = 5):
+
+```
+part1 part2 part3 part4 part5
+img_001.png img_002.png img_003.png img_004.png img_005.png
+5 3 1
+1+2+3+4+5=15
+```
+
+1. `partI` for I from 1 to N, separated by one space
+2. `img_III.png` with I zero-padded to 3 digits, from 1 to N, separated by one space
+3. from N **down** to 1 in steps of 2, separated by one space (for N = 6: `6 4 2`)
+4. the numbers from 1 to N joined with `+`, then `=` and their sum
+
+No loops (`for`, `while`) allowed.
+@@check
+SEEDS=4
+setup() { randr 3 15 > n.txt; }
+extra_check() { must_not_use for while until; }
+@@solution
+#!/bin/bash
+N=$(cat n.txt)
+echo $(seq -f 'part%g' "$N")
+echo $(printf 'img_%03d.png\n' $(seq "$N"))
+echo $(seq "$N" -2 1)
+echo "$(seq -s + "$N")=$((N * (N + 1) / 2))"
+
+@@ex 0118 box | caja.sh: text in a box
+@@level 4
+@@cmds printf, ${#v}, tr, quoting, $#, exit codes
+@@readme
+Write `caja.sh`:
+
+```
+caja.sh TEXT [CHAR]
+```
+
+It prints `TEXT` inside a box drawn with the character `CHAR` (default `#`), then a summary line.
+Example: `caja.sh "hola  mundo" '*'` prints
+
+```
+***************
+* hola  mundo *
+***************
+Box: 3 lines, 15 columns
+```
+
+- The border lines are `CHAR` repeated `L + 4` times, where `L` is the number of characters of `TEXT`.
+- The middle line is `CHAR`, a space, `TEXT` **exactly** (spaces, `*`, `$`... preserved), a space, `CHAR`.
+- The summary line is `Box: 3 lines, W columns` with W = L + 4.
+
+Errors (message on **stderr**, nothing on stdout), checked in this order:
+
+- no arguments or more than 2: error message with the **usage**, exit **1**
+- `CHAR` given but it is not exactly one character: exit **2**
+- `TEXT` is empty or longer than 40 characters: exit **3**
+
+Careful: the checker runs your script in a directory full of files, and `CHAR` may be `*`.
+Texts and characters are plain ASCII.
+@@check
+SCRIPT_NAME=caja.sh
+SEEDS=3
+COMPARE="stdout exit errmsg"
+setup() {
+  printf '%s  %s %s\n' "$(word)" "$(word)" "$(word)" > t1.txt
+  printf '%s * $HOME %s\n' "$(pick -n -e "$(word)")" "$(word)" > t2.txt
+  echo "$(words 9) $(words 4)" > long.txt
+  touch "$(word).txt" "$(word) $(word).sh" "a*b" 5
+}
+ARGS=('"$(cat t1.txt)"' '"$(cat t1.txt)" "*"' '"$(cat t2.txt)" "@"' '"$(cat t2.txt)" "*"' 'x =' '' '"$(cat t1.txt)" "**"' '"$(cat t1.txt)" ""' '""' '"$(cat long.txt)"' 'a b c')
+extra_check() {
+  [[ $REF_CODE == 1 ]] && { [[ $ERR == *caja.sh* || $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* ]] || fail "the usage message should show how to call the script"; }
+  true
+}
+@@solution
+#!/bin/bash
+# caja.sh TEXT [CHAR] - draws TEXT inside a box
+
+if [ $# -lt 1 ] || [ $# -gt 2 ]; then
+  echo "Error: wrong number of arguments" >&2
+  echo "Usage: $(basename "$0") TEXT [CHAR]" >&2
+  exit 1
+fi
+TEXT=$1
+C=${2-#}
+if [ ${#C} -ne 1 ]; then
+  echo "Error: CHAR must be exactly one character, got '$C'" >&2
+  exit 2
+fi
+if [ -z "$TEXT" ] || [ ${#TEXT} -gt 40 ]; then
+  echo "Error: TEXT must have between 1 and 40 characters" >&2
+  exit 3
+fi
+
+W=$(( ${#TEXT} + 4 ))
+BORDER=$(printf "%${W}s" "" | tr ' ' "$C")
+printf '%s\n' "$BORDER"
+printf '%s %s %s\n' "$C" "$TEXT" "$C"
+printf '%s\n' "$BORDER"
+echo "Box: 3 lines, $W columns"
+
+@@ex 0119 calc | calc.sh: a calculator that survives *
+@@level 4
+@@cmds $(( )), [[ =~ ]], case, quoting, exit codes
+@@readme
+Write `calc.sh`:
+
+```
+calc.sh A OP B
+```
+
+`A` and `B` are integers (an optional `-` followed by one or more digits; no leading zeros are used)
+and `OP` is one of `+`, `-`, `x`, `*` (both `x` and `*` multiply), `/` (integer division, as
+`$(( ))` does it) or `%` (remainder). It prints two lines:
+
+```
+A OP B = R
+R is even
+```
+
+where the first line shows the arguments exactly as received (`7 * 6 = 42`) and the second says
+`even` or `odd` (0 is even; negative numbers too: `-3 is odd`).
+
+Errors (message on **stderr**, nothing on stdout), checked in this order:
+
+- not exactly 3 arguments: usage message, exit **1**
+- `A` or `B` is not an integer: exit **2**, the message must include the offending value
+- `OP` is not one of the six operators: exit **3**, the message must include it
+- `/` or `%` with `B` equal to 0: exit **4**
+
+Careful: the user will call it as `calc.sh 7 '*' 6`. Your script runs in a directory that contains
+files, so an unquoted `*` would be expanded.
+@@check
+SCRIPT_NAME=calc.sh
+SEEDS=3
+COMPARE="stdout exit errmsg"
+setup() {
+  echo "$(pick "" "" -)$(randr 1 999)" > a.txt
+  echo "$(pick "" -)$(randr 1 99)" > b.txt
+  touch "$(word).txt" "$(word) $(word)" 42 x
+}
+ARGS=('"$(cat a.txt)" + "$(cat b.txt)"' '"$(cat a.txt)" "*" "$(cat b.txt)"' '"$(cat a.txt)" x "$(cat b.txt)"' '"$(cat a.txt)" - "$(cat b.txt)"' '"$(cat a.txt)" / "$(cat b.txt)"' '"$(cat a.txt)" % "$(cat b.txt)"' '0 "*" "$(cat b.txt)"' '"$(cat a.txt)" / 0' '"$(cat a.txt)" % 0' '"$(cat a.txt)" "^" 2' '3.5 + 1' '"$(cat a.txt)" + abc' '"" + 1' '"$(cat a.txt)" +' '' '1 + 2 3')
+extra_check() {
+  local a=(); mapfile -t a < <(cd "$W" && eval "set -- $CASE" && printf '%s\n' "$@")
+  if [[ $REF_CODE == 2 ]]; then
+    if [[ ${a[0]} =~ ^-?[0-9]+$ ]]; then mentions "${a[2]}"; else mentions "${a[0]}"; fi
+  fi
+  [[ $REF_CODE == 3 ]] && mentions "${a[1]}"
+  true
+}
+@@solution
+#!/bin/bash
+# calc.sh A OP B
+if [ $# -ne 3 ]; then
+  echo "Usage: $(basename "$0") A OP B   (OP: + - x '*' / %)" >&2
+  exit 1
+fi
+A=$1 OP=$2 B=$3
+for n in "$A" "$B"; do
+  if [[ ! $n =~ ^-?[0-9]+$ ]]; then
+    echo "Error: '$n' is not an integer" >&2
+    exit 2
+  fi
+done
+case $OP in
+  +) R=$((A + B)) ;;
+  -) R=$((A - B)) ;;
+  x|\*) R=$((A * B)) ;;
+  /|%)
+    if [ "$B" -eq 0 ]; then echo "Error: division by zero" >&2; exit 4; fi
+    if [ "$OP" = / ]; then R=$((A / B)); else R=$((A % B)); fi
+    ;;
+  *) echo "Error: unknown operator '$OP'" >&2; exit 3 ;;
+esac
+echo "$A $OP $B = $R"
+if (( R % 2 == 0 )); then echo "$R is even"; else echo "$R is odd"; fi
+
+@@ex 0120 genmv | genmv.sh: printing a safely quoted rename script
+@@level 4
+@@cmds printf, ${v//\'/...}, ${v##*.}, for f in "$DIR"/*
+@@readme
+Write `genmv.sh`:
+
+```
+genmv.sh DIR PREFIX
+```
+
+It does **not** rename anything: it **prints** a bash script that would rename every **regular file
+directly inside** `DIR` (not hidden, not recursive, in the order of the `*` glob) to
+`PREFIX_NNN.EXT`, where `NNN` is a counter starting at `001` (3 digits, zero-padded) and `EXT` is the
+original extension (the text after the **last** dot of the name, kept as is). Names without a dot get
+no extension (`PREFIX_NNN`).
+
+Output format:
+
+```
+#!/bin/bash
+mv -- 'DIR/old name.jpg' 'DIR/PREFIX_001.jpg'
+mv -- 'DIR/README' 'DIR/PREFIX_002'
+# 2 files
+```
+
+- `DIR` is written exactly as it was given.
+- **Every** path is enclosed in single quotes, so that spaces, `$`, `*`... are safe. A single quote
+  inside a name cannot appear inside single quotes: write it as `'\''` (close the quotes, an escaped
+  quote, reopen), e.g. the file `it's.txt` becomes `'DIR/it'\''s.txt'`.
+- The last line is `# N files`.
+
+Errors (message on **stderr**, nothing on stdout), checked in this order:
+
+- not exactly 2 arguments: usage, exit **1**
+- `DIR` is not a directory: exit **2** (mention it)
+- `PREFIX` is empty or contains something other than letters, digits, `_` and `-`: exit **3**
+- `DIR` contains no regular files: exit **4**
+@@check
+SCRIPT_NAME=genmv.sh
+SEEDS=3
+COMPARE="stdout exit errmsg"
+setup() {
+  local d i
+  for d in fotos "mis fotos"; do
+    mkdir -p "$d/sub.dir"
+    touch "$d/it's $(word).png" "$d/$(word) $(word).PNG"
+    for i in 1 2 3; do
+      touch "$d/$(pick "$(word)$i.jpg" "cost \$$i.txt" "$(word)$i.tar.gz" "README$i" "a*$i.c")"
+    done
+    touch "$d/.hidden$(word).jpg" "$d/sub.dir/inner.jpg"
+  done
+  mkdir vacio vacio/sub; touch vacio/.oculto nodir
+}
+ARGS=('fotos img' '"mis fotos" viaje-2026' '"$W/fotos" x_1' 'vacio img' 'nodir img' 'noexiste img' 'fotos ""' 'fotos "a b"' 'fotos "img*"' 'fotos' '')
+extra_check() {
+  local a=(); mapfile -t a < <(cd "$W" && eval "set -- $CASE" && printf '%s\n' "$@")
+  [[ $REF_CODE == 2 ]] && mentions "${a[0]}"
+  [[ $REF_CODE == 0 ]] && ! bash -n <<< "$OUT" 2>/dev/null && fail "the printed script has a syntax error"
+  true
+}
+@@solution
+#!/bin/bash
+# genmv.sh DIR PREFIX - prints a script that renames the files of DIR to PREFIX_NNN.EXT
+if [ $# -ne 2 ]; then
+  echo "Usage: $(basename "$0") DIR PREFIX" >&2
+  exit 1
+fi
+DIR=$1 PREFIX=$2
+[ -d "$DIR" ] || { echo "Error: '$DIR' is not a directory" >&2; exit 2; }
+[[ $PREFIX =~ ^[A-Za-z0-9_-]+$ ]] || { echo "Error: invalid prefix '$PREFIX'" >&2; exit 3; }
+
+# quote: wrap in single quotes, each ' becomes '\''
+quote() { printf "'%s'" "${1//\'/\'\\\'\'}"; }
+
+N=0
+OUTPUT=""
+for f in "$DIR"/*; do
+  [ -f "$f" ] || continue
+  N=$((N + 1))
+  name=${f##*/}
+  new=$(printf '%s_%03d' "$PREFIX" "$N")
+  [[ $name == *.* ]] && new="$new.${name##*.}"
+  OUTPUT+="mv -- $(quote "$DIR/$name") $(quote "$DIR/$new")"$'\n'
+done
+if [ "$N" -eq 0 ]; then
+  echo "Error: no regular files in '$DIR'" >&2
+  exit 4
+fi
+echo '#!/bin/bash'
+printf '%s' "$OUTPUT"
+echo "# $N files"
+
+@@ex 0121 genconf | genconf.sh: a config file from a here document
+@@level 4
+@@cmds cat << EOF, \$, $(( )), mkdir -p, wc -l, exit codes
+@@readme
+Write `genconf.sh`:
+
+```
+genconf.sh NAME PORT [DIR]
+```
+
+It creates the file `DIR/NAME.conf` (`DIR` defaults to `$HOME/conf`) with exactly this content
+(`NAME`, `PORT` replaced by the arguments, `ADMIN` = PORT + 1000, `<user>` = the value of `$USER`);
+everything else, **including** `$LOGDIR`, `~`, the backquotes and the backslash, is literal text:
+
+```
+# NAME.conf - generated by genconf.sh for <user>
+[service]
+name = "NAME"
+port = PORT
+admin_port = ADMIN
+[paths]
+log = $LOGDIR/NAME.log
+data = ~/data/NAME
+[run]
+start = `which NAME` --port=PORT
+match = \d+ 'quoted' "double"
+```
+
+On stdout:
+
+- if `DIR` did not exist, create it (with parents) and first print `Created directory DIR`
+- then print `Wrote DIR/NAME.conf (L lines)` with the number of lines of the file (`DIR` exactly as
+  given, or `$HOME/conf` expanded)
+
+Errors (message on **stderr**, nothing on stdout, nothing created), checked in this order:
+
+- fewer than 2 or more than 3 arguments: usage, exit **1**
+- `NAME` does not match: a lowercase letter followed by lowercase letters, digits, `_` or `-`: exit **2**
+- `PORT` is not an integer between 1024 and 64535 (both included): exit **3**
+- `DIR/NAME.conf` already exists: exit **4** (do not modify it)
+@@check
+SCRIPT_NAME=genconf.sh
+SEEDS=3
+COMPARE="stdout exit errmsg files"
+setup() {
+  echo "$(word)$(pick _ - '')$(randr 1 9)" > name.txt
+  randr 1024 64535 > port.txt
+  mkdir -p "mis confs" "$H/conf"
+  echo "old = 1" > "$H/conf/$(cat name.txt).conf"
+  [[ $(rand 2) == 1 ]] && rm -r "$H/conf"
+  true
+}
+ARGS=('"$(cat name.txt)" "$(cat port.txt)" "mis confs"' 'web1 1024 "nuevo dir/sub"' '"$(cat name.txt)"x "$(cat port.txt)"' 'db-2 64535 "$W/mis confs"' '"$(cat name.txt)" "$(cat port.txt)"' 'Web 8080 x' '"my app" 8080 x' '"" 8080 x' 'web 1023 x' 'web 64536 x' 'web 80a x' 'web' 'a 2000 b c')
+@@solution
+#!/bin/bash
+# genconf.sh NAME PORT [DIR]
+if [ $# -lt 2 ] || [ $# -gt 3 ]; then
+  echo "Usage: $(basename "$0") NAME PORT [DIR]" >&2
+  exit 1
+fi
+NAME=$1 PORT=$2 DIR=${3:-$HOME/conf}
+[[ $NAME =~ ^[a-z][a-z0-9_-]*$ ]] || { echo "Error: invalid name '$NAME'" >&2; exit 2; }
+if [[ ! $PORT =~ ^[0-9]+$ ]] || [ "$PORT" -lt 1024 ] || [ "$PORT" -gt 64535 ]; then
+  echo "Error: invalid port '$PORT'" >&2
+  exit 3
+fi
+FILE="$DIR/$NAME.conf"
+[ -e "$FILE" ] && { echo "Error: $FILE already exists" >&2; exit 4; }
+
+if [ ! -d "$DIR" ]; then
+  mkdir -p "$DIR" || exit 5
+  echo "Created directory $DIR"
+fi
+cat > "$FILE" << EOF
+# $NAME.conf - generated by genconf.sh for $USER
+[service]
+name = "$NAME"
+port = $PORT
+admin_port = $((PORT + 1000))
+[paths]
+log = \$LOGDIR/$NAME.log
+data = ~/data/$NAME
+[run]
+start = \`which $NAME\` --port=$PORT
+match = \\d+ 'quoted' "double"
+EOF
+echo "Wrote $FILE ($(wc -l < "$FILE") lines)"
