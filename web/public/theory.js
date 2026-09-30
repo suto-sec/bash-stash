@@ -4,12 +4,105 @@
 // option by option (why each right one is right AND why each wrong one is wrong).
 'use strict';
 const Theory = (() => {
-  const TYPE_LABEL = {
-    single: 'Single choice', multi: 'Multiple choice · select all that apply', fill: 'Fill in the blank',
-    order: 'Put in order · drag or use the arrows', match: 'Match the pairs · drag, or click a chip then a slot',
-    sort: 'Sort into categories · drag, or click a chip then a category',
+  // ---------------------------------------------------------------- language (Theory only)
+  // Settings → "Theory language". Content comes from theory/<lang>/ (same question ids, so progress
+  // is shared); these are the quiz UI strings. Everything outside Theory stays in English.
+  const STR = {
+    en: {
+      type: { single: 'Single choice', multi: 'Multiple choice · select all that apply', fill: 'Fill in the blank',
+        order: 'Put in order · drag or use the arrows', match: 'Match the pairs · drag, or click a chip then a slot',
+        sort: 'Sort into categories · drag, or click a chip then a category' },
+      status: { pass: 'passed', attempted: 'tried', new: 'not started' },
+      langName: 'English', homeTitle: 'Theory',
+      homeIntro: 'Interactive quizzes on the concepts behind the commands: single and multiple choice, fill in the blank, ordering, matching and sorting. Every answer gets instant feedback explaining why each option is right or wrong. Pick a collection to browse its questions in the sidebar.',
+      none: 'No theory collections built yet (run <code>node tools/build_theory.js</code>).',
+      count: (p, t) => `${p}/${t} questions`, badge: 'Theory: ', theory: 'Theory',
+      reset: 'Reset progress', resetTitle: 'Forget your results for this collection',
+      resetConfirm: t => `Forget all your results in "${t}"?`,
+      search: 'Search questions…', overall: 'theory questions passed',
+      counter: (n, m) => `Question ${n} of ${m}`,
+      check: 'Check answer', next: 'Next ▶', prevTitle: 'Previous question (←)',
+      hintChoice: 'Press 1–9 to pick, Enter to check', practice: 'Practice again', retry: 'Try again',
+      correct: '✔ Correct', notQuite: '✘ Not quite',
+      retryHint: 'Read the explanations above, then press “Try again” for a fresh attempt — the ✔ in the sidebar comes from answering it right.',
+      done: '🎉 Collection complete — every question answered correctly.',
+      multiDetail: (h, r, x) => `${h} of ${r} right answers found${x ? `, ${x} wrong pick${x > 1 ? 's' : ''}` : ''}`,
+      pickedRight: '✔ Correct — you picked it', pickedRightOne: '✔ Correct answer — your pick',
+      missed: '✔ Also correct — you missed it', missedOne: '✔ This was the correct answer',
+      pickedWrong: '✘ Wrong — your pick', notCorrect: '✘ Not correct',
+      blanksDetail: (g, n) => `${g} of ${n} blanks right`, wrong: '✘ Wrong', blank: 'blank',
+      blankN: i => `Blank ${i}: `, youWrote: 'you wrote', accepted: 'accepted:', or: ' or ',
+      otherWrong: 'Other tempting answers that don’t work',
+      stepsDetail: (g, n) => `${g} of ${n} steps in the right place`, rightPlace: '✔ Right place',
+      belongsAt: i => `✘ Belongs at position ${i}`, correctOrder: 'The correct order', up: 'move up', down: 'move down',
+      dropHere: 'drop here', unmatched: 'Not matched to anything', items: 'Items', allPlaced: 'all placed',
+      placedDetail: (g, n) => `${g} of ${n} placed right`, youPut: 'you put:', nothing: 'nothing',
+      decoy: '✘ Decoy', putUnder: 'you put it under', why: 'Why',
+    },
+    es: {
+      type: { single: 'Respuesta única', multi: 'Respuesta múltiple · marca todas las correctas', fill: 'Rellena los huecos',
+        order: 'Ordena · arrastra o usa las flechas', match: 'Empareja · arrastra, o pulsa una ficha y luego un hueco',
+        sort: 'Clasifica · arrastra, o pulsa una ficha y luego una categoría' },
+      status: { pass: 'superada', attempted: 'intentada', new: 'sin empezar' },
+      langName: 'Español', homeTitle: 'Teoría',
+      homeIntro: 'Cuestionarios interactivos sobre los conceptos que hay detrás de los mandatos: respuesta única y múltiple, rellenar huecos, ordenar, emparejar y clasificar. Cada respuesta se corrige al momento y se explica por qué cada opción es correcta o incorrecta. Elige una colección para recorrer sus preguntas en la barra lateral.',
+      none: 'Aún no hay colecciones de teoría (ejecuta <code>node tools/build_theory.js</code>).',
+      count: (p, t) => `${p}/${t} preguntas`, badge: 'Teoría: ', theory: 'Teoría',
+      reset: 'Reiniciar progreso', resetTitle: 'Olvidar tus resultados en esta colección',
+      resetConfirm: t => `¿Olvidar todos tus resultados en «${t}»?`,
+      search: 'Buscar preguntas…', overall: 'preguntas de teoría superadas',
+      counter: (n, m) => `Pregunta ${n} de ${m}`,
+      check: 'Comprobar', next: 'Siguiente ▶', prevTitle: 'Pregunta anterior (←)',
+      hintChoice: 'Pulsa 1–9 para elegir e Intro para comprobar', practice: 'Practicar otra vez', retry: 'Reintentar',
+      correct: '✔ Correcto', notQuite: '✘ No del todo',
+      retryHint: 'Lee las explicaciones de arriba y pulsa «Reintentar» para un intento nuevo: el ✔ de la barra lateral se consigue respondiendo bien.',
+      done: '🎉 Colección completada: todas las preguntas respondidas correctamente.',
+      multiDetail: (h, r, x) => `${h} de ${r} respuestas correctas encontradas${x ? `, ${x} ${x > 1 ? 'elecciones incorrectas' : 'elección incorrecta'}` : ''}`,
+      pickedRight: '✔ Correcta — la marcaste', pickedRightOne: '✔ Respuesta correcta — tu elección',
+      missed: '✔ También correcta — no la marcaste', missedOne: '✔ Esta era la respuesta correcta',
+      pickedWrong: '✘ Incorrecta — tu elección', notCorrect: '✘ Incorrecta',
+      blanksDetail: (g, n) => `${g} de ${n} huecos bien`, wrong: '✘ Incorrecto', blank: 'hueco',
+      blankN: i => `Hueco ${i}: `, youWrote: 'escribiste', accepted: 'se acepta:', or: ' o ',
+      otherWrong: 'Otras respuestas tentadoras que no funcionan',
+      stepsDetail: (g, n) => `${g} de ${n} pasos en su sitio`, rightPlace: '✔ En su sitio',
+      belongsAt: i => `✘ Va en la posición ${i}`, correctOrder: 'El orden correcto', up: 'subir', down: 'bajar',
+      dropHere: 'suelta aquí', unmatched: 'Sin emparejar', items: 'Elementos', allPlaced: 'todo colocado',
+      placedDetail: (g, n) => `${g} de ${n} bien colocados`, youPut: 'pusiste:', nothing: 'nada',
+      decoy: '✘ Señuelo', putUnder: 'lo pusiste en', why: 'Por qué',
+    },
   };
-  const VERDICT_STATUS = { pass: 'passed', attempted: 'tried', new: 'not started' };
+  let lang = 'en';
+  try { lang = STR[localStorage.getItem('theoryLang')] ? localStorage.getItem('theoryLang') : 'en'; } catch { /* private mode */ }
+  const T = (k, ...a) => { const v = STR[lang][k] !== undefined ? STR[lang][k] : STR.en[k]; return typeof v === 'function' ? v(...a) : v; };
+  const TYPE_LABEL = new Proxy({}, { get: (_, k) => T('type')[k] });
+  const VERDICT_STATUS = new Proxy({}, { get: (_, k) => T('status')[k] });
+  const q_lang = () => lang === 'en' ? '' : `?lang=${lang}`;
+  // static text in index.html that belongs to Theory
+  function applyStatic() {
+    $('#theory-lang-value').textContent = T('langName');
+    $('#theory-home-title').textContent = T('homeTitle');
+    $('#theory-home-intro').textContent = T('homeIntro');
+    $('#th-check').textContent = T('check');
+    $('#th-next').textContent = T('next');
+    $('#th-prev').title = T('prevTitle');
+    const r = $('#th-reset');
+    if (r) { r.textContent = T('reset'); r.title = T('resetTitle'); }
+  }
+  async function setLang(l) {
+    lang = STR[l] ? l : 'en';
+    try { localStorage.setItem('theoryLang', lang); } catch { /* private mode */ }
+    for (const k of Object.keys(cache)) delete cache[k];
+    await load();
+    applyStatic();
+    renderHomeGrid();
+    if (typeof updateTrackBadge === 'function') updateTrackBadge();
+    if (state.theory && view && !$('#theory-main').classList.contains('hidden')) {
+      const cid = view.cid, qid = view.item.q.id;
+      view = null;
+      await open(cid, qid);
+    }
+  }
+  $('#theory-lang-row').onclick = () => setLang(lang === 'en' ? 'es' : 'en');
   let index = [];          // light index with per-question status (from /api/theory)
   const cache = {};        // collection id -> full collection (questions, answers, explanations)
   let view = null;         // the question currently shown: { cid, item, handle, checked }
@@ -26,7 +119,7 @@ const Theory = (() => {
 
   // ---------------------------------------------------------------- data
   async function load() {
-    try { index = await (await fetch('/api/theory')).json(); } catch { index = []; }
+    try { index = await (await fetch('/api/theory' + q_lang())).json(); } catch { index = []; }
     if (!Array.isArray(index)) index = [];
   }
   const collection = id => index.find(c => c.id === id);
@@ -47,13 +140,13 @@ const Theory = (() => {
   // ---------------------------------------------------------------- home page cards
   function renderHomeGrid() {
     const grid = $('#theory-grid');
-    if (!index.length) { grid.innerHTML = '<p class="home-intro">No theory collections built yet (run <code>node tools/build_theory.js</code>).</p>'; return; }
+    if (!index.length) { grid.innerHTML = `<p class="home-intro">${T('none')}</p>`; return; }
     grid.innerHTML = index.map(c => {
       const t = total(c), p = passed(c);
       return `<button class="track-card${state.theory === c.id ? ' current' : ''}" data-theory="${esc(c.id)}">
         <div class="track-card-title">${esc(c.title)}</div>
         <div class="track-card-desc">${esc(c.about || '')}</div>
-        <div class="track-card-count">${p}/${t} questions</div>
+        <div class="track-card-count">${T('count', p, t)}</div>
       </button>`;
     }).join('');
   }
@@ -94,7 +187,7 @@ const Theory = (() => {
       return;
     }
     if (!cache[cid]) {
-      try { cache[cid] = await (await fetch(`/api/theory/${cid}`)).json(); }
+      try { cache[cid] = await (await fetch(`/api/theory/${cid}${q_lang()}`)).json(); }
       catch { return; }
     }
     if (state.theory !== cid) return; // navigated away while loading
@@ -109,11 +202,11 @@ const Theory = (() => {
     let b = $('#th-reset');
     if (!b) {
       b = document.createElement('button');
-      b.id = 'th-reset'; b.className = 'small'; b.textContent = 'Reset progress';
-      b.title = 'Forget your results for this collection';
+      b.id = 'th-reset'; b.className = 'small'; b.textContent = T('reset');
+      b.title = T('resetTitle');
       b.onclick = async () => {
         const c = collection(state.theory);
-        if (!c || !confirm(`Forget all your results in "${c.title}"?`)) return;
+        if (!c || !confirm(T('resetConfirm', c.title))) return;
         await fetch(`/api/theory/${c.id}/reset`, { method: 'POST' });
         await load();
         const first = flat(c.id)[0];
@@ -129,8 +222,8 @@ const Theory = (() => {
     const c = collection(state.theory);
     if (!c) return;
     ensureResetButton();
-    $('#search').placeholder = 'Search questions…';
-    document.querySelector('.overall').title = 'theory questions passed';
+    $('#search').placeholder = T('search');
+    document.querySelector('.overall').title = T('overall');
     const q = $('#search').value.trim().toLowerCase();
     const hidePassed = $('#hide-passed').checked;
     const nav = $('#topics');
@@ -183,12 +276,12 @@ const Theory = (() => {
     const q = group.questions.find(x => x.id === item.q.id);
     view = { cid, item, q, checked: false, handle: null };
     const list = flat(cid);
-    $('#th-crumb').textContent = `Theory · ${full.title} · ${group.title}`;
+    $('#th-crumb').textContent = `${T('theory')} · ${full.title} · ${group.title}`;
     $('#th-title').textContent = q.title;
     $('#th-type').textContent = TYPE_LABEL[q.type];
-    $('#th-counter').textContent = `Question ${item.n} of ${list.length}`;
+    $('#th-counter').textContent = T('counter', item.n, list.length);
     setBadge(item.q.status);
-    document.title = `${q.title} — Theory — bash stash`;
+    document.title = `${q.title} — ${T('theory')} — bash stash`;
     $('#th-feedback').classList.add('hidden');
     $('#th-feedback').innerHTML = '';
     $('#th-retry').classList.add('hidden');
@@ -207,7 +300,7 @@ const Theory = (() => {
     if (q.type === 'fill') {
       html = html.replace(/\{\{(\d+)\}\}/g, (_, i) => {
         const w = Math.max(4, ...q.blanks[i].answers.map(a => a.length)) + 2;
-        return `<input class="th-blank" data-i="${i}" size="${Math.min(w, 40)}" spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="blank ${Number(i) + 1}">`;
+        return `<input class="th-blank" data-i="${i}" size="${Math.min(w, 40)}" spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="${T('blank')} ${Number(i) + 1}">`;
       });
     }
     qEl.innerHTML = html;
@@ -222,7 +315,7 @@ const Theory = (() => {
     $('#th-check').disabled = true;
     $('#th-retry').classList.add('hidden');
     $('#th-feedback').classList.add('hidden');
-    $('#th-hint').textContent = q.type === 'single' || q.type === 'multi' ? 'Press 1–9 to pick, Enter to check' : '';
+    $('#th-hint').textContent = q.type === 'single' || q.type === 'multi' ? T('hintChoice') : '';
     onChange();
     const first = body.querySelector('input,button') || qEl.querySelector('input');
     if (first && (q.type === 'fill')) first.focus();
@@ -235,20 +328,20 @@ const Theory = (() => {
     view.handle.reveal(res);
     $('#th-check').classList.add('hidden');
     $('#th-hint').textContent = '';
-    $('#th-retry').textContent = res.ok ? 'Practice again' : 'Try again';
+    $('#th-retry').textContent = res.ok ? T('practice') : T('retry');
     $('#th-retry').classList.remove('hidden');
     const fb = $('#th-feedback');
     const c = collection(view.cid), last = flat(view.cid).length === view.item.n;
     fb.className = 'th-feedback ' + (res.ok ? 'good' : 'bad');
-    fb.innerHTML = `<div class="th-verdict">${res.ok ? '✔ Correct' : '✘ Not quite'}${res.detail ? ` <span>${res.detail}</span>` : ''}</div>` +
+    fb.innerHTML = `<div class="th-verdict">${res.ok ? T('correct') : T('notQuite')}${res.detail ? ` <span>${res.detail}</span>` : ''}</div>` +
       (view.q.note ? `<div class="th-note">${md(view.q.note)}</div>` : '') +
-      (!res.ok ? '<div class="th-note hint">Read the explanations above, then press “Try again” for a fresh attempt — the ✔ in the sidebar comes from answering it right.</div>' : '');
+      (!res.ok ? `<div class="th-note hint">${T('retryHint')}</div>` : '');
     try {
       const r = await (await fetch(`/api/theory/${view.cid}/${view.q.id}`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ok: res.ok }) })).json();
       if (r.status) { setStatus(view.cid, view.q.id, r.status); setBadge(r.status); }
     } catch { /* offline: the answer still counts on screen */ }
-    if (c && passed(c) === total(c)) fb.innerHTML += '<div class="th-note th-done">🎉 Collection complete — every question answered correctly.</div>';
+    if (c && passed(c) === total(c)) fb.innerHTML += `<div class="th-note th-done">${T('done')}</div>`;
     fb.classList.remove('hidden');
     renderSidebar();
     fb.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
@@ -309,16 +402,16 @@ const Theory = (() => {
         const right = q.options.map((o, i) => o.ok ? i : -1).filter(i => i >= 0);
         const hit = right.filter(i => sel.has(i)).length, extra = [...sel].filter(i => !q.options[i].ok).length;
         const ok = hit === right.length && extra === 0;
-        return { ok, detail: multi && !ok ? `${hit} of ${right.length} right answers found${extra ? `, ${extra} wrong pick${extra > 1 ? 's' : ''}` : ''}` : '' };
+        return { ok, detail: multi && !ok ? T('multiDetail', hit, right.length, extra) : '' };
       },
       reveal() {
         const sel = new Set(picked());
         for (const l of labels) {
           const i = Number(l.dataset.i), o = q.options[i], p = sel.has(i);
           const cls = o.ok ? (p ? 'right' : 'missed') : (p ? 'wrong' : 'rejected');
-          const label = o.ok ? (p ? (multi ? '✔ Correct — you picked it' : '✔ Correct answer — your pick')
-                                  : (multi ? '✔ Also correct — you missed it' : '✔ This was the correct answer'))
-                             : (p ? '✘ Wrong — your pick' : '✘ Not correct');
+          const label = o.ok ? (p ? (multi ? T('pickedRight') : T('pickedRightOne'))
+                                  : (multi ? T('missed') : T('missedOne')))
+                             : (p ? T('pickedWrong') : T('notCorrect'));
           l.classList.add(cls);
           l.querySelector('input').disabled = true;
           const w = l.querySelector('.th-why');
@@ -337,7 +430,7 @@ const Theory = (() => {
       ready: () => inputs.every(inp => norm(inp.value) !== ''),
       grade() {
         const bad = inputs.filter(inp => !okFor(Number(inp.dataset.i), inp.value)).length;
-        return { ok: bad === 0, detail: bad ? `${inputs.length - bad} of ${inputs.length} blanks right` : '' };
+        return { ok: bad === 0, detail: bad ? T('blanksDetail', inputs.length - bad, inputs.length) : '' };
       },
       reveal() {
         const rows = [];
@@ -345,9 +438,9 @@ const Theory = (() => {
           const i = Number(inp.dataset.i), v = norm(inp.value), ok = okFor(i, v);
           inp.disabled = true;
           inp.classList.add(ok ? 'right' : 'wrong');
-          const accepted = q.blanks[i].answers.map(a => `<code>${esc(a)}</code>`).join(' or ');
-          let line = `<div class="th-blank-row ${ok ? 'right' : 'wrong'}">${tag(ok ? 'right' : 'wrong', ok ? '✔ Correct' : '✘ Wrong')}
-            ${inputs.length > 1 ? `Blank ${i + 1}: ` : ''}you wrote <code>${esc(v)}</code>${ok ? '' : ` · accepted: ${accepted}`}`;
+          const accepted = q.blanks[i].answers.map(a => `<code>${esc(a)}</code>`).join(T('or'));
+          let line = `<div class="th-blank-row ${ok ? 'right' : 'wrong'}">${tag(ok ? 'right' : 'wrong', ok ? T('correct') : T('wrong'))}
+            ${inputs.length > 1 ? T('blankN', i + 1) : ''}${T('youWrote')} <code>${esc(v)}</code>${ok ? '' : ` · ${T('accepted')} ${accepted}`}`;
           const hit = q.wrong && q.wrong.find(w => norm(w.a) === v);
           if (hit && !ok) line += `<div class="th-why">${mdi(hit.why)}</div>`;
           rows.push(line + '</div>');
@@ -355,7 +448,7 @@ const Theory = (() => {
         let html = rows.join('');
         const others = (q.wrong || []).filter(w => !inputs.some(inp => norm(inp.value) === norm(w.a)));
         if (others.length) {
-          html += `<div class="th-wrong-list"><div class="th-sub">Other tempting answers that don’t work</div>` +
+          html += `<div class="th-wrong-list"><div class="th-sub">${T('otherWrong')}</div>` +
             others.map(w => `<div class="th-blank-row"><code>${esc(w.a)}</code><div class="th-why">${mdi(w.why)}</div></div>`).join('') + '</div>';
         }
         body.innerHTML = html;
@@ -371,7 +464,7 @@ const Theory = (() => {
       <li class="th-step" draggable="true" data-i="${i}">
         <span class="th-grip" aria-hidden="true">⠿</span>
         <span class="th-step-main"><span class="th-step-text">${mdi(q.items[i].t)}</span><span class="th-why hidden"></span></span>
-        <span class="th-move"><button type="button" data-mv="-1" aria-label="move up">▲</button><button type="button" data-mv="1" aria-label="move down">▼</button></span>
+        <span class="th-move"><button type="button" data-mv="-1" aria-label="${T('up')}">▲</button><button type="button" data-mv="1" aria-label="${T('down')}">▼</button></span>
       </li>`).join('')}</ol>`;
     const ol = body.querySelector('ol');
     let drag = null, locked = false;
@@ -405,7 +498,7 @@ const Theory = (() => {
         const c = cur();
         const inPlace = c.filter((v, k) => v === k).length;
         const ok = inPlace === n;
-        return { ok, detail: ok ? '' : `${inPlace} of ${n} steps in the right place` };
+        return { ok, detail: ok ? '' : T('stepsDetail', inPlace, n) };
       },
       reveal() {
         locked = true;
@@ -414,13 +507,13 @@ const Theory = (() => {
           li.draggable = false; li.classList.add(ok ? 'right' : 'wrong');
           li.querySelectorAll('button').forEach(b => { b.disabled = true; });
           const w = li.querySelector('.th-why');
-          w.innerHTML = tag(ok ? 'right' : 'wrong', ok ? '✔ Right place' : `✘ Belongs at position ${i + 1}`) + ' ' + mdi(q.items[i].why);
+          w.innerHTML = tag(ok ? 'right' : 'wrong', ok ? T('rightPlace') : T('belongsAt', i + 1)) + ' ' + mdi(q.items[i].why);
           w.classList.remove('hidden');
         });
         if (!sameOrder(cur(), [...Array(n).keys()])) {
           const good = document.createElement('div');
           good.className = 'th-wrong-list';
-          good.innerHTML = `<div class="th-sub">The correct order</div><ol class="th-correct-order">${q.items.map(it => `<li>${mdi(it.t)}</li>`).join('')}</ol>`;
+          good.innerHTML = `<div class="th-sub">${T('correctOrder')}</div><ol class="th-correct-order">${q.items.map(it => `<li>${mdi(it.t)}</li>`).join('')}</ol>`;
           body.appendChild(good);
         }
       },
@@ -450,14 +543,14 @@ const Theory = (() => {
       if (isMatch) {
         html = `<div class="th-rows">${targets.map(t => `
           <div class="th-row"><div class="th-row-left">${mdi(t.label)}</div>
-            <div class="th-slot${inTarget(t.id).length ? ' full' : ''}" data-target="${t.id}">${inTarget(t.id).map(chipHtml).join('') || '<span class="th-slot-hint">drop here</span>'}</div></div>`).join('')}</div>`;
+            <div class="th-slot${inTarget(t.id).length ? ' full' : ''}" data-target="${t.id}">${inTarget(t.id).map(chipHtml).join('') || `<span class="th-slot-hint">${T('dropHere')}</span>`}</div></div>`).join('')}</div>`;
       } else {
         html = `<div class="th-buckets" style="--cols:${targets.length}">${targets.map(t => `
           <div class="th-bucket" data-target="${t.id}"><div class="th-bucket-head">${mdi(t.label)}</div>
-            <div class="th-bucket-drop">${inTarget(t.id).map(chipHtml).join('') || '<span class="th-slot-hint">drop here</span>'}</div></div>`).join('')}</div>`;
+            <div class="th-bucket-drop">${inTarget(t.id).map(chipHtml).join('') || `<span class="th-slot-hint">${T('dropHere')}</span>`}</div></div>`).join('')}</div>`;
       }
       const showBank = !locked || bank;
-      body.innerHTML = html + (showBank ? `<div class="th-bank" data-bank="1"><div class="th-sub">${locked ? 'Not matched to anything' : 'Items'}</div>${bank || '<span class="th-slot-hint">all placed</span>'}</div>` : '');
+      body.innerHTML = html + (showBank ? `<div class="th-bank" data-bank="1"><div class="th-sub">${locked ? T('unmatched') : T('items')}</div>${bank || `<span class="th-slot-hint">${T('allPlaced')}</span>`}</div>` : '');
       onChange();
     }
     function put(chipId, tid) {
@@ -519,7 +612,7 @@ const Theory = (() => {
         const right = required.filter(c => place[c.id] === c.home).length;
         // a wrongly placed distractor can never stay hidden: every slot is filled by exactly one chip
         const ok = right === required.length;
-        return { ok, detail: ok ? '' : `${right} of ${required.length} placed right` };
+        return { ok, detail: ok ? '' : T('placedDetail', right, required.length) };
       },
       reveal() {
         locked = true; selected = null;
@@ -531,23 +624,23 @@ const Theory = (() => {
         if (isMatch) {
           q.pairs.forEach((p, i) => {
             const got = chips.find(c => place[c.id] === i), ok = got && got.home === i;
-            lines.push(`<div class="th-blank-row ${ok ? 'right' : 'wrong'}">${tag(ok ? 'right' : 'wrong', ok ? '✔ Correct' : '✘ Wrong')}
-              ${mdi(p.l)} → <strong>${mdi(p.r)}</strong>${ok ? '' : ` <span class="hint">(you put: ${got ? mdi(got.t) : 'nothing'})</span>`}
+            lines.push(`<div class="th-blank-row ${ok ? 'right' : 'wrong'}">${tag(ok ? 'right' : 'wrong', ok ? T('correct') : T('wrong'))}
+              ${mdi(p.l)} → <strong>${mdi(p.r)}</strong>${ok ? '' : ` <span class="hint">(${T('youPut')} ${got ? mdi(got.t) : T('nothing')})</span>`}
               <div class="th-why">${mdi(p.why)}</div></div>`);
           });
-          (q.extras || []).forEach(d => lines.push(`<div class="th-blank-row">${tag('rejected', '✘ Decoy')} ${mdi(d.r)}
+          (q.extras || []).forEach(d => lines.push(`<div class="th-blank-row">${tag('rejected', T('decoy'))} ${mdi(d.r)}
             <div class="th-why">${mdi(d.why)}</div></div>`));
         } else {
           chips.forEach(c => {
             const ok = place[c.id] === c.home;
-            lines.push(`<div class="th-blank-row ${ok ? 'right' : 'wrong'}">${tag(ok ? 'right' : 'wrong', ok ? '✔ Correct' : '✘ Wrong')}
-              ${mdi(c.t)} → <strong>${mdi(q.buckets[c.home])}</strong>${ok ? '' : ` <span class="hint">(you put it under ${mdi(q.buckets[place[c.id]])})</span>`}
+            lines.push(`<div class="th-blank-row ${ok ? 'right' : 'wrong'}">${tag(ok ? 'right' : 'wrong', ok ? T('correct') : T('wrong'))}
+              ${mdi(c.t)} → <strong>${mdi(q.buckets[c.home])}</strong>${ok ? '' : ` <span class="hint">(${T('putUnder')} ${mdi(q.buckets[place[c.id]])})</span>`}
               <div class="th-why">${mdi(c.why)}</div></div>`);
           });
         }
         const box = document.createElement('div');
         box.className = 'th-wrong-list';
-        box.innerHTML = `<div class="th-sub">Why</div>${lines.join('')}`;
+        box.innerHTML = `<div class="th-sub">${T('why')}</div>${lines.join('')}`;
         body.appendChild(box);
       },
     };
@@ -555,5 +648,6 @@ const Theory = (() => {
 
   const BUILDERS = { single: buildChoice, multi: buildChoice, fill: buildFill, order: buildOrder, match: buildPlacer, sort: buildPlacer };
 
-  return { load, collection, renderHomeGrid, renderSidebar, open, hide };
+  applyStatic();
+  return { load, collection, renderHomeGrid, renderSidebar, open, hide, t: T };
 })();

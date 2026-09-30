@@ -112,22 +112,29 @@ function solutionFile(ex) {
 // Collections are compiled from tools/theory/*.txt into theory/<id>.json (tools/build_theory.js).
 // They are a parallel track to the exercises: graded in the browser (instant feedback), only the
 // per-question result is stored here: .progress/theory/<collection>.json  {qid: {pass, tries}}.
+// Translations live in theory/<lang>/<id>.json with the same question ids, so progress is shared
+// across languages; a collection without a translation falls back to English.
 const THEORY = path.join(LAB, 'theory');
 const THEORY_PROGRESS = path.join(PROGRESS, 'theory');
 const SAFE_ID = /^[\w-]+$/;
 
-function loadCollection(id) {
+const THEORY_LANGS = ['es'];
+function loadCollection(id, lang) {
   if (!SAFE_ID.test(id)) return null;
-  try { return JSON.parse(fs.readFileSync(path.join(THEORY, id + '.json'), 'utf8')); } catch { return null; }
+  const dirs = THEORY_LANGS.includes(lang) ? [path.join(THEORY, lang), THEORY] : [THEORY];
+  for (const d of dirs) {
+    try { return JSON.parse(fs.readFileSync(path.join(d, id + '.json'), 'utf8')); } catch { /* try the next */ }
+  }
+  return null;
 }
 function theoryProgress(cid) {
   try { return JSON.parse(fs.readFileSync(path.join(THEORY_PROGRESS, cid + '.json'), 'utf8')); } catch { return {}; }
 }
 function questionStatus(p) { return !p ? 'new' : p.pass ? 'pass' : 'attempted'; }
-function theoryIndex() {
+function theoryIndex(lang) {
   let files = [];
   try { files = fs.readdirSync(THEORY).filter(f => f.endsWith('.json')).sort(); } catch { /* no theory yet */ }
-  return files.map(f => loadCollection(f.slice(0, -5))).filter(Boolean).map(c => {
+  return files.map(f => loadCollection(f.slice(0, -5), lang)).filter(Boolean).map(c => {
     const prog = theoryProgress(c.id);
     return { id: c.id, title: c.title, about: c.about, groups: c.groups.map(g => ({
       id: g.id, title: g.title,
@@ -263,8 +270,9 @@ async function api(req, res, url) {
   }
 
   if (parts[1] === 'theory') {
-    if (req.method === 'GET' && !parts[2]) return send(res, 200, theoryIndex());
-    const col = parts[2] ? loadCollection(parts[2]) : null;
+    const lang = url.searchParams.get('lang');
+    if (req.method === 'GET' && !parts[2]) return send(res, 200, theoryIndex(lang));
+    const col = parts[2] ? loadCollection(parts[2], lang) : null;
     if (!col) return send(res, 404, { error: 'no such collection' });
     if (req.method === 'GET' && !parts[3]) return send(res, 200, col);
     if (req.method === 'POST' && parts[3] === 'reset') {
