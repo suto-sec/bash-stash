@@ -1,0 +1,826 @@
+@@topic 16_functions | Functions
+
+@@ex 1611 numero_check | return status as a boolean check
+@@level 3
+@@cmds return, $?, if func
+@@readme
+Write a function `es_numero X` that **returns** (with explicit `return 0` / `return 1`, never
+printing anything) 0 if `X` is a valid integer — an optional leading `-` followed by one or more
+digits — and 1 otherwise.
+
+For each script argument, using `if es_numero "$X"; then ... fi`, print `X: numero` or
+`X: no numero`. At the end print `total: V numeros, I no numeros` (V + I must equal the number of
+arguments).
+@@check
+SEEDS=1
+ARGS=('5' '-5' 'abc' '' '007 -3 4.5 x1 10 -0' '1 2 3 4 5' '0')
+extra_check() { must_use return; }
+@@solution
+#!/bin/bash
+es_numero() {
+  if [[ $1 =~ ^-?[0-9]+$ ]]; then
+    return 0
+  else
+    return 1
+  fi
+}
+v=0
+i=0
+for x in "$@"; do
+  if es_numero "$x"; then
+    echo "$x: numero"
+    v=$((v + 1))
+  else
+    echo "$x: no numero"
+    i=$((i + 1))
+  fi
+done
+echo "total: $v numeros, $i no numeros"
+
+@@ex 1612 rango | Capturing two values with $( ) and read
+@@level 3
+@@cmds $(func), read, local
+@@readme
+`echo`+`$( )` can return more than one piece of data if you print them on one line and split them
+back with `read`.
+
+Write a function `rango` that receives numbers as arguments and **echoes** two numbers on a single
+line, separated by one space: the smallest, then the largest. Capture both at once with
+
+```
+read -r menor mayor <<< "$(rango "$@")"
+```
+
+then print `menor=X mayor=Y`.
+@@check
+SEEDS=1
+ARGS=('5' '3 9 1' '-5 -1 -10' '7 7 7' '10 -20 30 0')
+extra_check() { must_use read; }
+@@solution
+#!/bin/bash
+rango() {
+  local menor=$1 mayor=$1 x
+  for x in "$@"; do
+    [ "$x" -lt "$menor" ] && menor=$x
+    [ "$x" -gt "$mayor" ] && mayor=$x
+  done
+  echo "$menor $mayor"
+}
+read -r menor mayor <<< "$(rango "$@")"
+echo "menor=$menor mayor=$mayor"
+
+@@ex 1613 progreso_local | local keeps a name from leaking out
+@@level 3
+@@cmds local, scope
+@@readme
+The script starts with `n="sin datos"` — a status variable that has nothing to do with any loop
+counter, but happens to share its name with one you are about to write.
+
+Write a function `progreso` that, for the script's arguments (in order), prints one line
+`paso N: valor V` (N = 1, 2, 3... ; V = the argument) using a variable **called `n`** as the
+counter — declare it **local**, so it can never leak outside the function.
+
+Write a function `sumar` that **echoes** the integer sum of its arguments.
+
+The script must, in this exact order:
+
+1. print `estado antes: $n`
+2. call `progreso "$@"` directly (not inside `$( )`)
+3. print `estado despues: $n` — it must still say `sin datos`
+4. print `total: $(sumar "$@")`
+@@check
+SEEDS=1
+ARGS=('5' '1 2 3' '' '10 -3 7 2' '4 4 4 4')
+extra_check() { must_use local; }
+@@solution
+#!/bin/bash
+n="sin datos"
+progreso() {
+  local n=1
+  local v
+  for v in "$@"; do
+    echo "paso $n: valor $v"
+    n=$((n + 1))
+  done
+}
+sumar() {
+  local s=0 x
+  for x in "$@"; do s=$((s + x)); done
+  echo "$s"
+}
+echo "estado antes: $n"
+progreso "$@"
+echo "estado despues: $n"
+echo "total: $(sumar "$@")"
+
+@@ex 1614 forward_args | Forwarding "$@" through a wrapper function
+@@level 3
+@@cmds "$@" vs $*, functions calling functions
+@@readme
+Write a function `contar` that receives the script's arguments as **separate** parameters and
+prints `N args:` (N = its own `$#`), followed by one line per argument:
+`- 'V' (L chars)` (V = the argument exactly as received, L = `${#V}`).
+
+Write a function `mostrar` that receives the script's arguments and simply **forwards** them to
+`contar`, using `"$@"` — never `$*` — so arguments with embedded spaces stay as a single argument
+each. Call `mostrar "$@"`.
+@@check
+SEEDS=1
+ARGS=('' 'hola' 'a b' '"a b" c' '"uno dos" "tres cuatro" cinco' '"  espacios  "')
+@@solution
+#!/bin/bash
+contar() {
+  echo "$# args:"
+  local v
+  for v in "$@"; do
+    echo "- '$v' (${#v} chars)"
+  done
+}
+mostrar() {
+  contar "$@"
+}
+mostrar "$@"
+
+@@ex 1615 palindromo_rec | A recursive palindrome check
+@@level 3
+@@cmds recursion, return, substring expansion
+@@readme
+Write a **recursive** function `es_palindromo STR` that **returns** 0 if STR reads the same
+forwards and backwards (case-sensitive; spaces count) and 1 otherwise. Compare the first and last
+characters (`${s:0:1}` and `${s: -1}`) and, if they match, recurse on the substring with both ends
+removed (`${s:1:${#s}-2}`); the base case is a string of length 0 or 1.
+
+For each script argument print `V: palindromo` or `V: no palindromo`.
+@@check
+SEEDS=1
+ARGS=('ana' 'hola' 'a' '' 'radar noesto racecar x' '"a x a"' '"ana a"')
+extra_check() { must_use return; }
+@@solution
+#!/bin/bash
+es_palindromo() {
+  local s=$1
+  local len=${#s}
+  if (( len <= 1 )); then return 0; fi
+  if [ "${s:0:1}" != "${s: -1}" ]; then return 1; fi
+  es_palindromo "${s:1:len-2}"
+}
+for w in "$@"; do
+  if es_palindromo "$w"; then
+    echo "$w: palindromo"
+  else
+    echo "$w: no palindromo"
+  fi
+done
+
+@@ex 1616 mcd_lista | Folding gcd across a list with recursion
+@@level 3
+@@cmds recursion, $(func), local
+@@readme
+Write a **recursive** function `mcd A B` (Euclid's algorithm: `mcd A B` is `mcd B (A % B)` when B
+is not 0, otherwise A) for two non-negative integers, returning the result with `echo`/`$( )`
+(the value may be too big to fit in a `return` status).
+
+The script receives two or more non-negative integers. Compute the gcd of *all* of them by folding
+`mcd` from left to right, and print `mcd = R`.
+@@check
+SEEDS=1
+ARGS=('12 18' '7 13' '100 250 75' '0 5' '6 6 6 6' '48 18 30')
+@@solution
+#!/bin/bash
+mcd() {
+  local a=$1 b=$2
+  if [ "$b" -eq 0 ]; then
+    echo "$a"
+  else
+    echo "$(mcd "$b" "$((a % b))")"
+  fi
+}
+r=$1
+shift
+for x in "$@"; do
+  r=$(mcd "$r" "$x")
+done
+echo "mcd = $r"
+
+@@ex 1617 lib_texto | Sourcing a second function library
+@@level 3
+@@cmds source, functions
+@@readme
+The provided file `lib_texto.sh` defines two functions: `contar_vocales STR` (**echoes** the
+number of vowels — `aeiouAEIOU` — in STR) and `es_largo STR N` (**returns** 0 if STR has at least
+N characters, 1 otherwise).
+
+**Source it** (`source ./lib_texto.sh`) and, for each script argument, print
+`V: C vocales, largo` if `es_largo "V" 5` succeeds, or `V: C vocales, corto` otherwise (C is the
+vowel count from `contar_vocales`). Don't redefine either function.
+@@check
+SEEDS=1
+setup() {
+  {
+    echo 'contar_vocales() { echo "$1" | grep -o "[aeiouAEIOU]" | wc -l; }'
+    echo 'es_largo() { [ "${#1}" -ge "$2" ]; }'
+  } > lib_texto.sh
+}
+ARGS=('hola' 'xyz' 'murcielago' '' 'a e i o u' '"buenas tardes" ok')
+extra_check() {
+  must_use source
+  ans_code | grep -qE '(contar_vocales|es_largo) *\(\)' && fail "use the functions from lib_texto.sh, don't redefine them"
+  true
+}
+@@solution
+#!/bin/bash
+source ./lib_texto.sh
+for w in "$@"; do
+  v=$(contar_vocales "$w")
+  if es_largo "$w" 5; then
+    echo "$w: $v vocales, largo"
+  else
+    echo "$w: $v vocales, corto"
+  fi
+done
+
+@@ex 1618 potencia | potencia.sh: recursive power and digit sum
+@@level 4
+@@cmds recursion, $(func), [[ =~ ]], exit codes
+@@readme
+Write `potencia.sh BASE EXP`. Using a **recursive** function `potencia B E` (returns the result
+with `echo`/`$( )`, since it may not fit in 0-255), compute `BASE` raised to `EXP` (both integers,
+`EXP >= 0`). Using a second recursive function `suma_digitos N` (adds the decimal digits of a
+non-negative integer, one at a time, the same way), compute the digit sum of `|BASE^EXP|`.
+
+Print exactly:
+
+```
+BASE^EXP = R
+digit sum of |R|: D
+```
+
+Validate before computing (message on **stderr**, wording free but naming the offending value
+when there is one; checked in this order):
+
+| situation | exit |
+|-----------|------|
+| not exactly 2 arguments (show the usage) | 1 |
+| BASE is not a valid integer | 2 |
+| EXP is not a valid non-negative integer | 3 |
+| EXP > 15 (keeps the recursion shallow) | 4 |
+@@check
+SCRIPT_NAME=potencia.sh
+SEEDS=1
+COMPARE="stdout exit errmsg"
+ARGS=('2 10' '-3 3' '0 0' '5 0' '-2 5' '' '3' '2 3 4' 'x 3' '2 -1' '2 abc' '2 20')
+extra_check() {
+  local a; eval "a=( $CASE )"
+  [[ $REF_CODE == 2 ]] && mentions "${a[0]}"
+  [[ $REF_CODE == 3 ]] && mentions "${a[1]}"
+  [[ $REF_CODE == 1 && $ERR != *potencia.sh* && $ERR != *sage* ]] && fail "the usage message should show how to call the script"
+  true
+}
+@@solution
+#!/bin/bash
+# potencia.sh BASE EXP
+if [ $# -ne 2 ]; then
+  echo "usage: $(basename "$0") BASE EXP" >&2
+  exit 1
+fi
+BASE=$1
+EXP=$2
+if [[ ! $BASE =~ ^-?[0-9]+$ ]]; then
+  echo "error: '$BASE' is not a valid integer" >&2
+  exit 2
+fi
+if [[ ! $EXP =~ ^[0-9]+$ ]]; then
+  echo "error: '$EXP' is not a valid non-negative integer" >&2
+  exit 3
+fi
+if [ "$EXP" -gt 15 ]; then
+  echo "error: exponent '$EXP' is too large (max 15)" >&2
+  exit 4
+fi
+
+potencia() {
+  local b=$1 e=$2
+  if [ "$e" -eq 0 ]; then
+    echo 1
+  else
+    echo "$(( b * $(potencia "$b" $((e - 1))) ))"
+  fi
+}
+suma_digitos() {
+  local n=$1
+  if [ "$n" -lt 10 ]; then
+    echo "$n"
+  else
+    echo "$(( n % 10 + $(suma_digitos $((n / 10))) ))"
+  fi
+}
+
+R=$(potencia "$BASE" "$EXP")
+abs=$R
+[ "$abs" -lt 0 ] && abs=$((-abs))
+D=$(suma_digitos "$abs")
+echo "$BASE^$EXP = $R"
+echo "digit sum of |R|: $D"
+
+@@ex 1619 informe | informe.sh: a name collision that needs local
+@@level 4
+@@cmds local, functions, scope
+@@readme
+Write `informe.sh FILE...`. Loop over the arguments with `for f in "$@"; do revisar "$f"; done`
+(the loop variable must be named `f`). `revisar` must:
+
+- if FILE doesn't exist or isn't readable: print a message on stderr naming it (wording free) and
+  count it as skipped — don't stop the script;
+- otherwise read the file's first line into a **local** variable also named `f` (yes, on purpose —
+  it must not leak into the caller's loop variable), and print
+  `FILE: primera linea = 'f' (lineas: L)` (L = `wc -l` of the file), counting it as ok.
+
+After the loop, print `procesados: OK ok, SKIP saltados` and then `ultimo arg: $f` — this last line
+must show the **last FILE argument itself**, proving the loop variable was never overwritten by
+`revisar`.
+
+Errors: no arguments at all → usage on stderr, exit 1.
+@@check
+SCRIPT_NAME=informe.sh
+SEEDS=3
+COMPARE="stdout exit errmsg"
+setup() {
+  mkfl "notas 1.txt" "$(words 4)" "$(words 3)" "$(words 5)"
+  mkfl notas2.txt "$(words 2)"
+  echo secreto > privado.txt
+  chmod 000 privado.txt
+}
+ARGS=('' '"notas 1.txt"' 'notas2.txt "notas 1.txt"' 'nada.txt "notas 1.txt"' 'privado.txt notas2.txt'
+      '"notas 1.txt" nada.txt notas2.txt' 'nada.txt privado.txt')
+extra_check() {
+  local a f; eval "a=( $CASE )"
+  for f in "${a[@]}"; do
+    if [[ ! -f "$W/$f" || ! -r "$W/$f" ]]; then mentions "$f"; fi
+  done
+  must_use local
+}
+@@solution
+#!/bin/bash
+# informe.sh FILE...
+if [ $# -eq 0 ]; then
+  echo "usage: $(basename "$0") FILE..." >&2
+  exit 1
+fi
+
+ok=0
+skipped=0
+
+revisar() {
+  local file=$1
+  if [ ! -f "$file" ] || [ ! -r "$file" ]; then
+    echo "informe.sh: '$file' no accesible" >&2
+    skipped=$((skipped + 1))
+    return
+  fi
+  local f
+  f=$(head -n 1 -- "$file")
+  local l
+  l=$(wc -l < "$file")
+  echo "$file: primera linea = '$f' (lineas: $l)"
+  ok=$((ok + 1))
+}
+
+for f in "$@"; do
+  revisar "$f"
+done
+
+echo "procesados: $ok ok, $skipped saltados"
+echo "ultimo arg: $f"
+
+@@ex 1620 buscar | buscar.sh: forwarding "$@" through two function layers
+@@level 4
+@@cmds "$@" forwarding, grep -c, $(func), local
+@@readme
+Write `buscar.sh PATTERN FILE...`. Write `procesar`, which receives `FILE...` and, for each one
+(in order), calls a helper `contar FILE` (which **echoes** the number of matching lines,
+`grep -c -- "$PATTERN" FILE`) and prints `FILE: N`; it tracks a running total of matches and of
+valid files. The script calls `procesar "$@"` after removing PATTERN with `shift`, forwarding the
+remaining file list with `"$@"` (arguments may contain spaces).
+
+At the end `procesar` prints `TOTAL: T matches across F files`.
+
+A FILE that doesn't exist or isn't readable is **not** fatal: print a message on stderr naming it
+(wording free) and don't count it.
+
+Errors (stderr, exit code, checked in this order):
+
+| situation | exit |
+|-----------|------|
+| fewer than 2 arguments (show the usage) | 1 |
+| PATTERN is the empty string | 2 |
+@@check
+SCRIPT_NAME=buscar.sh
+SEEDS=3
+COMPARE="stdout exit errmsg"
+setup() {
+  mkfl "notas a.txt" "linux is $(word)" "kernel process $(word)" "$(word) linux thread"
+  mkfl otras.txt "$(word) $(word)" "signal socket buffer"
+  echo secreto > oculto.txt
+  chmod 000 oculto.txt
+}
+ARGS=('' 'linux' 'linux "notas a.txt"' 'linux "notas a.txt" otras.txt' 'process otras.txt oculto.txt'
+      'thread nofile.txt "notas a.txt"' '"" "notas a.txt"' 'kernel "notas a.txt" otras.txt oculto.txt nofile.txt')
+extra_check() {
+  local a f; eval "a=( $CASE )"
+  for ((i = 1; i < ${#a[@]}; i++)); do
+    f=${a[i]}
+    if [[ ! -f "$W/$f" || ! -r "$W/$f" ]]; then mentions "$f"; fi
+  done
+  [[ $REF_CODE == 1 && $ERR != *buscar.sh* && $ERR != *sage* ]] && fail "the usage message should show how to call the script"
+  true
+}
+@@solution
+#!/bin/bash
+# buscar.sh PATTERN FILE...
+if [ $# -lt 2 ]; then
+  echo "usage: $(basename "$0") PATTERN FILE..." >&2
+  exit 1
+fi
+PATTERN=$1
+shift
+if [ -z "$PATTERN" ]; then
+  echo "error: empty pattern" >&2
+  exit 2
+fi
+
+contar() {
+  local n
+  n=$(grep -c -- "$PATTERN" "$1")
+  echo "$n"
+}
+
+procesar() {
+  local f total=0 valid=0 c
+  for f in "$@"; do
+    if [ ! -f "$f" ] || [ ! -r "$f" ]; then
+      echo "buscar.sh: '$f' no accesible" >&2
+      continue
+    fi
+    c=$(contar "$f")
+    echo "$f: $c"
+    total=$((total + c))
+    valid=$((valid + 1))
+  done
+  echo "TOTAL: $total matches across $valid files"
+}
+
+procesar "$@"
+
+@@ex 1621 temp | temp.sh: a die helper dispatching to two functions
+@@level 4
+@@cmds die/usage pattern, case, $(func)
+@@readme
+Write `temp.sh UNIDAD VALOR` (UNIDAD is `C` or `F`, case-sensitive; VALOR is an integer,
+possibly negative). Write a helper `die CODE MESSAGE...` (prints `ERROR: MESSAGE` on stderr and
+exits the script with CODE) and use it for every validation:
+
+| situation | exit |
+|-----------|------|
+| not exactly 2 arguments (show the usage) | 1 |
+| UNIDAD is neither `C` nor `F` (name it) | 2 |
+| VALOR is not a valid integer (name it) | 3 |
+
+Write `c_to_f` and `f_to_c` (integer arithmetic, truncating like `$(( ))`) and a function
+`convertir UNIDAD VALOR` that **echoes** the converted value, dispatching with a `case`. Print
+`VALOR UNIDAD = R OTRA` (OTRA is the other unit's letter).
+@@check
+SCRIPT_NAME=temp.sh
+SEEDS=1
+COMPARE="stdout exit errmsg"
+ARGS=('C 0' 'C 100' 'F 212' 'C -40' 'F 32' '' 'C' 'X 10' 'C abc' 'C 10 20')
+extra_check() {
+  local a; eval "a=( $CASE )"
+  [[ $REF_CODE == 2 ]] && mentions "${a[0]}"
+  [[ $REF_CODE == 3 ]] && mentions "${a[1]}"
+  must_use die
+}
+@@solution
+#!/bin/bash
+# temp.sh C|F VALOR
+die() {
+  local code=$1; shift
+  echo "ERROR: $*" >&2
+  exit "$code"
+}
+
+[ $# -eq 2 ] || die 1 "usage: $(basename "$0") C|F VALOR"
+UNIDAD=$1
+VALOR=$2
+[[ $UNIDAD == C || $UNIDAD == F ]] || die 2 "unidad invalida: '$UNIDAD'"
+[[ $VALOR =~ ^-?[0-9]+$ ]] || die 3 "valor invalido: '$VALOR'"
+
+c_to_f() { echo $(( $1 * 9 / 5 + 32 )); }
+f_to_c() { echo $(( ($1 - 32) * 5 / 9 )); }
+
+convertir() {
+  case $1 in
+    C) c_to_f "$2" ;;
+    F) f_to_c "$2" ;;
+  esac
+}
+
+R=$(convertir "$UNIDAD" "$VALOR")
+if [ "$UNIDAD" = C ]; then OTRA=F; else OTRA=C; fi
+echo "$VALOR $UNIDAD = $R $OTRA"
+
+@@ex 1622 primos | primos.sh: recursive primality testing
+@@level 4
+@@cmds recursion, return, [[ =~ ]], exit codes
+@@readme
+Write `primos.sh N...`. Write a **recursive** function `es_primo N [D]` (D defaults to 2) that
+**returns** 0 if N is prime and 1 otherwise: if `D*D > N` return 0 (prime); if `N % D == 0` return
+1 (not prime); otherwise recurse with `D+1`.
+
+For each argument that is a valid integer `>= 2`, print `N: primo` or `N: no primo`. An argument
+that is **not** a valid integer `>= 2` is not fatal: print a message on stderr naming it (wording
+free) and skip it.
+
+At the end print `TOTAL: P primos de V validos`.
+
+Exit codes: 0 on success; 1 if there are no arguments at all (usage on stderr); 2 if there is at
+least one argument but **none** of them is valid (checked after processing all arguments).
+@@check
+SCRIPT_NAME=primos.sh
+SEEDS=1
+COMPARE="stdout exit errmsg"
+ARGS=('' '2 3 4 5 6 7 8 9 10' '17 18 19 20' '1 0 -3 abc' '13' '4 6 8 9 10 12' '2 x 4 -1 0 1' '97 100')
+extra_check() {
+  local a t; eval "a=( $CASE )"
+  for t in "${a[@]}"; do
+    if [[ $t =~ ^[0-9]+$ ]] && (( 10#$t >= 2 )); then continue; fi
+    [[ $REF_CODE != 1 ]] && mentions "$t"
+  done
+  true
+}
+@@solution
+#!/bin/bash
+# primos.sh N...
+if [ $# -eq 0 ]; then
+  echo "usage: $(basename "$0") N..." >&2
+  exit 1
+fi
+
+es_primo() {
+  local n=$1 d=${2:-2}
+  if (( d * d > n )); then return 0; fi
+  if (( n % d == 0 )); then return 1; fi
+  es_primo "$n" $((d + 1))
+}
+
+primos=0
+validos=0
+for n in "$@"; do
+  if [[ ! $n =~ ^[0-9]+$ ]] || [ "$n" -lt 2 ]; then
+    echo "primos.sh: '$n' invalido" >&2
+    continue
+  fi
+  validos=$((validos + 1))
+  if es_primo "$n"; then
+    echo "$n: primo"
+    primos=$((primos + 1))
+  else
+    echo "$n: no primo"
+  fi
+done
+echo "TOTAL: $primos primos de $validos validos"
+[ "$validos" -gt 0 ] || exit 2
+
+@@ex 1623 clasificar | clasificar.sh: classifying numbers via a sourced library
+@@level 4
+@@cmds source, functions, [[ =~ ]]
+@@readme
+The provided file `lib_num.sh` defines `es_numero X` (**returns** 0 if X is a valid integer,
+optionally signed) and `es_par X` (**returns** 0 if X is even; only called with a valid integer).
+
+Write `clasificar.sh NUM...`: **source** `lib_num.sh` (don't redefine its functions) and, for each
+argument, print:
+
+- `X: no numero` if `es_numero` fails
+- `X: cero` if X equals 0
+- `X: positivo par` / `X: positivo impar` / `X: negativo par` / `X: negativo impar` otherwise
+
+Finally print `TOTAL: P positivos, N negativos, Z ceros, I invalidos`.
+
+Errors: no arguments at all → usage on stderr, exit 1.
+@@check
+SCRIPT_NAME=clasificar.sh
+SEEDS=1
+COMPARE="stdout exit errmsg"
+setup() {
+  {
+    echo 'es_numero() { [[ $1 =~ ^-?[0-9]+$ ]]; }'
+    echo 'es_par() { (( $1 % 2 == 0 )); }'
+  } > lib_num.sh
+}
+ARGS=('' '5' '-4' '0' '3 -2 0 7 -8 abc' '10 11 12 13 -0' '42 -17 x -3.5 99')
+extra_check() {
+  must_use source
+  ans_code | grep -qE '(es_numero|es_par) *\(\)' && fail "use the functions from lib_num.sh, don't redefine them"
+  true
+}
+@@solution
+#!/bin/bash
+# clasificar.sh NUM...
+if [ $# -eq 0 ]; then
+  echo "usage: $(basename "$0") NUM..." >&2
+  exit 1
+fi
+
+source ./lib_num.sh
+
+pos=0; neg=0; cero=0; inv=0
+for n in "$@"; do
+  if ! es_numero "$n"; then
+    echo "$n: no numero"
+    inv=$((inv + 1))
+    continue
+  fi
+  if [ "$n" -eq 0 ]; then
+    echo "$n: cero"
+    cero=$((cero + 1))
+    continue
+  fi
+  if [ "$n" -gt 0 ]; then signo=positivo; pos=$((pos + 1)); else signo=negativo; neg=$((neg + 1)); fi
+  if es_par "$n"; then paridad=par; else paridad=impar; fi
+  echo "$n: $signo $paridad"
+done
+echo "TOTAL: $pos positivos, $neg negativos, $cero ceros, $inv invalidos"
+
+@@ex 1624 notas | notas.sh: return for validity, echo for a letter grade
+@@level 4
+@@cmds return, $(func), exit codes
+@@readme
+Write `notas.sh NOTA...`. Write `es_valida NOTA` which **returns** (explicit `return 0`/`return 1`,
+no printing) 0 if NOTA is a valid integer from 0 to 100, 1 otherwise. Write `letra NOTA` which
+**echoes** a single letter: `A` (>=90), `B` (>=80), `C` (>=70), `D` (>=60), `F` (otherwise).
+
+For each argument: if invalid, print a message on stderr naming it (wording free) and skip it
+(not fatal); otherwise print `NOTA: LETRA`.
+
+At the end (only if at least one grade was valid) print
+`TOTAL: V validas, promedio P, letra_prom L` (P = integer average of the valid grades, L =
+`letra` applied to P).
+
+Exit codes: 1 if there are no arguments at all (usage on stderr); 2 if there are arguments but
+none is valid; 0 otherwise.
+@@check
+SCRIPT_NAME=notas.sh
+SEEDS=1
+COMPARE="stdout exit errmsg"
+ARGS=('' '85' '95 82 77 60 55 101 -5 abc' '100 100 100' '0 100 50' '150 -1 abc xyz' '72 68 91')
+extra_check() {
+  local a t; eval "a=( $CASE )"
+  for t in "${a[@]}"; do
+    if [[ $t =~ ^[0-9]+$ ]] && [ "$t" -le 100 ]; then continue; fi
+    [[ $REF_CODE != 1 ]] && mentions "$t"
+  done
+  must_use return
+}
+@@solution
+#!/bin/bash
+# notas.sh NOTA...
+if [ $# -eq 0 ]; then
+  echo "usage: $(basename "$0") NOTA..." >&2
+  exit 1
+fi
+
+es_valida() {
+  if [[ $1 =~ ^[0-9]+$ ]] && [ "$1" -le 100 ]; then
+    return 0
+  else
+    return 1
+  fi
+}
+
+letra() {
+  local n=$1
+  if [ "$n" -ge 90 ]; then echo A
+  elif [ "$n" -ge 80 ]; then echo B
+  elif [ "$n" -ge 70 ]; then echo C
+  elif [ "$n" -ge 60 ]; then echo D
+  else echo F
+  fi
+}
+
+validas=0
+suma=0
+for n in "$@"; do
+  if es_valida "$n"; then
+    l=$(letra "$n")
+    echo "$n: $l"
+    validas=$((validas + 1))
+    suma=$((suma + n))
+  else
+    echo "notas.sh: '$n' invalida" >&2
+  fi
+done
+
+if [ "$validas" -eq 0 ]; then
+  echo "error: ninguna nota valida" >&2
+  exit 2
+fi
+
+promedio=$((suma / validas))
+lp=$(letra "$promedio")
+echo "TOTAL: $validas validas, promedio $promedio, letra_prom $lp"
+
+@@ex 1625 agenda | agenda.sh: a subcommand dispatcher built from functions
+@@level 4
+@@cmds die/usage pattern, case, shift, "$@" forwarding
+@@readme
+Write `agenda.sh COMANDO [ARGS...]`, keeping contacts in `agenda.txt` (lines `NOMBRE:TELEFONO`).
+Write a helper `die CODE MESSAGE...` (prints `ERROR: MESSAGE` on stderr, exits with CODE) and one
+function per subcommand, each validating its own argument count with `die`:
+
+- `listar` (0 args): print every contact as `NOMBRE: TELEFONO`, sorted (`sort agenda.txt`), or
+  `agenda vacia` if the file is missing/empty.
+- `buscar NOMBRE` (1 arg): print `NOMBRE: TELEFONO` for every matching line, or `no encontrado` if
+  none.
+- `borrar NOMBRE` (1 arg): delete every matching line (`sed -i`) and print `borrados: K` (K = how
+  many).
+- `add NOMBRE TELEFONO` (2 args): TELEFONO must be digits only (die otherwise, naming it); append
+  the line and print `agregado: NOMBRE`.
+
+The script itself only does `[ $# -ge 1 ] || die 1 ...`, then `comando=$1; shift` and dispatches
+with a `case` that forwards the rest with `"$@"`.
+
+Exit codes: 1 no COMANDO at all; 2 unknown COMANDO (name it); 3 wrong number of arguments for the
+given COMANDO; 4 `add` with a non-numeric TELEFONO (name it).
+@@check
+SCRIPT_NAME=agenda.sh
+COMPARE="stdout exit errmsg files"
+SEEDS=3
+setup() {
+  local extra1 extra2
+  extra1=$(word); extra2=$(word)
+  mkfl agenda.txt "ana:$(randr 600000000 699999999)" "$extra1:$(randr 600000000 699999999)" \
+       "$extra2:$(randr 600000000 699999999)" "ana:$(randr 600000000 699999999)"
+}
+ARGS=('' 'buscar' 'listar' 'listar extra' 'buscar ana' 'buscar noexiste' 'borrar ana'
+      'add carlos 612345678' 'add carlos abc123' 'add carlos' 'foo' 'add uno dos tres' 'borrar')
+extra_check() {
+  local a; eval "a=( $CASE )"
+  [[ $REF_CODE == 2 ]] && mentions "${a[0]}"
+  [[ $REF_CODE == 4 ]] && mentions "${a[2]}"
+  must_use die
+}
+@@solution
+#!/bin/bash
+# agenda.sh COMANDO [ARGS...]
+F=agenda.txt
+
+die() {
+  local code=$1; shift
+  echo "ERROR: $*" >&2
+  exit "$code"
+}
+
+listar() {
+  [ $# -eq 0 ] || die 3 "listar: no admite argumentos"
+  if [ ! -s "$F" ]; then echo "agenda vacia"; return; fi
+  sort "$F" | sed 's/:/: /'
+}
+
+buscar() {
+  [ $# -eq 1 ] || die 3 "buscar: uso: buscar NOMBRE"
+  local nombre=$1 encontrados
+  encontrados=$( [ -f "$F" ] && grep "^$nombre:" "$F" )
+  if [ -z "$encontrados" ]; then
+    echo "no encontrado"
+  else
+    echo "$encontrados" | sed 's/:/: /'
+  fi
+}
+
+borrar() {
+  [ $# -eq 1 ] || die 3 "borrar: uso: borrar NOMBRE"
+  local nombre=$1 k
+  k=$( [ -f "$F" ] && grep -c "^$nombre:" "$F" )
+  k=${k:-0}
+  [ -f "$F" ] && sed -i "/^$nombre:/d" "$F"
+  echo "borrados: $k"
+}
+
+add() {
+  [ $# -eq 2 ] || die 3 "add: uso: add NOMBRE TELEFONO"
+  local nombre=$1 tel=$2
+  [[ $tel =~ ^[0-9]+$ ]] || die 4 "add: telefono invalido: '$tel'"
+  echo "$nombre:$tel" >> "$F"
+  echo "agregado: $nombre"
+}
+
+[ $# -ge 1 ] || die 1 "usage: $(basename "$0") COMANDO [ARGS...]"
+comando=$1
+shift
+case $comando in
+  listar) listar "$@" ;;
+  buscar) buscar "$@" ;;
+  borrar) borrar "$@" ;;
+  add) add "$@" ;;
+  *) die 2 "comando desconocido: '$comando'" ;;
+esac

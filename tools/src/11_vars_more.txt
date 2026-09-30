@@ -1,0 +1,727 @@
+@@topic 11_variables_arith | Variables, arithmetic & environment
+@@ex 1113 expr_codes | String surgery with expr
+@@level 3
+@@cmds expr length, expr match, expr substr
+@@readme
+The file `codigo.txt` contains one line: a product code made of some uppercase letters followed by
+some digits (e.g. `AB1234`). Using only `expr` (`length`, `match`, `substr`), print, one per line:
+
+1. the length of the code
+2. the number of leading letters (`expr match CODE '[A-Z]*'`)
+3. the letters (the leading part of the code)
+4. the digits (the rest of the code)
+@@check
+setup() { echo "$(pick AB CDE F GHIJ KLM N)$(pick 1 12 123 4567 89012 3)" > codigo.txt; }
+extra_check() { must_use expr; }
+@@solution
+#!/bin/bash
+CODE=$(cat codigo.txt)
+LEN=$(expr length "$CODE")
+NL=$(expr match "$CODE" '[A-Z]*')
+echo "$LEN"
+echo "$NL"
+expr substr "$CODE" 1 "$NL"
+expr substr "$CODE" $((NL + 1)) $((LEN - NL))
+
+@@ex 1114 bc_discount | Discounts with bc
+@@level 3
+@@cmds bc, scale
+@@readme
+The file `precios.txt` contains several prices (two decimals, e.g. `45.50`), one per line, and
+`descuento.txt` contains a discount percentage (an integer). Using `bc` with the right `scale`, print,
+in file order:
+
+1. each price after applying the discount, with **2 decimals** (`price - price*discount/100`)
+2. the total of all the discounted prices, with **2 decimals**
+3. the total amount saved: the sum of the original prices minus the discounted total, with **2 decimals**
+@@check
+setup() {
+  local i n=$(randr 3 6) c
+  : > precios.txt
+  for i in $(seq "$n"); do
+    c=$(randr 2000 9999)
+    printf '%d.%02d\n' "$((c / 100))" "$((c % 100))" >> precios.txt
+  done
+  randr 10 50 > descuento.txt
+}
+extra_check() { must_use bc; }
+@@solution
+#!/bin/bash
+D=$(cat descuento.txt)
+TOTAL_ORIG=0
+TOTAL_DESC=0
+while IFS= read -r p; do
+  desc=$(echo "scale=2; $p - $p * $D / 100" | bc)
+  echo "$desc"
+  TOTAL_ORIG=$(echo "scale=2; $TOTAL_ORIG + $p" | bc)
+  TOTAL_DESC=$(echo "scale=2; $TOTAL_DESC + $desc" | bc)
+done < precios.txt
+echo "$TOTAL_DESC"
+echo "scale=2; $TOTAL_ORIG - $TOTAL_DESC" | bc
+
+@@ex 1115 bit_flags | Bit flags with $(( ))
+@@level 3
+@@cmds $(( )), & | ^ << >>
+@@readme
+The file `n.txt` contains an integer N between 0 and 15 (four bit flags: 1, 2, 4 and 8). Using
+`$(( ))` and the bitwise operators (`& | ^ << >>`), print, one per line:
+
+1. `yes`/`no`: whether bit **1** is set in N
+2. `yes`/`no`: whether bit **2** is set in N
+3. `yes`/`no`: whether bit **4** is set in N
+4. `yes`/`no`: whether bit **8** is set in N
+5. N shifted left by 1 (`N << 1`)
+6. N shifted right by 1 (`N >> 1`)
+7. N XORed with 15 (`N ^ 15`)
+@@check
+setup() { randr 0 15 > n.txt; }
+@@solution
+#!/bin/bash
+N=$(cat n.txt)
+(( N & 1 )) && echo yes || echo no
+(( N & 2 )) && echo yes || echo no
+(( N & 4 )) && echo yes || echo no
+(( N & 8 )) && echo yes || echo no
+echo $((N << 1))
+echo $((N >> 1))
+echo $((N ^ 15))
+
+@@ex 1116 kv_expand | Splitting KEY=VALUE with parameter expansion
+@@level 3
+@@cmds ${v%%=*}, ${v#*=}, ${v,,}, ${v//}, ${#v}
+@@readme
+The file `config.txt` contains one line `KEY=VALUE` (KEY is uppercase, VALUE is a `/`-separated path).
+**Without** external commands (no `cut`, `sed`, `basename`...), only parameter expansion, print:
+
+1. `KEY` (everything before the first `=`) — `${LINE%%=*}`
+2. `VALUE` (everything after the first `=`) — `${LINE#*=}`
+3. `KEY` in lowercase
+4. `VALUE` with every `/` replaced by `_` — `${VALUE//\//_}`
+5. the length of `VALUE`
+@@check
+setup() {
+  local k v
+  k=$(word); k=${k^^}
+  v="/$(pick var etc opt usr srv)/$(word)/$(word).$(pick log conf txt)"
+  echo "$k=$v" > config.txt
+}
+extra_check() { must_not_use cut sed basename dirname; }
+@@solution
+#!/bin/bash
+LINE=$(cat config.txt)
+KEY=${LINE%%=*}
+VALUE=${LINE#*=}
+echo "$KEY"
+echo "$VALUE"
+echo "${KEY,,}"
+echo "${VALUE//\//_}"
+echo "${#VALUE}"
+
+@@ex 1117 env_scope | env, export and printenv together
+@@level 3
+@@cmds env, export, printenv, unset
+@@readme
+1. Set `MODE=prod` (do **not** export it).
+2. Run `env MODE=test printenv MODE`: this starts `printenv` with `MODE` **temporarily** overridden to
+   `test`, without touching the current shell's `MODE`.
+3. Print `echo "$MODE"` (still `prod`: `env VAR=x cmd` only changes the environment of `cmd`).
+4. `export MODE`, then run `env printenv MODE` (no override this time): now `printenv` finds it because
+   it is exported.
+5. `unset MODE`, then print the exit code of `env printenv MODE` (hide its output): it must be
+   non-zero, since `MODE` no longer exists.
+@@check
+SEEDS=1
+@@solution
+#!/bin/bash
+MODE=prod
+env MODE=test printenv MODE
+echo "$MODE"
+export MODE
+env printenv MODE
+unset MODE
+env printenv MODE > /dev/null 2>&1
+echo $?
+
+@@ex 1118 word_freq | Word frequencies with an associative array
+@@level 3
+@@cmds declare -A, arrays
+@@readme
+The file `palabras.txt` contains one word per line (some repeated). Using an associative array
+(`declare -A`), print:
+
+1. one line per **distinct** word, sorted alphabetically, as `word: count`
+2. a final line `Distinct: N` (N = number of distinct words)
+@@check
+setup() { local i; for i in $(seq "$(randr 8 14)"); do word; done > palabras.txt; }
+extra_check() { must_use declare; }
+@@solution
+#!/bin/bash
+declare -A COUNT
+while IFS= read -r w; do
+  COUNT[$w]=$(( ${COUNT[$w]:-0} + 1 ))
+done < palabras.txt
+for w in "${!COUNT[@]}"; do echo "$w: ${COUNT[$w]}"; done | sort
+echo "Distinct: ${#COUNT[@]}"
+
+@@ex 1119 bc_bases | Base conversion with bc's ibase/obase
+@@level 3
+@@cmds bc, ibase, obase
+@@readme
+The file `n.txt` contains a decimal integer N, and `base.txt` a target base B (2-16; digits above 9 are
+written as `A`-`F`). The file `digits.txt` contains a number already written in base B. Using **`bc`**
+with `ibase`/`obase` (not `$(( ))`), print:
+
+1. N written in base B (`obase=B; N`)
+2. the decimal value of the number in `digits.txt`, which is written in base B (`ibase=B; ...`)
+@@check
+setup() {
+  local n1 n2 b
+  n1=$(randr 10 9999)
+  b=$(pick 2 3 4 5 6 7 8 9 11 12 13 14 15 16)
+  n2=$(randr 10 9999)
+  echo "$n1" > n.txt
+  echo "$b" > base.txt
+  echo "obase=$b; $n2" | bc > digits.txt
+}
+extra_check() { must_use bc; }
+@@solution
+#!/bin/bash
+N=$(cat n.txt)
+B=$(cat base.txt)
+D=$(cat digits.txt)
+echo "obase=$B; $N" | bc
+echo "ibase=$B; $D" | bc
+
+@@ex 1120 gradebook | gradebook.sh (averages with bc)
+@@level 4
+@@cmds bc, [[ =~ ]], read, exit codes
+@@readme
+Write `gradebook.sh FILE [PASS]` (`PASS` default `5`). `FILE` has lines `NAME;S1;S2;S3`, where `NAME`
+may contain spaces (but not `;`) and each `Si` is an integer **1-10**.
+
+For every well-formed line (in file order) print:
+
+```
+NAME: avg=AVG (PASS|FAIL)
+```
+
+where `AVG` is the average of the three scores with **2 decimals** (`bc`), and the status is `PASS` if
+`AVG >= PASS`, else `FAIL`. Finally print `Total: N students, P passed, F failed`.
+
+- wrong number of arguments (not 1 or 2): usage on stderr, exit **1**
+- `FILE` not readable: stderr, exit **2**
+- `PASS` given but not an integer 0-10: stderr, exit **3**
+- a line that doesn't match `NAME;S1;S2;S3` (wrong field count, a score that is not an integer, or
+  outside 1-10) is **not** fatal: print `Error: line L: <line>` on stderr (L = line number, 1-based;
+  blank lines don't count as errors and are skipped silently) and keep going. If this happened at
+  least once, exit **4** at the end (only if there was no other error above); otherwise exit **0**.
+@@check
+SCRIPT_NAME=gradebook.sh
+SEEDS=2
+COMPARE="stdout exit errmsg"
+setup() {
+  local i n=$(randr 4 6)
+  : > notas.txt
+  for i in $(seq "$n"); do
+    case $(rand 6) in
+      0) echo "" >> notas.txt ;;
+      1) echo "$(word) $(word);$(randr 1 10);$(randr 1 10)" >> notas.txt ;;
+      2) echo "$(word) $(word);$(randr 1 10);abc;$(randr 1 10)" >> notas.txt ;;
+      3) echo "$(word) $(word);0;$(randr 1 10);$(randr 1 10)" >> notas.txt ;;
+      4) echo "$(word) $(word);11;$(randr 1 10);$(randr 1 10)" >> notas.txt ;;
+      *) echo "$(word) $(word);$(randr 1 10);$(randr 1 10);$(randr 1 10)" >> notas.txt ;;
+    esac
+  done
+  echo "$(word) $(word);$(randr 1 10);$(randr 1 10);$(randr 1 10)" >> notas.txt
+  echo "$(word) $(word);$(randr 1 10);$(randr 1 10);$(randr 1 10)" >> notas.txt
+}
+ARGS=('notas.txt' 'notas.txt 6' 'notas.txt 0' 'notas.txt 11' 'notas.txt abc' '' 'notas.txt 3 4' 'noexiste.txt' 'noexiste.txt 5')
+extra_check() {
+  [[ $REF_CODE != 0 && -z $ERR ]] && fail "expected an error message on stderr"
+  [[ $REF_CODE == 1 ]] && { [[ $ERR == *sage* || $ERR == *gradebook* ]] || fail "the usage message should show how to call the script"; }
+  true
+}
+@@solution
+#!/bin/bash
+usage() { echo "Usage: $(basename "$0") FILE [PASS]" >&2; exit 1; }
+[ $# -ge 1 ] && [ $# -le 2 ] || usage
+FILE=$1
+PASS=${2:-5}
+[ -r "$FILE" ] || { echo "Error: cannot read $FILE" >&2; exit 2; }
+[[ $PASS =~ ^[0-9]+$ ]] && [ "$PASS" -ge 0 ] && [ "$PASS" -le 10 ] || { echo "Error: PASS must be an integer 0-10" >&2; exit 3; }
+
+N=0 P=0 F=0 BAD=0 LN=0
+while IFS= read -r line; do
+  LN=$((LN + 1))
+  [[ -z ${line// /} ]] && continue
+  if [[ $line =~ ^([^\;]+)\;([0-9]+)\;([0-9]+)\;([0-9]+)$ ]]; then
+    name=${BASH_REMATCH[1]} s1=${BASH_REMATCH[2]} s2=${BASH_REMATCH[3]} s3=${BASH_REMATCH[4]}
+    if [ "$s1" -ge 1 ] && [ "$s1" -le 10 ] && [ "$s2" -ge 1 ] && [ "$s2" -le 10 ] && [ "$s3" -ge 1 ] && [ "$s3" -le 10 ]; then
+      AVG=$(echo "scale=2; ($s1 + $s2 + $s3) / 3" | bc)
+      if [ "$(echo "$AVG >= $PASS" | bc)" = 1 ]; then st=PASS; P=$((P + 1)); else st=FAIL; F=$((F + 1)); fi
+      echo "$name: avg=$AVG ($st)"
+      N=$((N + 1))
+      continue
+    fi
+  fi
+  echo "Error: line $LN: $line" >&2
+  BAD=1
+done < "$FILE"
+echo "Total: $N students, $P passed, $F failed"
+[ $BAD -eq 1 ] && exit 4
+exit 0
+
+@@ex 1121 sumbases | sumbases.sh (multi-base sum)
+@@level 4
+@@cmds $((2#..)), $((8#..)), $((16#..)), [[ =~ ]]
+@@readme
+Write `sumbases.sh FILE`. `FILE` has lines `BASE VALUE` (whitespace-separated), where `BASE` is one of
+`bin`, `oct`, `dec`, `hex` and `VALUE` is a number written in that base (hex digits may be upper or
+lower case).
+
+For every well-formed line (in file order) print:
+
+```
+BASE VALUE = DECIMAL
+```
+
+Finally print `Sum: TOTAL` (the sum, in decimal, of every valid value) and `Skipped: K` (number of
+invalid lines).
+
+- not exactly 1 argument: usage on stderr, exit **1**
+- `FILE` not readable: stderr, exit **2**
+- no valid value at all in `FILE`: stderr, exit **3**
+- a line that isn't `BASE VALUE` (unknown `BASE`, wrong digits for that base, or extra/missing fields)
+  is skipped (counted in `Skipped`, reported as `Error: line L: <line>` on stderr, blank lines don't
+  count); if at least one line was skipped, exit **4** at the end (only when there was no other error).
+@@check
+SCRIPT_NAME=sumbases.sh
+SEEDS=2
+COMPARE="stdout exit errmsg"
+setup() {
+  local i n=$(randr 5 8) c
+  : > vals.txt
+  for i in $(seq "$n"); do
+    case $(rand 8) in
+      0) echo "" >> vals.txt ;;
+      1) echo "hexa $(randr 1 99)" >> vals.txt ;;
+      2) echo "bin 1$(randr 2 9)0" >> vals.txt ;;
+      3) echo "oct 8$(randr 0 9)" >> vals.txt ;;
+      4) echo "hex 1G$(word)" >> vals.txt ;;
+      5) echo "dec 12a" >> vals.txt ;;
+      6) echo "bin" >> vals.txt ;;
+      *)
+        c=$(rand 4)
+        if [ "$c" = 0 ]; then printf 'dec %d\n' "$(randr 0 999)" >> vals.txt
+        elif [ "$c" = 1 ]; then
+          if [ "$(rand 2)" = 1 ]; then printf 'hex %x\n' "$(randr 0 4095)" >> vals.txt
+          else printf 'hex %X\n' "$(randr 0 4095)" >> vals.txt
+          fi
+        elif [ "$c" = 2 ]; then printf 'oct %o\n' "$(randr 0 511)" >> vals.txt
+        else printf 'bin %d%d%d%d%d%d\n' "$(rand 2)" "$(rand 2)" "$(rand 2)" "$(rand 2)" "$(rand 2)" "$(rand 2)" >> vals.txt
+        fi
+        ;;
+    esac
+  done
+  printf 'dec %d\n' "$(randr 1 999)" >> vals.txt
+  printf 'hex %X\n' "$(randr 1 4095)" >> vals.txt
+  echo "hexa 1" > allbad.txt
+  echo "bin 29" >> allbad.txt
+}
+ARGS=('vals.txt' '' 'vals.txt extra' 'noexiste.txt' 'allbad.txt')
+extra_check() {
+  [[ $REF_CODE != 0 && -z $ERR ]] && fail "expected an error message on stderr"
+  [[ $REF_CODE == 1 ]] && { [[ $ERR == *sage* || $ERR == *sumbases* ]] || fail "the usage message should show how to call the script"; }
+  true
+}
+@@solution
+#!/bin/bash
+[ $# -eq 1 ] || { echo "Usage: $(basename "$0") FILE" >&2; exit 1; }
+FILE=$1
+[ -r "$FILE" ] || { echo "Error: cannot read $FILE" >&2; exit 2; }
+
+TOTAL=0 N=0 K=0 LN=0
+while IFS= read -r line; do
+  LN=$((LN + 1))
+  [[ -z ${line// /} ]] && continue
+  read -r base val rest <<< "$line"
+  ok=0
+  case $base in
+    dec) [[ $val =~ ^[0-9]+$ ]] && [[ -z $rest ]] && { dec=$val; ok=1; } ;;
+    bin) [[ $val =~ ^[01]+$ ]] && [[ -z $rest ]] && { dec=$((2#$val)); ok=1; } ;;
+    oct) [[ $val =~ ^[0-7]+$ ]] && [[ -z $rest ]] && { dec=$((8#$val)); ok=1; } ;;
+    hex) [[ $val =~ ^[0-9A-Fa-f]+$ ]] && [[ -z $rest ]] && { dec=$((16#$val)); ok=1; } ;;
+  esac
+  if [ $ok -eq 1 ]; then
+    echo "$base $val = $dec"
+    TOTAL=$((TOTAL + dec))
+    N=$((N + 1))
+  else
+    echo "Error: line $LN: $line" >&2
+    K=$((K + 1))
+  fi
+done < "$FILE"
+[ $N -eq 0 ] && { echo "Error: no valid values in $FILE" >&2; exit 3; }
+echo "Sum: $TOTAL"
+echo "Skipped: $K"
+[ $K -gt 0 ] && exit 4
+exit 0
+
+@@ex 1122 envset | envset.sh (exporting a config file)
+@@level 4
+@@cmds export, parameter expansion, [[ =~ ]]
+@@readme
+Write `envset.sh CONFIGFILE [PREFIX]`. `CONFIGFILE` has lines `KEY=VALUE` (`VALUE` may contain spaces
+and even `=`). Blank lines and lines whose first non-blank character is `#` are comments: skip them
+silently. Any other line that has no `=`, or whose `KEY` doesn't match `^[A-Za-z_][A-Za-z0-9_]*$`, is
+invalid: print `Invalid line L: <line>` on stderr (L = 1-based line number) and skip it.
+
+`export` every valid `KEY=VALUE` (later lines override earlier ones with the same `KEY`). If `PREFIX`
+is given, only export keys that **start with** `PREFIX` (other valid keys are silently ignored, not
+counted as invalid).
+
+Finally print, sorted by key, `KEY=VALUE` for every exported variable, then `Exported N variables`.
+
+- wrong number of arguments (not 1 or 2): usage on stderr, exit **1**
+- `CONFIGFILE` not readable: stderr, exit **2**
+- `PREFIX` given but not matching `^[A-Za-z_][A-Za-z0-9_]*$`: stderr, exit **3**
+- if at least one invalid line was found, exit **4** at the end (only when there was no other error)
+@@check
+SCRIPT_NAME=envset.sh
+SEEDS=2
+COMPARE="stdout exit errmsg"
+setup() {
+  local i n=$(randr 5 8)
+  : > cfg.txt
+  for i in $(seq "$n"); do
+    case $(rand 6) in
+      0) echo "" >> cfg.txt ;;
+      1) echo "# $(words 3)" >> cfg.txt ;;
+      2) echo "no_equals_$(word)" >> cfg.txt ;;
+      3) echo "1BAD=$(word)" >> cfg.txt ;;
+      4) echo "BAD-KEY=$(word)" >> cfg.txt ;;
+      *) echo "VAR_$(word)_$i=$(words 2)" >> cfg.txt ;;
+    esac
+  done
+  echo "VAR_ALPHA=$(word)" >> cfg.txt
+  echo "VAR_BETA=$(word) $(word)" >> cfg.txt
+  echo "OTHER_GAMMA=$(word)" >> cfg.txt
+}
+ARGS=('cfg.txt' 'cfg.txt VAR_' 'cfg.txt OTHER_' 'cfg.txt 1BAD' '' 'cfg.txt VAR_ extra' 'noexiste.txt')
+extra_check() {
+  [[ $REF_CODE != 0 && -z $ERR ]] && fail "expected an error message on stderr"
+  [[ $REF_CODE == 1 ]] && { [[ $ERR == *sage* || $ERR == *envset* ]] || fail "the usage message should show how to call the script"; }
+  true
+}
+@@solution
+#!/bin/bash
+usage() { echo "Usage: $(basename "$0") CONFIGFILE [PREFIX]" >&2; exit 1; }
+[ $# -ge 1 ] && [ $# -le 2 ] || usage
+CFG=$1
+PREFIX=${2:-}
+[ -r "$CFG" ] || { echo "Error: cannot read $CFG" >&2; exit 2; }
+if [ -n "$PREFIX" ]; then
+  [[ $PREFIX =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || { echo "Error: invalid PREFIX '$PREFIX'" >&2; exit 3; }
+fi
+
+declare -a KEYS
+BAD=0 LN=0
+while IFS= read -r line; do
+  LN=$((LN + 1))
+  [[ -z ${line// /} ]] && continue
+  [[ $line =~ ^[[:space:]]*# ]] && continue
+  if [[ $line == *=* ]]; then
+    key=${line%%=*}
+    val=${line#*=}
+    if [[ $key =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
+      if [ -z "$PREFIX" ] || [[ $key == "$PREFIX"* ]]; then
+        export "$key=$val"
+        KEYS+=("$key")
+      fi
+      continue
+    fi
+  fi
+  echo "Invalid line $LN: $line" >&2
+  BAD=1
+done < "$CFG"
+
+mapfile -t SORTED < <(printf '%s\n' "${KEYS[@]}" | sort -u)
+for k in "${SORTED[@]}"; do
+  echo "$k=${!k}"
+done
+echo "Exported ${#SORTED[@]} variables"
+[ $BAD -eq 1 ] && exit 4
+exit 0
+
+@@ex 1123 portfolio | portfolio.sh (holdings with bc)
+@@level 4
+@@cmds declare -A, bc, read
+@@readme
+Write `portfolio.sh FILE`. `FILE` has lines `SYMBOL QTY PRICE` (whitespace-separated): `SYMBOL` is
+1-5 uppercase letters, `QTY` a positive integer, `PRICE` a positive number with exactly 2 decimals.
+The same `SYMBOL` may appear on several lines: accumulate its `QTY` and keep the `PRICE` of its
+**last** occurrence.
+
+Print, for every distinct symbol sorted alphabetically:
+
+```
+SYMBOL: QTY units, value=VALUE
+```
+
+where `VALUE = QTY * PRICE` with **2 decimals** (`bc`). Finally print
+`Total portfolio value: TOTAL` (sum of every `VALUE`, 2 decimals).
+
+- not exactly 1 argument: usage on stderr, exit **1**
+- `FILE` not readable: stderr, exit **2**
+- no valid holding at all: stderr, exit **3**
+- a line that isn't `SYMBOL QTY PRICE` (bad symbol, `QTY` not a positive integer, `PRICE` not
+  `DIGITS.DD`, or extra/missing fields) is skipped: print `Error: line L: <line>` on stderr (blank
+  lines don't count) and, if at least one such line was found, exit **4** at the end (only when there
+  was no other error).
+@@check
+SCRIPT_NAME=portfolio.sh
+SEEDS=2
+COMPARE="stdout exit errmsg"
+setup() {
+  local i n=$(randr 6 9) syms=(AAA BBB CCC DDD EEE) c
+  : > port.txt
+  for i in $(seq "$n"); do
+    case $(rand 6) in
+      0) echo "" >> port.txt ;;
+      1) echo "$(pick "${syms[@]}") $(randr 1 20)" >> port.txt ;;
+      2) echo "lowsym $(randr 1 20) 12.00" >> port.txt ;;
+      3) echo "$(pick "${syms[@]}") 0 12.00" >> port.txt ;;
+      4) echo "$(pick "${syms[@]}") $(randr 1 20) 12" >> port.txt ;;
+      *)
+        c=$(randr 100 9999)
+        printf '%s %d %d.%02d\n' "$(pick "${syms[@]}")" "$(randr 1 20)" "$((c / 100))" "$((c % 100))" >> port.txt
+        ;;
+    esac
+  done
+  c=$(randr 100 9999)
+  printf 'AAA %d %d.%02d\n' "$(randr 1 20)" "$((c / 100))" "$((c % 100))" >> port.txt
+  c=$(randr 100 9999)
+  printf 'BBB %d %d.%02d\n' "$(randr 1 20)" "$((c / 100))" "$((c % 100))" >> port.txt
+  : > empty.txt
+}
+ARGS=('port.txt' '' 'port.txt extra' 'noexiste.txt' 'empty.txt')
+extra_check() {
+  [[ $REF_CODE != 0 && -z $ERR ]] && fail "expected an error message on stderr"
+  [[ $REF_CODE == 1 ]] && { [[ $ERR == *sage* || $ERR == *portfolio* ]] || fail "the usage message should show how to call the script"; }
+  true
+}
+@@solution
+#!/bin/bash
+[ $# -eq 1 ] || { echo "Usage: $(basename "$0") FILE" >&2; exit 1; }
+FILE=$1
+[ -r "$FILE" ] || { echo "Error: cannot read $FILE" >&2; exit 2; }
+
+declare -A QTY PRICE
+BAD=0 LN=0
+while IFS= read -r line; do
+  LN=$((LN + 1))
+  [[ -z ${line// /} ]] && continue
+  read -r sym qty price rest <<< "$line"
+  if [[ $sym =~ ^[A-Z]{1,5}$ ]] && [[ $qty =~ ^[0-9]+$ ]] && [ "$qty" -ge 1 ] \
+     && [[ $price =~ ^[0-9]+\.[0-9]{2}$ ]] && [ -z "$rest" ]; then
+    QTY[$sym]=$(( ${QTY[$sym]:-0} + qty ))
+    PRICE[$sym]=$price
+  else
+    echo "Error: line $LN: $line" >&2
+    BAD=1
+  fi
+done < "$FILE"
+
+[ ${#QTY[@]} -eq 0 ] && { echo "Error: no valid holdings in $FILE" >&2; exit 3; }
+
+TOTAL=0
+for sym in $(printf '%s\n' "${!QTY[@]}" | sort); do
+  v=$(echo "scale=2; ${QTY[$sym]} * ${PRICE[$sym]}" | bc)
+  echo "$sym: ${QTY[$sym]} units, value=$v"
+  TOTAL=$(echo "scale=2; $TOTAL + $v" | bc)
+done
+echo "Total portfolio value: $TOTAL"
+[ $BAD -eq 1 ] && exit 4
+exit 0
+
+@@ex 1124 rangecalc | rangecalc.sh (stats with expr and bc)
+@@level 4
+@@cmds expr, bc, [[ =~ ]]
+@@readme
+Write `rangecalc.sh FILE [THRESHOLD]` (`THRESHOLD` default `0`, may be negative). `FILE` has one
+integer reading per line (may be negative). Blank lines are skipped silently.
+
+Compute, over every well-formed line, using **`expr`** for the running sum and the "above threshold"
+comparisons: the count, minimum, maximum, sum and how many readings are **strictly greater** than
+`THRESHOLD`. Print:
+
+```
+Readings: N
+Min: MIN
+Max: MAX
+Sum: SUM
+Average: AVG
+Above THRESHOLD: C
+```
+
+`AVG` is `SUM / N` with **1 decimal** (`bc`).
+
+- wrong number of arguments (not 1 or 2): usage on stderr, exit **1**
+- `FILE` not readable: stderr, exit **2**
+- `THRESHOLD` given but not an integer: stderr, exit **3**
+- a non-blank line that is not a plain integer is skipped: print `Error: line L: <line>` on stderr and
+  keep going; if this happened at least once, exit **4** at the end (unless one of the errors below
+  applies)
+- if there is not a single valid reading in `FILE`: stderr, exit **5**
+@@check
+SCRIPT_NAME=rangecalc.sh
+SEEDS=2
+COMPARE="stdout exit errmsg"
+setup() {
+  local i n=$(randr 6 10)
+  : > lecturas.txt
+  for i in $(seq "$n"); do
+    case $(rand 5) in
+      0) echo "" >> lecturas.txt ;;
+      1) echo "$(pick abc x12 'n/a')" >> lecturas.txt ;;
+      2) echo "$(randr 0 40).5" >> lecturas.txt ;;
+      *) echo "$(( $(randr 0 80) - 30 ))" >> lecturas.txt ;;
+    esac
+  done
+  echo "$(( $(randr 0 80) - 30 ))" >> lecturas.txt
+  echo "$(( $(randr 0 80) - 30 ))" >> lecturas.txt
+  echo "solo texto" > malo.txt
+}
+ARGS=('lecturas.txt' 'lecturas.txt 5' 'lecturas.txt -10' 'lecturas.txt abc' '' 'lecturas.txt 1 2' 'noexiste.txt' 'malo.txt')
+extra_check() {
+  must_use expr
+  [[ $REF_CODE != 0 && -z $ERR ]] && fail "expected an error message on stderr"
+  [[ $REF_CODE == 1 ]] && { [[ $ERR == *sage* || $ERR == *rangecalc* ]] || fail "the usage message should show how to call the script"; }
+  true
+}
+@@solution
+#!/bin/bash
+[ $# -ge 1 ] && [ $# -le 2 ] || { echo "Usage: $(basename "$0") FILE [THRESHOLD]" >&2; exit 1; }
+FILE=$1
+THRESHOLD=${2:-0}
+[ -r "$FILE" ] || { echo "Error: cannot read $FILE" >&2; exit 2; }
+[[ $THRESHOLD =~ ^-?[0-9]+$ ]] || { echo "Error: THRESHOLD must be an integer" >&2; exit 3; }
+
+N=0; SUM=0; ABOVE=0; MIN=; MAX=; BAD=0; LN=0
+while IFS= read -r line; do
+  LN=$((LN + 1))
+  [[ -z ${line// /} ]] && continue
+  if [[ $line =~ ^-?[0-9]+$ ]]; then
+    v=$line
+    SUM=$(expr "$SUM" + "$v")
+    N=$((N + 1))
+    { [ -z "$MIN" ] || [ "$v" -lt "$MIN" ]; } && MIN=$v
+    { [ -z "$MAX" ] || [ "$v" -gt "$MAX" ]; } && MAX=$v
+    [ "$(expr "$v" \> "$THRESHOLD")" = 1 ] && ABOVE=$((ABOVE + 1))
+  else
+    echo "Error: line $LN: $line" >&2
+    BAD=1
+  fi
+done < "$FILE"
+
+[ $N -eq 0 ] && { echo "Error: no valid readings in $FILE" >&2; exit 5; }
+
+AVG=$(echo "scale=1; $SUM / $N" | bc)
+echo "Readings: $N"
+echo "Min: $MIN"
+echo "Max: $MAX"
+echo "Sum: $SUM"
+echo "Average: $AVG"
+echo "Above $THRESHOLD: $ABOVE"
+[ $BAD -eq 1 ] && exit 4
+exit 0
+
+@@ex 1125 checksum | checksum.sh (manual decimal-to-binary)
+@@level 4
+@@cmds $(( )), %, printf %02x
+@@readme
+Write `checksum.sh FILE`. `FILE` has one integer per line; a **valid byte** is an integer 0-255. Blank
+lines are skipped silently.
+
+Compute, over every valid byte (in file order): `N` = how many, `SUM` = their plain sum (`$(( ))`,
+not modulo), and `CHK = SUM % 256`. Print:
+
+```
+Bytes: N
+Sum: SUM
+Checksum (dec): CHK
+Checksum (hex): HEX
+Checksum (bin): BIN
+```
+
+`HEX` is `CHK` in 2-digit lowercase hexadecimal (`printf '%02x'`). `BIN` is `CHK` written as an
+**8-bit** binary string, computed with a loop and `$(( ))` (division and `%` by 2) — not with `bc`.
+
+- not exactly 1 argument: usage on stderr, exit **1**
+- `FILE` not readable: stderr, exit **2**
+- no valid byte at all in `FILE`: stderr, exit **3**
+- a non-blank line that isn't an integer 0-255 is skipped: print `Error: line L: <line>` on stderr and
+  keep going; if this happened at least once, exit **4** at the end (only when there was no other
+  error)
+@@check
+SCRIPT_NAME=checksum.sh
+SEEDS=2
+COMPARE="stdout exit errmsg"
+setup() {
+  local i n=$(randr 6 10)
+  : > bytes.txt
+  for i in $(seq "$n"); do
+    case $(rand 5) in
+      0) echo "" >> bytes.txt ;;
+      1) echo "$(pick abc -3 '' 3.5)" >> bytes.txt ;;
+      2) echo "$(randr 256 999)" >> bytes.txt ;;
+      *) echo "$(randr 0 255)" >> bytes.txt ;;
+    esac
+  done
+  echo "$(randr 0 255)" >> bytes.txt
+  echo "$(randr 0 255)" >> bytes.txt
+  echo "no numbers here" > malo.txt
+}
+ARGS=('bytes.txt' '' 'bytes.txt extra' 'noexiste.txt' 'malo.txt')
+extra_check() {
+  must_not_use bc
+  [[ $REF_CODE != 0 && -z $ERR ]] && fail "expected an error message on stderr"
+  [[ $REF_CODE == 1 ]] && { [[ $ERR == *sage* || $ERR == *checksum* ]] || fail "the usage message should show how to call the script"; }
+  true
+}
+@@solution
+#!/bin/bash
+[ $# -eq 1 ] || { echo "Usage: $(basename "$0") FILE" >&2; exit 1; }
+FILE=$1
+[ -r "$FILE" ] || { echo "Error: cannot read $FILE" >&2; exit 2; }
+
+N=0; SUM=0; BAD=0; LN=0
+while IFS= read -r line; do
+  LN=$((LN + 1))
+  [[ -z ${line// /} ]] && continue
+  if [[ $line =~ ^[0-9]+$ ]] && [ "$line" -le 255 ]; then
+    SUM=$((SUM + line))
+    N=$((N + 1))
+  else
+    echo "Error: line $LN: $line" >&2
+    BAD=1
+  fi
+done < "$FILE"
+
+[ $N -eq 0 ] && { echo "Error: no valid bytes in $FILE" >&2; exit 3; }
+
+CHK=$((SUM % 256))
+BIN=""
+n=$CHK
+for ((i = 0; i < 8; i++)); do
+  BIN="$((n % 2))$BIN"
+  n=$((n / 2))
+done
+
+echo "Bytes: $N"
+echo "Sum: $SUM"
+echo "Checksum (dec): $CHK"
+printf 'Checksum (hex): %02x\n' "$CHK"
+echo "Checksum (bin): $BIN"
+[ $BAD -eq 1 ] && exit 4
+exit 0

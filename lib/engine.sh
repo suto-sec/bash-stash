@@ -146,7 +146,7 @@ run_side() { # side script seed case
   mkdir -p "$o"
   install -m 755 "$script" "$SB/bin/$SCRIPT_NAME"
   local -a args=()
-  ( cd "$SB/work"; W=$SB/work H=$SB/home; eval "args=( $case )"; printf '%s\0' "${args[@]}" ) > "$o/args" 2>/dev/null
+  ( cd "$SB/work"; W=$SB/work H=$SB/home; eval "args=( $case )"; (( ${#args[@]} )) && printf '%s\0' "${args[@]}" ) > "$o/args" 2>/dev/null
   mapfile -d '' args < "$o/args"
   if declare -F input >/dev/null; then rng_seed $((seed+1)); ( cd "$SB/work"; W=$SB/work H=$SB/home; input ) > "$o/stdin"; else : > "$o/stdin"; fi
   local -a envv=(HOME="$SB/home" PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin

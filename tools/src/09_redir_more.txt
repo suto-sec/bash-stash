@@ -1,0 +1,810 @@
+@@topic 09_redirection | Redirection: > >> 2> < << <<<
+@@ex 0913 noclobber | Protecting files: noclobber and >|
+@@level 3
+@@cmds set -o noclobber, >|, { ...; } 2>/dev/null
+@@readme
+`lista.txt` contains file names, one per line (they may contain spaces). Some of those files already
+exist. Write a script that:
+
+1. turns on `noclobber` (`set -o noclobber`), so that `>` refuses to overwrite existing files
+2. for each name in `lista.txt`, tries to write the line `generated` into it **with `>`**, and prints
+   `<name>: created` if the redirection worked or `<name>: kept` if it was refused.
+   Decide it from the **exit status** of the redirection, not by testing whether the file exists.
+   The shell's own error message must **not** appear anywhere (your stderr must be empty).
+   Careful: in `cmd > file 2>/dev/null` the failing `> file` is processed *before* `2>/dev/null`...
+3. overwrites the existing `forzar.txt` with the line `forced` anyway, using `>|`, and prints `forced`
+
+Existing files must keep their content.
+@@check
+COMPARE="stdout stderr exit files"
+setup() {
+  local i n
+  for i in $(seq "$(randr 4 7)"); do
+    n="$(pick '' 'my ')$(word)$i.txt"
+    echo "$n"
+    [[ $(rand 2) == 1 ]] && echo "old $(word)" > "$n"
+  done > lista.txt
+  echo "old $(words 2)" > forzar.txt
+}
+extra_check() {
+  ans_code | grep -qE 'noclobber|set -C' || fail "turn on noclobber (set -o noclobber)"
+  ans_code | grep -q '>|' || fail "use >| to force the overwrite"
+}
+@@solution
+#!/bin/bash
+set -o noclobber
+while IFS= read -r f; do
+  # the group's stderr is redirected before the inner "> $f" is attempted
+  if { echo generated > "$f"; } 2>/dev/null; then
+    echo "$f: created"
+  else
+    echo "$f: kept"
+  fi
+done < lista.txt
+echo forced >| forzar.txt
+echo forced
+
+@@ex 0914 while_read_file | Reading a file line by line, exactly
+@@level 3
+@@cmds while IFS= read -r, done < in > out, printf, ${#var}
+@@readme
+Create `salida.txt` from `entrada.txt`: for **every** line of `entrada.txt` (also empty ones), write
+
+```
+<line number>|<the line, exactly as it is>|<its length in characters>
+```
+
+The lines may have leading/trailing spaces and tabs, backslashes, `*`, or be `-n`; they must be
+copied **unchanged**. The last line of `entrada.txt` has **no** final newline and must be processed too.
+
+Redirect the whole loop (`while ...; do ...; done < entrada.txt > salida.txt`), and finally print
+on the screen `<N> lines processed`.
+@@check
+COMPARE="stdout exit files"
+setup() {
+  local i
+  for i in $(seq "$(randr 4 8)"); do
+    pick "  indented $(word)" "back\\slash $(word)" "" $'\ttab '"$(word)" "-n" "*" "$(word)   " "a  b   $(word)" "\\n$(word)" "-e x"
+  done > entrada.txt
+  printf '%s' "last $(word) *" >> entrada.txt
+}
+@@solution
+#!/bin/bash
+n=0
+# IFS= keeps leading/trailing blanks, -r keeps backslashes, || [ -n ] handles the last line
+while IFS= read -r l || [ -n "$l" ]; do
+  n=$((n + 1))
+  printf '%s|%s|%s\n' "$n" "$l" "${#l}"
+done < entrada.txt > salida.txt
+echo "$n lines processed"
+
+@@ex 0915 two_files_fds | Reading two files in parallel
+@@level 3
+@@cmds while read <&3, done 3< f1 4< f2, read -u
+@@readme
+`nombres.txt` contains names (possibly with spaces) and `notas.txt` the grade of each one (an integer
+0-10), line by line: line N of one file goes with line N of the other. Both have the same number of
+lines. **Without `paste`**, read both files at the same time in one loop, using two extra file
+descriptors (`done 3< nombres.txt 4< notas.txt` and `read ... <&3`, or `read -u 3`), and print for
+each pair
+
+```
+<name>: <grade> PASS        (grade >= 5)
+<name>: <grade> FAIL        (otherwise)
+```
+
+and finally `passed: <P>/<T>`.
+@@check
+setup() {
+  local i n
+  n=$(randr 3 8)
+  for i in $(seq "$n"); do pick "$(word)" "${WORDS[$(rand 20)]^} $(word)" "Ana Maria" "Luis"; done > nombres.txt
+  for i in $(seq "$n"); do rand 11; done > notas.txt
+}
+extra_check() { must_not_use paste; }
+@@solution
+#!/bin/bash
+p=0 t=0
+while IFS= read -r name <&3 && IFS= read -r grade <&4; do
+  t=$((t + 1))
+  if [ "$grade" -ge 5 ]; then
+    r=PASS; p=$((p + 1))
+  else
+    r=FAIL
+  fi
+  echo "$name: $grade $r"
+done 3< nombres.txt 4< notas.txt
+echo "passed: $p/$t"
+
+@@ex 0916 append_logs | Appending both streams to logs
+@@level 3
+@@cmds 2>>, tee -a, wc -l <
+@@readme
+The provided `./job.sh NAME` prints some lines on stdout and, sometimes, some on stderr.
+Run `./job.sh` once for each task name in `tareas.txt` (one per line, in order), so that:
+
+- the **stdout** of all runs is **appended** to `run.log` and **also shown** on the screen (`tee -a`)
+- the **stderr** of all runs is **appended** to `err.log` and **not** shown
+
+`run.log` and `err.log` may already exist with older content: keep it. Finally print
+`errors: <N>`, where N is the number of lines **added** to `err.log` by this execution.
+@@check
+COMPARE="stdout stderr exit files"
+setup() {
+  cat > job.sh << 'EOF'
+#!/bin/bash
+echo "[$1] start"
+case $1 in *a*) echo "[$1] warning: name contains an a" >&2 ;; esac
+case $1 in *e*) echo "[$1] error: name contains an e" >&2 ;; esac
+echo "[$1] done"
+EOF
+  chmod +x job.sh
+  local i
+  for i in $(seq "$(randr 2 5)"); do word; done > tareas.txt
+  [[ $(rand 2) == 1 ]] && echo "[old] start" > run.log
+  [[ $(rand 2) == 1 ]] && printf '[old] error 1\n[old] error 2\n' > err.log
+  true
+}
+@@solution
+#!/bin/bash
+BEFORE=0
+[ -f err.log ] && BEFORE=$(wc -l < err.log)
+while IFS= read -r t; do
+  ./job.sh "$t" 2>> err.log | tee -a run.log
+done < tareas.txt
+echo "errors: $(( $(wc -l < err.log) - BEFORE ))"
+
+@@ex 0917 heredoc_script | Generating a script with a here document
+@@level 3
+@@cmds cat > file << EOF, \$, $( ), chmod +x
+@@readme
+With **one** here document whose delimiter is **not** quoted (so that some things are expanded when
+the file is generated), create `saluda.sh` with exactly these lines:
+
+```
+#!/bin/bash
+# generated by <user> in <dir>
+# datos had <N> entries when this script was generated
+echo "Hello, $1"
+echo "You gave me $# arguments"
+```
+
+where `<user>` is the value of `$USER`, `<dir>` the current directory (`pwd`) and `<N>` the number of
+entries of the directory `datos` (`ls datos | wc -l`), all computed **when generating** the file; while
+`$1` and `$#` must appear **literally** in `saluda.sh` (escape them with `\`).
+
+Then make it executable with `chmod +x` and run it as `./saluda.sh "<name>" extra`, where `<name>`
+is the content of `nombre.txt` (one line, may contain spaces).
+@@check
+COMPARE="stdout exit files"
+setup() {
+  mkdir datos
+  local i
+  for i in $(seq "$(randr 1 6)"); do touch "datos/$(word)$i"; done
+  pick "$(word)" "Ana Maria" "$(word) $(word)" > nombre.txt
+}
+extra_check() { ans_code | grep -q '<<' || fail "use a here document (<<)"; }
+@@solution
+#!/bin/bash
+N=$(ls datos | wc -l)
+cat > saluda.sh << EOF
+#!/bin/bash
+# generated by $USER in $(pwd)
+# datos had $N entries when this script was generated
+echo "Hello, \$1"
+echo "You gave me \$# arguments"
+EOF
+chmod +x saluda.sh
+./saluda.sh "$(cat nombre.txt)" extra
+
+@@ex 0918 exec_logging | Logging the rest of a script with exec
+@@level 3
+@@cmds exec 3>&1, exec > file 2>&1, exec 1>&3 3>&-
+@@readme
+Write a script that:
+
+1. prints `starting` on the screen
+2. saves the current stdout and stderr in file descriptors 3 and 4 (`exec 3>&1 4>&2`) and then
+   redirects **both** stdout and stderr of the rest of the script to `script.log` (one `exec`)
+3. runs, in this order: `echo "== files =="`, `ls datos`, `ls noexiste` (it fails: its error message
+   must end up in the log), `echo "== end =="`
+4. restores stdout and stderr from fds 3 and 4 and closes them (`exec 1>&3 2>&4 3>&- 4>&-`)
+5. prints on the screen `logged <N> lines`, where N is the number of lines of `script.log`
+
+Nothing but `starting` and `logged <N> lines` may appear on your stdout, and nothing on your stderr.
+@@check
+COMPARE="stdout stderr exit files"
+setup() {
+  mkdir datos
+  local i
+  for i in $(seq "$(randr 1 5)"); do touch "datos/$(word)$i.$(pick txt log)"; done
+  [[ $(rand 2) == 1 ]] && echo "old log line" > script.log
+  true
+}
+extra_check() { ans_code | grep -q 'exec' || fail "use exec to redirect the rest of the script"; }
+@@solution
+#!/bin/bash
+echo starting
+exec 3>&1 4>&2
+exec > script.log 2>&1
+echo "== files =="
+ls datos
+ls noexiste
+echo "== end =="
+exec 1>&3 2>&4 3>&- 4>&-
+echo "logged $(wc -l < script.log) lines"
+
+@@ex 0919 route_lines | Routing the lines of stdin to several files
+@@level 3
+@@cmds while read, exec 3> file, >&3, >&2
+@@readme
+The script reads lines from its **standard input** until the end and routes each one:
+
+- lines made only of digits (at least one) → file `numbers.txt`
+- lines whose first character is an uppercase letter `A-Z` → file `names.txt`
+- empty lines → ignored
+- any other line → **stderr**, as `skipped: <line>`
+
+Both files must be **overwritten** by each execution (they may already exist) and are created even
+if nothing goes into them. Lines are written unchanged, in input order. Finally print on stdout
+`<a> numbers, <b> names, <c> skipped`.
+
+Tip: open both files once, before the loop (`exec 3> numbers.txt 4> names.txt`), and write with `>&3`.
+@@check
+COMPARE="stdout stderr exit files"
+setup() { [[ $(rand 2) == 1 ]] && echo "999 old" > numbers.txt; echo "Old Name" > names.txt; }
+input() {
+  local i
+  for i in $(seq "$(randr 6 16)"); do
+    pick "$(randr 0 99999)" "${WORDS[$(rand 20)]^}" "Madrid $(word)" "$(word)" " 12" "12a" "" "-5" "$(randr 1 9) $(word)" "007" "X"
+  done
+}
+@@solution
+#!/bin/bash
+a=0 b=0 c=0
+exec 3> numbers.txt 4> names.txt
+while IFS= read -r l; do
+  if [ -z "$l" ]; then
+    continue
+  elif [[ $l =~ ^[0-9]+$ ]]; then
+    echo "$l" >&3; a=$((a + 1))
+  elif [[ $l =~ ^[A-Z] ]]; then
+    echo "$l" >&4; b=$((b + 1))
+  else
+    echo "skipped: $l" >&2; c=$((c + 1))
+  fi
+done
+exec 3>&- 4>&-
+echo "$a numbers, $b names, $c skipped"
+
+@@ex 0920 splitlog | splitlog.sh (splitting a log by level)
+@@level 4
+@@cmds grep -c, grep >>, mkdir -p, ${var,,}
+@@readme
+Write `splitlog.sh`:
+
+```
+splitlog.sh LOG OUTDIR
+```
+
+Each line of `LOG` looks like `<date> <time> <LEVEL> <message...>` (fields separated by single spaces).
+The **level** is the third field. The script **appends** the lines of `LOG` (in order, unchanged) to:
+
+- `OUTDIR/error.log`, `OUTDIR/warn.log`, `OUTDIR/info.log`, `OUTDIR/debug.log` when the level is
+  exactly `ERROR`, `WARN`, `INFO`, `DEBUG`
+- `OUTDIR/other.log` for any other **non-empty** line (another level like `error` or `FATAL`, fewer
+  fields...). Empty lines are ignored.
+
+Existing files in `OUTDIR` keep their content (append!). A file is **only created if it receives at
+least one line** (careful: `grep ... >> file` creates `file` even when nothing matches).
+If `OUTDIR` does not exist, create it (with its parents) and print `Created <OUTDIR>` first.
+
+Then print exactly (always the five lines, in this order, with the counts of **this** run):
+
+```
+error: <n>
+warn: <n>
+info: <n>
+debug: <n>
+other: <n>
+Total: <T> lines
+```
+
+Errors (message on **stderr**): not exactly 2 arguments → usage, exit **1**; `LOG` is not a
+readable regular file → exit **2**; `OUTDIR` exists and is not a directory → exit **3**.
+@@check
+SCRIPT_NAME=splitlog.sh
+SEEDS=3
+COMPARE="stdout exit files errmsg"
+mklog() {
+  local i
+  for i in $(seq "$1"); do
+    case $(rand 12) in
+      0) echo ;;
+      1) echo "garbage $(word)" ;;
+      *) printf '2024-06-%02d %02d:%02d:00 %s %s\n' "$(randr 1 30)" "$(rand 24)" "$(rand 60)" "$(pick ERROR WARN INFO DEBUG INFO error ERRORS FATAL WARNING)" "$(words "$(randr 1 4)")" ;;
+    esac
+  done
+}
+setup() {
+  mklog 30 > app.log
+  mklog 12 > "my app.log"
+  mkdir out
+  [[ $(rand 2) == 1 ]] && echo "2024-01-01 00:00:00 ERROR old line" > out/error.log
+  [[ $(rand 2) == 1 ]] && echo "old other" > out/other.log
+  touch notadir
+}
+ARGS=('app.log out' '"my app.log" "out dir"' 'app.log "$W/new/deep"' '"my app.log" out' '' 'app.log' 'a b c' 'nofile out' 'out out2' 'app.log notadir')
+@@solution
+#!/bin/bash
+# splitlog.sh LOG OUTDIR
+if [ $# -ne 2 ]; then
+  echo "Usage: $(basename "$0") LOG OUTDIR" >&2
+  exit 1
+fi
+LOG=$1
+OUT=$2
+if [ ! -f "$LOG" ] || [ ! -r "$LOG" ]; then
+  echo "Error: cannot read '$LOG'" >&2
+  exit 2
+fi
+if [ -e "$OUT" ] && [ ! -d "$OUT" ]; then
+  echo "Error: '$OUT' is not a directory" >&2
+  exit 3
+fi
+if [ ! -d "$OUT" ]; then
+  mkdir -p "$OUT"
+  echo "Created $OUT"
+fi
+
+T=0
+for L in ERROR WARN INFO DEBUG; do
+  RE="^[^ ]+ [^ ]+ $L( |$)"
+  n=$(grep -cE "$RE" "$LOG")
+  # only redirect when there is something: >> would create an empty file
+  [ "$n" -gt 0 ] && grep -E "$RE" "$LOG" >> "$OUT/${L,,}.log"
+  echo "${L,,}: $n"
+  T=$((T + n))
+done
+RE='^[^ ]+ [^ ]+ (ERROR|WARN|INFO|DEBUG)( |$)'
+n=$(grep -vE "$RE" "$LOG" | grep -c .)
+[ "$n" -gt 0 ] && grep -vE "$RE" "$LOG" | grep . >> "$OUT/other.log"
+echo "other: $n"
+echo "Total: $((T + n)) lines"
+
+@@ex 0921 mkconf | mkconf.sh (generating a config file)
+@@level 4
+@@cmds cat > file << EOF, \$, mkdir -p, [[ =~ ]], shift
+@@readme
+Write `mkconf.sh`:
+
+```
+mkconf.sh [-f] NAME PORT
+```
+
+It writes the file `$HOME/.config/apps/NAME.conf` (create the directory with its parents if needed,
+silently) with a **here document**, with exactly this content:
+
+```
+# NAME configuration (generated)
+[main]
+name = NAME
+port = PORT
+user = <value of $USER>
+log = <value of $HOME>/logs/NAME.log
+[paths]
+data = ${DATA_DIR}/NAME
+```
+
+(`NAME` and `PORT` replaced by the arguments; `${DATA_DIR}` is written **literally**, not expanded.)
+
+- If the file already exists and `-f` was **not** given: error, exit **4**, the file is left untouched.
+- Otherwise print `Created <path>` (it did not exist) or `Overwritten <path>` (it existed, `-f`),
+  where `<path>` is the full path, and then the summary line
+  `<k> configurations in <directory>`, `k` = number of files `*.conf` in that directory.
+
+Errors (message on **stderr**), checked in this order:
+
+| situation | exit |
+|-----------|------|
+| wrong arguments: `-f` is only allowed as the **first** argument, then exactly `NAME PORT` (show usage) | 1 |
+| `NAME` is not a lowercase letter followed by lowercase letters, digits, `_` or `-` | 2 |
+| `PORT` is not an integer 1..65535 written without leading zeros | 3 |
+| file exists and no `-f` (mention the path) | 4 |
+@@check
+SCRIPT_NAME=mkconf.sh
+SEEDS=4
+COMPARE="stdout exit files errmsg"
+setup() {
+  local i C=$H/.config/apps
+  if [[ $(rand 3) != 0 ]]; then
+    mkdir -p "$C"
+    echo "# old web" > "$C/web.conf"
+    for i in $(seq "$(rand 3)"); do echo "# old" > "$C/$(word)$i.conf"; done
+    echo "notes" > "$C/notes.txt"
+  fi
+  true
+}
+ARGS=('web 8080' '-f web 8080' 'db 5432' '-f new_app-2 1' 'x 65535' 'Web 80' '"my app" 80' '2db 80' 'web 0' 'web 65536' 'web 080' 'web 80x'
+      'web' '-f web' 'a b c' '-x web 80' 'web 80 -f' '')
+@@solution
+#!/bin/bash
+# mkconf.sh [-f] NAME PORT
+usage() { echo "Usage: $(basename "$0") [-f] NAME PORT" >&2; exit 1; }
+FORCE=0
+if [ "$1" = "-f" ]; then
+  FORCE=1
+  shift
+fi
+[ $# -eq 2 ] || usage
+NAME=$1
+PORT=$2
+if [[ ! $NAME =~ ^[a-z][a-z0-9_-]*$ ]]; then
+  echo "Error: invalid name '$NAME'" >&2
+  exit 2
+fi
+if [[ ! $PORT =~ ^[1-9][0-9]{0,4}$ ]] || [ "$PORT" -gt 65535 ]; then
+  echo "Error: invalid port '$PORT'" >&2
+  exit 3
+fi
+DIR=$HOME/.config/apps
+F=$DIR/$NAME.conf
+if [ -e "$F" ] && [ $FORCE -eq 0 ]; then
+  echo "Error: $F already exists (use -f)" >&2
+  exit 4
+fi
+if [ -e "$F" ]; then MSG=Overwritten; else MSG=Created; fi
+mkdir -p "$DIR"
+cat > "$F" << EOF
+# $NAME configuration (generated)
+[main]
+name = $NAME
+port = $PORT
+user = $USER
+log = $HOME/logs/$NAME.log
+[paths]
+data = \${DATA_DIR}/$NAME
+EOF
+echo "$MSG $F"
+echo "$(ls "$DIR"/*.conf | wc -l) configurations in $DIR"
+
+@@ex 0922 bundle | bundle.sh (joining files with headers)
+@@level 4
+@@cmds { ...; } >> file, : > file, test -ef, wc -l <
+@@readme
+Write `bundle.sh`:
+
+```
+bundle.sh OUT FILE...
+```
+
+It writes into `OUT` (created, or **emptied** if it exists), for each `FILE` in order, a header line
+`==> <FILE> <==` followed by the content of `FILE`. A `FILE` may be given more than once.
+
+- A `FILE` that is not a readable regular file: message on stderr naming it; it is skipped
+  (nothing about it goes into `OUT`) and the final exit code is **2**.
+- For each file added, print on stdout `added <FILE> (<n> lines)` (n = lines of that file).
+- Finally print `<k> files, <L> lines written to <OUT>` (`k` files added, `L` = lines of `OUT`).
+
+Errors (message on **stderr**), checked **before** writing anything:
+
+| situation | exit |
+|-----------|------|
+| fewer than 2 arguments (show usage) | 1 |
+| some `FILE` is the same file as `OUT` (`[ FILE -ef OUT ]`, e.g. `out.txt` and `./out.txt`); `OUT` must stay untouched | 3 |
+| `OUT` cannot be written (e.g. its directory does not exist) | 4 |
+
+All files end with a newline. Names may contain spaces.
+@@check
+SCRIPT_NAME=bundle.sh
+SEEDS=3
+COMPARE="stdout exit files errmsg"
+setup() {
+  mkdir parts
+  local f i
+  for f in parts/a.txt "parts/my notes.txt" parts/b.log locked.txt; do
+    for i in $(seq "$(randr 1 5)"); do words "$(randr 1 4)"; done > "$f"
+  done
+  chmod 000 locked.txt
+  echo "old content $(word)" > out.txt
+  true
+}
+ARGS=('out.txt parts/a.txt "parts/my notes.txt"' '"all parts.txt" parts/b.log parts/a.txt parts/b.log' 'out.txt parts/a.txt nofile locked.txt'
+      'out.txt parts' 'out.txt parts/a.txt ./out.txt' '"$W/out.txt" out.txt' 'out.txt' '' 'nodir/x.txt parts/a.txt')
+extra_check() {
+  [[ $CASE == *nofile* ]] && mentions nofile
+  [[ $CASE == *nofile* ]] && mentions locked.txt
+  true
+}
+@@solution
+#!/bin/bash
+# bundle.sh OUT FILE...
+if [ $# -lt 2 ]; then
+  echo "Usage: $(basename "$0") OUT FILE..." >&2
+  exit 1
+fi
+OUT=$1
+shift
+for f in "$@"; do
+  if [ "$f" -ef "$OUT" ]; then
+    echo "Error: '$f' is the output file" >&2
+    exit 3
+  fi
+done
+if ! : 2>/dev/null > "$OUT"; then
+  echo "Error: cannot write '$OUT'" >&2
+  exit 4
+fi
+
+RC=0 K=0
+for f in "$@"; do
+  if [ -f "$f" ] && [ -r "$f" ]; then
+    { echo "==> $f <=="; cat "$f"; } >> "$OUT"
+    echo "added $f ($(wc -l < "$f") lines)"
+    K=$((K + 1))
+  else
+    echo "Error: cannot read '$f'" >&2
+    RC=2
+  fi
+done
+echo "$K files, $(wc -l < "$OUT") lines written to $OUT"
+exit $RC
+
+@@ex 0923 runall | runall.sh (running scripts with their output logged)
+@@level 4
+@@cmds cmd < /dev/null > out 2> err, $?, test -s, wc -l <
+@@readme
+Write `runall.sh`:
+
+```
+runall.sh DIR [LOGDIR]
+```
+
+It runs, in the order of the `DIR/*.sh` glob, every **regular file** directly in `DIR` whose name
+ends in `.sh` and that is **executable** (others are skipped silently), with no arguments and:
+
+- stdin from `/dev/null` (the scripts must not read the input of `runall.sh`!)
+- stdout to `LOGDIR/<name>.out` and stderr to `LOGDIR/<name>.err`, where `<name>` is the file name
+  without `.sh` (both files overwritten if they exist)
+
+`LOGDIR` defaults to `DIR/logs`; create it (with parents) if needed. After each run, delete the
+`.err` file if it is empty, and print
+
+```
+<name>: exit <code>, <o> out, <e> err
+```
+
+(`o`/`e` = number of lines written to stdout/stderr). Finally print `<N> scripts, <F> failed`
+(`F` = runs with a non-zero exit code). Exit code: 0 if `F` is 0, **5** otherwise.
+
+Errors (message on **stderr**): no arguments or more than 2 → usage, exit **1**; `DIR` is not a
+directory → exit **2**; `LOGDIR` exists and is not a directory → exit **3**.
+@@check
+SCRIPT_NAME=runall.sh
+SEEDS=3
+COMPARE="stdout exit files errmsg"
+mkjob() { printf '#!/bin/bash\n%s\n' "$2" > "$1"; chmod "${3:-755}" "$1"; }
+setup() {
+  mkdir -p jobs/sub.sh jobs/logs
+  mkjob jobs/a.sh "echo a $(word); echo a2 $(word)"
+  mkjob "jobs/my job.sh" "echo $(word); echo oops $(word) >&2; exit $(pick 0 1 3)"
+  mkjob jobs/reader.sh 'read -r x; echo "input: [$x]"; read -r y && echo "more: [$y]"; exit 0'
+  mkjob jobs/fail.sh "echo $(word) >&2; echo $(word) >&2; exit $(pick 2 0)"
+  mkjob jobs/off.sh "echo never" 644
+  mkjob jobs/notes.txt "echo never"
+  [[ $(rand 2) == 1 ]] && mkjob jobs/zz.sh "true"
+  echo "old" > jobs/logs/a.out
+  echo "old" > jobs/logs/fail.err
+  touch file.txt
+}
+input() { printf 'secret %s\nsecond line\n' "$(word)"; }
+ARGS=('jobs' '"$W/jobs" "my logs"' 'jobs out/logs' 'jobs file.txt' 'nodir' '' 'a b c')
+@@solution
+#!/bin/bash
+# runall.sh DIR [LOGDIR]
+if [ $# -lt 1 ] || [ $# -gt 2 ]; then
+  echo "Usage: $(basename "$0") DIR [LOGDIR]" >&2
+  exit 1
+fi
+DIR=$1
+LOGDIR=${2:-$DIR/logs}
+if [ ! -d "$DIR" ]; then
+  echo "Error: '$DIR' is not a directory" >&2
+  exit 2
+fi
+if [ -e "$LOGDIR" ] && [ ! -d "$LOGDIR" ]; then
+  echo "Error: '$LOGDIR' is not a directory" >&2
+  exit 3
+fi
+mkdir -p "$LOGDIR"
+
+N=0 F=0
+for f in "$DIR"/*.sh; do
+  [ -f "$f" ] && [ -x "$f" ] || continue
+  name=$(basename "$f" .sh)
+  "$f" < /dev/null > "$LOGDIR/$name.out" 2> "$LOGDIR/$name.err"
+  code=$?
+  o=$(wc -l < "$LOGDIR/$name.out")
+  e=$(wc -l < "$LOGDIR/$name.err")
+  [ -s "$LOGDIR/$name.err" ] || rm "$LOGDIR/$name.err"
+  echo "$name: exit $code, $o out, $e err"
+  N=$((N + 1))
+  [ $code -ne 0 ] && F=$((F + 1))
+done
+echo "$N scripts, $F failed"
+[ $F -eq 0 ] || exit 5
+
+@@ex 0924 newuser | newuser.sh (prompts on stderr, answers from stdin)
+@@level 4
+@@cmds printf >&2, read -r, grep -qx, cat > file << EOF
+@@readme
+Write `newuser.sh`:
+
+```
+newuser.sh OUTFILE
+```
+
+It asks three questions and reads the answers from **stdin**, one line each: login, full name and
+shell. Before reading each answer it prints the prompt on **stderr**, without a newline:
+`Login: `, `Full name: `, `Shell: ` (so that the stdout of the script stays clean; note that
+`read -p` shows nothing when stdin is not a terminal). On success, stderr must contain **exactly**
+`Login: Full name: Shell: `.
+
+Then it validates, in this order:
+
+- stdin ended before the three answers were read → exit **5**
+- the login is not a lowercase letter followed by 1 to 7 lowercase letters or digits, or the full
+  name is empty → exit **3**
+- the shell is not a line of `/etc/shells` (exactly) → exit **4**
+
+and on success writes `OUTFILE` with a here document:
+
+```
+login=<login>
+name=<full name>
+shell=<shell>
+home=/home/<login>
+```
+
+and prints on stdout `User <login> saved to <OUTFILE>`.
+
+Before asking anything: not exactly one argument → usage, exit **1**; `OUTFILE` already exists →
+exit **2** (it must not be modified). All errors print a message on **stderr** and do not create `OUTFILE`.
+@@check
+SCRIPT_NAME=newuser.sh
+SEEDS=8
+COMPARE="stdout exit files"
+setup() { echo "login=old" > exists.txt; }
+input() {
+  local s login
+  s=$(rand 7)   # scenario first: seeds 1-8 cover all of them
+  login=$(pick ana luis marta pepe)$(rand 100)
+  case $s in
+    0|1) printf '%s\n' "$login" "$(pick 'Ana Garcia' 'Luis Perez Gil' "$(word)")" "$(pick /bin/bash /bin/sh /usr/bin/dash)" ;;
+    2) printf '%s\n' "$(pick Ana 9lives toolonglogin a ana_1)" "Some Name" /bin/bash ;;
+    3) printf '%s\n' "$login" "Some Name" "$(pick /bin/zsh bash /bin/bash/ '/bin/bash ')" ;;
+    4) printf '%s\n' "$login" "Some Name" ;;
+    5) printf '%s\n' "$login" "" /bin/bash ;;
+    *) printf '%s\n' "$login" ;;
+  esac
+}
+ARGS=('user.txt' '"new user.txt"' 'exists.txt' '' 'a b')
+extra_check() {
+  if [[ $REF_CODE == 0 ]]; then
+    [[ $ERR == "$REF_ERR" ]] || fail "stderr must be exactly the three prompts: '$REF_ERR'"
+  else
+    [[ -n $ERR ]] || fail "expected an error message on stderr"
+  fi
+  true
+}
+@@solution
+#!/bin/bash
+# newuser.sh OUTFILE
+if [ $# -ne 1 ]; then
+  echo "Usage: $(basename "$0") OUTFILE" >&2
+  exit 1
+fi
+OUT=$1
+if [ -e "$OUT" ]; then
+  echo "Error: '$OUT' already exists" >&2
+  exit 2
+fi
+
+printf 'Login: ' >&2
+IFS= read -r LOGIN || { echo "Error: missing answers" >&2; exit 5; }
+printf 'Full name: ' >&2
+IFS= read -r NAME || { echo "Error: missing answers" >&2; exit 5; }
+printf 'Shell: ' >&2
+IFS= read -r SH || { echo "Error: missing answers" >&2; exit 5; }
+
+if [[ ! $LOGIN =~ ^[a-z][a-z0-9]{1,7}$ ]] || [ -z "$NAME" ]; then
+  echo "Error: invalid login or empty name" >&2
+  exit 3
+fi
+if ! grep -qxF -- "$SH" /etc/shells; then
+  echo "Error: '$SH' is not a valid shell" >&2
+  exit 4
+fi
+
+cat > "$OUT" << EOF
+login=$LOGIN
+name=$NAME
+shell=$SH
+home=/home/$LOGIN
+EOF
+echo "User $LOGIN saved to $OUT"
+
+@@ex 0925 numsum | numsum.sh (numbers from a file or from stdin)
+@@level 4
+@@cmds exec < file, while read, [[ =~ ]], >&2, $(( ))
+@@readme
+Write `numsum.sh`:
+
+```
+numsum.sh [FILE]
+```
+
+It reads lines from `FILE`, or from its **standard input** if there is no argument or the argument is
+`-` (the usual Unix convention). Each non-empty line should be an **integer**: an optional `-` followed
+by digits without leading zeros (`0` alone is fine; `007`, `+3`, `1.5`, ` 4` are not). Empty lines are
+ignored.
+
+- For every non-empty line that is not an integer, print on **stderr** exactly
+  `line <N>: invalid '<line>'` (`N` = line number, counting all lines).
+- On stdout print `count: <C>` and `sum: <S>` of the valid integers, and, only if `C > 0`,
+  `min: <m>` and `max: <M>` (each on its own line, in this order).
+
+Exit code: 0 if there were no invalid lines, **3** otherwise.
+Errors (message on **stderr**): more than one argument → usage, exit **1**; `FILE` is not a
+readable regular file → exit **2**.
+
+Hint: `exec < "$FILE"` makes the rest of the script read from the file.
+@@check
+SCRIPT_NAME=numsum.sh
+SEEDS=3
+COMPARE="stdout exit errmsg"
+mknums() { local i; for i in $(seq "$1"); do pick "$(randr 0 500)" "-$(randr 1 300)" "$(randr 1 9)" 0 "" 007 +3 1.5 " 4" abc "12 13" "-"; done; }
+setup() { mknums 14 > nums.txt; mknums 6 > "my nums.txt"; printf '5\n\n-2\n' > good.txt; printf '\n\n' > empty.txt; mkdir dir; }
+input() { mknums 10; }
+ARGS=('' '-' 'nums.txt' '"my nums.txt"' 'good.txt' 'empty.txt' 'nofile' 'dir' 'a b')
+extra_check() {
+  if [[ $REF_CODE == [03] && $ERR != "$REF_ERR" ]]; then fail "stderr must be exactly the 'line N: invalid ...' messages"; fi
+  [[ $REF_CODE == [12] && -z $ERR ]] && fail "expected an error message on stderr"
+  true
+}
+@@solution
+#!/bin/bash
+# numsum.sh [FILE]
+if [ $# -gt 1 ]; then
+  echo "Usage: $(basename "$0") [FILE]" >&2
+  exit 1
+fi
+if [ $# -eq 1 ] && [ "$1" != "-" ]; then
+  if [ ! -f "$1" ] || [ ! -r "$1" ]; then
+    echo "Error: cannot read '$1'" >&2
+    exit 2
+  fi
+  exec < "$1"      # from now on, stdin is the file
+fi
+
+n=0 c=0 s=0 bad=0 min= max=
+while IFS= read -r l; do
+  n=$((n + 1))
+  [ -z "$l" ] && continue
+  if [[ $l =~ ^-?(0|[1-9][0-9]*)$ ]]; then
+    c=$((c + 1))
+    s=$((s + l))
+    if [ -z "$min" ] || [ "$l" -lt "$min" ]; then min=$l; fi
+    if [ -z "$max" ] || [ "$l" -gt "$max" ]; then max=$l; fi
+  else
+    echo "line $n: invalid '$l'" >&2
+    bad=1
+  fi
+done
+echo "count: $c"
+echo "sum: $s"
+if [ $c -gt 0 ]; then
+  echo "min: $min"
+  echo "max: $max"
+fi
+[ $bad -eq 0 ] || exit 3

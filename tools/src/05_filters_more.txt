@@ -1,0 +1,1558 @@
+@@topic 05_filters | Filters: wc, head, tail, cut, sort, uniq, tr, sed, tee...
+@@ex 0525 wc_summary | A one-line text summary
+@@level 3
+@@cmds wc -l -w -m -c -L, grep -c
+@@readme
+Print **one single line** describing the file `texto.txt`, exactly in this format:
+
+```
+lines=L words=W chars=C bytes=B longest=X blank=E
+```
+
+- `L`, `W`, `B`: lines, words and bytes as `wc` counts them
+- `C`: characters as `wc -m` counts them (the file has accented letters: in UTF-8 one character
+  may take more than one byte, so `C` and `B` can differ)
+- `X`: length of the longest line (see `wc -L`)
+- `E`: number of **empty** lines (lines with nothing at all)
+
+Print only the numbers, never the file name (`wc -l < file`).
+@@check
+setup() {
+  local i n; n=$(randr 8 20)
+  for ((i = 0; i < n; i++)); do
+    case $(rand 5) in
+      0) echo ;;
+      1) echo "$(words 2) canción $(word) año" ;;
+      *) words "$(randr 1 9)" ;;
+    esac
+  done > texto.txt
+}
+extra_check() { must_use wc; }
+@@solution
+#!/bin/bash
+F=texto.txt
+echo "lines=$(wc -l < $F) words=$(wc -w < $F) chars=$(wc -m < $F) bytes=$(wc -c < $F) longest=$(wc -L < $F) blank=$(grep -c '^$' $F)"
+
+@@ex 0526 middle_lines | The middle of a file
+@@level 3
+@@cmds wc -l, head, tail, $(( ))
+@@readme
+Write a script that receives a file name as its only argument and prints the **middle** of it:
+
+- if the file has an **odd** number of lines `N`, print line `(N+1)/2`
+- if it has an **even** number of lines `N` (N > 0), print lines `N/2` and `N/2+1`
+- if it is empty, print nothing
+
+Use `wc -l`, `head` and `tail`. The file name may contain spaces. Exit code 0.
+@@check
+ARGS=('odd.txt' 'even.txt' 'one.txt' 'empty.txt' '"my notes.txt"')
+setup() {
+  local i n
+  n=$(( 2 * $(randr 1 9) + 1 )); for ((i = 1; i <= n; i++)); do echo "$i: $(words 2)"; done > odd.txt
+  n=$(( 2 * $(randr 1 9) ));     for ((i = 1; i <= n; i++)); do echo "$i: $(words 2)"; done > even.txt
+  n=$(randr 1 12);               for ((i = 1; i <= n; i++)); do echo "$i: $(words 3)"; done > "my notes.txt"
+  words 3 > one.txt
+  : > empty.txt
+}
+extra_check() { must_use head; must_use tail; }
+@@solution
+#!/bin/bash
+n=$(wc -l < "$1")
+if (( n == 0 )); then
+  exit 0
+elif (( n % 2 == 1 )); then
+  head -n $(( (n + 1) / 2 )) "$1" | tail -n 1
+else
+  head -n $(( n / 2 + 1 )) "$1" | tail -n 2
+fi
+
+@@ex 0527 fixed_width | Fixed-width columns
+@@level 3
+@@cmds cut -c, sed, tr -d, paste, sort -t -k
+@@readme
+`inventario.txt` is a **fixed-width** report (no delimiter between columns):
+
+| characters | content | padding |
+|------------|---------|---------|
+| 1-6   | product code | spaces on the right |
+| 7-26  | product name (may contain spaces) | spaces on the right |
+| 27-31 | quantity | spaces on the **left** |
+
+Print every product as `code;name;quantity`, with the padding spaces removed (the spaces **inside**
+a name are kept), sorted by **quantity descending** (numeric) and, for equal quantities, by
+**code** (as `sort` orders them).
+
+Example: `P1231 red apple            7` becomes `P1231;red apple;7`.
+@@check
+setup() {
+  local i n name; n=$(randr 6 14)
+  for ((i = 1; i <= n; i++)); do
+    name=$(word); [[ $(rand 2) == 0 ]] && name="$name $(word)"
+    printf '%-6s%-20s%5d\n' "P$(randr 100 999)$i" "$name" "$(randr 1 25)"
+  done > inventario.txt
+}
+extra_check() { must_use cut; }
+@@solution
+#!/bin/bash
+F=inventario.txt
+paste -d';' <(cut -c1-6 "$F" | sed 's/ *$//') \
+            <(cut -c7-26 "$F" | sed 's/ *$//') \
+            <(cut -c27-31 "$F" | tr -d ' ') |
+  sort -t';' -k3,3nr -k1,1
+
+@@ex 0528 top_sizes | The biggest entries (human-readable sizes)
+@@level 3
+@@cmds sort -t -k -h -r, head
+@@readme
+`uso.txt` looks like the output of `du -h`: every line is `SIZE<TAB>PATH`, where SIZE is a
+human-readable size (`512`, `4.0K`, `20M`, `1.1G`...) and PATH may contain spaces.
+
+The script receives an optional argument `N` (default **5**) and prints the `N` **biggest** lines,
+unchanged, biggest first. Lines with the same size are ordered by PATH (as `sort` orders them).
+If there are fewer than `N` lines, print them all.
+
+Hint: `sort -h` understands the suffixes; use a TAB as the field separator.
+@@check
+ARGS=('' '3' '12')
+setup() {
+  local i n; n=$(randr 8 14)
+  for ((i = 1; i <= n; i++)); do
+    printf '%s\t%s\n' "$(pick 0 512 4.0K 4.0K 12K 96K 1.5M 20M 20M 256M 1.1G 3.0G)" \
+      "/home/$(word)/$(pick docs "my photos" src "old stuff")/$(word)$i"
+  done > uso.txt
+}
+extra_check() { must_use sort; }
+@@solution
+#!/bin/bash
+sort -t$'\t' -k1,1hr -k2,2 uso.txt | head -n "${1:-5}"
+
+@@ex 0529 caesar | Caesar cipher with tr
+@@level 3
+@@cmds tr, cut -c, ${var^^}
+@@readme
+Write a script that receives a number `N` (0 to 25) and encrypts **standard input** with a Caesar
+cipher: every letter is replaced by the letter `N` positions later in the alphabet, wrapping around
+(`N=3`: `a→d`, `x→a`, `Z→C`). Uppercase stays uppercase, lowercase stays lowercase, everything else
+(digits, spaces, punctuation) is unchanged. Only the 26 ASCII letters appear.
+
+Hint: `abc...zabc...z` (the alphabet twice) contains every rotated alphabet: `cut -c` it out and
+give it to `tr`.
+@@check
+ARGS=('3' '13' '0' '25' '7')
+input() { local i w; for i in 1 2 3 4; do w=$(word); echo "$(word) ${w^}, $(word)! $(randr 1 99) ${w^^}?"; done; }
+extra_check() { must_use tr; }
+@@solution
+#!/bin/bash
+a=abcdefghijklmnopqrstuvwxyz
+r=$(echo "$a$a" | cut -c$(( $1 + 1 ))-$(( $1 + 26 )))
+tr 'a-zA-Z' "$r${r^^}"
+
+@@ex 0530 collapse_repeats | "Last message repeated N times"
+@@level 3
+@@cmds uniq -c -f, sed -E
+@@readme
+`syslog.txt` has lines `HH:MM:SS message`. Like a real syslog, collapse the runs of **consecutive**
+lines whose **message** is identical (the timestamp, i.e. the first field, is ignored):
+
+- print the **first** line of each run (with its timestamp)
+- if the run has more than one line, append ` (xN)` where N is the length of the run
+
+```
+10:00:01 link up
+10:00:02 link down           10:00:01 link up
+10:00:03 link down     →     10:00:02 link down (x3)
+10:00:04 link down           10:00:05 link up
+10:00:05 link up
+```
+
+Equal messages that are **not** consecutive are not merged. Comparisons are case-sensitive.
+Hint: `uniq -c -f 1`.
+@@check
+setup() {
+  local t=$(( $(randr 0 20) * 3600 )) i j r m n; n=$(randr 8 14)
+  for ((i = 0; i < n; i++)); do
+    m=$(pick "link up" "link down" "disk full on /dev/sda1" "CRON job started" "Connection from 10.0.0.$(rand 4)" "cron job started")
+    r=$(pick 1 1 2 3 5)
+    for ((j = 0; j < r; j++)); do
+      t=$(( t + $(randr 1 90) ))
+      printf '%02d:%02d:%02d %s\n' $(( t / 3600 )) $(( t / 60 % 60 )) $(( t % 60 )) "$m"
+    done
+  done > syslog.txt
+}
+extra_check() { must_use uniq; }
+@@solution
+#!/bin/bash
+uniq -c -f 1 syslog.txt | sed -E 's/^ *1 //; t; s/^ *([0-9]+) (.*)$/\2 (x\1)/'
+
+@@ex 0531 slugify | Slugs for titles
+@@level 3
+@@cmds tr, tr -cs, sed
+@@readme
+Read titles from **standard input** (one per line, ASCII only) and print, for each one, its
+**slug** (the kind of name used in URLs):
+
+- uppercase letters become lowercase
+- letters and digits are kept
+- every run of **other** characters (spaces, punctuation, `_`, `.`...) becomes a **single** `-`
+- no `-` at the beginning or at the end
+
+Example: `  Hello, World!! 2026 -- v1.2 ` → `hello-world-2026-v1-2`.
+@@check
+input() {
+  local i w
+  for i in 1 2 3 4 5; do
+    w=$(word)
+    echo "$(pick '' '  ' '¡' '"')${w^} $(pick , '' ' --' .) $(word)$(pick '!!' '?' '' _)$(pick ' ' '  ' '_') $(randr 1 2026)$(pick '' ' ' ' ...') ${w^^}$(pick '' . '  ')"
+  done
+  echo "file_name.v2.TXT"
+}
+extra_check() { must_use tr; }
+@@solution
+#!/bin/bash
+tr 'A-Z' 'a-z' | tr -cs 'a-z0-9\n' '-' | sed 's/^-//; s/-$//'
+
+@@ex 0532 sed_groups | Reordering with sed groups
+@@level 3
+@@cmds sed -E, \( \) and \1
+@@readme
+Print, separated by a line `---`:
+
+1. the file `notas.txt` with **every** date written as `DD/MM/YYYY` (exactly 2, 2 and 4 digits)
+   changed into `YYYY-MM-DD`; the rest of the text is unchanged (things like `3/4` are not dates)
+2. the file `contactos.txt`, whose lines are `Surname, Name: phone`, with every line rewritten as
+   `Name Surname (phone)`
+
+Use `sed` with groups and back-references (`-E` and `\1`, `\2`...).
+@@check
+setup() {
+  local i n s d
+  d() { printf '%02d/%02d/%04d' "$(randr 1 28)" "$(randr 1 12)" "$(randr 1990 2030)"; }
+  n=$(randr 4 8)
+  for ((i = 0; i < n; i++)); do
+    case $(rand 3) in
+      0) echo "Meeting on $(d) with $(word), moved to $(d)." ;;
+      1) echo "$(word) ratio $(randr 1 9)/$(randr 1 9), version $(randr 1 9)/$(randr 10 99)/$(randr 1 9)" ;;
+      *) echo "Due $(d): $(words 3)" ;;
+    esac
+  done > notas.txt
+  n=$(randr 3 7)
+  for ((i = 0; i < n; i++)); do s=$(word); d=$(word); echo "${s^}, ${d^}: 6$(randr 10000000 99999999)"; done > contactos.txt
+  unset -f d
+}
+extra_check() { must_use sed; }
+@@solution
+#!/bin/bash
+sed -E 's#([0-9]{2})/([0-9]{2})/([0-9]{4})#\3-\2-\1#g' notas.txt
+echo ---
+sed -E 's/^([^,]+), ([^:]+): (.*)$/\2 \1 (\3)/' contactos.txt
+
+@@ex 0533 ini_section | Extracting an INI section
+@@level 3
+@@cmds sed -n '/a/,/b/p', sed d, grep -q
+@@readme
+Write a script `FILE SECTION` that prints the settings of one section of an INI file:
+
+```
+[server]
+# a comment
+port=8080
+; another comment
+
+host=example.com
+[db]
+...
+```
+
+A section starts at the line `[SECTION]` (exactly that, at the start of the line) and ends right
+before the next line starting with `[`, or at the end of the file. Print the lines of that section,
+unchanged and in order, **except**: the `[SECTION]` header, comment lines (starting with `#` or `;`)
+and blank lines (empty or only spaces).
+
+- If the section exists (even if it has no settings): exit code 0.
+- If there is no `[SECTION]` line: print nothing, exit code 1.
+
+Section names contain only letters, digits and `_`. The file name may contain spaces.
+@@check
+ARGS=('config.ini db' 'config.ini server' 'config.ini empty' 'config.ini nosuch' 'config.ini db_old' '"my conf.ini" app' 'config.ini logging')
+sec() {
+  local i n; echo "[$1]"; n=$(randr 1 4)
+  for ((i = 1; i <= n; i++)); do
+    case $(rand 5) in 0) echo "# $(words 2)" ;; 1) echo "; $(word)" ;; 2) echo ;; 3) echo "   " ;; esac
+    echo "$(word)_$i=$(word)"
+  done
+}
+setup() {
+  local s
+  { echo "global=$(word)"
+    for s in $(pick "server db empty db_old logging" "db_old logging db server empty" "empty db server logging db_old"); do
+      if [[ $s == empty ]]; then echo "[empty]"
+      elif [[ $s == db_old ]]; then sec db_old; echo "note=copy of [db]"
+      else sec "$s"; fi
+    done
+  } > config.ini
+  { sec server; sec app; sec x; } > "my conf.ini"
+}
+@@solution
+#!/bin/bash
+F=$1 S=$2
+grep -qx "\[$S\]" "$F" || exit 1
+sed -n "/^\[$S\]\$/,/^\[/p" "$F" | sed '1d; /^\[/d; /^[#;]/d; /^[[:space:]]*$/d'
+
+@@ex 0534 tee_multi | One stream, several files
+@@level 3
+@@cmds tee, tee -a, grep
+@@readme
+The script reads log lines (`LEVEL message`) from **standard input**. In **one pipeline**:
+
+- save everything into `today.log` (overwriting it),
+- **append** everything to `history.log` (it may already exist, with older lines),
+- and print on the screen only the lines that start with `ERROR ` (the word ERROR as the level).
+
+Then print `saved N lines`, where N is the number of lines of `today.log`.
+The script must end with exit code 0.
+
+Hint: `tee` can write several files, but `-a` would apply to all of them; you can chain two `tee`.
+@@check
+COMPARE="stdout exit files"
+setup() { [[ $(rand 3) != 0 ]] && randtext 3 | sed 's/^/INFO old /' > history.log; true; }
+input() {
+  local i n; n=$(randr 3 12)
+  for ((i = 0; i < n; i++)); do
+    echo "$(pick INFO WARN ERROR DEBUG ERROR) $(pick "$(words 3)" "no ERROR found" "ERRORS: $(word)")"
+  done
+}
+extra_check() { must_use tee; }
+@@solution
+#!/bin/bash
+tee today.log | tee -a history.log | grep '^ERROR '
+echo "saved $(wc -l < today.log) lines"
+
+@@ex 0535 nl_format | Custom numbering with nl
+@@level 3
+@@cmds nl -b -v -i -w -s -n
+@@readme
+Print the file `programa.bas` numbered in two ways, separated by a line `---`:
+
+1. **BASIC style**: **all** lines (empty ones too) numbered 10, 20, 30...; the number right-aligned
+   in a field of 4 characters, followed by `: ` and the line. Example: `  10: PRINT "hello"`
+2. only the **non-empty** lines numbered 1, 2, 3...; the number with 2 digits padded with **zeros**,
+   followed by one space and the line (`01 PRINT "hello"`). Empty lines are printed but not
+   numbered (they may come out as spaces: the checker ignores trailing whitespace).
+
+`nl` can do both (look at `-b`, `-v`, `-i`, `-w`, `-s`, `-n` in `man nl`).
+@@check
+setup() {
+  local i n; n=$(randr 6 14)
+  for ((i = 0; i < n; i++)); do
+    case $(rand 5) in
+      0) echo ;;
+      1) echo "PRINT \"$(word)\"" ;;
+      2) echo "LET $(pick A B C) = $(randr 1 99)" ;;
+      3) echo "GOTO $(randr 1 9)0" ;;
+      *) echo "REM $(words 2)" ;;
+    esac
+  done > programa.bas
+}
+@@solution
+#!/bin/bash
+nl -b a -v 10 -i 10 -w 4 -s ': ' programa.bas
+echo ---
+nl -b t -n rz -w 2 -s ' ' programa.bas
+
+@@ex 0536 tac_rows | Newest first, three per row
+@@level 3
+@@cmds tac, paste - - -, paste -s -d
+@@readme
+`eventos.txt` has one event per line, oldest first (events contain spaces but no `,` or `;`).
+Print:
+
+1. the events **newest first**, **three per line**, separated by `,`. If the number of events is
+   not a multiple of 3, the last row is completed with empty fields (e.g. `ev1,,`), exactly as
+   `paste` does it.
+2. a line `---`
+3. all the events **oldest first** in a single line, separated by `;`
+
+Hint: `paste - - -` reads three lines of its input for every output line.
+@@check
+setup() {
+  local i n t=$(randr 0 300); n=$(randr 4 13)
+  for ((i = 0; i < n; i++)); do t=$(( t + $(randr 1 40) )); printf '%02d:%02d %s %s\n' $(( t / 60 % 24 )) $(( t % 60 )) "$(word)" "$(word)"; done > eventos.txt
+}
+extra_check() { must_use tac; must_use paste; }
+@@solution
+#!/bin/bash
+tac eventos.txt | paste -d, - - -
+echo ---
+paste -s -d';' eventos.txt
+
+@@ex 0537 compare_files | How do two files differ?
+@@level 3
+@@cmds cmp, cmp -s, diff -w -q
+@@readme
+Write a script `A B` that compares two files and prints **one** line (then exits with the code
+shown), checking the cases in this order:
+
+| case | output | exit |
+|------|--------|------|
+| same bytes | `identical` | 0 |
+| different, but `diff -w` finds no difference (only whitespace changes) | `same except whitespace` | 1 |
+| one file is the beginning of the other (`cmp` reports `EOF on ...`) | `<shorter> is a prefix of <longer>` | 2 |
+| otherwise | `differ at byte X, line L` (the first difference, as `cmp` reports it) | 3 |
+
+`<shorter>` and `<longer>` are the file names as given in the arguments. Names may contain spaces.
+Nothing may be printed on stderr.
+@@check
+COMPARE="stdout stderr exit"
+ARGS=('base.txt same.txt' 'base.txt ws.txt' 'base.txt "the diff.txt"' 'short.txt base.txt' 'base.txt short.txt' '"the diff.txt" ws.txt')
+setup() {
+  local i n; n=$(randr 5 10)
+  for ((i = 0; i < n; i++)); do words "$(randr 2 6)"; done > base.txt
+  cp base.txt same.txt
+  sed "$(randr 1 "$n")s/ /  /; $(randr 1 "$n")s/\$/ \t/" base.txt > ws.txt
+  sed "$(randr 1 "$n")s/[a-z]/Z/" base.txt > "the diff.txt"
+  head -n "$(randr 1 $(( n - 1 )))" base.txt > short.txt
+}
+@@solution
+#!/bin/bash
+A=$1 B=$2
+if cmp -s "$A" "$B"; then
+  echo identical; exit 0
+fi
+if diff -w -q "$A" "$B" > /dev/null; then
+  echo "same except whitespace"; exit 1
+fi
+out=$(cmp "$A" "$B" 2>&1)
+case $out in
+  *"EOF on $A "*) echo "$A is a prefix of $B"; exit 2 ;;
+  *"EOF on $B "*) echo "$B is a prefix of $A"; exit 2 ;;
+esac
+echo "differ at $(echo "$out" | sed 's/.* differ: //')"
+exit 3
+
+@@ex 0538 byte_histogram | Byte histogram with od
+@@level 3
+@@cmds od -An -v -tu1, tr -s, sort, uniq -c, head
+@@readme
+Write a script `FILE` that prints the **5 most frequent byte values** of the file, one per line, as
+
+```
+VALUE COUNT
+```
+
+where VALUE is the byte value in **decimal** (0-255) and COUNT how many times it appears; most
+frequent first, and for equal counts the smaller VALUE first. If there are fewer than 5 different
+values, print them all. Then print a last line `distinct: D` with the number of different byte
+values in the file (an empty file prints only `distinct: 0`).
+
+Hint: `od -An -tu1` prints every byte as a decimal number. **Careful**: by default `od` replaces
+repeated lines with a `*`; `-v` prints them all.
+@@check
+ARGS=('data.txt' '"my file.bin"' 'empty.bin')
+setup() {
+  local i
+  { randtext 3; head -c "$(randr 40 90)" /dev/zero | tr '\0' 'x'; echo; randtext 2; } > data.txt
+  for ((i = 0; i < 30; i++)); do printf "\\$(printf '%03o' "$(pick 0 9 10 65 66 66 200 255)")"; done > "my file.bin"
+  head -c "$(randr 20 60)" /dev/zero >> "my file.bin"
+  : > empty.bin
+}
+extra_check() { must_use od; }
+@@solution
+#!/bin/bash
+bytes() { od -An -v -tu1 "$1" | tr -s ' ' '\n' | sed '/^$/d'; }
+bytes "$1" | sort -n | uniq -c | sort -k1,1nr -k2,2n | head -n 5 | sed -E 's/^ *([0-9]+) ([0-9]+)$/\2 \1/'
+echo "distinct: $(bytes "$1" | sort -u | wc -l)"
+
+@@ex 0539 csvcol | csvcol.sh (a column by its name)
+@@level 4
+@@cmds head, tr, grep -n, cut, tail, sort -u, wc
+@@readme
+Write `csvcol.sh`:
+
+```
+csvcol.sh FILE COLUMN
+```
+
+`FILE` is a CSV file: the first line is a header with the column names, the rest are data rows;
+the separator is `,` and there is no quoting (no field contains a comma; names and values may
+contain spaces). The script prints the values of the column whose header name is **exactly**
+`COLUMN`, one per line, in file order; an empty value is printed as `(empty)`. Then it prints the
+summary line:
+
+```
+N values, D distinct, E empty
+```
+
+where N = number of data rows, D = number of **different non-empty** values, E = empty values.
+
+Errors (message on **stderr**, nothing on stdout):
+
+- not exactly 2 arguments: an error message **and the usage**, exit code **1**
+- `FILE` is not a readable regular file: message including the name, exit code **2**
+- no column is named `COLUMN` (exact, whole name: `nam` does not match `name`): message including
+  `COLUMN`, exit code **3**
+@@check
+SCRIPT_NAME=csvcol.sh
+SEEDS=2
+COMPARE="stdout exit errmsg"
+ARGS=('data.csv city' 'data.csv name' '"sales 2026.csv" "unit price"' '"sales 2026.csv" product' 'data.csv age' 'data.csv' '' 'data.csv city extra' 'nofile.csv city' 'somedir city' 'data.csv nam' '"sales 2026.csv" price')
+setup() {
+  local hdr i n f row v
+  hdr=$(pick "id,name,name2,city,age" "city,id,age,name,name2" "name2,age,city,name,id")
+  n=$(randr 5 11)
+  { echo "$hdr"
+    for ((i = 1; i <= n; i++)); do
+      row=
+      for f in ${hdr//,/ }; do
+        case $f in
+          id) v=$i ;;
+          name) v=$(pick "$(word)" "$(word)" "") ;;
+          name2) v=$(word) ;;
+          city) v=$(pick Madrid Bilbao "San Sebastian" Madrid "") ;;
+          age) v=$(randr 18 25) ;;
+        esac
+        row="$row,$v"
+      done
+      echo "${row#,}"
+    done
+  } > data.csv
+  n=$(randr 3 8)
+  { echo "product,unit price,units,product code"
+    for ((i = 1; i <= n; i++)); do echo "$(pick "$(word)" "$(word) $(word)"),$(pick "" "$(randr 1 3).99" 2.50),$(randr 1 20),P$(randr 100 999)"; done
+  } > "sales 2026.csv"
+  mkdir somedir
+}
+extra_check() {
+  [[ -n $REF_ERR && -n $OUT ]] && fail "on errors nothing must be printed on stdout"
+  case $REF_CODE in
+    1) [[ $ERR == *csvcol.sh* || $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* ]] || fail "the usage message should show how to call the script" ;;
+    2) mentions "$(eval "set -- $CASE"; echo "$1")" ;;
+    3) mentions "$(eval "set -- $CASE"; echo "$2")" ;;
+  esac
+}
+@@solution
+#!/bin/bash
+# csvcol.sh FILE COLUMN: prints the values of a CSV column chosen by its header name
+
+if [ $# -ne 2 ]; then
+  echo "Error: wrong number of arguments" >&2
+  echo "Usage: $(basename "$0") FILE COLUMN" >&2
+  exit 1
+fi
+F=$1 C=$2
+if [ ! -f "$F" ] || [ ! -r "$F" ]; then
+  echo "Error: cannot read '$F'" >&2
+  exit 2
+fi
+
+# position of the column: one header name per line, grep -n gives its number
+n=$(head -n 1 "$F" | tr ',' '\n' | grep -nxF -- "$C" | head -n 1 | cut -d: -f1)
+if [ -z "$n" ]; then
+  echo "Error: there is no column '$C' in '$F'" >&2
+  exit 3
+fi
+
+values() { tail -n +2 "$F" | cut -d, -f"$n"; }
+
+values | sed 's/^$/(empty)/'
+N=$(values | wc -l)
+D=$(values | grep -v '^$' | sort -u | wc -l)
+E=$(values | grep -c '^$')
+echo "$N values, $D distinct, $E empty"
+
+@@ex 0540 splitter | splitter.sh (split into numbered pieces)
+@@level 4
+@@cmds split -l -d -a, basename, ${var%.*}, wc -l -c
+@@readme
+Write `splitter.sh`:
+
+```
+splitter.sh FILE LINES [PREFIX]
+```
+
+It splits `FILE` into pieces of `LINES` lines (the last one may be shorter) using `split`, in the
+**current directory**, named `PREFIX000`, `PREFIX001`, ... (numeric suffixes of **3 digits**).
+If `PREFIX` is not given, it is the base name of `FILE` without its last extension, followed by
+`_` (`data/app log.txt` → `app log_`; `notes` → `notes_`).
+
+Then it prints one line per piece, in order:
+
+```
+<piece>: <n> lines, <b> bytes
+```
+
+and finally `Total: <L> lines in <K> pieces` (an empty file produces no pieces: `Total: 0 lines in 0 pieces`).
+
+Errors (message on **stderr**, nothing created), checked in this order:
+
+- not 2 or 3 arguments: error message and usage, exit **1**
+- `FILE` is not a readable regular file: message with its name, exit **2**
+- `LINES` is not a positive integer (`1`, `25`...; not `0`, `-3`, `abc`): message, exit **3**
+- a file named `PREFIX` followed by exactly three digits already exists (it would be
+  overwritten): message, exit **4**
+@@check
+SCRIPT_NAME=splitter.sh
+SEEDS=2
+COMPARE="stdout exit errmsg files"
+ARGS=('lines.txt 10' '"data/app log.txt" 7' 'lines.txt 100 chunk-' 'notes 4' 'empty.txt 5' 'lines.txt 1 L' 'lines.txt' '' 'lines.txt 5 p q' 'nofile 5' 'data 5' 'lines.txt 0' 'lines.txt abc' 'lines.txt -3' 'lines.txt 5 old_')
+setup() {
+  local i n
+  mkdir data
+  n=$(randr 15 45); for ((i = 1; i <= n; i++)); do echo "$i $(words 2)"; done > lines.txt
+  n=$(randr 3 30);  for ((i = 1; i <= n; i++)); do echo "$(word) $i"; done > "data/app log.txt"
+  n=$(randr 4 12);  for ((i = 1; i <= n; i++)); do words "$(randr 1 5)"; done > notes
+  : > empty.txt
+  echo old > old_00$(rand 3)
+  echo keep > lines_x
+}
+extra_check() {
+  [[ -n $REF_ERR && -n $OUT ]] && fail "on errors nothing must be printed on stdout"
+  case $REF_CODE in
+    1) [[ $ERR == *splitter.sh* || $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* ]] || fail "the usage message should show how to call the script" ;;
+    2) mentions "$(eval "set -- $CASE"; echo "$1")" ;;
+  esac
+  must_use split
+}
+@@solution
+#!/bin/bash
+# splitter.sh FILE LINES [PREFIX]
+
+if [ $# -lt 2 ] || [ $# -gt 3 ]; then
+  echo "Error: wrong number of arguments" >&2
+  echo "Usage: $(basename "$0") FILE LINES [PREFIX]" >&2
+  exit 1
+fi
+F=$1 N=$2
+if [ ! -f "$F" ] || [ ! -r "$F" ]; then
+  echo "Error: cannot read '$F'" >&2
+  exit 2
+fi
+if ! [[ $N =~ ^[1-9][0-9]*$ ]]; then
+  echo "Error: '$N' is not a positive integer" >&2
+  exit 3
+fi
+
+if [ $# -eq 3 ]; then
+  P=$3
+else
+  P=$(basename "$F")
+  P="${P%.*}_"
+fi
+
+for f in "$P"[0-9][0-9][0-9]; do
+  if [ -e "$f" ]; then
+    echo "Error: '$f' already exists" >&2
+    exit 4
+  fi
+done
+
+split -l "$N" -d -a 3 "$F" "$P"
+
+K=0
+for f in "$P"[0-9][0-9][0-9]; do
+  [ -e "$f" ] || continue          # no pieces: the pattern stays unexpanded
+  echo "$f: $(wc -l < "$f") lines, $(wc -c < "$f") bytes"
+  K=$((K + 1))
+done
+echo "Total: $(wc -l < "$F") lines in $K pieces"
+
+@@ex 0541 listdiff | listdiff.sh (what changed between two lists)
+@@level 4
+@@cmds sort -u, diff, sed, grep -c, mktemp
+@@readme
+Write `listdiff.sh`:
+
+```
+listdiff.sh OLD NEW
+```
+
+`OLD` and `NEW` are lists with one item per line, unsorted, possibly with repeated items and
+empty lines (empty lines are ignored; items may contain spaces). The script prints:
+
+1. every item that is in `OLD` but not in `NEW`, as `- item`, sorted (as `sort` orders them), once
+2. every item that is in `NEW` but not in `OLD`, as `+ item`, sorted, once
+3. the summary line `Removed: R, added: A, kept: K` (K = different items present in both)
+
+Exit code, like `diff`: **0** if both lists have the same items, **1** if they differ.
+
+Errors (message on **stderr**):
+
+- not exactly 2 arguments: error and usage, exit **2**
+- one of the files is not a readable regular file: message with its name, exit **3**
+
+Hint: once both lists are sorted without repetitions, `diff` marks the removed items with `<` and
+the added ones with `>`.
+@@check
+SCRIPT_NAME=listdiff.sh
+SEEDS=3
+COMPARE="stdout exit errmsg"
+ARGS=('old.txt new.txt' '"list v1.txt" "list v2.txt"' 'old.txt old_copy.txt' 'new.txt old.txt' 'old.txt' '' 'a b c' 'old.txt missing.txt' 'missing.txt new.txt' 'old.txt folder')
+setup() {
+  local pool=() i w n
+  for ((i = 0; i < 14; i++)); do
+    w=$(word)
+    case $(rand 3) in 0) pool+=("${w^}") ;; 1) pool+=("$w $(word)") ;; *) pool+=("$w") ;; esac
+  done
+  n=$(randr 6 12)
+  for ((i = 0; i < n; i++)); do echo "${pool[$(rand 9)]}"; [[ $(rand 5) == 0 ]] && echo; done > old.txt
+  n=$(randr 6 12)
+  for ((i = 0; i < n; i++)); do echo "${pool[$(randr 3 13)]}"; done > new.txt
+  { tac old.txt; head -n 2 old.txt; echo; } > old_copy.txt
+  n=$(randr 3 8)
+  for ((i = 0; i < n; i++)); do echo "${pool[$(rand 14)]}"; done > "list v1.txt"
+  for ((i = 0; i < n; i++)); do echo "${pool[$(rand 14)]}"; done > "list v2.txt"
+  mkdir folder
+}
+extra_check() {
+  case $REF_CODE in
+    2) [[ $ERR == *listdiff.sh* || $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* ]] || fail "the usage message should show how to call the script" ;;
+    3) [[ $CASE == missing* ]] && mentions missing.txt
+       [[ $CASE == *missing.txt ]] && mentions missing.txt
+       [[ $CASE == *folder ]] && mentions folder ;;
+  esac
+}
+@@solution
+#!/bin/bash
+# listdiff.sh OLD NEW: items removed / added between two lists
+
+if [ $# -ne 2 ]; then
+  echo "Error: wrong number of arguments" >&2
+  echo "Usage: $(basename "$0") OLD NEW" >&2
+  exit 2
+fi
+for f in "$1" "$2"; do
+  if [ ! -f "$f" ] || [ ! -r "$f" ]; then
+    echo "Error: cannot read '$f'" >&2
+    exit 3
+  fi
+done
+
+OLD=$(mktemp) NEW=$(mktemp)
+sed '/^$/d' "$1" | sort -u > "$OLD"
+sed '/^$/d' "$2" | sort -u > "$NEW"
+
+D=$(diff "$OLD" "$NEW")
+echo "$D" | grep '^< ' | sed 's/^< /- /'
+echo "$D" | grep '^> ' | sed 's/^> /+ /'
+R=$(echo "$D" | grep -c '^< ')
+A=$(echo "$D" | grep -c '^> ')
+K=$(( $(wc -l < "$OLD") - R ))
+rm -f "$OLD" "$NEW"
+
+echo "Removed: $R, added: $A, kept: $K"
+if [ $((R + A)) -eq 0 ]; then exit 0; else exit 1; fi
+
+@@ex 0542 confset | confset.sh (read or change a setting in place)
+@@level 4
+@@cmds grep, sed -i, sed s|||, echo >>, [[ =~ ]]
+@@readme
+Write `confset.sh`:
+
+```
+confset.sh FILE KEY [VALUE]
+```
+
+`FILE` is a configuration file with lines `KEY=VALUE`; lines starting with `#` are comments. An
+**active** line for a key is a line that starts exactly with `KEY=`; a **disabled** line is one
+that starts exactly with `#KEY=` (there is at most one per key). `PORT=` must not match `MYPORT=`
+or `PORT2=`, and comment text such as `# PORT is...` is not a disabled line.
+
+- **Without VALUE** (read): print the value of the **first** active line of `KEY` (everything after
+  the first `=`). If there is no active line (a disabled one does not count): message on stderr,
+  exit **3**.
+- **With VALUE** (write), modifying `FILE` in place:
+  - if there are active lines for `KEY`: replace the value in **all** of them → print `KEY=VALUE (updated)`
+  - else, if there is a disabled line: turn it into `KEY=VALUE` → print `KEY=VALUE (enabled)`
+  - else: append the line `KEY=VALUE` at the end of the file → print `KEY=VALUE (added)`
+
+  Nothing else in the file changes. Values may contain letters, digits, spaces and `. / : -`.
+
+Errors (message on **stderr**, file unchanged), checked in this order:
+
+- not 2 or 3 arguments: error and usage, exit **1**
+- `FILE` is not an existing regular file: message with its name, exit **2**
+- `KEY` is not a valid name (a letter or `_`, then letters, digits or `_`): message with the key, exit **4**
+@@check
+SCRIPT_NAME=confset.sh
+SEEDS=2
+COMPARE="stdout exit errmsg files"
+ARGS=('app.cfg PORT 8080' 'app.cfg HOST' 'app.cfg DEBUG true' 'app.cfg NEW_KEY "a b/c:d"' '"my app.cfg" PATH_DIR /opt/x' 'app.cfg PORT' 'app.cfg PATH_DIR' 'app.cfg DEBUG' 'app.cfg NOPE' 'app.cfg' '' 'app.cfg PORT 1 extra' 'nofile.cfg PORT 1' 'app.cfg 9bad x' 'app.cfg BAD-KEY')
+setup() {
+  { echo "# app configuration"
+    echo "# PORT is the listening port"
+    echo "MYPORT=$(randr 1000 9999)"
+    echo "PORT=$(randr 1000 9999)"
+    echo "PORT2=$(randr 1000 9999)"
+    echo "HOST=$(word).example.com"
+    [[ $(rand 2) == 0 ]] && echo "#HOST=old.example.com"
+    echo "#DEBUG=false"
+    echo "NAME=$(word) $(word)"
+    echo "PATH_DIR=/srv/$(word)"
+    [[ $(rand 2) == 0 ]] && echo "PORT=$(randr 1000 9999)"
+    echo "LOG_LEVEL=$(pick info warn)"
+  } > app.cfg
+  { echo "# $(word)"
+    echo "#PATH_DIR=/tmp"
+    echo "USER=$(word)"
+  } > "my app.cfg"
+}
+extra_check() {
+  case $REF_CODE in
+    1) [[ $ERR == *confset.sh* || $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* ]] || fail "the usage message should show how to call the script" ;;
+    2) mentions "$(eval "set -- $CASE"; echo "$1")" ;;
+    3|4) mentions "$(eval "set -- $CASE"; echo "$2")" ;;
+  esac
+}
+@@solution
+#!/bin/bash
+# confset.sh FILE KEY [VALUE]: read or set KEY=VALUE in a configuration file
+
+if [ $# -ne 2 ] && [ $# -ne 3 ]; then
+  echo "Error: wrong number of arguments" >&2
+  echo "Usage: $(basename "$0") FILE KEY [VALUE]" >&2
+  exit 1
+fi
+F=$1 K=$2 V=$3
+if [ ! -f "$F" ]; then
+  echo "Error: '$F' is not a regular file" >&2
+  exit 2
+fi
+if ! [[ $K =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
+  echo "Error: invalid key '$K'" >&2
+  exit 4
+fi
+
+if [ $# -eq 2 ]; then
+  line=$(grep -m 1 "^$K=" "$F")
+  if [ -z "$line" ]; then
+    echo "Error: $K is not set in '$F'" >&2
+    exit 3
+  fi
+  echo "${line#*=}"
+  exit 0
+fi
+
+# values may contain '/', so use '|' as the sed delimiter
+if grep -q "^$K=" "$F"; then
+  sed -i "s|^$K=.*|$K=$V|" "$F"; st=updated
+elif grep -q "^#$K=" "$F"; then
+  sed -i "s|^#$K=.*|$K=$V|" "$F"; st=enabled
+else
+  echo "$K=$V" >> "$F"; st=added
+fi
+echo "$K=$V ($st)"
+
+@@ex 0543 magic | magic.sh (file types from their first bytes)
+@@level 4
+@@cmds od -An -tx1 -N, tr -d, case, [ -f -r ]
+@@readme
+Write `magic.sh`:
+
+```
+magic.sh FILE...
+```
+
+For every argument, in order, it identifies the type of the file by its **first bytes** (its "magic
+number"), **not** by its name, and prints `<argument>: <type>`:
+
+| first bytes (hex) | type |
+|-------------------|------|
+| `89 50 4e 47` | `png` |
+| `1f 8b` | `gzip` |
+| `7f 45 4c 46` | `elf` |
+| `25 50 44 46` (`%PDF`) | `pdf` |
+| `50 4b 03 04` (`PK\003\004`) | `zip` |
+| `23 21` (`#!`) | `script` |
+| anything else (also empty or too short files) | `unknown` |
+
+Use `od` to read the bytes (e.g. `od -An -tx1 -N4 file`).
+
+An argument that is not a readable regular file is **skipped** with a message on **stderr**
+including its name. At the end print `Identified K of N files`, where N = files examined (readable
+regular files) and K = those whose type is not `unknown`.
+
+Exit code: **1** (with usage on stderr) if there are no arguments; **2** if some argument was
+skipped; **0** otherwise.
+@@check
+SCRIPT_NAME=magic.sh
+SEEDS=3
+COMPARE="stdout exit errmsg"
+ARGS=('*' '' '"run me.sh" missing photo.png' 'folder' 'short' 'photo.png "run me.sh"')
+content() {
+  case $1 in
+    png)    printf '\211PNG\r\n\032\n%s' "$(word)" ;;
+    gzip)   words 3 | gzip -c ;;
+    elf)    head -c 64 /bin/true ;;
+    pdf)    printf '%%PDF-1.%d\n%s\n' "$(rand 8)" "$(words 2)" ;;
+    zip)    printf 'PK\003\004%s' "$(word)" ;;
+    script) printf '#!/bin/bash\necho %s\n' "$(word)" ;;
+    text)   randtext 2 ;;
+    empty)  : ;;
+  esac
+}
+setup() {
+  local i n name
+  n=$(randr 5 9)
+  for ((i = 1; i <= n; i++)); do
+    name="$(word)$i$(pick .png .gz .pdf '' .sh .zip .bin)"
+    [[ $(rand 3) == 0 ]] && name="my $name"
+    content "$(pick png gzip elf pdf zip script text empty)" > "$name"
+  done
+  content "$(pick text pdf gzip)" > photo.png
+  content script > "run me.sh"
+  printf '#x\n' > hash.txt
+  printf 'PK\003' > short
+  mkdir folder
+  content png > "locked$(rand 9)"; chmod 000 locked*
+}
+extra_check() {
+  case $REF_CODE in
+    1) [[ $ERR == *magic.sh* || $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* ]] || fail "the usage message should show how to call the script" ;;
+    2) [[ $CASE == *missing* ]] && mentions missing
+       [[ $CASE == folder ]] && mentions folder ;;
+  esac
+  must_use od
+}
+@@solution
+#!/bin/bash
+# magic.sh FILE...: file type from the first bytes
+
+if [ $# -eq 0 ]; then
+  echo "Usage: $(basename "$0") FILE..." >&2
+  exit 1
+fi
+
+N=0 K=0 BAD=0
+for f in "$@"; do
+  if [ ! -f "$f" ] || [ ! -r "$f" ]; then
+    echo "Error: '$f' is not a readable regular file" >&2
+    BAD=1
+    continue
+  fi
+  m=$(od -An -tx1 -N4 "$f" | tr -d ' \n')
+  case $m in
+    89504e47) t=png ;;
+    1f8b*)    t=gzip ;;
+    7f454c46) t=elf ;;
+    25504446) t=pdf ;;
+    504b0304) t=zip ;;
+    2321*)    t=script ;;
+    *)        t=unknown ;;
+  esac
+  echo "$f: $t"
+  N=$((N + 1))
+  [ "$t" != unknown ] && K=$((K + 1))
+done
+
+echo "Identified $K of $N files"
+[ $BAD -eq 1 ] && exit 2
+exit 0
+
+@@ex 0544 latest | latest.sh (newest log entries of a level)
+@@level 4
+@@cmds grep -n, tail -n, tac, sed, [[ =~ ]]
+@@readme
+Write `latest.sh`:
+
+```
+latest.sh LOG LEVEL [N]
+```
+
+`LOG` has lines `YYYY-MM-DD HH:MM:SS LEVEL message`, oldest first. `LEVEL` (third field) is
+`DEBUG`, `INFO`, `WARN` or `ERROR`; the message may contain any of those words too (they don't count).
+
+The script prints the **last `N`** entries (default **5**) whose level is exactly `LEVEL`,
+**newest first**, each preceded by its line number in the file:
+
+```
+<line number>: <the whole line>
+```
+
+and then `Shown S of T LEVEL entries` (T = entries of that level in the whole file, S = those shown).
+
+Errors (message on **stderr**, nothing on stdout), checked in this order:
+
+- not 2 or 3 arguments: error and usage, exit **1**
+- `LOG` is not a readable regular file: message with its name, exit **2**
+- `LEVEL` is not one of `INFO`, `WARN`, `ERROR` (uppercase; `DEBUG` is not accepted): message, exit **3**
+- `N` is not a positive integer: message, exit **4**
+@@check
+SCRIPT_NAME=latest.sh
+SEEDS=3
+COMPARE="stdout exit errmsg"
+ARGS=('app.log ERROR' 'app.log WARN 2' 'app.log INFO 100' '"old logs/app 1.log" ERROR 3' 'app.log DEBUG' 'app.log error' 'app.log' '' 'a b c d' 'nofile ERROR' '"old logs" ERROR' 'app.log ERROR 0' 'app.log ERROR x')
+mklog() {
+  local i n=$1 t=$(randr 0 50000) lv
+  for ((i = 0; i < n; i++)); do
+    t=$(( t + $(randr 1 900) ))
+    lv=$(pick INFO INFO DEBUG WARN ERROR)
+    printf '2026-09-%02d %02d:%02d:%02d %s %s\n' $(( 10 + t / 86400 )) $(( t / 3600 % 24 )) $(( t / 60 % 60 )) $(( t % 60 )) \
+      "$lv" "$(pick "$(words 3)" "recovered from ERROR state" "WARN: $(word) is slow" "user $(word) INFO")"
+  done
+}
+setup() {
+  mklog "$(randr 15 35)" > app.log
+  mkdir "old logs"
+  mklog "$(randr 0 5)" > "old logs/app 1.log"
+}
+extra_check() {
+  [[ -n $REF_ERR && -n $OUT ]] && fail "on errors nothing must be printed on stdout"
+  case $REF_CODE in
+    1) [[ $ERR == *latest.sh* || $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* ]] || fail "the usage message should show how to call the script" ;;
+    2) mentions "$(eval "set -- $CASE"; echo "$1")" ;;
+  esac
+}
+@@solution
+#!/bin/bash
+# latest.sh LOG LEVEL [N]: newest N entries of a level, newest first
+
+if [ $# -lt 2 ] || [ $# -gt 3 ]; then
+  echo "Error: wrong number of arguments" >&2
+  echo "Usage: $(basename "$0") LOG LEVEL [N]" >&2
+  exit 1
+fi
+F=$1 L=$2 N=${3:-5}
+if [ ! -f "$F" ] || [ ! -r "$F" ]; then
+  echo "Error: cannot read '$F'" >&2
+  exit 2
+fi
+case $L in
+  INFO|WARN|ERROR) ;;
+  *) echo "Error: invalid level '$L' (INFO, WARN or ERROR)" >&2; exit 3 ;;
+esac
+if ! [[ $N =~ ^[1-9][0-9]*$ ]]; then
+  echo "Error: '$N' is not a positive integer" >&2
+  exit 4
+fi
+
+RE="^[^ ]* [^ ]* $L "                 # the level is the third field
+grep -n -- "$RE" "$F" | tail -n "$N" | tac | sed 's/:/: /'
+T=$(grep -c -- "$RE" "$F")
+S=$(( T < N ? T : N ))
+echo "Shown $S of $T $L entries"
+
+@@ex 0545 mkcsv | mkcsv.sh (columns from several files)
+@@level 4
+@@cmds paste -d, paste -s, basename, wc -l
+@@readme
+Write `mkcsv.sh`:
+
+```
+mkcsv.sh OUTPUT FILE1 FILE2 [FILE...]
+```
+
+Every input `FILE` contains one value per line. The script creates the CSV file `OUTPUT` with one
+**column per input file**, in argument order:
+
+- first line (header): the name of every input file **without its directory** and without a final
+  `.txt` extension if it has one (`cols/day 1.txt` → `day 1`; `cols/temps` → `temps`), separated by `,`
+- then the rows: line `i` of every file, separated by `,`. If some files are shorter, their
+  missing values are empty (this is exactly what `paste -d,` does).
+
+Then it prints `<OUTPUT>: <C> columns, <R> rows` (R = data rows, without the header).
+
+Errors (message on **stderr**, nothing created), checked in this order:
+
+- fewer than 3 arguments: error and usage, exit **1**
+- an input is not a readable regular file: message with its name, exit **2**
+- `OUTPUT` already exists: message with its name, exit **3**
+@@check
+SCRIPT_NAME=mkcsv.sh
+SEEDS=2
+COMPARE="stdout exit errmsg files"
+ARGS=('out.csv cols/*' 'out.csv "cols/day 1.txt" cols/day2.txt' '"my table.csv" cols/temps "cols/day 1.txt" cols/day2.txt' 'out.csv' '' 'out.csv cols/day2.txt' 'out.csv cols/day2.txt missing.txt' 'out.csv cols cols/day2.txt' 'existing.csv cols/day2.txt cols/temps')
+setup() {
+  local f i n
+  mkdir cols
+  for f in "cols/day 1.txt" cols/day2.txt cols/temps cols/notes.md; do
+    n=$(randr 1 7)
+    for ((i = 0; i < n; i++)); do pick "$(randr 1 40)" "$(randr 1 9).$(rand 10)" "$(word)" ""; done > "$f"
+  done
+  echo "a,b" > existing.csv
+}
+extra_check() {
+  [[ -n $REF_ERR && -n $OUT ]] && fail "on errors nothing must be printed on stdout"
+  case $REF_CODE in
+    1) [[ $ERR == *mkcsv.sh* || $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* ]] || fail "the usage message should show how to call the script" ;;
+    2) [[ $CASE == *missing.txt* ]] && mentions missing.txt
+       [[ $CASE == *" cols "* ]] && mentions cols ;;
+    3) mentions existing.csv ;;
+  esac
+  must_use paste
+}
+@@solution
+#!/bin/bash
+# mkcsv.sh OUTPUT FILE1 FILE2 [FILE...]: one CSV column per input file
+
+if [ $# -lt 3 ]; then
+  echo "Error: at least an output and two input files are needed" >&2
+  echo "Usage: $(basename "$0") OUTPUT FILE1 FILE2 [FILE...]" >&2
+  exit 1
+fi
+OUT=$1
+shift
+for f in "$@"; do
+  if [ ! -f "$f" ] || [ ! -r "$f" ]; then
+    echo "Error: cannot read '$f'" >&2
+    exit 2
+  fi
+done
+if [ -e "$OUT" ]; then
+  echo "Error: '$OUT' already exists" >&2
+  exit 3
+fi
+
+for f in "$@"; do
+  b=$(basename "$f")
+  echo "${b%.txt}"
+done | paste -s -d, > "$OUT"
+paste -d, "$@" >> "$OUT"
+
+echo "$OUT: $# columns, $(( $(wc -l < "$OUT") - 1 )) rows"
+
+@@ex 0546 subjstats | subjstats.sh (grades per subject)
+@@level 4
+@@cmds grep -v, cut, sort -u, sort -t -k, head, wc -l
+@@readme
+Write `subjstats.sh`:
+
+```
+subjstats.sh FILE [SUBJECT]
+```
+
+`FILE` has lines `student;subject;grade` (grade: integer 0-10; subjects may contain spaces).
+Lines starting with `#` and empty lines are ignored.
+
+For every subject (alphabetically, as `sort` orders them), or only for `SUBJECT` if it is given,
+print:
+
+```
+<subject>: <n> grades, best <student> (<grade>), worst <student> (<grade>), <p> passed
+```
+
+- `best`: the highest grade; if several students have it, the first **student name** in `sort` order
+- `worst`: the lowest grade; if tied, also the first student name in `sort` order
+- `passed`: number of grades ≥ 5
+
+Subjects are compared exactly (`SO` is not `SO2`). Finally print `Subjects: S, grades: G` (for the
+subjects printed). A file with no data prints only `Subjects: 0, grades: 0`.
+
+Errors (message on **stderr**, nothing on stdout):
+
+- not 1 or 2 arguments: error and usage, exit **1**
+- `FILE` is not a readable regular file: message with its name, exit **2**
+- `SUBJECT` does not appear in the file: message with the subject, exit **3**
+@@check
+SCRIPT_NAME=subjstats.sh
+SEEDS=3
+COMPARE="stdout exit errmsg"
+ARGS=('notas.txt' 'notas.txt SO' '"grades 2026.txt"' '"grades 2026.txt" "Bases de Datos"' 'comments.txt' 'notas.txt Mates2' 'notas.txt SO extra' '' 'nofile.txt' 'notas.txt Fisica')
+setup() {
+  local i n
+  n=$(randr 10 22)
+  { echo "# student;subject;grade"
+    for ((i = 0; i < n; i++)); do
+      [[ $(rand 6) == 0 ]] && echo
+      echo "$(pick Ana Luis Marta Diego Eva Juan Sara Iker Nerea Jon);$(pick SO SO2 Redes Mates Mates2);$(pick 0 3 4 5 5 7 8 10 10)"
+    done
+  } > notas.txt
+  n=$(randr 4 9)
+  for ((i = 0; i < n; i++)); do
+    echo "$(pick Ana Luis Marta Diego Eva Juan);$(pick "Bases de Datos" "Bases" SO);$(randr 0 10)"
+  done > "grades 2026.txt"
+  printf '# nothing yet\n\n# still nothing\n' > comments.txt
+}
+extra_check() {
+  [[ -n $REF_ERR && -n $OUT ]] && fail "on errors nothing must be printed on stdout"
+  case $REF_CODE in
+    1) [[ $ERR == *subjstats.sh* || $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* ]] || fail "the usage message should show how to call the script" ;;
+    2) mentions "$(eval "set -- $CASE"; echo "$1")" ;;
+    3) mentions "$(eval "set -- $CASE"; echo "$2")" ;;
+  esac
+}
+@@solution
+#!/bin/bash
+# subjstats.sh FILE [SUBJECT]: statistics of the grades of every subject
+
+if [ $# -lt 1 ] || [ $# -gt 2 ]; then
+  echo "Error: wrong number of arguments" >&2
+  echo "Usage: $(basename "$0") FILE [SUBJECT]" >&2
+  exit 1
+fi
+F=$1
+if [ ! -f "$F" ] || [ ! -r "$F" ]; then
+  echo "Error: cannot read '$F'" >&2
+  exit 2
+fi
+
+DATA=$(grep -v '^#' "$F" | sed '/^$/d')
+
+if [ $# -eq 2 ]; then
+  if ! echo "$DATA" | cut -d';' -f2 | grep -qxF -- "$2"; then
+    echo "Error: subject '$2' not found in '$F'" >&2
+    exit 3
+  fi
+  SUBJECTS=$2
+else
+  SUBJECTS=$(echo "$DATA" | cut -d';' -f2 | sed '/^$/d' | sort -u)
+fi
+
+S=0 G=0
+while IFS= read -r s; do
+  [ -z "$s" ] && continue
+  rows=$(echo "$DATA" | grep -- "^[^;]*;$s;")
+  n=$(echo "$rows" | wc -l)
+  best=$(echo "$rows" | sort -t';' -k3,3nr -k1,1 | head -n 1)
+  worst=$(echo "$rows" | sort -t';' -k3,3n -k1,1 | head -n 1)
+  p=$(echo "$rows" | cut -d';' -f3 | grep -cE '^([5-9]|10)$')
+  echo "$s: $n grades, best ${best%%;*} (${best##*;}), worst ${worst%%;*} (${worst##*;}), $p passed"
+  S=$((S + 1)) G=$((G + n))
+done <<< "$SUBJECTS"
+
+echo "Subjects: $S, grades: $G"
+
+@@ex 0547 textstats | textstats.sh (a wc report, sorted)
+@@level 4
+@@cmds wc -l -w -c -L, sort -t -k, cut
+@@readme
+Write `textstats.sh`:
+
+```
+textstats.sh FILE...
+```
+
+For every argument that is a readable regular file, compute its lines, words, bytes and the length
+of its longest line (`wc -L`). Print one line per file:
+
+```
+<name>: <L> lines, <W> words, <B> bytes, longest <X>
+```
+
+sorted by **words descending** (numeric) and, for equal word counts, by **name** (the argument as
+given, in `sort` order). Then print the summary:
+
+```
+TOTAL: <F> files, <L> lines, <W> words, <B> bytes
+```
+
+Arguments that are not readable regular files are skipped with a message on **stderr** that
+includes the name (the report is still printed). Names may contain spaces.
+
+Exit code: **1** (with usage on stderr) if there are no arguments; **2** if some argument was
+skipped; **0** otherwise.
+@@check
+SCRIPT_NAME=textstats.sh
+SEEDS=3
+COMPARE="stdout exit errmsg"
+ARGS=('*' '"notes 1.txt" a.txt' 'empty.txt' '' 'missing.txt a.txt' 'sub')
+setup() {
+  randtext "$(randr 2 9)" > a.txt
+  randtext "$(randr 2 9)" > "notes 1.txt"
+  randtext "$(randr 2 9)" > B.md
+  randtext "$(randr 1 9)" > chapter2
+  [[ $(rand 2) == 0 ]] && cp a.txt "copy of a.txt"
+  sed 's/^/x /' B.md > "b 2.md"
+  : > empty.txt
+  mkdir sub
+  words 3 > locked.txt; chmod 000 locked.txt
+}
+extra_check() {
+  case $REF_CODE in
+    1) [[ $ERR == *textstats.sh* || $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* ]] || fail "the usage message should show how to call the script" ;;
+    2) [[ $CASE == *missing.txt* ]] && mentions missing.txt
+       [[ $CASE == '*' ]] && mentions locked.txt ;;
+  esac
+}
+@@solution
+#!/bin/bash
+# textstats.sh FILE...: wc report sorted by number of words
+
+if [ $# -eq 0 ]; then
+  echo "Usage: $(basename "$0") FILE..." >&2
+  exit 1
+fi
+
+F=0 TL=0 TW=0 TB=0 BAD=0 ROWS=
+for f in "$@"; do
+  if [ ! -f "$f" ] || [ ! -r "$f" ]; then
+    echo "Error: cannot read '$f'" >&2
+    BAD=1
+    continue
+  fi
+  l=$(wc -l < "$f") w=$(wc -w < "$f") b=$(wc -c < "$f") x=$(wc -L < "$f")
+  # words <TAB> name <TAB> the line to print
+  ROWS+="$w"$'\t'"$f"$'\t'"$f: $l lines, $w words, $b bytes, longest $x"$'\n'
+  F=$((F + 1)) TL=$((TL + l)) TW=$((TW + w)) TB=$((TB + b))
+done
+
+printf '%s' "$ROWS" | sort -t$'\t' -k1,1nr -k2,2 | cut -f3-
+echo "TOTAL: $F files, $TL lines, $TW words, $TB bytes"
+[ $BAD -eq 1 ] && exit 2
+exit 0
+
+@@ex 0548 dedupe | dedupe.sh (remove repeated lines, keep the order)
+@@level 4
+@@cmds cat -n, sort -u -s -k, sort -n, cut, uniq -cd, cp
+@@readme
+Write `dedupe.sh`:
+
+```
+dedupe.sh FILE
+```
+
+It removes the repeated lines of `FILE` **in place**, keeping only the **first** occurrence of each
+line and the original order of the lines that remain (so plain `sort -u` is not enough).
+The file has no empty lines.
+
+- If there are repeated lines:
+  1. save a copy of the original file as `FILE.bak` (overwrite it if it exists)
+  2. print every line that appeared more than once as `<count>x <line>`, sorted by count
+     descending and, for equal counts, by the line (in `sort` order)
+  3. rewrite `FILE` without the repetitions (it must keep its permissions)
+  4. print `Removed D duplicate lines (L -> U lines)` (original lines, lines that remain)
+- If there are none: print `No duplicates in FILE` (with the name as given) and change nothing
+  (no `.bak` is created).
+
+Errors (message on **stderr**, nothing changed):
+
+- not exactly 1 argument: error and usage, exit **1**
+- `FILE` is not a regular file: message with its name, exit **2**
+- `FILE` is not writable: message with its name, exit **3**
+
+Hint: `cat -n` numbers the lines; `sort -s -u` keeps the first of each group of equal keys.
+@@check
+SCRIPT_NAME=dedupe.sh
+SEEDS=3
+COMPARE="stdout exit errmsg files"
+ARGS=('list.txt' '"my words.txt"' 'unique.txt' 'readonly.txt' 'sub' 'missing.txt' '' 'list.txt unique.txt')
+setup() {
+  local i n pool=()
+  for ((i = 0; i < 7; i++)); do pool+=("$(pick "$(word)" "$(word) $(word)" "$(word)")"); done
+  n=$(randr 6 16); for ((i = 0; i < n; i++)); do echo "${pool[$(rand 7)]}"; done > list.txt
+  n=$(randr 4 10); for ((i = 0; i < n; i++)); do echo "${pool[$(rand 4)]}"; done > "my words.txt"
+  printf '%s\n' "${pool[@]}" | sort -u > unique.txt
+  [[ $(rand 2) == 0 ]] && echo "old backup" > list.txt.bak
+  chmod 640 "my words.txt"
+  printf 'a\nb\na\n' > readonly.txt; chmod 444 readonly.txt
+  mkdir sub
+}
+extra_check() {
+  case $REF_CODE in
+    1) [[ $ERR == *dedupe.sh* || $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* ]] || fail "the usage message should show how to call the script" ;;
+    2|3) mentions "$(eval "set -- $CASE"; echo "$1")" ;;
+  esac
+}
+@@solution
+#!/bin/bash
+# dedupe.sh FILE: remove repeated lines keeping the first occurrence and the order
+
+if [ $# -ne 1 ]; then
+  echo "Error: wrong number of arguments" >&2
+  echo "Usage: $(basename "$0") FILE" >&2
+  exit 1
+fi
+F=$1
+if [ ! -f "$F" ]; then
+  echo "Error: '$F' is not a regular file" >&2
+  exit 2
+fi
+if [ ! -w "$F" ]; then
+  echo "Error: '$F' is not writable" >&2
+  exit 3
+fi
+
+TMP=$(mktemp)
+# number the lines, keep the first of each distinct text (stable), restore the order
+cat -n "$F" | sort -t$'\t' -k2 -s -u | sort -n | cut -f2- > "$TMP"
+
+L=$(wc -l < "$F") U=$(wc -l < "$TMP")
+if [ "$L" -eq "$U" ]; then
+  echo "No duplicates in $F"
+  rm -f "$TMP"
+  exit 0
+fi
+
+cp "$F" "$F.bak"
+sort "$F" | uniq -cd | sort -k1,1nr -k2 | sed -E 's/^ *([0-9]+) /\1x /'
+cat "$TMP" > "$F"                  # cat > keeps the permissions of FILE
+rm -f "$TMP"
+echo "Removed $((L - U)) duplicate lines ($L -> $U lines)"
+
+@@ex 0549 sanitize | sanitize.sh (CR, tabs and trailing spaces)
+@@level 4
+@@cmds grep -c, tr -d, sed -i, od -c
+@@readme
+Write `sanitize.sh`:
+
+```
+sanitize.sh FILE...
+```
+
+It cleans every file **in place** (keeping its permissions), in argument order:
+
+1. removes every carriage return (`\r`, byte 13: files written on Windows),
+2. replaces every TAB with **4 spaces**,
+3. removes the spaces at the end of every line.
+
+Before changing a file, count its **lines** that: contain a CR (`C`), contain a TAB (`T`), and
+end with spaces or TABs once the CRs are removed (`S`). Then print
+
+```
+<name>: C CR, T tabs, S trailing
+```
+
+or `<name>: clean` if the three counts are 0 (the file is not touched). At the end print
+`Fixed F of N files` (N = files examined, F = those that were not clean).
+
+Arguments that are not readable and writable regular files are skipped with a message on
+**stderr** that includes the name. Exit code: **1** (with usage) if there are no arguments; **2** if
+some argument was skipped; **0** otherwise.
+
+Tip: `od -c file` shows the `\r` and `\t` that `cat` hides.
+@@check
+SCRIPT_NAME=sanitize.sh
+SEEDS=3
+COMPARE="stdout exit errmsg files"
+ARGS=('win.txt tabs.txt clean.txt "mixed file.txt"' '*' 'clean.txt' '' 'missing.txt win.txt' 'dir')
+setup() {
+  local i n
+  n=$(randr 2 6); for ((i = 0; i < n; i++)); do printf '%s%s\r\n' "$(words 3)" "$(pick '' ' ' '  ')"; done > win.txt
+  n=$(randr 2 6); for ((i = 0; i < n; i++)); do printf '%s%s%s%s\n' "$(pick '' $'\t')" "$(word)" "$(pick ' ' $'\t')" "$(pick "$(word)" '' "$(word)  ")"; done > tabs.txt
+  n=$(randr 2 6); for ((i = 0; i < n; i++)); do words 4; done > clean.txt
+  n=$(randr 3 8)
+  for ((i = 0; i < n; i++)); do printf '%s%s%s\n' "$(pick "$(word)" "  $(word)")" "$(pick '' $'\t' ' ' $' \t ')" "$(pick "$(word)" '' $'\r' "$(word)"$'\r')"; done > "mixed file.txt"
+  chmod 600 "mixed file.txt"
+  mkdir dir
+  words 2 > ro.txt; chmod 444 ro.txt
+}
+extra_check() {
+  case $REF_CODE in
+    1) [[ $ERR == *sanitize.sh* || $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* ]] || fail "the usage message should show how to call the script" ;;
+    2) [[ $CASE == *missing.txt* ]] && mentions missing.txt
+       [[ $CASE == dir ]] && mentions dir ;;
+  esac
+}
+@@solution
+#!/bin/bash
+# sanitize.sh FILE...: remove CRs, expand TABs and strip trailing spaces, in place
+
+if [ $# -eq 0 ]; then
+  echo "Usage: $(basename "$0") FILE..." >&2
+  exit 1
+fi
+
+N=0 FIXED=0 BAD=0
+for f in "$@"; do
+  if [ ! -f "$f" ] || [ ! -r "$f" ] || [ ! -w "$f" ]; then
+    echo "Error: cannot fix '$f'" >&2
+    BAD=1
+    continue
+  fi
+  N=$((N + 1))
+  c=$(grep -c $'\r' "$f")
+  t=$(grep -c $'\t' "$f")
+  s=$(tr -d '\r' < "$f" | grep -c $'[ \t]$')
+  if [ $((c + t + s)) -eq 0 ]; then
+    echo "$f: clean"
+    continue
+  fi
+  sed -i 's/\r//g; s/\t/    /g; s/ *$//' "$f"
+  echo "$f: $c CR, $t tabs, $s trailing"
+  FIXED=$((FIXED + 1))
+done
+
+echo "Fixed $FIXED of $N files"
+[ $BAD -eq 1 ] && exit 2
+exit 0
+
+@@ex 0550 leaderboard | leaderboard.sh (ranking of players)
+@@level 4
+@@cmds tail -n +2, cut, sort -u, sort -t -k (several keys), grep -c, head, nl
+@@readme
+Write `leaderboard.sh`:
+
+```
+leaderboard.sh SCORES [N]
+```
+
+`SCORES` starts with a header line (ignore it); every other line is `player;game;score` (player
+names may contain spaces; score is a non-negative integer). For every player compute their
+**best** score and the number of **games** (lines) they played. Print the top `N` players
+(default **3**; all of them if there are fewer) ranked by:
+
+1. best score, descending
+2. then number of games, descending
+3. then player name (in `sort` order)
+
+in this format (the rank starts at 1):
+
+```
+<rank>. <player>: best <score>, games <n>
+```
+
+Finally print `Players: P, games: G` (P = different players, G = data lines). Player names must be
+compared exactly (`Ana` is not `Ana Maria`).
+
+Errors (message on **stderr**, nothing on stdout), checked in this order:
+
+- not 1 or 2 arguments: error and usage, exit **1**
+- `SCORES` is not a readable regular file: message with its name, exit **2**
+- `N` is not a positive integer: message, exit **3**
+@@check
+SCRIPT_NAME=leaderboard.sh
+SEEDS=3
+COMPARE="stdout exit errmsg"
+ARGS=('scores.csv' 'scores.csv 5' 'scores.csv 50' '"cup 2026.csv" 2' 'scores.csv 1' '' 'scores.csv 3 x' 'nofile.csv' 'scores.csv 0' 'scores.csv three')
+setup() {
+  local i n
+  n=$(randr 8 20)
+  { echo "player;game;score"
+    for ((i = 1; i <= n; i++)); do
+      echo "$(pick Ana "Ana Maria" Anabel Luis Marta Diego Eva "Jon Ander");$(pick chess tetris pong);$(pick 0 50 120 300 300 450 999 $(randr 1 999))"
+    done
+  } > scores.csv
+  n=$(randr 2 6)
+  { echo "player;game;score"
+    for ((i = 1; i <= n; i++)); do echo "$(pick Iker Nerea Sara);final;$(pick 10 20 20)"; done
+  } > "cup 2026.csv"
+}
+extra_check() {
+  [[ -n $REF_ERR && -n $OUT ]] && fail "on errors nothing must be printed on stdout"
+  case $REF_CODE in
+    1) [[ $ERR == *leaderboard.sh* || $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* ]] || fail "the usage message should show how to call the script" ;;
+    2) mentions "$(eval "set -- $CASE"; echo "$1")" ;;
+  esac
+}
+@@solution
+#!/bin/bash
+# leaderboard.sh SCORES [N]: best score and games of every player, ranked
+
+if [ $# -lt 1 ] || [ $# -gt 2 ]; then
+  echo "Error: wrong number of arguments" >&2
+  echo "Usage: $(basename "$0") SCORES [N]" >&2
+  exit 1
+fi
+F=$1 N=${2:-3}
+if [ ! -f "$F" ] || [ ! -r "$F" ]; then
+  echo "Error: cannot read '$F'" >&2
+  exit 2
+fi
+if ! [[ $N =~ ^[1-9][0-9]*$ ]]; then
+  echo "Error: '$N' is not a positive integer" >&2
+  exit 3
+fi
+
+DATA=$(tail -n +2 "$F")
+PLAYERS=$(echo "$DATA" | cut -d';' -f1 | sort -u)
+
+# one line per player: best;games;player
+while IFS= read -r p; do
+  rows=$(echo "$DATA" | grep -- "^$p;")
+  best=$(echo "$rows" | cut -d';' -f3 | sort -nr | head -n 1)
+  games=$(echo "$rows" | wc -l)
+  echo "$best;$games;$p"
+done <<< "$PLAYERS" |
+  sort -t';' -k1,1nr -k2,2nr -k3,3 | head -n "$N" |
+  while IFS=';' read -r best games p; do echo "$p: best $best, games $games"; done |
+  nl -w 1 -s '. '
+
+echo "Players: $(echo "$PLAYERS" | wc -l), games: $(echo "$DATA" | wc -l)"

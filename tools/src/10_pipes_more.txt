@@ -1,0 +1,922 @@
+@@topic 10_pipes_xargs | Pipes, xargs & command substitution
+@@ex 1017 xargs_gzip_big | Compressing the big logs with xargs -0
+@@level 3
+@@cmds find -size -print0, xargs -0 -r, gzip
+@@readme
+Under the directory `logs` (and its subdirectories) there are log files, some of them with **spaces**
+in their names.
+
+1. Compress with `gzip` every **regular file** whose name ends in `.log` and that is **bigger than
+   2048 bytes** (`find ... -size +2k`), using `find ... -print0 | xargs -0 gzip`.
+   Smaller `.log` files, files with other endings (`.txt`, `.log.1`...) and directories must be left
+   untouched.
+2. Then print the paths of all the `.gz` files under `logs`, sorted, one per line, as `find logs`
+   prints them.
+
+Tip: `xargs -r` (`--no-run-if-empty`) avoids running `gzip` with no arguments when nothing matches
+(`gzip` without arguments would compress its stdin).
+@@check
+COMPARE="stdout exit files"
+setup() {
+  mkdir -p "logs/app server" logs/old
+  local i
+  for i in $(seq 9); do
+    bigfile "logs/$(pick . 'app server' old)/$(word)$(pick '' ' ' '_')$i$(pick .log .log .log .txt .log.1)" "$(pick 300 2048 2049 5000 9000)"
+  done
+  bigfile "logs/app server/access $(word).log" 4000
+  bigfile "logs/dir$(word).log/inside.txt" 3000
+}
+extra_check() { must_use xargs; }
+@@solution
+#!/bin/bash
+find logs -type f -name '*.log' -size +2k -print0 | xargs -0 -r gzip
+find logs -name '*.gz' | sort
+
+@@ex 1018 lines_ranking | The longest text files
+@@level 3
+@@cmds find -print0, xargs -0 wc -l, sort -k, head
+@@readme
+Under `docs` (recursively) there are `.txt` files (some with spaces in their names) and other files
+that must be ignored. There are always at least 3 `.txt` files. Print:
+
+1. the **3** `.txt` files with the most lines, most lines first (ties: path in alphabetical order,
+   as `sort` orders them), as
+
+   ```
+   <lines> <path>
+   ```
+
+   with exactly one space, and the path as `find docs` prints it;
+2. a last line `Total: N lines` with the number of lines of all the `.txt` files together.
+
+Hint: `find ... -print0 | xargs -0 wc -l` prints one line per file (plus a `total` line);
+`sed 's/^ *//'` removes the padding.
+@@check
+setup() {
+  mkdir -p "docs/sub dir" docs/a
+  local i n
+  n=$(randr 4 7)
+  for i in $(seq "$n"); do randtext "$(randr 1 9)" > "docs/$(pick . 'sub dir' a)/$(word)$(pick '' ' ' '-')$i.txt"; done
+  randtext 30 > "docs/a/huge.md"
+  randtext 25 > "docs/sub dir/old.txt.bak"
+}
+@@solution
+#!/bin/bash
+find docs -type f -name '*.txt' -print0 | xargs -0 wc -l | grep -v ' total$' |
+  sed 's/^ *//' | sort -k1,1nr -k2 | head -n 3
+echo "Total: $(find docs -type f -name '*.txt' -print0 | xargs -0 cat | wc -l) lines"
+
+@@ex 1019 subst_summary | A one-line summary
+@@level 3
+@@cmds $( ), find, wc, xargs
+@@readme
+Print **one line** that summarises the directory `proj`, building it with command substitution
+(`echo "... $(...) ..."`):
+
+```
+proj: F files, D directories, B bytes, largest: P
+```
+
+- `F`: number of regular files under `proj` (recursively)
+- `D`: number of directories under `proj` (recursively, **not** counting `proj` itself)
+- `B`: total size in bytes of those regular files (the sum of their sizes)
+- `P`: path of the biggest regular file, as `find proj` prints it (there are no ties)
+
+Names may contain spaces.
+@@check
+setup() {
+  mkdir -p "proj/src/lib" "proj/my docs" proj/empty
+  local i
+  for i in $(seq "$(randr 3 8)"); do
+    bigfile "proj/$(pick . src src/lib 'my docs')/$(word)$(pick '' ' ' '.')$i" $(( $(randr 1 60) * 37 + i ))
+  done
+  [[ $(rand 2) == 1 ]] && mkdir -p "proj/extra dir/deep"
+  true
+}
+extra_check() { ans_code | grep -q '\$(' || fail "use command substitution \$( )"; }
+@@solution
+#!/bin/bash
+echo "proj: $(find proj -type f | wc -l) files, $(find proj -mindepth 1 -type d | wc -l) directories, $(find proj -type f -print0 | xargs -0 cat | wc -c) bytes, largest: $(find proj -type f -printf '%s %p\n' | sort -nr | head -n 1 | cut -d' ' -f2-)"
+
+@@ex 1020 dup_names | Same name, different folder
+@@level 3
+@@cmds find, sed, sort, uniq -c, grep -v
+@@readme
+Under `tree` there are regular files in several subdirectories, and some file **names** (the part
+after the last `/`) appear in more than one directory.
+
+Print one line per name that appears **more than once** (only regular files count: a directory
+with a repeated name does not), sorted alphabetically by name:
+
+```
+NAME: N copies
+```
+
+and finally a line `D repeated names`. Names may contain spaces.
+
+Hint: `find ... | sed 's#.*/##' | sort | uniq -c` does most of the work.
+@@check
+setup() {
+  mkdir -p tree/a/b "tree/c d" tree/e
+  local i names=("$(word)" "$(word).txt" "$(word) copy" "$(word).txt" "$(word)")
+  for i in $(seq "$(randr 6 12)"); do
+    touch "tree/$(pick . a a/b 'c d' e)/$(pick "${names[@]}")"
+  done
+  touch "tree/e/unique$(word).txt"
+  mkdir -p "tree/a/b/${names[0]}x" "tree/e/${names[1]}x"
+  touch "tree/a/${names[1]}x"
+}
+@@solution
+#!/bin/bash
+find tree -type f | sed 's#.*/##' | sort | uniq -c | grep -v '^ *1 ' |
+  sed -E 's/^ *([0-9]+) (.*)$/\2: \1 copies/'
+echo "$(find tree -type f | sed 's#.*/##' | sort | uniq -d | wc -l) repeated names"
+
+@@ex 1021 xargs_I_backup | Backups from a list with xargs -I
+@@level 3
+@@cmds xargs -I{}, cp, find, sort
+@@readme
+`lista.txt` contains file paths, one per line, relative to the current directory. Some contain
+**spaces**. Using `xargs -I{}` reading from `lista.txt`, make a copy of every listed file with the
+same name plus `.bak`, in the same directory (`notes 1.txt` → `notes 1.txt.bak`). Files that are
+not in the list must not be copied.
+
+Then print all the `.bak` files under the current directory, sorted, as `find .` prints them.
+
+Note: with `-I{}`, `xargs` takes **whole lines** as arguments, so spaces are no problem.
+@@check
+COMPARE="stdout exit files"
+setup() {
+  mkdir -p "my docs" src
+  local i f
+  for i in $(seq "$(randr 4 8)"); do
+    f="$(pick . 'my docs' src)/$(word)$(pick '' ' ' ' old ')$i.$(pick txt conf md)"
+    f=${f#./}
+    echo "$(word) $i" > "$f"
+    [[ $(rand 3) != 0 ]] && echo "$f"
+  done > lista.txt
+  echo "first entry" > "always here.txt"; echo "always here.txt" >> lista.txt
+}
+extra_check() { must_use xargs; }
+@@solution
+#!/bin/bash
+xargs -I{} cp {} {}.bak < lista.txt
+find . -name '*.bak' | sort
+
+@@ex 1022 seq_xargs_pages | Numbered pages with seq and xargs
+@@level 3
+@@cmds seq -f, xargs -I{}, xargs, ls
+@@readme
+`n.txt` contains a number N (between 4 and 15). Using `seq` piped to `xargs` (**no loops**):
+
+1. Create the directory `pages` and, inside it, N copies of `template.txt` named
+   `page_01.txt`, `page_02.txt`, ..., always with **two digits** (`seq -f '%02g'`).
+2. Delete the **even** pages (`page_02.txt`, `page_04.txt`, ...). Hint: `seq -f` can build the whole
+   path: `seq -f 'pages/page_%02g.txt' 2 2 N`.
+3. Print how many files are left in `pages`, and then, on one line separated by spaces, their names
+   in `ls` order (`ls pages | xargs`).
+@@check
+COMPARE="stdout exit files"
+setup() { randr 4 15 > n.txt; randtext 3 > template.txt; }
+extra_check() { must_use seq xargs; must_not_use for while until; }
+@@solution
+#!/bin/bash
+N=$(cat n.txt)
+mkdir pages
+seq -f '%02g' 1 "$N" | xargs -I{} cp template.txt pages/page_{}.txt
+seq -f 'pages/page_%02g.txt' 2 2 "$N" | xargs rm
+ls pages | wc -l
+ls pages | xargs
+
+@@ex 1023 dirname_counts | Files per directory from a list
+@@level 3
+@@cmds xargs -d '\n', dirname, sort, uniq -c, sed
+@@readme
+`paths.txt` contains file paths, one per line; some contain spaces and some have no directory part.
+Print how many paths of the list there are **per directory**, as
+
+```
+<directory>: <count>
+```
+
+most frequent first; ties by directory in alphabetical order (as `sort` orders them). The directory of
+a path is what `dirname` prints for it (`.` for a path without `/`).
+
+Hint: `xargs -d '\n' dirname < paths.txt` (GNU `dirname` accepts several arguments), or `sed`.
+@@check
+setup() {
+  local dirs=(. src "src/my lib" "/etc" "$(word) dir" docs/old) i d
+  for i in $(seq "$(randr 6 14)"); do
+    d=$(pick "${dirs[@]}")
+    if [[ $d == . ]]; then echo "$(word)$i.txt"; else echo "$d/$(word)$(pick '' ' ')$i.$(pick c h txt)"; fi
+  done > paths.txt
+}
+@@solution
+#!/bin/bash
+xargs -d '\n' dirname < paths.txt | sort | uniq -c | sort -k1,1nr -k2 |
+  sed -E 's/^ *([0-9]+) (.*)$/\2: \1/'
+
+@@ex 1024 grep_chain_xargs | Files containing both words
+@@level 3
+@@cmds grep -rlZ, xargs -0 grep -l, sort
+@@readme
+`words.txt` contains two words, one per line. Print, sorted, the regular files under `notes`
+(recursively) that contain **both** words (case-sensitive, anywhere in the file, possibly in
+different lines), as `grep -r` prints their paths. Then print `N files contain both`.
+
+Names may contain spaces: chain the searches with `grep -rlZ W1 notes | xargs -0 grep -l W2`
+(`-Z` ends every name with a NUL byte, like `find -print0`).
+@@check
+setup() {
+  mkdir -p "notes/week 1" notes/old
+  local w1 w2 i f
+  w1=$(pick linux kernel shell apple mango); w2=$(pick socket buffer cache peach lemon)
+  printf '%s\n' "$w1" "$w2" > words.txt
+  for i in $(seq "$(randr 5 10)"); do
+    f="notes/$(pick . 'week 1' old)/$(word)$(pick '' ' ')$i.txt"
+    { randtext "$(randr 1 4)"; echo "$(pick "$w1" "$w2" "$w1 $w2" "${w1^^}" x) $(word)"; randtext 2; echo "$(pick "$w2" '' "$w1")"; } > "$f"
+  done
+}
+@@solution
+#!/bin/bash
+{ read -r W1; read -r W2; } < words.txt
+R=$(grep -rlZ -- "$W1" notes | xargs -0 -r grep -l -- "$W2" | sort)
+[ -n "$R" ] && echo "$R"
+echo "$(echo -n "$R" | grep -c '^') files contain both"
+
+@@ex 1025 csv_pipeline | Sales report with pipelines
+@@level 3
+@@cmds tail -n +2, sort -t -k, cut, uniq -c, sed
+@@readme
+`ventas.csv` has a header line `product,region,units` and then one sale per line. Using only
+pipelines (no loops), print:
+
+1. the **3** sales with the most units, most units first (ties: product alphabetically), as
+   `<product> <units>`
+2. a line `---`
+3. every region with its number of sales (lines), sorted by region name, as `<region>: <count>`
+4. a line `---`
+5. the number of **distinct** products
+@@check
+setup() {
+  local i
+  echo "product,region,units" > ventas.csv
+  for i in $(seq "$(randr 8 16)"); do
+    echo "$(pick apple banana cherry grape lemon mango),$(pick north south east west),$(randr 1 40)"
+  done >> ventas.csv
+}
+@@solution
+#!/bin/bash
+tail -n +2 ventas.csv | sort -t, -k3,3nr -k1,1 | head -n 3 | cut -d, -f1,3 | tr , ' '
+echo ---
+tail -n +2 ventas.csv | cut -d, -f2 | sort | uniq -c | sed -E 's/^ *([0-9]+) (.*)$/\2: \1/'
+echo ---
+tail -n +2 ventas.csv | cut -d, -f1 | sort -u | wc -l
+
+@@ex 1026 dirsizes | dirsizes.sh (size of every subdirectory)
+@@level 4
+@@cmds find -mindepth -maxdepth, xargs -0, wc -c, sort -k
+@@readme
+Write `dirsizes.sh`:
+
+```
+dirsizes.sh DIR
+```
+
+For every subdirectory **directly inside** `DIR` (first level only), compute the number of regular
+files it contains (recursively) and their total size in bytes (the sum of the sizes of those files,
+e.g. `find ... -print0 | xargs -0 cat | wc -c`). Print one line per subdirectory:
+
+```
+<bytes> <files> <name>
+```
+
+where `<name>` is just the subdirectory name (no path). Sort by bytes, biggest first; ties by name in
+alphabetical order (as `sort` orders them). A subdirectory without files prints `0 0 <name>`.
+Regular files placed directly in `DIR` are not counted anywhere. Finish with:
+
+```
+Total: <F> files, <B> bytes in <D> directories
+```
+
+Errors (message on **stderr**, nothing on stdout):
+
+- not exactly one argument: error and the correct usage, exit **1**
+- `DIR` does not exist: exit **2** (the message must include the name)
+- `DIR` exists but is not a directory: exit **3** (the message must include the name)
+- `DIR` has no subdirectories: exit **4**
+
+Names may contain spaces.
+@@check
+SCRIPT_NAME=dirsizes.sh
+SEEDS=3
+COMPARE="stdout exit errmsg"
+setup() {
+  local d i
+  mkdir -p "data/old logs/2023" data/src/lib data/img "data/empty one" data/empty2 nosub
+  for i in $(seq "$(randr 6 12)"); do
+    d=$(pick "old logs" "old logs/2023" src src/lib img)
+    bigfile "data/$d/$(word)$(pick '' ' ')$i" "$(randr 1 40)00"
+  done
+  bigfile "data/top file.txt" 5000
+  bigfile nosub/a.txt 10
+  [[ $(rand 2) == 1 ]] && mkdir -p "data/$(word) x"
+  touch plain.txt
+}
+ARGS=('data' '"$W/data"' 'data/src' 'nosub' 'noexiste' 'plain.txt' '' 'data nosub')
+extra_check() {
+  case $REF_CODE in
+    2|3) mentions "$(eval "set -- $CASE"; echo "$1")" ;;
+    1) [[ $ERR == *dirsizes.sh* || $ERR == *sage* ]] || fail "the usage message should show how to call the script" ;;
+  esac
+}
+@@solution
+#!/bin/bash
+# dirsizes.sh DIR - files and bytes of every first-level subdirectory of DIR
+
+if [ $# -ne 1 ]; then
+  echo "Error: wrong number of arguments" >&2
+  echo "Usage: $(basename "$0") DIR" >&2
+  exit 1
+fi
+DIR=$1
+[ -e "$DIR" ] || { echo "Error: '$DIR' does not exist" >&2; exit 2; }
+[ -d "$DIR" ] || { echo "Error: '$DIR' is not a directory" >&2; exit 3; }
+
+LINES=$(
+  find "$DIR" -mindepth 1 -maxdepth 1 -type d -print0 |
+  while IFS= read -r -d '' d; do
+    files=$(find "$d" -type f | wc -l)
+    bytes=$(find "$d" -type f -print0 | xargs -0 -r cat | wc -c)
+    echo "$bytes $files ${d##*/}"
+  done | sort -k1,1nr -k3
+)
+[ -n "$LINES" ] || { echo "Error: '$DIR' has no subdirectories" >&2; exit 4; }
+
+echo "$LINES"
+ND=0 NF=0 NB=0
+while read -r b f _; do
+  ND=$((ND + 1)); NF=$((NF + f)); NB=$((NB + b))
+done <<< "$LINES"
+echo "Total: $NF files, $NB bytes in $ND directories"
+
+@@ex 1027 replace_word | replace.sh (search and replace in many files)
+@@level 4
+@@cmds grep -lZ, xargs -0, sed -i, grep -o | wc -l
+@@readme
+Write `replace.sh`:
+
+```
+replace.sh WORD REPLACEMENT DIR
+```
+
+It replaces **every occurrence** of `WORD` by `REPLACEMENT` in every **regular file** under `DIR`
+(recursively) whose name ends in `.txt` and that contains `WORD` (case-sensitive; `WORD` may appear
+inside longer words, it is a plain substring). Other files are not modified.
+
+For each modified file, sorted by path (as `sort` orders them; the path as `find DIR` prints it), print
+
+```
+<path>: <N> replacements
+```
+
+where `N` is the number of occurrences of `WORD` in that file before replacing (`grep -o WORD file | wc -l`).
+Finish with `Replaced <T> occurrences in <M> files` (also when nothing was found: `Replaced 0
+occurrences in 0 files`).
+
+Validation, in this order (message on **stderr**):
+
+- not exactly 3 arguments: usage, exit **1**
+- `WORD` or `REPLACEMENT` is not made only of letters, digits and `_` (at least one character):
+  exit **2**, naming the bad argument
+- `DIR` is not a directory: exit **3**
+
+Names may contain spaces. Hint: `grep -lZ WORD ... | xargs -0 sed -i "s/WORD/REPLACEMENT/g"`.
+@@check
+SCRIPT_NAME=replace.sh
+SEEDS=2
+COMPARE="stdout exit errmsg files"
+setup() {
+  local i f
+  mkdir -p "docs/my notes" docs/src/deep
+  for i in $(seq "$(randr 6 10)"); do
+    f="docs/$(pick . 'my notes' src src/deep)/$(word)$(pick '' ' ')$i$(pick .txt .txt .txt .md .txt.bak)"
+    { randtext "$(randr 1 5)"; echo "$(pick kernel apple kernelspace '') $(pick kernel apple pear) kernel"; } > "$f"
+  done
+  mkdir -p "docs/dir$(word).txt"
+  echo "kernel kernel" > "docs/src/kernel notes.txt"
+  echo "apple" > outside.txt
+  touch afile
+}
+ARGS=('kernel KERNEL docs' 'apple pear_2 "docs/my notes"' 'zzz yyy docs' 'kernel core_ "$W/docs/src"' 'kernel x' 'a-b x docs' 'kernel "x y" docs' 'kernel x noexiste' 'kernel x afile' 'kernel x docs extra')
+extra_check() {
+  [[ $REF_CODE == 2 ]] && { [[ $ERR == *a-b* || $ERR == *"x y"* ]] || fail "the message should name the bad argument"; }
+  true
+}
+@@solution
+#!/bin/bash
+# replace.sh WORD REPLACEMENT DIR - replace WORD in every *.txt file under DIR
+
+if [ $# -ne 3 ]; then
+  echo "Usage: $(basename "$0") WORD REPLACEMENT DIR" >&2
+  exit 1
+fi
+for v in "$1" "$2"; do
+  if [[ ! $v =~ ^[A-Za-z0-9_]+$ ]]; then
+    echo "Error: '$v' must contain only letters, digits and _" >&2
+    exit 2
+  fi
+done
+[ -d "$3" ] || { echo "Error: '$3' is not a directory" >&2; exit 3; }
+
+T=0 M=0
+while IFS= read -r -d '' f; do
+  n=$(grep -o -- "$1" "$f" | wc -l)
+  sed -i "s/$1/$2/g" "$f"
+  echo "$f: $n replacements"
+  T=$((T + n)); M=$((M + 1))
+done < <(find "$3" -type f -name '*.txt' -print0 | xargs -0 -r grep -lZ -- "$1" | sort -z)
+
+echo "Replaced $T occurrences in $M files"
+
+@@ex 1028 generate | generate.sh (files from a template)
+@@level 4
+@@cmds while read, sed s///g, $( ), mkdir, exit codes
+@@readme
+Write `generate.sh`:
+
+```
+generate.sh TEMPLATE LIST OUTDIR
+```
+
+`TEMPLATE` is a text file that may contain the placeholders `{{NAME}}` and `{{N}}` (several times).
+`LIST` contains one name per line. For every line of `LIST`, in order:
+
+- empty lines are ignored silently;
+- a name is **valid** if it is made only of letters, digits, spaces, `_` and `-`. An invalid name
+  prints `invalid name: <name>` on **stderr** and is skipped;
+- a valid name that was already generated before prints `duplicate: <name>` on **stderr** and is
+  skipped;
+- otherwise the script creates `OUTDIR/<name>.txt` (overwriting it if it exists) with the content of
+  `TEMPLATE` where every `{{NAME}}` is replaced by the name and every `{{N}}` by the number of this
+  file (1 for the first file generated, 2 for the second...; skipped names don't take a number),
+  and prints `generated: OUTDIR/<name>.txt` on stdout (`OUTDIR` exactly as given).
+
+If `OUTDIR` does not exist, create it first and print `Created OUTDIR`. At the end print
+`Generated <N> files, <S> skipped`. Exit code 0 (even if some names were skipped).
+
+Validation, in this order (message on **stderr**, nothing is created):
+
+- not exactly 3 arguments: usage, exit **1**
+- `TEMPLATE` is not a readable regular file: exit **2**
+- `LIST` is not a readable regular file: exit **3**
+- `OUTDIR` exists but is not a directory: exit **4**
+@@check
+SCRIPT_NAME=generate.sh
+SEEDS=3
+COMPARE="stdout exit errmsg files"
+setup() {
+  local i n
+  printf 'Dear {{NAME}},\nyou are number {{N}}.\n%s\n{{NAME}} / {{N}} / {{NAME}}\n' "$(randtext 2)" > tpl.txt
+  printf 'Report {{N}} for {{NAME}}\n' > "my template.txt"
+  for i in $(seq "$(randr 4 8)"); do
+    n=$(pick "$(word)" "$(word) $(word)" "$(word)-$i" "$(word)_$i")
+    echo "$n"; [[ $(rand 4) == 0 ]] && echo "$n"
+    [[ $(rand 4) == 0 ]] && pick "a/b$i" "bad.$i" "why?" ""
+  done > names.txt
+  echo "last one" >> names.txt
+  [[ $(rand 2) == 1 ]] && { mkdir out; echo old > out/old.txt; echo old > "out/last one.txt"; }
+  mkdir tpldir
+  touch afile
+}
+ARGS=('tpl.txt names.txt out' '"my template.txt" names.txt "out dir"' 'tpl.txt names.txt "$W/out"' 'tpl.txt names.txt' 'nope.txt names.txt out' 'tpldir names.txt out' 'tpl.txt nope.txt out' 'tpl.txt names.txt afile' 'a b c d')
+@@solution
+#!/bin/bash
+# generate.sh TEMPLATE LIST OUTDIR - one file per name, from a template
+
+if [ $# -ne 3 ]; then
+  echo "Usage: $(basename "$0") TEMPLATE LIST OUTDIR" >&2
+  exit 1
+fi
+TPL=$1 LIST=$2 OUT=$3
+[ -f "$TPL" ] && [ -r "$TPL" ] || { echo "Error: cannot read template '$TPL'" >&2; exit 2; }
+[ -f "$LIST" ] && [ -r "$LIST" ] || { echo "Error: cannot read list '$LIST'" >&2; exit 3; }
+[ -e "$OUT" ] && [ ! -d "$OUT" ] && { echo "Error: '$OUT' is not a directory" >&2; exit 4; }
+
+if [ ! -d "$OUT" ]; then
+  mkdir -p "$OUT" && echo "Created $OUT"
+fi
+
+N=0 S=0 DONE=
+while IFS= read -r name; do
+  [ -z "$name" ] && continue
+  if [[ ! $name =~ ^[A-Za-z0-9\ _-]+$ ]]; then
+    echo "invalid name: $name" >&2; S=$((S + 1)); continue
+  fi
+  if grep -qxF -- "$name" <<< "$DONE"; then
+    echo "duplicate: $name" >&2; S=$((S + 1)); continue
+  fi
+  DONE+="$name"$'\n'
+  N=$((N + 1))
+  sed "s/{{NAME}}/$name/g; s/{{N}}/$N/g" "$TPL" > "$OUT/$name.txt"
+  echo "generated: $OUT/$name.txt"
+done < "$LIST"
+
+echo "Generated $N files, $S skipped"
+
+@@ex 1029 pack_manifest | pack.sh (archive the files of a manifest)
+@@level 4
+@@cmds while read, grep -v, tar -czf, arrays / xargs -d
+@@readme
+Write `pack.sh`:
+
+```
+pack.sh MANIFEST ARCHIVE
+```
+
+`MANIFEST` lists paths (relative to the current directory), one per line; they may contain spaces.
+Empty lines and lines starting with `#` are ignored. For every other line, in order:
+
+- if it is a regular file, it will be packed;
+- if it does not exist, print `missing: <path>` on stdout;
+- if it exists but is not a regular file, print `skipped: <path>` on stdout.
+
+Then create the compressed archive `ARCHIVE` (`tar -czf`, overwriting it if it exists) containing
+**exactly** the files to pack, with the paths as written in the manifest, and print
+
+```
+Packed <N> files (<M> missing, <K> skipped)
+```
+
+Validation, in this order (message on **stderr**):
+
+- not exactly 2 arguments: usage, exit **1**
+- `MANIFEST` is not a readable regular file: exit **2**
+- `ARCHIVE` does not end in `.tar.gz`: exit **3**
+- after processing the manifest (the `missing:`/`skipped:` lines are printed), there is no file to
+  pack: error on stderr, exit **4**, and no archive is created.
+@@check
+SCRIPT_NAME=pack.sh
+SEEDS=3
+COMPARE="stdout exit errmsg files"
+setup() {
+  local i f
+  mkdir -p "src/my lib" conf "empty dir"
+  for i in $(seq "$(randr 5 9)"); do
+    f="$(pick src 'src/my lib' conf .)/$(word)$(pick '' ' ')$i.$(pick c txt conf)"; f=${f#./}
+    echo "$(word) $i" > "$f"
+    case $(rand 5) in
+      0) ;;
+      1) echo "#$f" ;;
+      *) echo "$f" ;;
+    esac
+  done > list.tmp
+  { echo "# files to back up"; cat list.tmp; echo; echo "conf/gone$(word).conf"; echo "empty dir"; echo "src/my lib"; echo "conf/always.conf"; } > manifest.txt
+  echo "always" > conf/always.conf
+  rm list.tmp
+  cp manifest.txt "my list.txt"; echo "not/here.txt" >> "my list.txt"
+  printf '# nothing\n\nnope/a.txt\nsrc\n' > empty.txt
+  [[ $(rand 2) == 1 ]] && tar -czf out.tar.gz empty.txt
+  true
+}
+ARGS=('manifest.txt out.tar.gz' '"my list.txt" "backup 1.tar.gz"' 'manifest.txt "$W/conf/x.tar.gz"' 'empty.txt e.tar.gz' 'manifest.txt out.zip' 'nope.txt out.tar.gz' 'src out.tar.gz' 'manifest.txt' 'a b c')
+@@solution
+#!/bin/bash
+# pack.sh MANIFEST ARCHIVE - archive the regular files listed in MANIFEST
+
+if [ $# -ne 2 ]; then
+  echo "Usage: $(basename "$0") MANIFEST ARCHIVE" >&2
+  exit 1
+fi
+MAN=$1 ARC=$2
+[ -f "$MAN" ] && [ -r "$MAN" ] || { echo "Error: cannot read manifest '$MAN'" >&2; exit 2; }
+[[ $ARC == *.tar.gz ]] || { echo "Error: '$ARC' must end in .tar.gz" >&2; exit 3; }
+
+FILES=() M=0 K=0
+while IFS= read -r p; do
+  if [ -f "$p" ]; then
+    FILES+=("$p")
+  elif [ -e "$p" ]; then
+    echo "skipped: $p"; K=$((K + 1))
+  else
+    echo "missing: $p"; M=$((M + 1))
+  fi
+done < <(grep -v -e '^#' -e '^$' "$MAN")
+
+if [ ${#FILES[@]} -eq 0 ]; then
+  echo "Error: nothing to pack" >&2
+  exit 4
+fi
+tar -czf "$ARC" -- "${FILES[@]}" || exit 5
+echo "Packed ${#FILES[@]} files ($M missing, $K skipped)"
+
+@@ex 1030 colfreq | colfreq.sh (most frequent values of a CSV column)
+@@level 4
+@@cmds head -1 | tr | grep -nx, cut -f, sort | uniq -c | sort -nr
+@@readme
+Write `colfreq.sh`:
+
+```
+colfreq.sh FILE COLUMN [N]
+```
+
+`FILE` is a CSV file: the first line is a header with the column names, fields are separated by `,`
+(no quotes, no empty fields; names and values may contain spaces). `COLUMN` is the **name** of a
+column. Print the `N` (default **5**) most frequent values of that column, most frequent first,
+ties by value in alphabetical order (as `sort` orders them), as
+
+```
+<value>: <count>
+```
+
+(if there are fewer than `N` distinct values, print them all). Finish with
+`<D> distinct values in <R> rows` (`R` = data lines, without the header).
+
+Hint: the column number is the line number of `COLUMN` in `head -n 1 FILE | tr , '\n'` (`grep -nxF`).
+
+Validation, in this order (message on **stderr**):
+
+- fewer than 2 or more than 3 arguments: usage, exit **1**
+- `FILE` is not a readable regular file: exit **2**
+- `COLUMN` is not a column of the header: exit **3** (the message must include the column name)
+- `N` is not a positive integer (1, 2, ...): exit **4**
+@@check
+SCRIPT_NAME=colfreq.sh
+SEEDS=3
+COMPARE="stdout exit errmsg"
+setup() {
+  local i
+  mkdir -p "data sets"
+  echo "name,city,dept,job title" > people.csv
+  for i in $(seq "$(randr 8 20)"); do
+    echo "$(word) $i,$(pick Madrid Madrid Bilbao Sevilla 'San Sebastian' Vigo),$(pick sales it it hr ops),$(pick 'team lead' dev dev 'sys admin' intern)"
+  done >> people.csv
+  echo "id,department,city" > "data sets/staff.csv"
+  for i in $(seq "$(randr 5 12)"); do echo "$i,$(pick sales it hr 'it support'),$(pick Leon Soria)"; done >> "data sets/staff.csv"
+}
+ARGS=('people.csv city' 'people.csv "job title" 2' '"$W/data sets/staff.csv" department 10' 'people.csv dept 1' 'people.csv salary' 'people.csv "job" 3' 'people.csv city 0' 'people.csv city x' 'nope.csv city' '"data sets" city' 'people.csv' 'a b c d')
+extra_check() {
+  [[ $REF_CODE == 3 ]] && mentions "$(eval "set -- $CASE"; echo "$2")"
+  true
+}
+@@solution
+#!/bin/bash
+# colfreq.sh FILE COLUMN [N] - most frequent values of a CSV column
+
+if [ $# -lt 2 ] || [ $# -gt 3 ]; then
+  echo "Usage: $(basename "$0") FILE COLUMN [N]" >&2
+  exit 1
+fi
+FILE=$1 COL=$2 N=${3:-5}
+[ -f "$FILE" ] && [ -r "$FILE" ] || { echo "Error: cannot read '$FILE'" >&2; exit 2; }
+
+IDX=$(head -n 1 "$FILE" | tr , '\n' | grep -nxF -- "$COL" | head -n 1 | cut -d: -f1)
+[ -n "$IDX" ] || { echo "Error: column '$COL' not found in $FILE" >&2; exit 3; }
+[[ $N =~ ^[0-9]+$ ]] && [ "$N" -gt 0 ] || { echo "Error: N must be a positive integer" >&2; exit 4; }
+
+VALUES=$(tail -n +2 "$FILE" | cut -d, -f"$IDX")
+echo "$VALUES" | sort | uniq -c | sort -k1,1nr -k2 | head -n "$N" |
+  sed -E 's/^ *([0-9]+) (.*)$/\2: \1/'
+echo "$(echo "$VALUES" | sort -u | wc -l) distinct values in $(echo "$VALUES" | wc -l) rows"
+
+@@ex 1031 tags | tags.sh (tags of markdown notes)
+@@level 4
+@@cmds grep -h, sed, tr, sort | uniq -c, grep -l
+@@readme
+Write `tags.sh`:
+
+```
+tags.sh DIR [TAG]
+```
+
+Under `DIR` (recursively) there are notes: regular files whose name ends in `.md`. A note may contain
+**one** line that starts with `tags:` followed by a comma-separated list of tags, with optional spaces
+around them, e.g. `tags: linux,  shell ,bash`. A tag is made of lowercase letters, digits and `-`, and
+never appears twice in the same line. Other files and other lines (even if they contain tag names) are
+ignored.
+
+- **Without `TAG`**: print every tag with the number of notes that have it, as `<tag> (<count>)`,
+  most used first, ties by tag in alphabetical order. Finish with
+  `<T> distinct tags in <F> tagged notes` (`F` = notes that have a `tags:` line).
+- **With `TAG`**: print the paths (as `find DIR` prints them, sorted) of the notes that have exactly
+  that tag (`shell` does not match `shell-script`), then `<N> notes tagged <TAG>`. If no note has
+  it: message on **stderr** and exit **4** (nothing on stdout).
+
+Validation, in this order (message on **stderr**):
+
+- no arguments or more than 2: usage, exit **1**
+- `DIR` is not a directory: exit **2**
+- `TAG` is not made only of lowercase letters, digits and `-`: exit **3**
+
+Names may contain spaces.
+@@check
+SCRIPT_NAME=tags.sh
+SEEDS=3
+COMPARE="stdout exit errmsg"
+setup() {
+  local i f t tl pool=(linux shell shell-script bash kernel net c2 exam)
+  mkdir -p "notes/week 1" notes/old/deep
+  for i in $(seq "$(randr 6 12)"); do
+    f="notes/$(pick . 'week 1' old old/deep)/$(word)$(pick '' ' ')$i$(pick .md .md .md .txt .md.bak)"
+    tl=""
+    for t in $(seq "$(randr 1 4)"); do t=$(pick "${pool[@]}"); [[ ",$tl," == *",$t,"* ]] || tl+="${tl:+,}$t"; done
+    { randtext 2; [[ $(rand 5) != 0 ]] && echo "tags:$(pick ' ' '' '  ')${tl//,/$(pick ', ' ',' ' , ')}"; echo "about shell and linux"; } > "$f"
+  done
+  echo "tags: shell, linux" > "notes/old/always.md"
+  touch afile
+}
+ARGS=('notes' '"$W/notes/old"' 'notes shell' 'notes shell-script' '"notes/week 1" linux' 'notes nothere' 'notes Shell' 'notes "a b"' 'noexiste' 'afile shell' '' 'notes a b')
+@@solution
+#!/bin/bash
+# tags.sh DIR [TAG] - statistics of the tags of the *.md notes under DIR
+
+if [ $# -lt 1 ] || [ $# -gt 2 ]; then
+  echo "Usage: $(basename "$0") DIR [TAG]" >&2
+  exit 1
+fi
+DIR=$1
+[ -d "$DIR" ] || { echo "Error: '$DIR' is not a directory" >&2; exit 2; }
+
+if [ $# -eq 1 ]; then
+  TAGLINES=$(find "$DIR" -type f -name '*.md' -print0 | xargs -0 -r grep -h '^tags:')
+  F=$(echo -n "$TAGLINES" | grep -c '^')
+  COUNTS=$(echo "$TAGLINES" | sed 's/^tags://' | tr , '\n' | tr -d ' ' | grep -v '^$' |
+           sort | uniq -c | sort -k1,1nr -k2)
+  [ -n "$COUNTS" ] && echo "$COUNTS" | sed -E 's/^ *([0-9]+) (.*)$/\2 (\1)/'
+  echo "$(echo -n "$COUNTS" | grep -c '^') distinct tags in $F tagged notes"
+  exit 0
+fi
+
+TAG=$2
+[[ $TAG =~ ^[a-z0-9-]+$ ]] || { echo "Error: invalid tag '$TAG'" >&2; exit 3; }
+R=$(find "$DIR" -type f -name '*.md' -print0 |
+    xargs -0 -r grep -lE -- "^tags:(.*,)? *$TAG *(,|$)" | sort)
+[ -n "$R" ] || { echo "No note tagged $TAG" >&2; exit 4; }
+echo "$R"
+echo "$(echo "$R" | wc -l) notes tagged $TAG"
+
+@@ex 1032 cmpdirs | cmpdirs.sh (compare two directory trees)
+@@level 4
+@@cmds find | sed | sort, comm / diff, cmp -s, exit codes like diff
+@@readme
+Write `cmpdirs.sh`, which compares the **regular files** of two directory trees by their path
+relative to each directory:
+
+```
+cmpdirs.sh DIR1 DIR2
+```
+
+Print, in this order:
+
+1. `- <rel>` for every file that exists only in `DIR1`
+2. `+ <rel>` for every file that exists only in `DIR2`
+3. `* <rel>` for every file that exists in both but with **different content** (`cmp -s`)
+
+Each group sorted by relative path (as `sort` orders them); `<rel>` has no leading `./` (e.g.
+`sub dir/a.txt`). A path that is a regular file in one tree but not in the other (missing, or a
+directory there) counts as "only in". Finish with
+
+```
+<S> identical, <D> different, <A> only in DIR1, <B> only in DIR2
+```
+
+(`DIR1`/`DIR2` replaced by the arguments as given). Like `diff`, the exit code is **0** if there are
+no differences and **1** if there is any. Errors (message on **stderr**):
+
+- not exactly 2 arguments: usage, exit **2**
+- `DIR1` or `DIR2` is not a directory: exit **3** (the message must include its name)
+
+Hint: `(cd DIR && find . -type f) | sed 's#^\./##' | sort` gives the relative paths; `comm` or
+a loop with `[ -f ]` separates them.
+@@check
+SCRIPT_NAME=cmpdirs.sh
+SEEDS=3
+COMPARE="stdout exit errmsg"
+setup() {
+  local i f
+  mkdir -p "v1/sub dir" v1/lib "v2 new"
+  for i in $(seq "$(randr 5 9)"); do
+    f="$(pick . 'sub dir' lib)/$(word)$(pick '' ' ')$i.$(pick txt c)"
+    echo "$(word) $i" > "v1/$f"
+  done
+  echo x > "v1/lib/conflict"
+  cp -r v1/. "v1 copy"
+  cp -r v1/. "v2 new"
+  rm "v2 new/lib/conflict"; mkdir "v2 new/lib/conflict"
+  for f in "v2 new"/*.* "v2 new/sub dir"/* "v2 new"/lib/*; do
+    [[ -f $f ]] || continue
+    case $(rand 4) in 0) echo changed >> "$f" ;; 1) rm "$f" ;; esac
+  done
+  mkdir -p "v2 new/extra"; echo new > "v2 new/extra/new $(word).txt"
+  touch afile
+}
+ARGS=('v1 "v2 new"' '"v2 new" v1' 'v1 "v1 copy"' '"$W/v1/sub dir" "v2 new/sub dir"' 'v1' 'v1 nope' 'afile v1' 'a b c')
+extra_check() {
+  [[ $REF_CODE == 3 ]] && { [[ $ERR == *nope* || $ERR == *afile* ]] || fail "the message should include the bad directory"; }
+  true
+}
+@@solution
+#!/bin/bash
+# cmpdirs.sh DIR1 DIR2 - compare the regular files of two trees
+
+if [ $# -ne 2 ]; then
+  echo "Usage: $(basename "$0") DIR1 DIR2" >&2
+  exit 2
+fi
+for d in "$1" "$2"; do
+  [ -d "$d" ] || { echo "Error: '$d' is not a directory" >&2; exit 3; }
+done
+
+rel() { (cd "$1" && find . -type f) | sed 's#^\./##' | sort; }
+
+ONLY1=$(comm -23 <(rel "$1") <(rel "$2"))
+ONLY2=$(comm -13 <(rel "$1") <(rel "$2"))
+S=0 D=0 DIFF=""
+while IFS= read -r f; do
+  [ -z "$f" ] && continue
+  if cmp -s "$1/$f" "$2/$f"; then S=$((S + 1)); else D=$((D + 1)); DIFF+="* $f"$'\n'; fi
+done < <(comm -12 <(rel "$1") <(rel "$2"))
+
+A=$(echo -n "$ONLY1" | grep -c '^')
+B=$(echo -n "$ONLY2" | grep -c '^')
+[ -n "$ONLY1" ] && echo "$ONLY1" | sed 's/^/- /'
+[ -n "$ONLY2" ] && echo "$ONLY2" | sed 's/^/+ /'
+echo -n "$DIFF"
+echo "$S identical, $D different, $A only in $1, $B only in $2"
+[ $((A + B + D)) -eq 0 ]
+
+@@ex 1033 grepall | grepall.sh (lines with all the words)
+@@level 4
+@@cmds grep -n -i -w, $( ), <<<, wc -l
+@@readme
+Write `grepall.sh`:
+
+```
+grepall.sh FILE WORD...
+```
+
+Print the lines of `FILE` that contain **all** the given words, as **whole words** and ignoring case
+(`grep -i -w`), in file order, each preceded by its line number: `<n>:<line>` (as `grep -n` prints
+it). Finish with
+
+```
+<M> of <T> lines contain all <K> words
+```
+
+(`T` = lines of the file, `K` = number of words). Exit code **0** if at least one line matched; if
+none did, print the summary anyway and exit with **4** (nothing on stderr).
+
+Validation, in this order (message on **stderr**):
+
+- fewer than 2 arguments: usage, exit **1**
+- `FILE` is not a readable regular file: exit **2**
+- a `WORD` is not made only of letters (a-z, A-Z): exit **3**, naming the first bad word
+
+Hint: filter successively, keeping the result in a variable: `R=$(grep -in -w "$w" <<< "$R")`...
+or chain `grep`s in a pipeline.
+@@check
+SCRIPT_NAME=grepall.sh
+SEEDS=3
+COMPARE="stdout exit errmsg"
+setup() {
+  local i j line pool=(linux Linux LINUX shell Shell shells kernel linux_kernel apple banana
+                       cherry the and of a is linux-ish shell2 KERNEL)
+  for i in $(seq "$(randr 15 30)"); do
+    line=""
+    for j in $(seq "$(randr 2 8)"); do line+="$(pick "${pool[@]}") "; done
+    echo "${line% }"
+  done > texto.txt
+  { echo "Shell and linux and apple"; randtext 3; echo "apple banana cherry"; } > "mis notas.txt"
+  mkdir adir
+}
+ARGS=('texto.txt linux' 'texto.txt shell KERNEL' 'texto.txt linux shell kernel' '"mis notas.txt" apple' '"$W/mis notas.txt" APPLE banana cherry' 'texto.txt zzz' 'texto.txt' 'nope.txt a' 'adir a' 'texto.txt shell l1nux x_y' 'texto.txt "two words"')
+extra_check() {
+  [[ $REF_CODE == 3 ]] && { [[ $ERR == *l1nux* || $ERR == *"two words"* ]] || fail "the message should name the bad word"; }
+  true
+}
+@@solution
+#!/bin/bash
+# grepall.sh FILE WORD... - lines of FILE that contain all the words
+
+if [ $# -lt 2 ]; then
+  echo "Usage: $(basename "$0") FILE WORD..." >&2
+  exit 1
+fi
+FILE=$1; shift
+[ -f "$FILE" ] && [ -r "$FILE" ] || { echo "Error: cannot read '$FILE'" >&2; exit 2; }
+for w in "$@"; do
+  [[ $w =~ ^[A-Za-z]+$ ]] || { echo "Error: invalid word '$w'" >&2; exit 3; }
+done
+
+R=$(grep -n '' "$FILE")
+for w in "$@"; do
+  R=$(grep -iw -- "$w" <<< "$R")
+done
+
+M=0
+if [ -n "$R" ]; then
+  echo "$R"
+  M=$(echo "$R" | wc -l)
+fi
+echo "$M of $(wc -l < "$FILE") lines contain all $# words"
+[ "$M" -gt 0 ] || exit 4

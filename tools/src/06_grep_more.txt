@@ -1,0 +1,1095 @@
+@@topic 06_grep_regex | grep & regular expressions
+@@ex 0617 grep_max_count | Only the first matches: -m
+@@level 3
+@@cmds grep -m, grep -n, head, cut
+@@readme
+`app.log` is a log file. Print, separated by lines `---`:
+
+1. the **first 3** lines that contain `ERROR` (exact case; fewer if there are fewer)
+2. the **line number** (just the number) of the **first** line that contains `WARN` (exact case)
+3. how many of the **first 10 lines** of the file contain `ERROR` (just the number)
+
+"Contain" means anywhere in the line (`ERRORS` contains `ERROR`, `WARNING` contains `WARN`).
+Hint: `grep -m`.
+@@check
+setup() {
+  local i
+  for i in $(seq 25); do echo "$i $(pick INFO ERROR error WARN WARNING DEBUG ERRORS Warn) $(words 2)"; done > app.log
+  echo "26 WARN $(word)" >> app.log
+}
+@@solution
+#!/bin/bash
+grep -m 3 ERROR app.log
+echo ---
+grep -n -m 1 WARN app.log | cut -d: -f1
+echo ---
+head -n 10 app.log | grep -c ERROR
+
+@@ex 0618 grep_dash_patterns | Patterns that start with a dash
+@@level 3
+@@cmds grep -e, grep --, grep -c -v
+@@readme
+`cmds.txt` contains one shell command line per line. A pattern that starts with `-` is taken by
+`grep` as an option unless you protect it with `-e PATTERN` or `--`. Print, separated by `---`:
+
+1. the lines that contain `-rf`
+2. the lines that contain `-n` **or** `--dry-run` (a single `grep` with two `-e`)
+3. the **number** of lines that contain no `-` at all
+@@check
+setup() {
+  local i
+  for i in $(seq 18); do
+    pick "rm -rf $(word)" "rm -r -f $(word)" "ls -l $(word)" "cp --force $(word) $(word)" "git push --dry-run" \
+         "make -n $(word)" "echo $(word)" "tar -xvf $(word).tar" "cat $(word)" "sort -rn $(word)" "rsync --dry-run -a x y" "rm -fr $(word)"
+  done > cmds.txt
+}
+extra_check() { must_use grep; }
+@@solution
+#!/bin/bash
+grep -e -rf cmds.txt
+echo ---
+grep -e -n -e --dry-run cmds.txt
+echo ---
+grep -vc -- - cmds.txt
+
+@@ex 0619 password_policy | A password policy with POSIX classes
+@@level 3
+@@cmds grep, [[:digit:]] [[:upper:]] [[:lower:]] [[:punct:]], grep -E {n,}
+@@readme
+`candidatas.txt` contains one candidate password per line (no spaces). Print the candidates that
+satisfy **all** these rules, in the order of the file:
+
+- at least 8 characters long
+- at least one digit, at least one uppercase letter and at least one lowercase letter
+- at least one punctuation character (`[[:punct:]]`, e.g. `! . # _ @ %`)
+
+Then print `---` and the **number** of rejected candidates.
+
+Hint: one `grep` per rule, chained with pipes, using the POSIX classes.
+@@check
+setup() {
+  local i w
+  for i in $(seq 22); do
+    w=$(word)
+    [[ $(rand 3) != 0 ]] && w=${w^}
+    [[ $(rand 3) == 0 ]] && w="$w$(word)"
+    [[ $(rand 4) != 0 ]] && w="$w$(rand 100)"
+    [[ $(rand 4) != 0 ]] && w="$w$(pick '!' . '#' _ @ % -)"
+    [[ $(rand 8) == 0 ]] && w=${w^^}
+    echo "$w"
+  done > candidatas.txt
+}
+@@solution
+#!/bin/bash
+OK=$(grep -E '.{8,}' candidatas.txt | grep '[[:digit:]]' | grep '[[:upper:]]' | grep '[[:lower:]]' | grep '[[:punct:]]')
+[ -n "$OK" ] && echo "$OK"
+echo ---
+echo $(( $(wc -l < candidatas.txt) - $(grep -c . <<< "$OK") ))
+
+@@ex 0620 lines_vs_occurrences | Counting lines vs. occurrences
+@@level 3
+@@cmds grep -c, grep -o, grep -w -i, wc -l, uniq -c
+@@readme
+`grep -c` counts **lines**, not occurrences. For the **whole word** `kernel` in **any case**
+(`Kernel`, `KERNEL`... count; `kernels` or `kernel_x` don't; `kernel-x` does, as for `grep -w`)
+in `texto.txt`, print exactly:
+
+```
+lines: <number of lines that contain it>
+occurrences: <total number of occurrences in the file>
+max: <largest number of occurrences in a single line>
+```
+
+If it never appears, all three numbers are `0`.
+@@check
+setup() {
+  local i j
+  for i in $(seq "$(randr 8 14)"); do
+    for j in $(seq "$(randr 1 6)"); do pick kernel Kernel KERNEL kernels kernel_x kernel-x mykernel linux shell kernel. process; done | tr '\n' ' '
+    echo
+  done > texto.txt
+}
+@@solution
+#!/bin/bash
+echo "lines: $(grep -ciw kernel texto.txt)"
+echo "occurrences: $(grep -oiw kernel texto.txt | wc -l)"
+MAX=$(grep -noiw kernel texto.txt | cut -d: -f1 | uniq -c | sort -rn | head -n 1)
+set -- $MAX
+echo "max: ${1:-0}"
+
+@@ex 0621 invalid_users | Invalid users in auth.log
+@@level 3
+@@cmds grep -oE, cut, sort, uniq -c, head
+@@readme
+Using the real `/var/log/auth.log`, consider only the substrings `Invalid user <name> from <ip>`
+(the name has no spaces). Print, separated by `---`:
+
+1. the **5** most tried user names, as `<count> <name>` (no leading spaces), count descending,
+   ties by name ascending (as `sort` orders them)
+2. the number of **distinct** names tried
+3. the IP that tried the largest number of **distinct** user names, as `<count> <ip>`
+   (ties: IP ascending as text, as `sort` orders them)
+@@check
+SEEDS=1
+@@solution
+#!/bin/bash
+LOG=/var/log/auth.log
+grep -oE 'Invalid user [^ ]+ from' "$LOG" | cut -d' ' -f3 | sort | uniq -c | sort -k1,1nr -k2,2 | head -n 5 | sed 's/^ *//'
+echo ---
+grep -oE 'Invalid user [^ ]+ from' "$LOG" | cut -d' ' -f3 | sort -u | wc -l
+echo ---
+grep -oE 'Invalid user [^ ]+ from [0-9.]+' "$LOG" | cut -d' ' -f3,5 | sort -u | cut -d' ' -f2 |
+  sort | uniq -c | sort -k1,1nr -k2,2 | head -n 1 | sed 's/^ *//'
+
+@@ex 0622 grep_l_L | Which files do (not) contain it
+@@level 3
+@@cmds grep -r -l -L, --include, grep -w
+@@readme
+The directory `proyecto` contains text files in several subdirectories (names may contain spaces).
+Print, separated by `---` (paths as `grep -r ... proyecto` prints them, each list sorted):
+
+1. the `.txt` files (recursively) that do **not** contain `DONE` (exact case, anywhere in a line)
+2. the `.md` files (recursively) that contain `DONE` as a **whole word** (exact case)
+3. the **number** of files of any type that contain `done` in **any case**
+
+Hint: `-L`, `--include='*.txt'`.
+@@check
+setup() {
+  mkdir -p "proyecto/sub dir" proyecto/docs
+  local i j f
+  for i in $(seq 9); do
+    f="proyecto/$(pick . 'sub dir' docs)/$(pick '' 'my ')$(word)$i.$(pick txt md txt md log)"
+    for j in $(seq "$(randr 1 4)"); do echo "$(word) $(pick DONE done 'DONE.' UNDONE 'NOT DONE' '' '' Done) $(word)"; done > "$f"
+  done
+}
+@@solution
+#!/bin/bash
+grep -rL --include='*.txt' DONE proyecto | sort
+echo ---
+grep -rlw --include='*.md' DONE proyecto | sort
+echo ---
+grep -ril done proyecto | wc -l
+
+@@ex 0623 extract_urls | Host names from URLs
+@@level 3
+@@cmds grep -oE, cut, sort -u, wc -l
+@@readme
+`pagina.html` contains links. A URL starts with `http://` or `https://` (lowercase); its **host**
+is the longest sequence of letters, digits, `.` and `-` right after `://`
+(so it stops at `/`, `:`, `"`...). Print:
+
+1. the **distinct** hosts of all the URLs, sorted, one per line
+2. `---`
+3. the number of URLs (occurrences, not lines!) that use plain `http://`
+
+`ftp://`, `mailto:` and other schemes are not URLs here.
+@@check
+setup() {
+  local i
+  for i in $(seq 14); do
+    case $(rand 6) in
+      0) echo "<p>see <a href=\"ftp://files.$(word).org/x\">ftp</a> and mailto:$(word)@$(word).com</p>" ;;
+      1) echo "<a href=\"$(pick http https)://$(word).$(pick com es)/\">a</a> <a href=\"http://$(word).net:8080/x\">b</a>" ;;
+      *) echo "<li><a href=\"$(pick http https http)://$(pick www. '' api. '')$(word)$(pick '' -$(word)).$(pick com org es)/$(word)\">$(word)</a></li>" ;;
+    esac
+  done > pagina.html
+}
+@@solution
+#!/bin/bash
+grep -oE 'https?://[A-Za-z0-9.-]+' pagina.html | cut -d/ -f3 | sort -u
+echo ---
+grep -o 'http://' pagina.html | wc -l
+
+@@ex 0624 config_clean | Stripping comments and blank lines
+@@level 3
+@@cmds grep -v -E, [[:space:]], cut, sort
+@@readme
+`app.conf` is a configuration file. A **comment** line is one whose first non-blank character is `#`;
+a **blank** line is empty or contains only spaces/tabs. Settings are lines `name=value` starting at
+column 1 (a `#` inside a value, like `color=#ff0000`, is not a comment). Print:
+
+1. the file without comment lines and without blank lines (the other lines unchanged, in order)
+2. `---`
+3. the names of the settings whose value is **empty** (nothing, or only blanks, after the `=`), sorted
+@@check
+setup() {
+  local i
+  for i in $(seq 20); do
+    case $(rand 9) in
+      0) echo "# $(words 3)" ;;
+      1) echo "    # indented $(word)" ;;
+      2) printf '\t# tab %s\n' "$(word)" ;;
+      3) echo ;;
+      4) printf '%s\n' "$(pick '   ' $'\t' $' \t ')" ;;
+      5) echo "$(word)$i=$(pick '' '   ' $'\t')" ;;
+      6) echo "color$i=#$(word)" ;;
+      *) echo "$(word)$i=$(pick "$(word)" "/srv/$(word) # not a comment" "$(randr 1 999)")" ;;
+    esac
+  done > app.conf
+}
+@@solution
+#!/bin/bash
+grep -vE '^[[:space:]]*(#|$)' app.conf
+echo ---
+grep -E '^[^#=[:space:]]+=[[:space:]]*$' app.conf | cut -d= -f1 | sort
+
+@@ex 0625 escape_meta | Matching metacharacters literally
+@@level 3
+@@cmds grep -E, \$ \. \( \[, grep -F
+@@readme
+`precios.txt` mixes prices, formulas and status marks. Print, separated by `---`, the lines that contain:
+
+1. a **price**: a `$`, one or more digits, a `.`, exactly two digits, and then either the end of the
+   line or a character that is not a digit (`$12.50` yes; `$1.5`, `$3.999`, `$12,50`, `12.50$` no)
+2. the literal text `f(x)`
+3. the literal text `[ok]` (exact case)
+
+Remember which characters are special in a regex (`$ . ( ) [ ] *`) and how to escape them
+(or when `grep -F` is enough).
+@@check
+setup() {
+  local i
+  for i in $(seq 20); do
+    echo "$(word) $(pick 'total $12.50 today' '$7.05' 'cost $1.5 only' 'now $12,50' 'was 12.50$' 'x $3.999 y' 'pay $100.00.' 'f(x) = 2' 'fx here' 'g f(y)' 'call f(x)!' '[ok] done' 'ok] x' '(ok)' '[ok' 'status [OK]' 'a*b' '$99.99')"
+  done > precios.txt
+}
+@@solution
+#!/bin/bash
+grep -E '\$[0-9]+\.[0-9]{2}([^0-9]|$)' precios.txt
+echo ---
+grep -F 'f(x)' precios.txt
+echo ---
+grep '\[ok\]' precios.txt
+
+@@ex 0626 function_index | Where is each function defined?
+@@level 3
+@@cmds grep -nH -E, while IFS=: read, sort
+@@readme
+The directory `scripts` contains bash scripts `*.sh` (names may contain spaces). A **function
+definition** is a line that starts (column 1) with a name — a letter or `_` followed by letters, digits
+or `_` — immediately followed by `()`. Indented definitions, comments, `function x {` and `name ()`
+(with a space) do not count.
+
+For every definition in the `.sh` files directly inside `scripts`, print
+
+```
+<name> <path>:<line number>
+```
+
+(`path` as `scripts/<file>`), sorted as `sort` sorts those lines. Function names are unique.
+@@check
+setup() {
+  mkdir scripts
+  local k n=0 j f
+  for k in 1 2 3; do
+    f="scripts/$(pick backup deploy 'my tools' util)$k.sh"
+    echo '#!/bin/bash' > "$f"
+    for j in $(seq "$(randr 4 9)"); do
+      n=$((n + 1))
+      case $(rand 7) in
+        0|1) echo "$(word)$n() {" ;;
+        2) echo "  inner$n() {" ;;
+        3) echo "# old$n() {" ;;
+        4) echo "echo \"fake$n()\"" ;;
+        5) echo "function kw$n {" ;;
+        *) echo "spaced$n () {" ;;
+      esac >> "$f"
+      echo "  $(word)" >> "$f"
+    done
+    echo "_$(word)$k() { :; }" >> "$f"
+  done
+  echo "notes$n() {" > scripts/notes.txt
+}
+@@solution
+#!/bin/bash
+grep -nHE '^[A-Za-z_][A-Za-z0-9_]*\(\)' scripts/*.sh |
+  while IFS=: read -r file line text; do
+    echo "${text%%(*} $file:$line"
+  done | sort
+
+@@ex 0627 dict_vowels | Vowel puzzles in the dictionary
+@@level 3
+@@cmds grep -E, [^...], {n,}, \1
+@@readme
+Using `/usr/share/dict/words`, consider only the words made **only of lowercase letters a-z**.
+Print, separated by `---`:
+
+1. the words that contain the vowels `a`, `e`, `i`, `o`, `u` **in this order** (other letters, also
+   vowels, may appear anywhere in between), e.g. `facetious`
+2. the words of **6 or more** letters that contain **none** of `a e i o u` (`y` is fine)
+3. the **number** of words of at least 5 letters that **start and end with the same two letters**
+   in the same order (e.g. `alphabetical`: `al...al`)
+
+Each part is a single `grep -E` (back-references work in `grep -E` too).
+@@check
+SEEDS=1
+@@solution
+#!/bin/bash
+D=/usr/share/dict/words
+grep -E '^[a-z]*a[a-z]*e[a-z]*i[a-z]*o[a-z]*u[a-z]*$' "$D"
+echo ---
+grep -E '^[b-df-hj-np-tv-z]{6,}$' "$D"
+echo ---
+grep -cE '^([a-z]{2})[a-z]+\1$' "$D"
+
+@@ex 0628 wordle | wordle.sh (a Wordle helper)
+@@level 4
+@@cmds grep -x -E, grep -v, [...], ${var//_/.}, sort -u
+@@readme
+Write `wordle.sh`:
+
+```
+wordle.sh DICT PATTERN [ABSENT]
+```
+
+- `DICT`: a file with one word per line.
+- `PATTERN`: exactly 5 characters, each a lowercase letter `a-z` or `_` (unknown letter).
+- `ABSENT` (optional): one or more lowercase letters that must **not** appear anywhere in the word.
+
+The **candidates** are the lines of `DICT` that are exactly 5 lowercase letters `a-z` (nothing else
+on the line), have the known letters of `PATTERN` in their positions, and contain none of the
+`ABSENT` letters. Print the candidates **sorted and without duplicates**, one per line, and then
+the summary line `<N> candidates` (always with that word, also `0 candidates`, `1 candidates`).
+Exit code 0.
+
+Errors (message on **stderr**, nothing on stdout):
+
+| situation | exit |
+|-----------|------|
+| fewer than 2 or more than 3 arguments (show the usage) | 1 |
+| `DICT` is not a readable regular file (mention it) | 2 |
+| `PATTERN` is not valid (mention it) | 3 |
+| `ABSENT` is given but is not 1+ lowercase letters (also if it is empty) | 4 |
+
+Checks are done in that order.
+@@check
+SCRIPT_NAME=wordle.sh
+SEEDS=2
+COMPARE="stdout exit errmsg"
+POOL=(crane slate stare spare share shore shire spire spine brine bring brand grand gland plant plane crate
+      grate trace react cater later alter alert apple grape lemon mango melon peach alpha bravo delta hotel
+      oscar romeo tango linux shell cache sugar tiger water paper eager ocean)
+setup() {
+  local i
+  for i in $(seq 45); do pick "${POOL[@]}"; done > dict.txt
+  printf '%s\n' Crane APPLE cranes cran "can't" "sh_ll" "e-mail" "trace " "12345" >> dict.txt
+  for i in $(seq 30); do pick "${POOL[@]}" Slate; done > "my words.txt"
+}
+ARGS=('dict.txt _____' 'dict.txt __a__' 'dict.txt s____ ae' '"my words.txt" ___e_ rt' 'dict.txt c_a__ xyz'
+      'dict.txt zz___' 'dict.txt' 'a b c d' 'nofile _____' '. _____' 'dict.txt abc' 'dict.txt ab_D_'
+      'dict.txt _____ A1' 'dict.txt _____ ""')
+extra_check() {
+  [[ $REF_CODE == [23] ]] && mentions "$(eval "set -- $CASE"; [[ $REF_CODE == 2 ]] && echo "$1" || echo "$2")"
+  true
+}
+@@solution
+#!/bin/bash
+# wordle.sh DICT PATTERN [ABSENT]
+if [ $# -lt 2 ] || [ $# -gt 3 ]; then
+  echo "Usage: $(basename "$0") DICT PATTERN [ABSENT]" >&2
+  exit 1
+fi
+DICT=$1
+PAT=$2
+if [ ! -f "$DICT" ] || [ ! -r "$DICT" ]; then
+  echo "Error: cannot read dictionary '$DICT'" >&2
+  exit 2
+fi
+if ! grep -qxE '[a-z_]{5}' <<< "$PAT"; then
+  echo "Error: invalid pattern '$PAT'" >&2
+  exit 3
+fi
+if [ $# -eq 3 ] && ! grep -qxE '[a-z]+' <<< "$3"; then
+  echo "Error: invalid absent letters '$3'" >&2
+  exit 4
+fi
+
+RE=${PAT//_/.}     # _ = any letter
+if [ $# -eq 3 ]; then
+  R=$(grep -xE '[a-z]{5}' "$DICT" | grep -x "$RE" | grep -v "[$3]" | sort -u)
+else
+  R=$(grep -xE '[a-z]{5}' "$DICT" | grep -x "$RE" | sort -u)
+fi
+[ -n "$R" ] && echo "$R"
+echo "$(grep -c . <<< "$R") candidates"
+
+@@ex 0629 wsearch | wsearch.sh (whole-word search in text files)
+@@level 4
+@@cmds grep -r -c -i -w, --include, sort -k, ${var##*:}
+@@readme
+Write `wsearch.sh`:
+
+```
+wsearch.sh WORD [DIR]
+```
+
+It searches the regular files whose name ends in `.txt` under `DIR` (default: the current directory
+`.`; recursively) for lines that contain `WORD` as a **whole word** (as `grep -w`), in **any case**.
+For every file with at least one matching line print
+
+```
+<number of matching lines> <path>
+```
+
+where `path` is the path as found under `DIR` (e.g. `docs/sub dir/a.txt`, `./notes.txt`), sorted by
+number descending and then by path ascending (as `sort` orders them). Finally print the summary
+
+```
+<total matching lines> lines in <number of files> files
+```
+
+Errors (message on **stderr**):
+
+| situation | exit |
+|-----------|------|
+| no arguments or more than 2 (show the usage) | 1 |
+| `WORD` is not made only of letters and digits (mention it) | 2 |
+| `DIR` is not a directory (mention it) | 3 |
+| no match at all: print just the summary `0 lines in 0 files` on stdout | 4 |
+@@check
+SCRIPT_NAME=wsearch.sh
+SEEDS=3
+COMPARE="stdout exit errmsg"
+setup() {
+  mkdir -p "docs/sub dir" docs/old
+  local f i j
+  for f in docs/a.txt "docs/sub dir/my notes.txt" "docs/sub dir/b.txt" docs/old/x.txt docs/readme.md docs/c.txt.bak notes.txt file.txt; do
+    for i in $(seq "$(randr 0 6)"); do
+      for j in 1 2 3; do pick kernel Kernel KERNEL kernels kernel_x kernel-x linux Linux shell SHELL shells process; done | tr '\n' ' '
+      echo
+    done > "$f"
+  done
+}
+ARGS=('kernel docs' 'Shell "docs/sub dir"' 'kernel "$W/docs"' 'linux' 'zzz docs' '' 'a b c' 'ker.nel docs' 'kernel nodir' 'kernel file.txt')
+extra_check() {
+  [[ $REF_CODE == [23] ]] && mentions "$(eval "set -- $CASE"; [[ $REF_CODE == 2 ]] && echo "$1" || echo "$2")"
+  true
+}
+@@solution
+#!/bin/bash
+# wsearch.sh WORD [DIR]
+if [ $# -lt 1 ] || [ $# -gt 2 ]; then
+  echo "Usage: $(basename "$0") WORD [DIR]" >&2
+  exit 1
+fi
+WORD=$1
+DIR=${2:-.}
+if [[ ! $WORD =~ ^[[:alnum:]]+$ ]]; then
+  echo "Error: '$WORD' is not a valid word" >&2
+  exit 2
+fi
+if [ ! -d "$DIR" ]; then
+  echo "Error: '$DIR' is not a directory" >&2
+  exit 3
+fi
+
+# grep -c prints path:count for every file (also 0); keep the non-zero ones as "count path"
+R=$(grep -rciw --include='*.txt' -- "$WORD" "$DIR" | grep -v ':0$' |
+    while IFS= read -r l; do echo "${l##*:} ${l%:*}"; done | sort -k1,1nr -k2)
+L=0 F=0
+if [ -n "$R" ]; then
+  echo "$R"
+  while read -r n _; do L=$((L + n)); F=$((F + 1)); done <<< "$R"
+fi
+echo "$L lines in $F files"
+[ "$F" -gt 0 ] || exit 4
+
+@@ex 0630 checkips | checkips.sh (validating IPv4 addresses)
+@@level 4
+@@cmds grep -n -x -E, groups, alternatives, grep -c
+@@readme
+Write `checkips.sh`:
+
+```
+checkips.sh FILE
+```
+
+`FILE` contains one candidate per line. A line is a **valid IPv4 address** when the whole line
+(nothing before or after, not even spaces) is four numbers separated by `.`, each number between
+`0` and `255` written **without leading zeros** (`0` is fine, `07` or `000` are not).
+
+Print every valid line as `<line number>: <address>` (in file order), and then the summary
+
+```
+Valid: <V>, invalid: <I>
+```
+
+where `I` counts the non-empty lines that are not valid (empty lines are ignored).
+Exit code: 0 if there is at least one valid address, **3** otherwise (the summary is still printed).
+
+Errors (message on **stderr**): not exactly one argument → usage, exit **1**;
+`FILE` is not a readable regular file → exit **2** (mention it).
+
+Hint: build the regex of one number (`25[0-5]|2[0-4][0-9]|...`) in a variable and reuse it.
+@@check
+SCRIPT_NAME=checkips.sh
+SEEDS=3
+COMPARE="stdout exit errmsg"
+setup() {
+  local i
+  for i in $(seq 22); do
+    case $(rand 3) in
+      0) ip_rand ;;
+      1) pick 0.0.0.0 255.255.255.255 10.0.0.255 192.168.1.1 "$(ip_rand)" "$(randr 200 255).$(randr 240 255).1.$(randr 0 9)" ;;
+      *) pick 256.1.1.1 01.2.3.4 1.2.3 1.2.3.4.5 "1.2.3.4 " " 8.8.8.8" a.b.c.d 1.2.3.04 300.300.1.1 "" "1..2.3" "$(ip_rand)x" "ip $(ip_rand)" 1.2.3.000 ;;
+    esac
+  done > ips.txt
+  for i in $(seq 8); do pick "$(ip_rand)" 999.1.1.1 "1.2.3" "" "$(ip_rand).1"; done > "my ips.txt"
+  printf '%s\n' 1.2.3 "" 01.1.1.1 "x 1.1.1.1" 256.0.0.0 > bad.txt
+  mkdir dir
+}
+ARGS=('ips.txt' '"my ips.txt"' 'bad.txt' '' 'a b' 'nofile' 'dir')
+extra_check() { [[ $REF_CODE == 2 ]] && mentions "$CASE"; true; }
+@@solution
+#!/bin/bash
+# checkips.sh FILE
+if [ $# -ne 1 ]; then
+  echo "Usage: $(basename "$0") FILE" >&2
+  exit 1
+fi
+F=$1
+if [ ! -f "$F" ] || [ ! -r "$F" ]; then
+  echo "Error: cannot read '$F'" >&2
+  exit 2
+fi
+N='(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])'
+IP="($N\.){3}$N"
+grep -nxE "$IP" "$F" | sed 's/:/: /'
+V=$(grep -cxE "$IP" "$F")
+T=$(grep -c . "$F")
+echo "Valid: $V, invalid: $((T - V))"
+[ "$V" -gt 0 ] || exit 3
+
+@@ex 0631 pwcheck | pwcheck.sh (checking a passwd file)
+@@level 4
+@@cmds grep -n -v -E, cut, sort, uniq -c, >&2
+@@readme
+Write `pwcheck.sh`:
+
+```
+pwcheck.sh FILE
+```
+
+`FILE` has the format of `/etc/passwd`. Empty lines and lines starting with `#` are ignored.
+Any other line is **well-formed** when it has exactly 7 fields separated by `:`, where
+
+- the login (field 1) is a lowercase letter or `_` followed by lowercase letters, digits, `_` or `-`
+- UID and GID (fields 3 and 4) are one or more digits
+- the shell (field 7) is not empty (the other fields may be empty)
+
+1. For every line that is not well-formed, print on **stderr** exactly `line <N>: <the line>`
+   (`N` = line number in the file), in file order.
+2. On **stdout**, for the well-formed lines, print how many users use each shell, as
+   `<count> <shell>` (no leading spaces), count descending and then shell ascending (as `sort` orders them).
+3. Finally print on stdout `<U> users, <M> malformed` (`U` = well-formed lines).
+
+Exit code: 0 if there are no malformed lines, **4** otherwise.
+Errors: not exactly one argument → usage on stderr, exit **1**; `FILE` not a readable regular
+file → stderr, exit **2**.
+@@check
+SCRIPT_NAME=pwcheck.sh
+SEEDS=3
+COMPARE="stdout exit errmsg"
+mkpw() {
+  local i
+  for i in $(seq "$1"); do
+    case $(rand 10) in
+      0) echo "# $(words 2)" ;;
+      1) echo ;;
+      2) pick "$(word)$i:x:$i:$i:/home/$(word):/bin/sh" "$(word)$i:x:$i:$i::/home/x:/bin/bash:extra" \
+              "$(word):x:u$i:100::/:/bin/sh" "$(word)$i:x:1:1:::" "Root$i:x:0:0::/root:/bin/bash" \
+              "$i$(word):x:1:1::/:/bin/sh" "$(word) $(word):x:1:1::/:/bin/sh" " #$(word):x:1:1::/:/bin/sh" ;;
+      *) echo "$(pick "$(word)" _apt sys-$(word) "$(word)_$(word)")$i:x:$(randr 0 2000):$(randr 0 2000):$(pick "$(word)" '' "$(word) $(word)"):/home/$(word):$(pick /bin/bash /bin/sh /usr/sbin/nologin /bin/false /bin/bash)" ;;
+    esac
+  done
+}
+setup() {
+  local i
+  mkpw 24 > passwd.txt
+  mkpw 8 > "my passwd"
+  { echo "# only good lines"; for i in $(seq 5); do echo "$(word)$i:x:$i:$i:$(word) $(word):/home/$(word):$(pick /bin/bash /bin/sh)"; done; } > clean.txt
+}
+ARGS=('passwd.txt' '"my passwd"' 'clean.txt' '/etc/passwd' '' 'a b' 'nofile')
+extra_check() {
+  if [[ $REF_CODE == [04] && $ERR != "$REF_ERR" ]]; then
+    fail "stderr must be exactly the 'line N: ...' messages"
+    printf '%s\n' "    expected stderr:" "$REF_ERR" | head -n 6
+  fi
+  true
+}
+@@solution
+#!/bin/bash
+# pwcheck.sh FILE
+if [ $# -ne 1 ]; then
+  echo "Usage: $(basename "$0") FILE" >&2
+  exit 1
+fi
+F=$1
+if [ ! -f "$F" ] || [ ! -r "$F" ]; then
+  echo "Error: cannot read '$F'" >&2
+  exit 2
+fi
+OK='[a-z_][a-z0-9_-]*:[^:]*:[0-9]+:[0-9]+:[^:]*:[^:]*:[^:]+'
+
+# numbered lines that are not ignored, and among them the ones that do not match
+BAD=$(grep -nvE '^(#|$)' "$F" | grep -vE "^[0-9]+:$OK$")
+if [ -n "$BAD" ]; then
+  while IFS= read -r l; do echo "line ${l%%:*}: ${l#*:}"; done <<< "$BAD" >&2
+fi
+grep -xE "$OK" "$F" | cut -d: -f7 | sort | uniq -c | sort -k1,1nr -k2 | sed 's/^ *//'
+U=$(grep -cxE "$OK" "$F")
+M=$(grep -c . <<< "$BAD")
+echo "$U users, $M malformed"
+[ "$M" -eq 0 ] || exit 4
+
+@@ex 0632 todos | todos.sh (collecting TODO comments)
+@@level 4
+@@cmds grep -r -n -E, --include, sort -t: -k, sed
+@@readme
+Write `todos.sh`:
+
+```
+todos.sh DIR [TAG]
+```
+
+`TAG` is one of `TODO`, `FIXME`, `XXX` (default `TODO`). It scans the regular files whose name ends in
+`.sh` or `.c` under `DIR` (recursively). A line contains the tag when `TAG` appears (exact case)
+**immediately followed by `:`** and preceded by the start of the line or by a character that is not
+a letter, digit or `_` (so `#TODO:` and `// TODO:` count; `MYTODO:`, `TODO_x:`, `todo:` and `TODO x` do not).
+Each such line contains the tag only once.
+
+For every such line print
+
+```
+<path>:<line number>: <text>
+```
+
+where `path` is as found under `DIR` and `text` is what follows `TAG:` on the line, without the
+leading spaces. Order: by path (as `sort` orders paths), then by line number. Finally print the summary
+`<N> <TAG> in <M> files` (e.g. `5 TODO in 2 files`, also `0 TODO in 0 files`). Exit code 0.
+
+Errors (message on **stderr**): no arguments or more than 2 → usage, exit **1**; `DIR` is not a
+directory → exit **2** (mention it); invalid `TAG` → exit **3** (mention it). Checked in that order.
+@@check
+SCRIPT_NAME=todos.sh
+SEEDS=3
+COMPARE="stdout exit errmsg"
+setup() {
+  mkdir -p src/lib "src/my tools"
+  local f i
+  for f in src/main.c src/lib/util.c "src/my tools/run me.sh" src/build.sh src/notes.txt src/lib/x.h; do
+    for i in $(seq "$(randr 3 9)"); do
+      pick "// TODO: $(words 2)" "# FIXME: $(words 2)" "/* XXX: $(word) */" "#TODO:$(word)" "MYTODO: $(word)" "TODO $(word)" \
+           "todo: $(word)" "TODO_list: $(word)" "x = 1; // TODO:   $(words 3)" "$(words 3)" "echo $(word) # FIXME:fix it" "  $(words 2)"
+    done > "$f"
+  done
+  touch file.c
+}
+ARGS=('src' 'src FIXME' '"src/my tools" TODO' '"$W/src" XXX' 'src/lib' '' 'a b c' 'nodir' 'file.c' 'src todo' 'src BUG')
+extra_check() {
+  [[ $REF_CODE == [23] ]] && mentions "$(eval "set -- $CASE"; [[ $REF_CODE == 2 ]] && echo "$1" || echo "$2")"
+  true
+}
+@@solution
+#!/bin/bash
+# todos.sh DIR [TAG]
+if [ $# -lt 1 ] || [ $# -gt 2 ]; then
+  echo "Usage: $(basename "$0") DIR [TODO|FIXME|XXX]" >&2
+  exit 1
+fi
+DIR=$1
+TAG=${2:-TODO}
+if [ ! -d "$DIR" ]; then
+  echo "Error: '$DIR' is not a directory" >&2
+  exit 2
+fi
+case $TAG in
+  TODO|FIXME|XXX) ;;
+  *) echo "Error: invalid tag '$TAG'" >&2; exit 3 ;;
+esac
+
+R=$(grep -rnE --include='*.sh' --include='*.c' "(^|[^[:alnum:]_])$TAG:" "$DIR" |
+    sort -t: -k1,1 -k2,2n | sed -E "s/^([^:]*:[0-9]+:).*$TAG:[[:space:]]*/\1 /")
+[ -n "$R" ] && echo "$R"
+N=$(grep -c . <<< "$R")
+M=$(cut -d: -f1 <<< "$R" | sort -u | grep -c .)
+echo "$N $TAG in $M files"
+
+@@ex 0633 domains | domains.sh (e-mail addresses per domain)
+@@level 4
+@@cmds grep -o -h -E, tr, sort -u, uniq -c, cut
+@@readme
+Write `domains.sh`:
+
+```
+domains.sh FILE...
+```
+
+It extracts the e-mail addresses that appear anywhere in the given files. An address is:
+one or more letters, digits, `.`, `_`, `+` or `-`; then `@`; then one or more **labels** (letters,
+digits, `-`) each followed by `.`; then 2 or more letters (take the longest match, as `grep -oE` does).
+Addresses are compared **in lowercase** (`Ana@Example.COM` = `ana@example.com`).
+
+Print, for every domain (the part after `@`, lowercase), the number of **distinct** addresses of that
+domain, as `<domain> <count>`, sorted by count descending and then by domain ascending (as `sort`
+orders them). Finally print `<A> distinct addresses, <D> domains`.
+
+- No arguments: usage on stderr, exit **1**.
+- A `FILE` that is not a readable regular file: message on stderr naming it, skip it and go on;
+  at the end exit **2**.
+- Otherwise, if no address was found at all: exit **3** (the summary `0 distinct addresses, 0 domains`
+  is still printed). Else exit 0.
+@@check
+SCRIPT_NAME=domains.sh
+SEEDS=3
+COMPARE="stdout exit errmsg"
+mkmail() {
+  local i d=("$(word).com" "$(word).org" "mail.$(word).es" example.com)
+  for i in $(seq "$1"); do
+    case $(rand 5) in
+      0) echo "$(words 2) $(pick "joe@localhost" "@example.com" "ann@site.c" "x at example dot com" "user@@bad.com" "a@b") $(word)" ;;
+      1) echo "Contact: <$(pick Ana ANA ana Luis)@$(pick Example.COM example.com "${d[0]}")>, $(word)" ;;
+      *) echo "$(word) $(pick "$(word)" "$(word).$(word)" "$(word)_$(randr 1 9)" "$(word)+tag")@$(pick "${d[@]}") $(pick '' . , ';' "mailto:$(word)@${d[1]}")" ;;
+    esac
+  done
+}
+setup() { mkmail 14 > a.txt; mkmail 8 > "con espacio.txt"; mkmail 6 > b.txt; echo "no addresses here, @ at all" > none.txt; mkmail 3 > locked.txt; chmod 000 locked.txt; mkdir dir; }
+ARGS=('a.txt' '"con espacio.txt" b.txt' 'a.txt nofile b.txt' 'none.txt' 'locked.txt none.txt' '' 'dir' 'a.txt b.txt "con espacio.txt" a.txt')
+extra_check() {
+  [[ $CASE == *nofile* ]] && mentions nofile
+  [[ $CASE == *locked* ]] && mentions locked.txt
+  true
+}
+@@solution
+#!/bin/bash
+# domains.sh FILE...
+if [ $# -eq 0 ]; then
+  echo "Usage: $(basename "$0") FILE..." >&2
+  exit 1
+fi
+RE='[A-Za-z0-9._+-]+@([A-Za-z0-9-]+\.)+[A-Za-z]{2,}'
+RC=0
+FILES=()
+for f in "$@"; do
+  if [ -f "$f" ] && [ -r "$f" ]; then
+    FILES+=("$f")
+  else
+    echo "Error: cannot read '$f'" >&2
+    RC=2
+  fi
+done
+
+A=""
+[ ${#FILES[@]} -gt 0 ] && A=$(grep -ohE "$RE" "${FILES[@]}" | tr 'A-Z' 'a-z' | sort -u)
+if [ -n "$A" ]; then
+  cut -d@ -f2 <<< "$A" | sort | uniq -c | sort -k1,1nr -k2,2 |
+    while read -r n d; do echo "$d $n"; done
+fi
+NA=$(grep -c . <<< "$A")
+ND=$(cut -d@ -f2 <<< "$A" | sort -u | grep -c .)
+echo "$NA distinct addresses, $ND domains"
+[ $RC -eq 0 ] && [ "$NA" -eq 0 ] && RC=3
+exit $RC
+
+@@ex 0634 sshlogins | sshlogins.sh (successful SSH logins)
+@@level 4
+@@cmds grep -E, sed -E, sort -u, cut, case
+@@readme
+Write `sshlogins.sh`:
+
+```
+sshlogins.sh LOG [METHOD]
+```
+
+`LOG` is an auth log like `/var/log/auth.log`. `METHOD` is `password`, `publickey` or `all`
+(default `all` = both). A **successful login** is a line that contains
+
+```
+sshd[<digits>]: Accepted <method> for <user> from <ip> port <port>
+```
+
+with `<method>` the requested one(s) (`keyboard-interactive/pam` and anything else never count;
+`Failed password` lines obviously don't either). Print every distinct pair `<user> <ip>`, one per line,
+sorted (as `sort` sorts those lines), and then the summary
+
+```
+<N> logins, <P> distinct pairs, <U> users
+```
+
+(`N` = number of matching lines, `U` = distinct users). If there is no successful login, print just
+`0 logins, 0 distinct pairs, 0 users` and exit **4**; otherwise exit 0.
+
+Errors (message on **stderr**): no arguments or more than 2 → usage, exit **1**; `LOG` not
+readable → exit **2**; invalid `METHOD` (exact lowercase names only) → exit **3**. Checked in that order.
+@@check
+SCRIPT_NAME=sshlogins.sh
+SEEDS=2
+COMPARE="stdout exit errmsg"
+mklog() {
+  local i ips=("$(ip_rand)" "$(ip_rand)" 10.0.0.1 10.0.0.12)
+  for i in $(seq "$1"); do
+    printf 'Jun %2d %02d:%02d:%02d labhost ' "$(randr 1 30)" "$(rand 24)" "$(rand 60)" "$(rand 60)"
+    case $(rand 8) in
+      0) echo "sshd[$(randr 900 9999)]: Failed password for $(pick alice bob root) from $(pick "${ips[@]}") port $(randr 1024 65000) ssh2" ;;
+      1) echo "sshd[$(randr 900 9999)]: Failed password for invalid user $(pick admin test) from $(pick "${ips[@]}") port $(randr 1024 65000) ssh2" ;;
+      2) echo "sshd[$(randr 900 9999)]: Accepted keyboard-interactive/pam for carol from $(pick "${ips[@]}") port $(randr 1024 65000) ssh2" ;;
+      3) echo "sudo: $(pick alice bob) : TTY=pts/0 ; PWD=/home/x ; USER=root ; COMMAND=/bin/ls" ;;
+      4) echo "CRON[$(randr 900 9999)]: Accepted password for root from 1.1.1.1 port 22 (fake)" ;;
+      *) echo "sshd[$(randr 900 9999)]: Accepted $(pick password publickey publickey) for $(pick alice bob carol dave deploy) from $(pick "${ips[@]}") port $(randr 1024 65000) ssh2" ;;
+    esac
+  done
+}
+setup() { mklog 40 > auth.log; mklog 15 > "old auth.log"; grep -v Accepted auth.log > failed.log; true; }
+ARGS=('auth.log' 'auth.log password' '"old auth.log" publickey' '/var/log/auth.log publickey' 'auth.log all'
+      'failed.log' '' 'a b c' 'nofile' 'auth.log ssh' 'auth.log Password')
+@@solution
+#!/bin/bash
+# sshlogins.sh LOG [METHOD]
+if [ $# -lt 1 ] || [ $# -gt 2 ]; then
+  echo "Usage: $(basename "$0") LOG [password|publickey|all]" >&2
+  exit 1
+fi
+LOG=$1
+M=${2:-all}
+if [ ! -r "$LOG" ]; then
+  echo "Error: cannot read '$LOG'" >&2
+  exit 2
+fi
+case $M in
+  password|publickey) RE=$M ;;
+  all) RE='password|publickey' ;;
+  *) echo "Error: invalid method '$M'" >&2; exit 3 ;;
+esac
+
+L=$(grep -E "sshd\[[0-9]+\]: Accepted ($RE) for [^ ]+ from [0-9.]+ port " "$LOG" |
+    sed -E 's/.*sshd\[[0-9]+\]: Accepted [a-z]+ for ([^ ]+) from ([0-9.]+) port .*/\1 \2/')
+N=$(grep -c . <<< "$L")
+P=$(sort -u <<< "$L" | grep -c .)
+U=$(cut -d' ' -f1 <<< "$L" | sort -u | grep -c .)
+[ -n "$L" ] && sort -u <<< "$L"
+echo "$N logins, $P distinct pairs, $U users"
+[ "$N" -gt 0 ] || exit 4
+
+@@ex 0635 badnames | badnames.sh (non-portable file names)
+@@level 4
+@@cmds find, grep -q -E, basename --, while read, sort
+@@readme
+Write `badnames.sh`:
+
+```
+badnames.sh [DIR]
+```
+
+It checks the names of **all** entries (files, directories...) under `DIR` (default `.`,
+recursively; `DIR` itself is not checked). A **name** (the last component of the path) is
+**portable** when it is made only of ASCII letters `A-Z a-z`, digits, `.`, `_` and `-`, and does
+not start with `-`.
+
+For every non-portable entry print `<path> (<kind>)`, where `path` is as `find DIR` prints it and
+`kind` is `space` if the name contains a space, otherwise `dash` if it starts with `-`, otherwise
+`chars`. Order: by path, as `find DIR | sort` gives them. Finally print the summary
+
+```
+<B> of <T> names are not portable
+```
+
+(`T` = entries checked). Exit code: 0 if all names are portable, **3** otherwise.
+
+Errors (message on **stderr**): more than one argument → usage, exit **1**; `DIR` is not a
+directory → exit **2** (mention it).
+@@check
+SCRIPT_NAME=badnames.sh
+SEEDS=2
+COMPARE="stdout exit errmsg"
+setup() {
+  local i n
+  mkdir -p tree "tree/dir with space" tree/normal-dir clean/sub
+  for i in $(seq 7); do
+    n=$(pick "good_$(word).txt" "$(word) $(word).txt" "-$(word)" "what?$i" "a&b$i" "x#y$i" "file($i).txt" ".hidden$i" "don't$i" "-dash dir$i" "$(word)-$i.tar.gz" "$(word):$i")
+    touch "tree/$(pick . 'dir with space' normal-dir)/$n"
+  done
+  touch "tree/-rf" "tree/normal-dir/ok.txt" clean/a.txt clean/sub/B-2.md clean/.x file.txt
+}
+ARGS=('' 'tree' '"$W/tree"' '"tree/dir with space"' 'clean' 'a b' 'nodir' 'file.txt')
+extra_check() { [[ $REF_CODE == 2 ]] && mentions "$CASE"; true; }
+@@solution
+#!/bin/bash
+# badnames.sh [DIR]
+if [ $# -gt 1 ]; then
+  echo "Usage: $(basename "$0") [DIR]" >&2
+  exit 1
+fi
+DIR=${1:-.}
+if [ ! -d "$DIR" ]; then
+  echo "Error: '$DIR' is not a directory" >&2
+  exit 2
+fi
+
+T=0 B=0
+while IFS= read -r p; do
+  T=$((T + 1))
+  n=$(basename -- "$p")
+  grep -qE '^[A-Za-z0-9._][A-Za-z0-9._-]*$' <<< "$n" && continue
+  B=$((B + 1))
+  if grep -q ' ' <<< "$n"; then k=space
+  elif grep -q '^-' <<< "$n"; then k=dash
+  else k=chars
+  fi
+  echo "$p ($k)"
+done < <(find "$DIR" -mindepth 1 | sort)
+echo "$B of $T names are not portable"
+[ $B -eq 0 ] || exit 3
+
+@@ex 0636 ini_section | ini.sh (reading a section of an INI file)
+@@level 4
+@@cmds grep -n -x -F, tail -n +N, sed, grep -v -E
+@@readme
+Write `ini.sh`:
+
+```
+ini.sh FILE SECTION
+```
+
+`FILE` is an INI file. The section starts at the line that is **exactly** `[SECTION]` (whole line;
+the name is taken literally, even if it contains `.` or spaces) and ends before the next line that
+starts with `[`, or at the end of the file. If the header appears several times, use the first one.
+
+Inside the section, ignore empty lines, lines with only blanks, comment lines (first non-blank
+character `#` or `;`) and lines without `=`. Every other line is `key = value`: print it as
+`key=value` in the order of the file, where `key` is the text before the first `=` and `value` the
+text after it, both without leading/trailing blanks (the value may contain more `=`).
+Finally print `<N> keys in [SECTION]`.
+
+Errors (message on **stderr**):
+
+| situation | exit |
+|-----------|------|
+| not exactly 2 arguments (show the usage) | 1 |
+| `FILE` not a readable regular file | 2 |
+| section not found (mention it) | 3 |
+@@check
+SCRIPT_NAME=ini.sh
+SEEDS=3
+COMPARE="stdout exit errmsg"
+mkini() {
+  echo "; generated $(word)"
+  echo "[server]"
+  echo "host = $(word).example.com"
+  [[ $(rand 2) == 1 ]] && echo "  port=$(randr 1000 9999)"
+  echo "# $(words 2)"
+  printf '\t\n'
+  echo "name   =   $(words 2)   "
+  [[ $(rand 2) == 1 ]] && echo "url = http://x/?a=$(word)&b=1"
+  echo "verbose"
+  echo "[server-old]"
+  echo "host = old$(randr 1 9)"
+  echo "[db.main]"
+  echo "user = $(word)"
+  echo "  ; pass = secret"
+  echo "pass="
+  [[ $(rand 2) == 1 ]] && echo "timeout=$(randr 1 60)"
+  echo "[dbxmain]"
+  echo "user = decoy"
+  echo "[empty]"
+  echo "; nothing here"
+  echo
+  echo "[local paths]"
+  echo "data = /srv/$(word) dir"
+  echo " [logging]"
+  echo "level = $(pick info debug warn)"
+  echo "[logging]"
+  echo "file= /var/log/$(word).log"
+}
+setup() { mkini > app.ini; mkini > "my conf.ini"; }
+ARGS=('app.ini server' '"my conf.ini" db.main' 'app.ini empty' 'app.ini "local paths"' 'app.ini logging'
+      'app.ini nope' 'app.ini db' '' 'app.ini' 'a b c' 'nofile server' '. server')
+extra_check() { [[ $REF_CODE == 3 ]] && mentions "$(eval "set -- $CASE"; echo "$2")"; true; }
+@@solution
+#!/bin/bash
+# ini.sh FILE SECTION
+if [ $# -ne 2 ]; then
+  echo "Usage: $(basename "$0") FILE SECTION" >&2
+  exit 1
+fi
+F=$1
+S=$2
+if [ ! -f "$F" ] || [ ! -r "$F" ]; then
+  echo "Error: cannot read '$F'" >&2
+  exit 2
+fi
+# -F: the section name is literal text; -x: whole line
+START=$(grep -nxF -- "[$S]" "$F" | head -n 1 | cut -d: -f1)
+if [ -z "$START" ]; then
+  echo "Error: section '$S' not found" >&2
+  exit 3
+fi
+R=$(tail -n +"$((START + 1))" "$F" | sed '/^\[/,$d' | grep -vE '^[[:space:]]*([#;]|$)' | grep '=' |
+    sed -E 's/[[:space:]]*=[[:space:]]*/=/; s/^[[:space:]]+//; s/[[:space:]]+$//')
+[ -n "$R" ] && echo "$R"
+echo "$(grep -c . <<< "$R") keys in [$S]"
+
+@@ex 0637 patcount | patcount.sh (counting fixed-string patterns)
+@@level 4
+@@cmds grep -c -i -F -e, while read, [[ == \#* ]]
+@@readme
+Write `patcount.sh`:
+
+```
+patcount.sh PATTERNS FILE
+```
+
+`PATTERNS` contains one pattern per line; empty lines and lines starting with `#` are ignored.
+Every pattern is **plain text**, not a regex (`1.2.3.4` must not match `1x2x3x4`, `[error]` is
+literally those 7 characters, `-v` is a pattern, not an option) and is searched **case-insensitively**.
+
+For each pattern, in the order of the file (repeated patterns are printed again), print
+
+```
+<pattern>: <number of lines of FILE that contain it>
+```
+
+and finally `<M> of <P> patterns found` (`P` patterns processed, `M` of them with at least one line).
+Exit code: 0 if `M > 0`, **4** if no pattern was found (after printing everything).
+
+Errors (message on **stderr**): not exactly 2 arguments → usage, exit **1**; `PATTERNS` not
+readable → exit **2**; `FILE` not readable → exit **3** (mention the file in both cases).
+@@check
+SCRIPT_NAME=patcount.sh
+SEEDS=3
+COMPARE="stdout exit errmsg"
+PATS=(1.2.3.4 '[error]' -v 'a*b' 'disk full' Timeout '^start' 'end$' 'x\y' 'zzz-none' '--force')
+setup() {
+  local i
+  { echo "# patterns to look for"; for i in $(seq 7); do pick "${PATS[@]}" '' "$(word)"; done; } > patterns.txt
+  { echo "# my list"; for i in $(seq 4); do pick "${PATS[@]}"; done; } > "my patterns.txt"
+  printf '%s\n' "# none of these" zzz-none '' 'qqq.www' > none.txt
+  for i in $(seq 25); do
+    echo "$(word) $(pick 1.2.3.4 1x2x3x4 '[error]' error '[ERROR] x' --verbose -v 'aab' 'a*b' 'A*B' 'Disk Full' 'disk  full' TIMEOUT '^start' start 'the end$' 'x\y' --force '') $(word)"
+  done > data.log
+  cp data.log "data file.log"
+}
+ARGS=('patterns.txt data.log' '"my patterns.txt" "data file.log"' 'none.txt data.log' '' 'patterns.txt' 'a b c' 'nofile data.log' 'patterns.txt nofile')
+extra_check() { [[ $REF_CODE == [23] ]] && mentions nofile; true; }
+@@solution
+#!/bin/bash
+# patcount.sh PATTERNS FILE
+if [ $# -ne 2 ]; then
+  echo "Usage: $(basename "$0") PATTERNS FILE" >&2
+  exit 1
+fi
+PF=$1
+F=$2
+[ -r "$PF" ] || { echo "Error: cannot read patterns file '$PF'" >&2; exit 2; }
+[ -r "$F" ] || { echo "Error: cannot read '$F'" >&2; exit 3; }
+
+P=0 M=0
+while IFS= read -r p; do
+  [ -z "$p" ] && continue
+  [[ $p == \#* ]] && continue
+  n=$(grep -ciF -e "$p" "$F")
+  echo "$p: $n"
+  P=$((P + 1))
+  [ "$n" -gt 0 ] && M=$((M + 1))
+done < "$PF"
+echo "$M of $P patterns found"
+[ $M -gt 0 ] || exit 4

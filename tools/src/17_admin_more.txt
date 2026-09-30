@@ -1,0 +1,1209 @@
+@@topic 17_users_logs_admin | Users, groups, sessions, logs & cron
+@@ex 1719 shells_count | Login shells in use
+@@level 3
+@@cmds cut -d: -f7, sort, uniq -c, while read
+@@readme
+Write `shells.sh [passwd_file]` (default `/etc/passwd`) that counts how many users (lines) have each
+login shell (7th field) and prints one line per shell:
+
+```
+<shell>: <N> users
+```
+
+sorted by N **descending**, ties by shell name ascending (`sort`). Finally print:
+
+```
+Total: <U> users, <S> shells
+```
+
+(U = lines of the file, S = distinct shells). Every line of the file has 7 fields and a non-empty shell.
+
+- more than one argument: usage on stderr, exit **2**
+- the file is not a readable regular file: error message on stderr, exit **1**
+@@check
+SCRIPT_NAME=shells.sh
+SEEDS=3
+COMPARE="stdout exit errmsg"
+setup() {
+  local i f sh=(/bin/bash /bin/bash /bin/sh /usr/sbin/nologin /bin/false /usr/bin/zsh /bin/dash /usr/bin/bash)
+  for f in pw "mi pw"; do
+    for i in $(seq "$(randr 5 14)"); do
+      echo "$(word)$i:x:$(randr 0 3000):100:$(words 2):/home/u$i:$(pick "${sh[@]}")"
+    done > "$f"
+  done
+  mkdir adir
+}
+ARGS=('' 'pw' '"mi pw"' '"$W/pw"' 'noexiste' 'adir' 'pw pw')
+@@solution
+#!/bin/bash
+# shells.sh [passwd_file] - users per login shell
+[ $# -le 1 ] || { echo "Usage: $(basename "$0") [passwd_file]" >&2; exit 2; }
+PW=${1:-/etc/passwd}
+[ -f "$PW" ] && [ -r "$PW" ] || { echo "Error: cannot read $PW" >&2; exit 1; }
+
+cut -d: -f7 "$PW" | sort | uniq -c | sort -k1,1nr -k2 | while read -r n shell; do
+  echo "$shell: $n users"
+done
+echo "Total: $(wc -l < "$PW") users, $(cut -d: -f7 "$PW" | sort -u | wc -l) shells"
+
+@@ex 1720 invalid_shells | Shells not listed in /etc/shells
+@@level 3
+@@cmds while IFS=: read, grep -qxF, case
+@@readme
+Write `badshell.sh [passwd_file] [shells_file]` (defaults `/etc/passwd` and `/etc/shells`) that prints,
+in the order of the passwd file, every user whose login shell is **not** a valid shell, as:
+
+```
+<login>: <shell>
+```
+
+A shell is valid when some line of the shells file is **exactly** that path (lines starting with `#`
+are comments and never match). Accounts that are disabled on purpose are **not** reported: those
+whose shell ends in `/nologin` or `/false`.
+
+Finally print `N users with an invalid shell`.
+
+- more than two arguments: usage on stderr, exit **2**
+- one of the files cannot be read: error message on stderr naming it, exit **1**
+
+(On the lab system, `pruiz` has `/bin/dash`, but `/etc/shells` only lists `/usr/bin/dash`.)
+@@check
+SCRIPT_NAME=badshell.sh
+SEEDS=3
+COMPARE="stdout exit errmsg"
+setup() {
+  local i
+  printf '%s\n' '# valid login shells' /bin/sh /bin/bash /usr/bin/bash /usr/bin/zsh '#/bin/tcsh' > shells
+  for i in $(seq "$(randr 6 12)"); do
+    echo "$(word)$i:x:$(randr 0 3000):100:$(word):/home/u$i:$(pick /bin/bash /bin/sh /bin/zsh /usr/bin/zsh /bin/tcsh /bin/bash5 /usr/sbin/nologin /bin/false /usr/bin/false /bin/sync /usr/bin/fish '#/bin/tcsh')"
+  done > "mi passwd"
+}
+ARGS=('' '"mi passwd" shells' '"$W/mi passwd" /etc/shells' '/etc/passwd shells' 'noexiste' '"mi passwd" noexiste' 'a b c')
+extra_check() { [[ $REF_CODE == 1 ]] && mentions noexiste; true; }
+@@solution
+#!/bin/bash
+# badshell.sh [passwd_file] [shells_file]
+[ $# -le 2 ] || { echo "Usage: $(basename "$0") [passwd_file] [shells_file]" >&2; exit 2; }
+PW=${1:-/etc/passwd}
+SH=${2:-/etc/shells}
+for f in "$PW" "$SH"; do
+  [ -r "$f" ] || { echo "Error: cannot read $f" >&2; exit 1; }
+done
+
+N=0
+while IFS=: read -r login x uid gid gecos home shell; do
+  case $shell in
+    */nologin|*/false) continue ;;
+  esac
+  if ! grep -v '^#' "$SH" | grep -qxF -- "$shell"; then
+    echo "$login: $shell"
+    N=$((N + 1))
+  fi
+done < "$PW"
+echo "$N users with an invalid shell"
+
+@@ex 1721 group_sizes | Groups ranked by number of members
+@@level 3
+@@cmds cut, tr, wc -l, sort -k
+@@readme
+Write `groupsize.sh [group_file]` (default `/etc/group`) that prints every group that has **at least one**
+supplementary member (4th field, comma-separated list, not empty) as:
+
+```
+<group> <N>
+```
+
+sorted by N **descending**, ties by group name ascending. Finally print
+`Total: <G> groups, <M> memberships` (G = groups printed, M = sum of their N).
+
+- more than one argument: usage on stderr, exit **2**
+- the file is not readable: error message on stderr, exit **1**
+@@check
+SCRIPT_NAME=groupsize.sh
+SEEDS=3
+COMPARE="stdout exit errmsg"
+setup() {
+  local i k m
+  for i in $(seq "$(randr 6 12)"); do
+    m=; for k in $(seq "$(rand 5)"); do m+=${m:+,}$(word)$k; done
+    echo "$(word)$i:x:$((1000 + i)):$m"
+  done > "grupos lab"
+}
+ARGS=('' '"grupos lab"' '/etc/group' 'noexiste' 'a b')
+@@solution
+#!/bin/bash
+# groupsize.sh [group_file]
+[ $# -le 1 ] || { echo "Usage: $(basename "$0") [group_file]" >&2; exit 2; }
+GR=${1:-/etc/group}
+[ -r "$GR" ] || { echo "Error: cannot read $GR" >&2; exit 1; }
+
+R=$(while IFS=: read -r name x gid members; do
+  [ -z "$members" ] && continue
+  echo "$name $(echo "$members" | tr , '\n' | wc -l)"
+done < "$GR" | sort -k2,2nr -k1,1)
+
+G=0; M=0
+if [ -n "$R" ]; then
+  echo "$R"
+  G=$(echo "$R" | wc -l)
+  for n in $(echo "$R" | cut -d' ' -f2); do M=$((M + n)); done
+fi
+echo "Total: $G groups, $M memberships"
+
+@@ex 1722 next_uid | The next free UID
+@@level 3
+@@cmds cut, grep -qx, while, $(( ))
+@@readme
+`useradd` picks the first free UID from 1000 on. Write `nextuid.sh [passwd_file] [MIN]` (defaults
+`/etc/passwd` and `1000`) that prints:
+
+```
+Next free UID: <U>
+UIDs in use >= <MIN>: <N>
+```
+
+- U = the **smallest** number `>= MIN` that is not the UID (3rd field) of any line of the file
+  (the file is not sorted, and UIDs may have gaps)
+- N = number of lines whose UID is `>= MIN`
+
+Errors (message on stderr):
+
+- the file cannot be read: exit **1**
+- `MIN` is not a non-negative integer (digits only): exit **2**
+- more than two arguments: usage, exit **3**
+@@check
+SCRIPT_NAME=nextuid.sh
+SEEDS=3
+COMPARE="stdout exit errmsg"
+setup() {
+  local u
+  for u in $(seq 995 1012) 1500 1501 1503 65534; do
+    [[ $(rand 3) != 0 ]] && echo "$(word)$u:x:$u:100::/home/x:/bin/sh"
+  done > pw
+  [[ $(rand 2) == 1 ]] && { tac pw > pw2; mv pw2 pw; }
+  echo "extra:x:1000:100::/home/e:/bin/sh" >> pw
+}
+ARGS=('' 'pw' 'pw 1005' 'pw 1500' 'pw 0' '/etc/passwd 1003' 'noexiste' 'pw abc' 'pw -3' 'a b c')
+@@solution
+#!/bin/bash
+# nextuid.sh [passwd_file] [MIN]
+[ $# -le 2 ] || { echo "Usage: $(basename "$0") [passwd_file] [MIN]" >&2; exit 3; }
+PW=${1:-/etc/passwd}
+MIN=${2:-1000}
+[ -r "$PW" ] || { echo "Error: cannot read $PW" >&2; exit 1; }
+[[ $MIN =~ ^[0-9]+$ ]] || { echo "Error: MIN must be a non-negative integer" >&2; exit 2; }
+
+U=$MIN
+while cut -d: -f3 "$PW" | grep -qx "$U"; do
+  U=$((U + 1))
+done
+N=0
+for uid in $(cut -d: -f3 "$PW"); do
+  [ "$uid" -ge "$MIN" ] && N=$((N + 1))
+done
+echo "Next free UID: $U"
+echo "UIDs in use >= $MIN: $N"
+
+@@ex 1723 accepted_logins | auth.log: successful SSH logins per user
+@@level 3
+@@cmds grep, sed -E, sort -u, tail -1
+@@readme
+Write `logins.sh [log]` (default `/var/log/auth.log`). A successful SSH login is a line like
+
+```
+Jun 20 10:00:01 labhost sshd[123]: Accepted publickey for luke from 192.168.1.10 port 5555 ssh2
+```
+
+(method `password` or `publickey`). For every user with at least one such line, sorted by user name,
+print:
+
+```
+<user>: <T> logins (<P> password, <K> publickey), last from <ip>
+```
+
+where `<ip>` is the address of the **last** accepted login of that user in the file. Finally print
+`Total: N accepted logins`. Lines such as `Failed password for ...` are not logins.
+
+- more than one argument: usage on stderr, exit **2**
+- the log cannot be read: error message on stderr, exit **1**
+@@check
+SCRIPT_NAME=logins.sh
+SEEDS=3
+COMPARE="stdout exit errmsg"
+setup() {
+  local i u us=("$(word)" "$(word)" "$(word)" luke) ips=("$(ip_rand)" "$(ip_rand)" 10.0.71.7)
+  for i in $(seq 10 40); do
+    u=$(pick "${us[@]}")
+    case $(rand 5) in
+      0|1) echo "Jun 20 10:$i:01 labhost sshd[$i]: Accepted $(pick password publickey) for $u from $(pick "${ips[@]}") port 4$i ssh2" ;;
+      2) echo "Jun 20 10:$i:02 labhost sshd[$i]: Failed password for $u from $(pick "${ips[@]}") port 4$i ssh2" ;;
+      3) echo "Jun 20 10:$i:03 labhost sshd[$i]: pam_unix(sshd:session): session opened for user $u(uid=1001) by (uid=0)" ;;
+      4) echo "Jun 20 10:$i:04 labhost CRON[$i]: pam_unix(cron:session): session closed for user root" ;;
+    esac
+  done > "auth fake.log"
+  echo "Jun 20 11:00:00 labhost sshd[9]: Failed password for root from 1.2.3.4 port 22 ssh2" > none.log
+}
+ARGS=('' '"auth fake.log"' 'none.log' 'noexiste.log' 'a b')
+@@solution
+#!/bin/bash
+# logins.sh [log] - accepted SSH logins per user
+[ $# -le 1 ] || { echo "Usage: $(basename "$0") [log]" >&2; exit 2; }
+LOG=${1:-/var/log/auth.log}
+[ -r "$LOG" ] || { echo "Error: cannot read $LOG" >&2; exit 1; }
+
+# "user method ip" for every accepted login, in file order
+A=$(grep 'Accepted ' "$LOG" | sed -E 's/.*Accepted ([^ ]+) for ([^ ]+) from ([^ ]+) port.*/\2 \1 \3/')
+TOTAL=0
+for u in $(echo "$A" | cut -d' ' -f1 | sort -u); do
+  L=$(echo "$A" | grep "^$u ")
+  T=$(echo "$L" | wc -l)
+  P=$(echo "$L" | grep -c ' password ')
+  K=$(echo "$L" | grep -c ' publickey ')
+  IP=$(echo "$L" | tail -n 1 | cut -d' ' -f3)
+  echo "$u: $T logins ($P password, $K publickey), last from $IP"
+  TOTAL=$((TOTAL + T))
+done
+echo "Total: $TOTAL accepted logins"
+
+@@ex 1724 http_codes | Apache access.log: requests and bytes per status
+@@level 3
+@@cmds cut -d' ' -f9,10, sort -u, while read, $(( ))
+@@readme
+Write `httpcodes.sh [access_log]` (default `/var/log/apache2/access.log`). Each line of the log looks like
+
+```
+192.168.1.10 - - [20/Jun/2026:09:02:13 +0200] "GET /images/logo.png HTTP/1.1" 403 614
+```
+
+so the status code is the **9th** space-separated field and the response size in bytes the **10th**
+(`-` means 0 bytes). Print one line per status code, sorted by code ascending:
+
+```
+<code> <requests> <bytes>
+```
+
+and finally `total <requests> <bytes>`.
+
+- more than one argument: usage on stderr, exit **2**
+- the log cannot be read: error message on stderr, exit **1**
+@@check
+SCRIPT_NAME=httpcodes.sh
+SEEDS=3
+COMPARE="stdout exit errmsg"
+setup() {
+  local i
+  mkdir -p "web logs"
+  for i in $(seq "$(randr 5 30)"); do
+    echo "$(ip_rand) - - [20/Jun/2026:09:$((10 + i)):00 +0200] \"GET /$(word) HTTP/1.1\" $(pick 200 200 301 404 403 500 304) $(pick "$(randr 100 9000)" "$(randr 10 99)" -)"
+  done > "web logs/access.log"
+  : > empty.log
+}
+ARGS=('' '"web logs/access.log"' 'empty.log' 'noexiste' 'a b')
+@@solution
+#!/bin/bash
+# httpcodes.sh [access_log]
+[ $# -le 1 ] || { echo "Usage: $(basename "$0") [access_log]" >&2; exit 2; }
+LOG=${1:-/var/log/apache2/access.log}
+[ -r "$LOG" ] || { echo "Error: cannot read $LOG" >&2; exit 1; }
+
+TR=0; TB=0
+for code in $(cut -d' ' -f9 "$LOG" | sort -n -u); do
+  n=0; b=0
+  for size in $(cut -d' ' -f9,10 "$LOG" | grep "^$code " | cut -d' ' -f2); do
+    n=$((n + 1))
+    [ "$size" != - ] && b=$((b + size))
+  done
+  echo "$code $n $b"
+  TR=$((TR + n)); TB=$((TB + b))
+done
+echo "total $TR $TB"
+
+@@ex 1725 last_minutes | Connected minutes from `last`
+@@level 3
+@@cmds last, grep -oE, sed, $(( 10# ))
+@@readme
+Write `sesiones.sh [file]`. The file contains the output of `last`; **without argument, use the
+output of the `last` command itself**. Ignore empty lines, the `wtmp begins ...` line and lines
+starting with `reboot`. Every other line is one session, and its first word is the user name.
+
+A **closed** session ends with its duration in parentheses: `(hh:mm)`, or `(D+hh:mm)` when it lasted
+more than a day. Sessions that are `still logged in` or `gone - no logout` have no duration.
+
+For each user, sorted by name, print:
+
+```
+<user>: <S> sessions, <M> minutes
+```
+
+where S = number of sessions and M = sum of the durations of the closed ones, in minutes
+(`(1+02:03)` = 1440 + 123 = 1563).
+
+- more than one argument: usage on stderr, exit **2**
+- the file cannot be read: error message on stderr, exit **1**
+@@check
+SCRIPT_NAME=sesiones.sh
+SEEDS=3
+COMPARE="stdout exit errmsg"
+setup() {
+  local i us=("$(word)" "$(word)" "$(word)") end
+  for i in $(seq "$(randr 4 12)"); do
+    case $(rand 5) in
+      0) end="still logged in" ;;
+      1) end="gone - no logout" ;;
+      2) end="- $(randr 10 23):$(randr 10 59)  ($(randr 1 3)+0$(rand 10):$(randr 10 59))" ;;
+      *) end="- $(randr 10 23):$(randr 10 59)  (0$(rand 10):$(pick 00 05 $(randr 10 59)))" ;;
+    esac
+    printf '%-8s %-12s %-16s %s\n' "$(pick "${us[@]}")" "pts/$i" "$(pick "$(ip_rand)" ':0' '')" "Mon Jun 15 1$(rand 10):0$(rand 10) $end"
+    [[ $(rand 5) == 0 ]] && printf '%-8s %-12s %-16s %s\n' reboot "system boot" 6.1.0-lab "Mon Jun 15 08:00   still running"
+  done > "last out.txt"
+  printf '\nwtmp begins Fri Jun 12 07:44:00 2026\n' >> "last out.txt"
+}
+ARGS=('' '"last out.txt"' 'noexiste' 'a b')
+@@solution
+#!/bin/bash
+# sesiones.sh [file] - sessions and connected minutes per user
+[ $# -le 1 ] || { echo "Usage: $(basename "$0") [file]" >&2; exit 2; }
+if [ $# -eq 1 ]; then
+  [ -r "$1" ] || { echo "Error: cannot read $1" >&2; exit 1; }
+  DATA=$(cat "$1")
+else
+  DATA=$(last)
+fi
+DATA=$(echo "$DATA" | grep -v -e '^$' -e '^wtmp begins' -e '^reboot ')
+
+for u in $(echo "$DATA" | cut -d' ' -f1 | sort -u); do
+  L=$(echo "$DATA" | grep "^$u ")
+  S=$(echo "$L" | wc -l)
+  M=0
+  for d in $(echo "$L" | grep -oE '\(([0-9]+\+)?[0-9]+:[0-9]+\)$' | tr -d '()'); do
+    days=0
+    if [[ $d == *+* ]]; then days=${d%%+*}; d=${d#*+}; fi
+    M=$((M + days * 1440 + 10#${d%%:*} * 60 + 10#${d##*:}))
+  done
+  echo "$u: $S sessions, $M minutes"
+done
+
+@@ex 1726 cron_jobs | Listing crontab jobs
+@@level 3
+@@cmds crontab -l, while read, case, [[ =~ ]]
+@@readme
+Write `cronjobs.sh [file]` that lists the **jobs** of a crontab. The crontab is read from `file`, or,
+**without argument, from your own crontab** (`crontab -l`; if you have none, it is just empty: hide
+the error message).
+
+Skip empty lines, comments (first non-blank character `#`) and variable assignments (the line starts
+with `NAME=`, e.g. `MAILTO=root`). For every job print:
+
+- `<m> <h> <dom> <mon> <dow> -> <command>` for normal lines (the five time fields separated by **one**
+  space, even if the file uses several spaces or tabs)
+- `<@keyword> -> <command>` for lines starting with `@` (`@reboot`, `@daily`...)
+
+where `<command>` is the rest of the line with leading/trailing blanks removed (internal spacing kept).
+Finally print `N jobs`.
+
+- more than one argument: usage on stderr, exit **2**
+- the file is not a readable regular file: error message on stderr, exit **1**
+
+(Reminder: `read -r a b rest` splits on blanks and leaves everything else in `rest`.)
+@@check
+SCRIPT_NAME=cronjobs.sh
+SEEDS=3
+COMPARE="stdout exit errmsg"
+setup() {
+  local i f
+  for f in cron.txt "my cron"; do
+    {
+      echo "# m h dom mon dow command"
+      echo "MAILTO=$(word)"
+      for i in $(seq "$(randr 2 6)"); do
+        case $(rand 5) in
+          0) echo "$(pick @reboot @daily @hourly @weekly) /usr/bin/$(word).sh  --$(word)" ;;
+          1) printf '%s\t%s\t*\t*\t%s\t%s\n' "$(rand 60)" "*/$(randr 2 6)" "$(pick 1-5 0 '*')" "$HOME/bin/$(word).sh >> $HOME/log 2>&1" ;;
+          2) echo "  # $(words 3)" ;;
+          3) echo "" ;;
+          4) echo "$(pick 0 15 30)  $(rand 24) $(randr 1 28) $(pick '*' 6 12) *   /bin/echo $(words 2)" ;;
+        esac
+      done
+      echo "*/5 * * * * /usr/bin/date >> /tmp/date.log"
+    } > "$f"
+  done
+  if [[ $(rand 3) == 0 ]]; then crontab -r 2>/dev/null; else crontab "my cron"; fi
+  true
+}
+ARGS=('' 'cron.txt' '"my cron"' '"$W/cron.txt"' 'noexiste' '.' 'a b')
+extra_check() { crontab -r 2>/dev/null; true; }
+@@solution
+#!/bin/bash
+# cronjobs.sh [file] - list the jobs of a crontab
+[ $# -le 1 ] || { echo "Usage: $(basename "$0") [file]" >&2; exit 2; }
+if [ $# -eq 1 ]; then
+  [ -f "$1" ] && [ -r "$1" ] || { echo "Error: cannot read $1" >&2; exit 1; }
+  TAB=$(cat "$1")
+else
+  TAB=$(crontab -l 2>/dev/null)
+fi
+
+N=0
+while read -r first rest; do
+  case $first in
+    ''|'#'*) continue ;;
+  esac
+  [[ $first =~ ^[A-Za-z_][A-Za-z0-9_]*= ]] && continue
+  if [[ $first == @* ]]; then
+    echo "$first -> $rest"
+  else
+    read -r h dom mon dow cmd <<< "$rest"
+    echo "$first $h $dom $mon $dow -> $cmd"
+  fi
+  N=$((N + 1))
+done <<< "$TAB"
+echo "$N jobs"
+
+@@ex 1727 user_groups_files | A user's groups from the files
+@@level 3
+@@cmds grep, cut, IFS=: read, tr
+@@readme
+Write `usergroups.sh USER [passwd_file] [group_file]` (defaults `/etc/passwd`, `/etc/group`) that
+works out the groups of `USER` **from the files** (not with `id`), and prints:
+
+```
+primary: <group>
+supplementary: <g1> <g2> ...
+total: <N>
+```
+
+- primary: the name of the group whose GID (3rd field of the group file) is the 4th field of the user's
+  passwd line; if no group has that GID, print the number instead
+- supplementary: the groups (in group-file order, separated by one space) whose member list (4th
+  field, comma-separated) contains exactly `USER`, **excluding** the primary group; `(none)` if there
+  are none. Careful: `luke` is not a member of a group whose list is `lukes,sally`.
+- total: 1 + number of supplementary groups
+
+Errors (message on stderr):
+
+- no arguments or more than 3: usage, exit **2**
+- a file cannot be read: exit **3**
+- `USER` has no line in the passwd file: message naming the user, exit **1**
+@@check
+SCRIPT_NAME=usergroups.sh
+SEEDS=3
+COMPARE="stdout exit errmsg"
+setup() {
+  local i u us=() m
+  for i in 1 2 3 4; do us+=("$(word)$i"); done
+  for i in 0 1 2 3; do echo "${us[i]}:x:$((2000 + i)):$(pick 3000 3001 3002 3009):${us[i]^}:/home/${us[i]}:/bin/bash"; done > pw
+  echo "${us[0]}x:x:2009:3000::/home/x:/bin/sh" >> pw
+  for i in 0 1 2 3 4 5; do
+    m=$(pick "${us[0]}" "${us[1]},${us[0]}x" "${us[0]}x,${us[2]}" "${us[2]},${us[0]},${us[3]}" "" "${us[1]}")
+    echo "$(word)g$i:x:$((3000 + i)):$m"
+  done > "my group"
+  printf '%s\n' "${us[0]}" > user.txt
+}
+ARGS=('"$(cat user.txt)" pw "my group"' '"$(cat user.txt)x" pw "my group"' 'jgarcia' 'alumno' 'rosa /etc/passwd /etc/group' 'nadie' 'nadie pw "my group"' 'luke noexiste' '' 'a b c d')
+extra_check() { [[ $REF_CODE == 1 ]] && mentions nadie; true; }
+@@solution
+#!/bin/bash
+# usergroups.sh USER [passwd_file] [group_file]
+[ $# -ge 1 ] && [ $# -le 3 ] || { echo "Usage: $(basename "$0") USER [passwd_file] [group_file]" >&2; exit 2; }
+U=$1
+PW=${2:-/etc/passwd}
+GR=${3:-/etc/group}
+for f in "$PW" "$GR"; do
+  [ -r "$f" ] || { echo "Error: cannot read $f" >&2; exit 3; }
+done
+LINE=$(grep "^$U:" "$PW") || { echo "Error: no such user: $U" >&2; exit 1; }
+GID=$(echo "$LINE" | cut -d: -f4)
+
+PRIMARY=$GID
+SUP=()
+while IFS=: read -r name x gid members; do
+  if [ "$gid" = "$GID" ]; then
+    PRIMARY=$name
+  elif echo "$members" | tr , '\n' | grep -qx "$U"; then
+    SUP+=("$name")
+  fi
+done < "$GR"
+
+echo "primary: $PRIMARY"
+if [ ${#SUP[@]} -eq 0 ]; then echo "supplementary: (none)"; else echo "supplementary: ${SUP[*]}"; fi
+echo "total: $((1 + ${#SUP[@]}))"
+
+@@ex 1728 blocklist | Building an SSH blocklist
+@@level 4
+@@cmds grep, sed, sort, uniq -c, grep -qxF, >>
+@@readme
+Write `blocklist.sh`:
+
+```
+blocklist.sh LOG WHITELIST [THRESHOLD]
+```
+
+It counts, for every IP, the `Failed password` lines of `LOG` (the IP is the address after ` from `),
+and keeps the IPs with **at least** `THRESHOLD` failures (default **5**). Those IPs are processed in
+order of failures **descending**, ties by IP ascending (`sort`), and for each one:
+
+- if it is in `WHITELIST` (a line equal to the IP): print `whitelisted <ip> (<n> failures)`
+- else if it is already in the blocklist file `$HOME/blocklist.txt` (a line equal to the IP):
+  print `already listed <ip>`
+- else **append** it as a new line to `$HOME/blocklist.txt` (created if it doesn't exist) and print
+  `blocked <ip> (<n> failures)`
+
+Finally print `Blocked N new IPs (M already listed, K whitelisted)`.
+Careful: `10.0.0.1` must not match a line `10.0.0.11`, and in a regex a `.` matches anything.
+
+Errors (message on **stderr**, nothing is changed):
+
+- fewer than 2 or more than 3 arguments: error and usage, exit **1**
+- `LOG` cannot be read: message including its name, exit **2**
+- `WHITELIST` cannot be read: message including its name, exit **3**
+- `THRESHOLD` is not a positive integer: exit **4**
+@@check
+SCRIPT_NAME=blocklist.sh
+SEEDS=3
+COMPARE="stdout exit errmsg files"
+setup() {
+  local i ips=("$(ip_rand)" "$(ip_rand)" "$(ip_rand)" 10.0.0.1 10.0.0.11 192.168.1.10) ip
+  mkdir -p "mis logs"
+  for i in $(seq 10 70); do
+    ip=$(pick "${ips[@]}" "${ips[0]}" "${ips[3]}")
+    case $(rand 4) in
+      0|1) echo "Jun 20 10:$i:01 labhost sshd[$i]: Failed password for $(pick root 'invalid user admin' alumno) from $ip port 4$i ssh2" ;;
+      2) echo "Jun 20 10:$i:02 labhost sshd[$i]: Accepted password for luke from $ip port 4$i ssh2" ;;
+      3) echo "Jun 20 10:$i:03 labhost sshd[$i]: Invalid user test from $ip port 4$i" ;;
+    esac
+  done > auth.log
+  cp auth.log "mis logs/auth 2.log"
+  printf '%s\n' "# trusted" 192.168.1.10 "$(pick "${ips[1]}" 10.0.0.11 1.1.1.1)" > white.txt
+  if [[ $(rand 2) == 1 ]]; then printf '%s\n' 8.8.8.8 "$(pick "${ips[0]}" "${ips[2]}" 10.0.0.11)" > "$H/blocklist.txt"; fi
+  true
+}
+ARGS=('auth.log white.txt' 'auth.log white.txt 3' '"mis logs/auth 2.log" white.txt 1' '"$W/auth.log" "$W/white.txt" 12' '/var/log/auth.log white.txt 150' 'noexiste.log white.txt' 'auth.log nowhite.txt' 'auth.log white.txt 0' 'auth.log white.txt x3' 'auth.log' 'a b c d')
+extra_check() {
+  [[ $REF_CODE == 2 ]] && mentions noexiste.log
+  [[ $REF_CODE == 3 ]] && mentions nowhite.txt
+  true
+}
+@@solution
+#!/bin/bash
+# blocklist.sh LOG WHITELIST [THRESHOLD] - add brute-force IPs to ~/blocklist.txt
+usage() { echo "Usage: $(basename "$0") LOG WHITELIST [THRESHOLD]" >&2; }
+if [ $# -lt 2 ] || [ $# -gt 3 ]; then
+  echo "Error: wrong number of arguments" >&2; usage; exit 1
+fi
+LOG=$1
+WL=$2
+T=${3:-5}
+[ -r "$LOG" ] || { echo "Error: cannot read log '$LOG'" >&2; exit 2; }
+[ -r "$WL" ] || { echo "Error: cannot read whitelist '$WL'" >&2; exit 3; }
+[[ $T =~ ^[0-9]+$ ]] && [ "$T" -gt 0 ] || { echo "Error: THRESHOLD must be a positive integer" >&2; exit 4; }
+
+BL=$HOME/blocklist.txt
+NEW=0; OLD=0; WHITE=0
+while read -r n ip; do
+  [ "$n" -ge "$T" ] || continue
+  if grep -qxF -- "$ip" "$WL"; then
+    echo "whitelisted $ip ($n failures)"; WHITE=$((WHITE + 1))
+  elif [ -f "$BL" ] && grep -qxF -- "$ip" "$BL"; then
+    echo "already listed $ip"; OLD=$((OLD + 1))
+  else
+    echo "$ip" >> "$BL"
+    echo "blocked $ip ($n failures)"; NEW=$((NEW + 1))
+  fi
+done < <(grep 'Failed password' "$LOG" | sed -E 's/.* from ([0-9.]+) .*/\1/' | sort | uniq -c | sort -k1,1nr -k2)
+echo "Blocked $NEW new IPs ($OLD already listed, $WHITE whitelisted)"
+
+@@ex 1729 bulk_useradd | Creating users from a file (as root)
+@@level 4
+@@cmds IFS=: read, id, getent, groupadd, useradd -m -c -G
+@@readme
+This script runs **as root**. Write `altas.sh FILE`, where every line of `FILE` describes a new user:
+
+```
+login:Full Name:group1,group2
+```
+
+(the group list may be empty). Empty lines and lines starting with `#` are ignored.
+For each line, in file order:
+
+1. if a user `login` already exists (for example because an earlier line created it):
+   print `skip <login>: already exists` on **stderr** and go on with the next line
+2. for each group of the list (in order) that does not exist yet: create it (`groupadd`) and print
+   `group <name> created`
+3. create the user with a home directory, shell `/bin/bash`, the full name as comment (GECOS) and the
+   listed groups as supplementary groups, and print `user <login> created`
+
+Finally print `Created N users, skipped M`.
+
+Exit codes: wrong number of arguments → usage on stderr, **1**; `FILE` is not a readable regular file
+→ message on stderr, **2**; otherwise **3** if some line was skipped, **0** if not.
+
+The checker compares the users and groups you create (name, GECOS, home, shell, groups, home exists)
+and removes them afterwards.
+@@check
+SCRIPT_NAME=altas.sh
+SEEDS=2
+RUN_AS_ROOT=1
+COMPARE="stdout exit errmsg"
+labclean() {
+  local x
+  for x in $(cut -d: -f1 /etc/passwd | grep '^lab_'); do sudo userdel -r "$x" >/dev/null 2>&1; done
+  for x in $(cut -d: -f1 /etc/group | grep -E '^lab(g)?_'); do sudo groupdel "$x" >/dev/null 2>&1; done
+  true
+}
+setup() {
+  labclean
+  local i u g1=labg_$(word) g2=labg_$(word)x first=
+  {
+    echo "# login:Full Name:groups"
+    for i in 1 2 3 4 5; do
+      u=lab_$(word)$i; first=${first:-$u}
+      echo "$u:$(word) $(word)$i:$(pick "devs,$g1" "" "$g1" "$g2,audio" "$g1,$g2" video)"
+      [[ $(rand 3) == 0 ]] && echo ""
+    done
+    [[ $(rand 2) == 1 ]] && echo "luke:Luke Again:devs"
+    [[ $(rand 2) == 1 ]] && echo "$first:Duplicated:$g2"
+  } > "new users.txt"
+  printf 'lab_%s1:Only One:\n' "$(word)" > one.txt
+}
+capture() {
+  local u
+  for u in $(cut -d: -f1 /etc/passwd | grep '^lab_' | sort); do
+    getent passwd "$u" | cut -d: -f1,5,6,7
+    echo "groups: $(id -Gn "$u" | tr ' ' '\n' | sort | tr '\n' ' ')"
+    [ -d "/home/$u" ] && echo "home exists"
+  done
+  cut -d: -f1 /etc/group | grep '^labg_' | sort
+}
+ARGS=('"new users.txt"' '"$W/one.txt"' 'noexiste.txt' '' 'a b')
+extra_check() { labclean; }
+@@solution
+#!/bin/bash
+# altas.sh FILE - create users from "login:Full Name:groups" lines (run as root)
+[ $# -eq 1 ] || { echo "Usage: $(basename "$0") FILE" >&2; exit 1; }
+F=$1
+[ -f "$F" ] && [ -r "$F" ] || { echo "Error: cannot read $F" >&2; exit 2; }
+
+N=0; M=0
+while IFS=: read -r login name groups; do
+  [ -z "$login" ] && continue
+  [[ $login == '#'* ]] && continue
+  if id "$login" > /dev/null 2>&1; then
+    echo "skip $login: already exists" >&2
+    M=$((M + 1))
+    continue
+  fi
+  for g in $(echo "$groups" | tr , ' '); do
+    if ! getent group "$g" > /dev/null; then
+      groupadd "$g" && echo "group $g created"
+    fi
+  done
+  if [ -n "$groups" ]; then
+    useradd -m -s /bin/bash -c "$name" -G "$groups" "$login"
+  else
+    useradd -m -s /bin/bash -c "$name" "$login"
+  fi && echo "user $login created" && N=$((N + 1))
+done < "$F"
+
+echo "Created $N users, skipped $M"
+[ $M -eq 0 ] || exit 3
+
+@@ex 1730 group_sync | Synchronising a group with a list (as root)
+@@level 4
+@@cmds getent group, groupadd, gpasswd -a -d, id, cut, tr
+@@readme
+This script runs **as root**. Write `equipo.sh GROUP FILE`, which makes the supplementary members of
+`GROUP` (4th field of its `/etc/group` line) be **exactly** the users listed in `FILE` (one name per
+line; empty lines are ignored):
+
+1. if `GROUP` doesn't exist, create it and print `Group <GROUP> created`
+2. for each name of `FILE`, in file order:
+   - not an existing user: print `unknown user <name>` on **stderr** and ignore it
+   - already a member: nothing
+   - otherwise add it to the group and print `+ <name>`
+3. then, for each current member that is **not** in `FILE`, in the order of the member list:
+   remove it from the group and print `- <name>`
+4. finally print `<GROUP>: added A, removed R, members: <list>` where `<list>` is the final members
+   **sorted** and joined with commas, or `(none)`
+
+Only these lines may appear on stdout (`gpasswd` talks: silence it).
+Exit codes: not exactly 2 arguments → usage on stderr, **1**; `FILE` not readable → **2**;
+**3** if there were unknown users, **0** otherwise. Other groups of the users must not change.
+@@check
+SCRIPT_NAME=equipo.sh
+SEEDS=3
+RUN_AS_ROOT=1
+COMPARE="stdout exit errmsg"
+REAL=(alumno luke sally rod jgarcia mlopez pruiz rmartin rosa)
+labclean() { sudo groupdel lab_team >/dev/null 2>&1; sudo groupdel lab_ops >/dev/null 2>&1; true; }
+setup() {
+  labclean
+  local i m=
+  if [[ $(rand 3) != 0 ]]; then
+    sudo groupadd lab_team
+    for i in 1 2 3; do m+=${m:+,}$(pick "${REAL[@]}"); done
+    sudo gpasswd -M "$(echo "$m" | tr , '\n' | sort -u | tr '\n' , | sed 's/,$//')" lab_team >/dev/null
+  fi
+  for i in $(seq "$(randr 2 6)"); do pick "${REAL[@]}" "${REAL[@]}" "$(word)" ""; done > "the team.txt"
+  printf '%s\n' "${REAL[1]}" "${REAL[2]}" > two.txt
+}
+capture() {
+  getent group lab_team lab_ops | cut -d: -f1,4 | tr , ' '
+  local u; for u in "${REAL[@]}"; do echo "$u: $(id -Gn "$u" | tr ' ' '\n' | sort | tr '\n' ' ')"; done
+}
+ARGS=('lab_team "the team.txt"' 'lab_ops two.txt' 'lab_team "$W/two.txt"' 'lab_team noexiste' 'lab_team' '')
+extra_check() { labclean; }
+@@solution
+#!/bin/bash
+# equipo.sh GROUP FILE - make GROUP's members exactly the users in FILE (run as root)
+[ $# -eq 2 ] || { echo "Usage: $(basename "$0") GROUP FILE" >&2; exit 1; }
+G=$1
+F=$2
+[ -r "$F" ] || { echo "Error: cannot read $F" >&2; exit 2; }
+
+if ! getent group "$G" > /dev/null; then
+  groupadd "$G" && echo "Group $G created"
+fi
+members() { getent group "$G" | cut -d: -f4 | tr , '\n' | grep -v '^$'; }
+
+A=0; R=0; RC=0
+while read -r u; do
+  [ -z "$u" ] && continue
+  if ! id "$u" > /dev/null 2>&1; then
+    echo "unknown user $u" >&2; RC=3; continue
+  fi
+  members | grep -qx "$u" && continue
+  gpasswd -a "$u" "$G" > /dev/null && echo "+ $u" && A=$((A + 1))
+done < "$F"
+
+for u in $(members); do
+  if ! grep -qx "$u" "$F"; then
+    gpasswd -d "$u" "$G" > /dev/null && echo "- $u" && R=$((R + 1))
+  fi
+done
+
+LIST=$(members | sort | tr '\n' , | sed 's/,$//')
+echo "$G: added $A, removed $R, members: ${LIST:-(none)}"
+exit $RC
+
+@@ex 1731 home_audit | Auditing home directories
+@@level 4
+@@cmds while IFS=: read, test -e -d, stat -c %a, find -perm
+@@readme
+Write `homes.sh [passwd_file]` (default `/etc/passwd`) that checks the home directory (6th field) of
+every **human** user (UID from 1000 to 59999), in file order, and prints one line per problem:
+
+- the home doesn't exist: `<login>: <home> missing`
+- it exists but is not a directory: `<login>: <home> is not a directory`
+- it is a directory that gives **any** permission (r, w or x) to **others**:
+  `<login>: <home> is open to others (<perms>)`, where `<perms>` is the octal mode as `stat -c %a`
+  prints it (e.g. `755`)
+
+Homes without problems print nothing. Finally print `Checked N users, P problems`.
+
+Exit codes: **0** if there were no problems, **1** if there was some; more than one argument → usage on
+stderr, **2**; the file cannot be read → message on stderr, **3**. Paths may contain spaces.
+@@check
+SCRIPT_NAME=homes.sh
+SEEDS=3
+COMPARE="stdout exit errmsg"
+setup() {
+  local i u h
+  mkdir -p homes "other homes"
+  for i in $(seq "$(randr 5 10)"); do
+    u=$(word)$i; h="$W/$(pick homes "other homes")/$u"
+    case $(rand 5) in
+      0) ;;
+      1) echo data > "$h" ;;
+      *) mkdir "$h"; chmod "$(pick 700 750 755 701 770 711 777 704)" "$h" ;;
+    esac
+    echo "$u:x:$(pick 500 1000 1234 2000 60001 1500):100:$(word):$h:/bin/bash"
+  done > "my passwd"
+  echo "ok:x:1999:100::$W:/bin/sh" > okpw; chmod 750 "$W"
+}
+ARGS=('"my passwd"' '"$W/my passwd"' 'okpw' '' 'noexiste' 'a b')
+@@solution
+#!/bin/bash
+# homes.sh [passwd_file] - audit home directories of human users
+[ $# -le 1 ] || { echo "Usage: $(basename "$0") [passwd_file]" >&2; exit 2; }
+PW=${1:-/etc/passwd}
+[ -r "$PW" ] || { echo "Error: cannot read $PW" >&2; exit 3; }
+
+N=0; P=0
+while IFS=: read -r login x uid gid gecos home shell; do
+  [ "$uid" -ge 1000 ] && [ "$uid" -le 59999 ] || continue
+  N=$((N + 1))
+  if [ ! -e "$home" ]; then
+    echo "$login: $home missing"; P=$((P + 1))
+  elif [ ! -d "$home" ]; then
+    echo "$login: $home is not a directory"; P=$((P + 1))
+  elif [ -n "$(find "$home" -maxdepth 0 -perm /007)" ]; then
+    echo "$login: $home is open to others ($(stat -c %a "$home"))"; P=$((P + 1))
+  fi
+done < "$PW"
+echo "Checked $N users, $P problems"
+[ $P -eq 0 ] || exit 1
+
+@@ex 1732 cron_add | Adding a validated cron job
+@@level 4
+@@cmds crontab -l, crontab -, [[ =~ ]], grep -qxF, read
+@@readme
+Write `cronadd.sh "SCHEDULE" "COMMAND"`, which adds the job `SCHEDULE COMMAND` (the two arguments
+joined by **one** space) to **your** crontab, keeping the existing lines (the new one goes at the end).
+
+`SCHEDULE` must have exactly **5 fields separated by single spaces**, each of them `*`, a number, or
+`*/number`. Plain numbers must be in range (minute 0-59, hour 0-23, day of month 1-31, month 1-12,
+day of week 0-7) and the step of `*/n` must be at least 1.
+
+- If a line of the crontab is already **exactly** the new job: print `Already scheduled: <job>` and
+  exit 0 without touching the crontab.
+- Otherwise install it and print `Scheduled: <job>` and then `Your crontab has N jobs`, N being the
+  number of lines of the resulting crontab that are neither empty nor comments (`#`).
+- If you have no crontab yet, start from an empty one (hide `crontab -l`'s error).
+
+Errors (message on **stderr**, crontab untouched):
+
+- not exactly 2 arguments: usage, exit **1**
+- `SCHEDULE` does not have that shape: message including the schedule, exit **2**
+- a number out of range (or `*/0`): exit **3**
+@@check
+SCRIPT_NAME=cronadd.sh
+SEEDS=3
+COMPARE="stdout exit errmsg"
+setup() {
+  crontab -r 2>/dev/null
+  if [[ $(rand 4) != 0 ]]; then
+    {
+      echo "# my jobs"
+      echo "$(rand 60) $(rand 24) * * * $HOME/bin/$(word).sh"
+      [[ $(rand 2) == 1 ]] && echo "0 3 * * * /usr/bin/updatedb"
+      echo ""
+      echo "@reboot /usr/bin/$(word)"
+    } | crontab -
+  fi
+  true
+}
+capture() { crontab -l 2>&1; }
+ARGS=('"0 3 * * *" /usr/bin/updatedb' '"*/15 * * * *" "$H/backup.sh >> $H/backup.log 2>&1"' '"30 23 1 12 7" "/bin/echo happy new year"' '"0 */4 * * 1" "$H/ipLog.sh"'
+      '"60 * * * *" /bin/true' '"0 24 * * *" /bin/true' '"*/0 * * * *" /bin/true' '"5 4 0 * *" /bin/true' '"0 3 * *" /bin/true' '"0  3 * * *" /bin/true' '"a b c d e" /bin/true' '"1-5 * * * *" /bin/true' '"0 3 * * *"' '')
+extra_check() {
+  [[ $REF_CODE == 2 ]] && mentions "$(eval "set -- $CASE"; echo "$1")"
+  crontab -r 2>/dev/null; true
+}
+@@solution
+#!/bin/bash
+# cronadd.sh "SCHEDULE" "COMMAND" - add a validated job to my crontab
+[ $# -eq 2 ] || { echo "Usage: $(basename "$0") \"SCHEDULE\" \"COMMAND\"" >&2; exit 1; }
+S=$1
+F='(\*|[0-9]+|\*/[0-9]+)'
+[[ $S =~ ^$F( $F){4}$ ]] || { echo "Error: invalid schedule '$S'" >&2; exit 2; }
+
+in_range() { # field min max
+  case $1 in
+    '*') return 0 ;;
+    '*/'*) [ $((10#${1#*/})) -ge 1 ] ;;
+    *) [ $((10#$1)) -ge "$2" ] && [ $((10#$1)) -le "$3" ] ;;
+  esac
+}
+read -r mi ho dm mo dw <<< "$S"
+if ! in_range "$mi" 0 59 || ! in_range "$ho" 0 23 || ! in_range "$dm" 1 31 ||
+   ! in_range "$mo" 1 12 || ! in_range "$dw" 0 7; then
+  echo "Error: value out of range in '$S'" >&2; exit 3
+fi
+
+JOB="$S $2"
+CUR=$(crontab -l 2>/dev/null)
+if echo "$CUR" | grep -qxF -- "$JOB"; then
+  echo "Already scheduled: $JOB"
+  exit 0
+fi
+{ [ -n "$CUR" ] && echo "$CUR"; echo "$JOB"; } | crontab -
+echo "Scheduled: $JOB"
+echo "Your crontab has $(crontab -l | grep -v -e '^[[:space:]]*$' -e '^[[:space:]]*#' | wc -l) jobs"
+
+@@ex 1733 auth_day | auth.log: summary of one day
+@@level 4
+@@cmds grep -E, tr -s, cut, sort -u, head, tail
+@@readme
+Write `dia.sh DAY [LOG]` (LOG defaults to `/var/log/auth.log`) that summarises the lines of `LOG`
+whose day of the month is `DAY`. Syslog pads single-digit days with a space (`Jun  8`), so the day is
+the **2nd field once blanks are squeezed**; `1` must not select day `11`. Print exactly:
+
+```
+lines: <L>
+failed: <F>
+accepted: <A>
+sudo: <S>
+attackers: <K>
+first: <HH:MM:SS>
+last: <HH:MM:SS>
+```
+
+- failed: lines of that day containing `Failed password`; accepted: containing `Accepted `;
+  sudo: containing `COMMAND=`
+- attackers: number of **distinct** IPs (the address after ` from `) in that day's failed lines
+- first/last: time (3rd field) of the first and last line of that day
+
+Errors (message on **stderr**):
+
+- no arguments or more than 2: usage, exit **1**
+- `DAY` is not a number from 1 to 31 written without leading zeros: exit **2**
+- `LOG` cannot be read: exit **3**
+- no line of that day: message `no entries for day <DAY>`, exit **4**
+@@check
+SCRIPT_NAME=dia.sh
+SEEDS=3
+COMPARE="stdout exit errmsg"
+setup() {
+  local d h ips=("$(ip_rand)" "$(ip_rand)" 45.33.32.156 45.33.32.15) ip
+  for d in 1 2 3 8 9 10 11 12; do
+    [[ $d != 1 && $d != 11 && $(rand 4) == 0 ]] && continue
+    for h in $(seq 0 "$(randr 2 12)"); do
+      ip=$(pick "${ips[@]}")
+      printf 'Jun %2d %02d:%02d:%02d labhost ' "$d" "$h" "$(rand 60)" "$(rand 60)"
+      case $(rand 6) in
+        0|1) echo "sshd[1$h]: Failed password for $(pick root 'invalid user git') from $ip port 22 ssh2" ;;
+        2) echo "sshd[1$h]: Accepted $(pick password publickey) for luke from $ip port 22 ssh2" ;;
+        3) echo "sudo:   alumno : TTY=pts/0 ; PWD=/home/alumno ; USER=root ; COMMAND=/usr/bin/$(word)" ;;
+        4) echo "sshd[1$h]: Invalid user $(word) from $ip port 22" ;;
+        5) echo "CRON[1$h]: pam_unix(cron:session): session opened for user root(uid=0) by (uid=0)" ;;
+      esac
+    done
+  done > "auth test.log"
+}
+ARGS=('1 "auth test.log"' '11 "auth test.log"' '8 "auth test.log"' '12 "$W/auth test.log"' '9 "auth test.log"' '20' '8 /var/log/auth.log' '5 "auth test.log"' '0 "auth test.log"' '32' '08 "auth test.log"' 'x' '3 noexiste' '' '1 2 3')
+@@solution
+#!/bin/bash
+# dia.sh DAY [LOG] - summary of one day of auth.log
+[ $# -ge 1 ] && [ $# -le 2 ] || { echo "Usage: $(basename "$0") DAY [LOG]" >&2; exit 1; }
+DAY=$1
+LOG=${2:-/var/log/auth.log}
+[[ $DAY =~ ^[1-9][0-9]?$ ]] && [ "$DAY" -le 31 ] || { echo "Error: invalid day '$DAY'" >&2; exit 2; }
+[ -r "$LOG" ] || { echo "Error: cannot read $LOG" >&2; exit 3; }
+
+L=$(grep -E "^[A-Za-z]{3} +$DAY " "$LOG")
+[ -n "$L" ] || { echo "no entries for day $DAY" >&2; exit 4; }
+
+FAILED=$(echo "$L" | grep 'Failed password')
+echo "lines: $(echo "$L" | wc -l)"
+echo "failed: $(echo "$L" | grep -c 'Failed password')"
+echo "accepted: $(echo "$L" | grep -c 'Accepted ')"
+echo "sudo: $(echo "$L" | grep -c 'COMMAND=')"
+echo "attackers: $(echo "$FAILED" | grep ' from ' | sed -E 's/.* from ([^ ]+) .*/\1/' | sort -u | grep -c .)"
+echo "first: $(echo "$L" | head -n 1 | tr -s ' ' | cut -d' ' -f3)"
+echo "last: $(echo "$L" | tail -n 1 | tr -s ' ' | cut -d' ' -f3)"
+
+@@ex 1734 web_errors | Apache: paths with most errors
+@@level 4
+@@cmds cut, sort, uniq -c, head, $(( ))
+@@readme
+Write `weberrors.sh [LOG] [N]` (defaults `/var/log/apache2/access.log` and `5`). In an access log line
+
+```
+192.168.1.10 - - [20/Jun/2026:09:02:13 +0200] "GET /images/logo.png HTTP/1.1" 403 614
+```
+
+the client IP is the 1st space-separated field, the path the 7th and the status code the 9th.
+An **error** is a request with status `>= 400`. Print the `N` paths with most errors as
+
+```
+<errors> <path> (<k> IPs)
+```
+
+(k = number of **distinct** client IPs among that path's error requests), ordered by errors descending,
+ties by path ascending; then the line `Errors: <E> of <R> requests (<P>%)`, P = E·100/R with integer
+division. With no errors, only that last line is printed.
+
+Errors (message on **stderr**):
+
+- more than 2 arguments: usage, exit **1**
+- `LOG` cannot be read: exit **2**
+- `N` is not a positive integer: exit **3**
+- `LOG` has no lines: exit **4**
+@@check
+SCRIPT_NAME=weberrors.sh
+SEEDS=3
+COMPARE="stdout exit errmsg"
+setup() {
+  local i ips=("$(ip_rand)" "$(ip_rand)" "$(ip_rand)" 10.0.71.7) ps=(/ /login /admin /.env /wp-login.php "/$(word)")
+  for i in $(seq "$(randr 15 40)"); do
+    echo "$(pick "${ips[@]}") - - [20/Jun/2026:10:00:$((10 + i)) +0200] \"GET $(pick "${ps[@]}") HTTP/1.1\" $(pick 200 200 301 304 400 403 404 404 500 503) $(randr 100 5000)"
+  done > "access test.log"
+  for i in 1 2 3; do echo "10.0.0.$i - - [20/Jun/2026:10:00:0$i +0200] \"GET / HTTP/1.1\" 200 512"; done > ok.log
+  : > empty.log
+}
+ARGS=('"access test.log"' '"access test.log" 2' '"$W/access test.log" 100' '' '/var/log/apache2/access.log 3' 'ok.log' 'empty.log' 'noexiste' '"access test.log" 0' '"access test.log" x' 'a b c')
+@@solution
+#!/bin/bash
+# weberrors.sh [LOG] [N] - paths with most 4xx/5xx responses
+[ $# -le 2 ] || { echo "Usage: $(basename "$0") [LOG] [N]" >&2; exit 1; }
+LOG=${1:-/var/log/apache2/access.log}
+N=${2:-5}
+[ -r "$LOG" ] || { echo "Error: cannot read $LOG" >&2; exit 2; }
+[[ $N =~ ^[0-9]+$ ]] && [ "$N" -gt 0 ] || { echo "Error: N must be a positive integer" >&2; exit 3; }
+R=$(wc -l < "$LOG")
+[ "$R" -gt 0 ] || { echo "Error: $LOG is empty" >&2; exit 4; }
+
+# "ip path" of every error request
+ERR=$(cut -d' ' -f1,7,9 "$LOG" | while read -r ip path code; do
+  [ "$code" -ge 400 ] && echo "$ip $path"
+done)
+E=0
+if [ -n "$ERR" ]; then
+  E=$(echo "$ERR" | wc -l)
+  echo "$ERR" | cut -d' ' -f2 | sort | uniq -c | sort -k1,1nr -k2 | head -n "$N" |
+  while read -r n path; do
+    k=$(echo "$ERR" | while read -r ip p; do [ "$p" = "$path" ] && echo "$ip"; done | sort -u | wc -l)
+    echo "$n $path ($k IPs)"
+  done
+fi
+echo "Errors: $E of $R requests ($((E * 100 / R))%)"
+
+@@ex 1735 passwd_check | A small pwck
+@@level 4
+@@cmds while read, tr -cd, cut, grep -qx, head -n
+@@readme
+Write `pwcheck.sh [passwd_file] [group_file]` (defaults `/etc/passwd` and `/etc/group`) that checks
+the passwd file line by line (lines numbered from 1) and reports, in this order for each line:
+
+1. `line <n>: wrong number of fields (<f>)` if the line does not have exactly 7 `:`-separated fields
+   (then **no other check** is done for that line)
+2. `line <n>: duplicate login <login>` if an **earlier** line has the same login (1st field)
+3. `line <n>: duplicate UID <uid> (<login>)` if an **earlier** line has the same UID (3rd field)
+4. `line <n>: unknown GID <gid> (<login>)` if no line of the group file has that GID (3rd field)
+   as its own 3rd field
+
+(Only lines with 7 fields count as "earlier lines" for checks 2 and 3.) Finally print
+`<P> problems in <passwd_file>`, or `<passwd_file>: OK` when there are none.
+
+Exit codes: **0** OK, **1** some problem; more than 2 arguments → usage on stderr, **2**; a file cannot
+be read → message on stderr naming it, **3**.
+@@check
+SCRIPT_NAME=pwcheck.sh
+SEEDS=3
+COMPARE="stdout exit errmsg"
+setup() {
+  local i u us=() uids=()
+  for i in 1 2 3 4 5 6; do us+=("$(word)$i"); uids+=("$((1000 + i))"); done
+  for i in 1 2 3 4; do echo "$(word)$i:x:$((200 + i)):"; done > "my group"
+  {
+    for i in 0 1 2 3 4 5; do
+      echo "${us[i]}:x:${uids[i]}:$(pick 201 202 203 204):${us[i]^}:/home/${us[i]}:/bin/bash"
+      case $(rand 6) in
+        0) echo "${us[i]}:x:$((1500 + i)):201::/home/x:/bin/sh" ;;
+        1) echo "dup$i:x:${uids[$(rand 6)]}:$(pick 201 209):::/bin/sh" ;;
+        2) echo "short$i:x:$((1600 + i)):201:/home/s:/bin/sh" ;;
+        3) echo "long$i:x:$((1700 + i)):201::/home/l:/bin/sh:extra" ;;
+        4) echo "${us[$(rand 6)]}:x:${uids[$(rand 6)]}:999::/home/x:/bin/sh" ;;
+      esac
+    done
+  } > "my passwd"
+  echo "solo:x:1000:201::/home/solo:/bin/sh" > good
+}
+ARGS=('"my passwd" "my group"' '"$W/my passwd" "$W/my group"' 'good "my group"' '' 'good' 'noexiste' 'good noexiste' 'a b c')
+extra_check() { [[ $REF_CODE == 3 ]] && mentions noexiste; true; }
+@@solution
+#!/bin/bash
+# pwcheck.sh [passwd_file] [group_file] - consistency checks on a passwd file
+[ $# -le 2 ] || { echo "Usage: $(basename "$0") [passwd_file] [group_file]" >&2; exit 2; }
+PW=${1:-/etc/passwd}
+GR=${2:-/etc/group}
+for f in "$PW" "$GR"; do
+  [ -r "$f" ] || { echo "Error: cannot read $f" >&2; exit 3; }
+done
+
+n=0; P=0
+LOGINS=; UIDS=     # values seen on earlier valid lines, one per line
+while IFS= read -r line; do
+  n=$((n + 1))
+  f=$(( $(echo -n "$line" | tr -cd : | wc -c) + 1 ))
+  if [ $f -ne 7 ]; then
+    echo "line $n: wrong number of fields ($f)"; P=$((P + 1)); continue
+  fi
+  login=$(echo "$line" | cut -d: -f1)
+  uid=$(echo "$line" | cut -d: -f3)
+  gid=$(echo "$line" | cut -d: -f4)
+  if echo "$LOGINS" | grep -qxF -- "$login"; then
+    echo "line $n: duplicate login $login"; P=$((P + 1))
+  fi
+  if echo "$UIDS" | grep -qxF -- "$uid"; then
+    echo "line $n: duplicate UID $uid ($login)"; P=$((P + 1))
+  fi
+  if ! cut -d: -f3 "$GR" | grep -qxF -- "$gid"; then
+    echo "line $n: unknown GID $gid ($login)"; P=$((P + 1))
+  fi
+  LOGINS+="$login"$'\n'
+  UIDS+="$uid"$'\n'
+done < "$PW"
+
+if [ $P -eq 0 ]; then
+  echo "$PW: OK"
+else
+  echo "$P problems in $PW"
+  exit 1
+fi
+
+@@ex 1736 home_quota | Home directories over a quota
+@@level 4
+@@cmds du -sk, cut -f1, test -r -x, while IFS=: read
+@@readme
+Write `cuota.sh LIMIT_KB [passwd_file]` (default `/etc/passwd`). For every human user (UID from 1000
+to 59999) in file order, look at their home directory (6th field):
+
+- it doesn't exist or is not a directory: print `<login>: no home (<home>)`
+- you can't read it (no `r` **or** no `x` permission for you): print `<login>: cannot read <home>`
+- otherwise measure it with `du -sk` and, **only if** it uses more than `LIMIT_KB` KB, print
+  `<login>: <KB> KB (over by <KB-LIMIT_KB> KB)`
+
+Finally print `<N> users over the limit of <LIMIT_KB> KB`.
+
+Errors (message on **stderr**):
+
+- no arguments or more than 2: usage, exit **1**
+- `LIMIT_KB` is not a positive integer: exit **2**
+- the passwd file cannot be read: exit **3**
+
+Home paths may contain spaces.
+@@check
+SCRIPT_NAME=cuota.sh
+SEEDS=3
+COMPARE="stdout exit errmsg"
+setup() {
+  local i u h
+  mkdir -p "casas/sub dir"
+  for i in $(seq "$(randr 5 9)"); do
+    u=$(word)$i; h="$W/casas/$(pick . "sub dir")/$u"
+    case $(rand 6) in
+      0) ;;
+      1) echo x > "$h" ;;
+      2) mkdir -p "$h"; bigfile "$h/f" 8192; chmod "$(pick 000 300 600)" "$h" ;;
+      *) mkdir -p "$h/docs"; bigfile "$h/a" $(( $(randr 1 40) * 4096 )); bigfile "$h/docs/b" $(( $(randr 0 40) * 4096 )) ;;
+    esac
+    echo "$u:x:$(pick 1000 1001 2500 999 60000 1200):100::$h:/bin/bash"
+  done > "mi passwd"
+}
+ARGS=('50 "mi passwd"' '1 "$W/mi passwd"' '100 "mi passwd"' '100000 "mi passwd"' '0 "mi passwd"' 'x10 "mi passwd"' '50 noexiste' '' '1 2 3')
+@@solution
+#!/bin/bash
+# cuota.sh LIMIT_KB [passwd_file] - homes over a disk quota
+[ $# -ge 1 ] && [ $# -le 2 ] || { echo "Usage: $(basename "$0") LIMIT_KB [passwd_file]" >&2; exit 1; }
+LIMIT=$1
+PW=${2:-/etc/passwd}
+[[ $LIMIT =~ ^[0-9]+$ ]] && [ "$LIMIT" -gt 0 ] || { echo "Error: LIMIT_KB must be a positive integer" >&2; exit 2; }
+[ -r "$PW" ] || { echo "Error: cannot read $PW" >&2; exit 3; }
+
+N=0
+while IFS=: read -r login x uid gid gecos home shell; do
+  [ "$uid" -ge 1000 ] && [ "$uid" -le 59999 ] || continue
+  if [ ! -d "$home" ]; then
+    echo "$login: no home ($home)"
+  elif [ ! -r "$home" ] || [ ! -x "$home" ]; then
+    echo "$login: cannot read $home"
+  else
+    kb=$(du -sk "$home" | cut -f1)
+    if [ "$kb" -gt "$LIMIT" ]; then
+      echo "$login: $kb KB (over by $((kb - LIMIT)) KB)"
+      N=$((N + 1))
+    fi
+  fi
+done < "$PW"
+echo "$N users over the limit of $LIMIT KB"

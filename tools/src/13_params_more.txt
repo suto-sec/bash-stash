@@ -1,0 +1,1235 @@
+@@topic 13_script_params | Script parameters & exit codes
+@@ex 1314 shift_skip | shift N and its exit status
+@@level 3
+@@cmds shift, shift N, $#, exit
+@@readme
+Write `skip.sh N [arg...]`. The first argument `N` says how many of the **following** arguments must
+be skipped. Print each remaining argument on its own line as `> arg`, and then `(K left)` where K is
+the number of remaining arguments.
+
+Use `shift` to drop `N` itself and then `shift "$N"`. When there are fewer than `N` arguments left,
+`shift N` **does nothing and returns a non-zero status**: use that status to detect the problem.
+
+Errors (message on **stderr**, exact text):
+
+| situation | message | exit |
+|-----------|---------|------|
+| no arguments | `Usage: skip.sh N [arg...]` (use `$(basename "$0")`) | 1 |
+| `N` is not a non-negative integer (only digits) | `Invalid count: N` | 2 |
+| fewer than `N` arguments after `N` | `Cannot skip N of M arguments` (M = how many there were) | 3 |
+
+Example: `skip.sh 2 a b c d` prints `> c`, `> d`, `(2 left)`.
+@@check
+SEEDS=1
+SCRIPT_NAME=skip.sh
+COMPARE="stdout stderr exit"
+ARGS=('' '2 a b c d' '0 a "b c"' '3 a b' '3 "x y" b c' 'x a' '-1 a' '1' '1 "*" "  sp  " last')
+extra_check() { must_use shift; }
+@@solution
+#!/bin/bash
+if [ $# -eq 0 ]; then
+  echo "Usage: $(basename "$0") N [arg...]" >&2
+  exit 1
+fi
+N=$1
+if [[ ! $N =~ ^[0-9]+$ ]]; then
+  echo "Invalid count: $N" >&2
+  exit 2
+fi
+shift
+# shift N fails (and leaves the arguments untouched) if there are fewer than N
+if ! shift "$N"; then
+  echo "Cannot skip $N of $# arguments" >&2
+  exit 3
+fi
+for a in "$@"; do
+  echo "> $a"
+done
+echo "($# left)"
+
+@@ex 1315 reverse_args | Arguments in reverse order
+@@level 3
+@@cmds $#, ${!i}, for (( ))
+@@readme
+Print the arguments in **reverse** order, one per line, each preceded by its original position:
+`N: argument`. Arguments may contain spaces or be empty.
+
+With no arguments print `no arguments`.
+
+Do it with a counting loop from `$#` down to 1 and **indirect expansion** (`${!i}` is the value of
+the parameter whose name/number is stored in `i`). Don't use `tac` or `sort`.
+
+Example: `script.sh a "b c"` prints `2: b c` and then `1: a`.
+@@check
+SEEDS=1
+ARGS=('' 'a' 'a b c' '"x y" "" z' '1 2 3 4 5 6 7 8 9 10 11 12' '"*" "-n" "a  b"')
+extra_check() { must_not_use tac sort; }
+@@solution
+#!/bin/bash
+if [ $# -eq 0 ]; then
+  echo "no arguments"
+  exit 0
+fi
+for ((i = $#; i >= 1; i--)); do
+  echo "$i: ${!i}"
+done
+
+@@ex 1316 key_value_pairs | Consuming arguments two by two
+@@level 3
+@@cmds shift 2, while [ $# -gt 0 ], $#
+@@readme
+The script receives `key value` pairs: `pairs.sh key1 value1 key2 value2 ...`. For each pair print
+`key = value`, and at the end `N pairs` (with no arguments just print `0 pairs`).
+
+**Validate everything before printing anything** (message on stderr, exact text):
+
+1. odd number of arguments: `Odd number of arguments (N)`, exit **1**
+2. an empty key (`""`): `Empty key at position P`, exit **2**, where P is the position of that
+   argument (1-based) among all arguments; report the first one. Values may be empty.
+
+Process the pairs with a `while [ $# -gt 0 ]` loop and `shift 2`.
+@@check
+SEEDS=1
+COMPARE="stdout stderr exit"
+ARGS=('' 'name pepe' 'a 1 b 2 "c d" "3 4"' 'a 1 b' '"" x' 'a 1 "" 2 "" 3' 'k ""' 'x' 'k1 "" k2 v2')
+extra_check() { must_use shift; }
+@@solution
+#!/bin/bash
+if (( $# % 2 != 0 )); then
+  echo "Odd number of arguments ($#)" >&2
+  exit 1
+fi
+i=1
+for a in "$@"; do
+  # keys are at odd positions
+  if (( i % 2 == 1 )) && [ -z "$a" ]; then
+    echo "Empty key at position $i" >&2
+    exit 2
+  fi
+  i=$((i + 1))
+done
+n=0
+while [ $# -gt 0 ]; do
+  echo "$1 = $2"
+  n=$((n + 1))
+  shift 2
+done
+echo "$n pairs"
+
+@@ex 1317 run_wrapper | Reporting a command's exit status
+@@level 3
+@@cmds "$@", $?, exit N
+@@readme
+Write `try.sh command [args...]`. It runs the command given in its arguments (exactly, with `"$@"`),
+hiding the command's stdout **and** stderr. Then it prints
+
+- `OK: <command line>` if the command exited with 0
+- `FAILED (<code>): <command line>` otherwise
+
+where `<command line>` is all the arguments joined by single spaces (`"$*"`). The script itself must
+**exit with the same code as the command** (a command that does not exist gives 127).
+
+With no arguments print `Usage: try.sh command [args...]` on stderr (use `$(basename "$0")`) and
+exit **64**.
+@@check
+SEEDS=1
+SCRIPT_NAME=try.sh
+COMPARE="stdout stderr exit"
+setup() { mkdir sub; }
+ARGS=('true' 'false' '' 'grep -q root /etc/passwd' 'grep -q zzzz /etc/passwd' 'ls -d "no such" /' 'test 3 -lt 5' 'nosuchcmd x' 'bash -c "exit 42"' 'mkdir sub' 'test -d sub')
+@@solution
+#!/bin/bash
+if [ $# -eq 0 ]; then
+  echo "Usage: $(basename "$0") command [args...]" >&2
+  exit 64
+fi
+"$@" > /dev/null 2>&1
+rc=$?
+if [ $rc -eq 0 ]; then
+  echo "OK: $*"
+else
+  echo "FAILED ($rc): $*"
+fi
+exit $rc
+
+@@ex 1318 set_positional | Rebuilding the positional parameters with set --
+@@level 3
+@@cmds set --, IFS, $#
+@@readme
+Write `fields.sh text [separator]`. It splits `text` using `separator` (a single character, default
+`:`) by setting `IFS` to it and running `set -- $text` (unquoted on purpose). Then it prints the new
+number of positional parameters and each of them:
+
+```
+N fields
+1: first
+2: second
+...
+```
+
+The split must be exactly the one `set -- $text` performs with that `IFS` (e.g. with `:` an empty
+field between two separators counts, a trailing separator does not add a field, and with a space as
+separator runs of spaces count as one). The text contains no wildcard characters.
+
+Errors (stderr, exact text): no arguments or more than 2 → `Usage: fields.sh text [separator]`
+(use `$(basename "$0")`), exit **1**; separator that is not exactly one character →
+`Invalid separator`, exit **2**.
+@@check
+SEEDS=1
+SCRIPT_NAME=fields.sh
+COMPARE="stdout stderr exit"
+ARGS=('"root:x:0:0:root:/root:/bin/bash"' '"a,b,,c" ,' '"one two  three" " "' '"a:b:"' '""' '"x;y" ,' '"a-b" --' '":lead"' '' 'a b c' '"a b" ""')
+extra_check() { must_use set; }
+@@solution
+#!/bin/bash
+if [ $# -lt 1 ] || [ $# -gt 2 ]; then
+  echo "Usage: $(basename "$0") text [separator]" >&2
+  exit 1
+fi
+sep=${2-:}
+if [ ${#sep} -ne 1 ]; then
+  echo "Invalid separator" >&2
+  exit 2
+fi
+text=$1
+IFS=$sep
+set -- $text
+echo "$# fields"
+i=1
+for f in "$@"; do
+  echo "$i: $f"
+  i=$((i + 1))
+done
+
+@@ex 1319 missing_count | The exit code as a counter
+@@level 3
+@@cmds test -e, exit $n, >&2
+@@readme
+Write `need.sh file...`. For every argument that does **not** exist (anything that exists counts:
+files, directories...), print `missing: <name>` on **stderr**. At the end print on stdout
+`P of N present` (P existing, N arguments).
+
+The **exit code** of the script must be the number of missing arguments (0 when all exist).
+
+With no arguments print `Usage: need.sh file...` on stderr (use `$(basename "$0")`) and exit **255**.
+@@check
+SEEDS=3
+SCRIPT_NAME=need.sh
+COMPARE="stdout stderr exit"
+setup() {
+  local n
+  for n in alpha.txt "my file" data.csv "notes 2" conf; do
+    case $(rand 3) in
+      0) echo "$(word)" > "$n" ;;
+      1) mkdir "$n" ;;
+    esac
+  done
+}
+ARGS=('"my file" alpha.txt' 'alpha.txt data.csv conf "notes 2" "my file" nothing' '' 'x y z' 'conf')
+@@solution
+#!/bin/bash
+if [ $# -eq 0 ]; then
+  echo "Usage: $(basename "$0") file..." >&2
+  exit 255
+fi
+missing=0
+for f in "$@"; do
+  if [ ! -e "$f" ]; then
+    echo "missing: $f" >&2
+    missing=$((missing + 1))
+  fi
+done
+echo "$(($# - missing)) of $# present"
+exit $missing
+
+@@ex 1320 quiet_flag | An optional -q flag
+@@level 3
+@@cmds shift, grep -c -F, exit codes
+@@readme
+Write `count.sh [-q] word file...`, a tiny `grep -c`:
+
+- For each file print `<file>: N`, N = number of lines that contain `word` (as a plain,
+  case-sensitive substring), in the order of the arguments.
+- If the **first** argument is `-q`, print nothing on stdout (quiet mode) but do everything else.
+- A file that is not a readable regular file: print `cannot read: <file>` on stderr (also in quiet
+  mode) and continue with the next one.
+- Exit code: **0** if `word` appears in at least one file, **1** if it appears in none.
+- Fewer than two arguments (not counting `-q`): print `Usage: count.sh [-q] word file...` on stderr
+  (use `$(basename "$0")`) and exit **2**.
+@@check
+SEEDS=3
+SCRIPT_NAME=count.sh
+COMPARE="stdout stderr exit"
+setup() {
+  randtext "$(randr 3 12)" > a.txt
+  randtext "$(randr 3 12)" > b.txt
+  randtext "$(randr 3 12)" > "c d.txt"
+  echo linux > locked.txt; chmod 000 locked.txt
+  mkdir sub
+}
+ARGS=('linux a.txt b.txt "c d.txt"' '-q linux a.txt b.txt' '-q zzz a.txt' 'zzz a.txt "c d.txt"' '' '-q' '-q word' 'word' 'shell a.txt nofile "c d.txt" locked.txt sub' '-q apple locked.txt' 'e "c d.txt"')
+@@solution
+#!/bin/bash
+quiet=0
+if [ "$1" = "-q" ]; then
+  quiet=1
+  shift
+fi
+if [ $# -lt 2 ]; then
+  echo "Usage: $(basename "$0") [-q] word file..." >&2
+  exit 2
+fi
+word=$1
+shift
+status=1
+for f in "$@"; do
+  if [ ! -f "$f" ] || [ ! -r "$f" ]; then
+    echo "cannot read: $f" >&2
+    continue
+  fi
+  n=$(grep -cF -- "$word" "$f")
+  [ "$n" -gt 0 ] && status=0
+  [ $quiet -eq 0 ] && echo "$f: $n"
+done
+exit $status
+
+@@ex 1321 last_is_dest | The last argument is the destination
+@@level 3
+@@cmds ${!#}, ${@:1:$#-1}, cp
+@@readme
+Write `collect.sh file... dir`, which works like `cp file... dir`: the **last** argument is the
+destination directory and all the others are files to copy into it.
+
+- Fewer than 2 arguments: `Usage: collect.sh file... dir` on stderr (use `$(basename "$0")`), exit **1**.
+- The last argument is not a directory: `Not a directory: <dir>` on stderr, exit **2** (copy nothing).
+- For each file (in order): if it is a regular file, copy it into the directory and print
+  `copied: <file>`; otherwise print `skipped: <file>` on **stderr**.
+- Finally print `N copied, M skipped`, and exit **0** if nothing was skipped or **3** otherwise.
+
+Use `${!#}` (or `${@: -1}`) for the last argument and `${@:1:$#-1}` for the rest.
+@@check
+SEEDS=1
+SCRIPT_NAME=collect.sh
+COMPARE="stdout stderr exit files"
+setup() { echo one > "a b.txt"; echo two > c.txt; mkdir sub "out dir"; echo x > dest.txt; }
+ARGS=('"a b.txt" c.txt "out dir"' 'c.txt nope sub "out dir"' 'c.txt' '' 'c.txt dest.txt' 'c.txt nodir' '"a b.txt" "$W/out dir"' 'sub')
+@@solution
+#!/bin/bash
+if [ $# -lt 2 ]; then
+  echo "Usage: $(basename "$0") file... dir" >&2
+  exit 1
+fi
+dest=${!#}
+if [ ! -d "$dest" ]; then
+  echo "Not a directory: $dest" >&2
+  exit 2
+fi
+ok=0 skipped=0
+for f in "${@:1:$#-1}"; do
+  if [ -f "$f" ]; then
+    cp "$f" "$dest/"
+    echo "copied: $f"
+    ok=$((ok + 1))
+  else
+    echo "skipped: $f" >&2
+    skipped=$((skipped + 1))
+  fi
+done
+echo "$ok copied, $skipped skipped"
+[ $skipped -eq 0 ] || exit 3
+
+@@ex 1322 calc_chain | calc.sh: a left-to-right calculator
+@@level 4
+@@cmds shift 2, $#, [[ =~ ]], $(( )), exit codes
+@@readme
+Write `calc.sh`:
+
+```
+calc.sh n1 [op n2]...
+```
+
+It evaluates the expression **from left to right** (no operator precedence) with integer arithmetic.
+Operators: `+`, `-`, `x` (multiplication; `*` would be expanded by the shell), `/` (integer division,
+truncating like `$(( ))`), `%` (remainder). An operand is an integer: an optional `-` followed by `0`
+or by digits not starting with `0` (so `08` is **not** valid).
+
+For every operator print one line `left op right = result`, where `left` is the value accumulated so
+far, and finally `Result: R`. Example: `calc.sh 3 + 4 x 2` prints
+
+```
+3 + 4 = 7
+7 x 2 = 14
+Result: 14
+```
+
+`calc.sh 7` just prints `Result: 7`.
+
+**Validate every argument before computing anything** (nothing on stdout when there is an error):
+
+| error | exit |
+|-------|------|
+| no arguments, or an even number of arguments: message with the usage | 1 |
+| an operand is not a valid integer: message naming it | 2 |
+| an operator is not one of `+ - x / %`: message naming it | 3 |
+| a `/` or `%` followed by an operand equal to 0 | 4 |
+
+Arguments are checked from left to right; the first bad one decides the error. Messages go to
+**stderr** (wording is free).
+@@check
+SCRIPT_NAME=calc.sh
+SEEDS=3
+COMPARE="stdout exit errmsg"
+setup() {
+  local i e
+  for i in 1 2 3; do
+    e=$(randr -9 60)
+    for ((k = 0; k < $(randr 2 4); k++)); do e+=" $(pick + - x / %) $(pick "$(randr 1 30)" "-$(randr 1 9)")"; done
+    echo "$e" > "e$i"
+  done
+  echo "$(randr 1 9) $(pick + x) $(pick abc 3.5 08 12a --1 '') $(pick / x) 2" > bad2
+  echo "$(randr 1 9) + 4 $(pick '^' X '**' plus) $(randr 1 9)" > bad3
+  echo "$(randr 10 99) - $(randr 1 9) $(pick / %) 0 + 1" > bad4
+}
+ARGS=('' '7' '$(cat e1)' '$(cat e2)' '$(cat e3)' '$(cat bad2)' '$(cat bad3)' '$(cat bad4)' '3 +' '1 + 2 x' '5 "*" 2' '4 x 08' '5 ^ abc' '0 - 3' '-7 / 2 % 3')
+extra_check() {
+  local tok
+  if [[ $REF_CODE == [23] ]]; then
+    tok=$(sed -n "s/^[^']*'\(.*\)'.*$/\1/p" <<< "$REF_ERR" | head -n 1)
+    [[ -n $tok ]] && mentions "$tok"
+  fi
+  [[ $REF_CODE == 1 && $ERR != *calc.sh* && $ERR != *sage* ]] && fail "the usage message should show how to call the script"
+  true
+}
+@@solution
+#!/bin/bash
+# calc.sh n1 [op n2]... - left-to-right integer calculator
+
+usage() {
+  echo "Usage: $(basename "$0") n1 [op n2]..." >&2
+  exit 1
+}
+
+# an odd number of arguments (at least 1) is required
+if [ $# -eq 0 ] || (( $# % 2 == 0 )); then
+  usage
+fi
+
+# validate everything first, from left to right
+i=1
+prev=
+for a in "$@"; do
+  if (( i % 2 == 1 )); then            # operand
+    if [[ ! $a =~ ^-?(0|[1-9][0-9]*)$ ]]; then
+      echo "Error: '$a' is not a valid integer" >&2
+      exit 2
+    fi
+    if [[ $prev == / || $prev == % ]] && (( a == 0 )); then
+      echo "Error: division by zero ($prev $a)" >&2
+      exit 4
+    fi
+  else                                 # operator
+    case $a in
+      + | - | x | / | %) ;;
+      *) echo "Error: unknown operator '$a'" >&2; exit 3 ;;
+    esac
+  fi
+  prev=$a
+  i=$((i + 1))
+done
+
+r=$1
+shift
+while [ $# -gt 0 ]; do
+  op=$1 b=$2
+  case $op in
+    +) n=$((r + b)) ;;
+    -) n=$((r - b)) ;;
+    x) n=$((r * b)) ;;
+    /) n=$((r / b)) ;;
+    %) n=$((r % b)) ;;
+  esac
+  echo "$r $op $b = $n"
+  r=$n
+  shift 2
+done
+echo "Result: $r"
+
+@@ex 1323 line_range | lines.sh: printing a range of lines
+@@level 4
+@@cmds ${3:-default}, test -f -r, [[ =~ ]], while read, exit codes
+@@readme
+Write `lines.sh`:
+
+```
+lines.sh file start [end]
+```
+
+It prints lines `start` to `end` (both included) of `file`, each as `N: text` (N = line number,
+text exactly as in the file, including leading spaces and backslashes). `end` defaults to the last
+line; an `end` bigger than the number of lines is the same as the last line; a `start` bigger than
+the number of lines prints no lines (that is not an error). At the end print
+
+```
+Printed K of T lines of <file>
+```
+
+(K lines printed, T = total lines of the file, `<file>` as given).
+
+Errors, checked in this order (message on **stderr**, wording free, nothing on stdout):
+
+| error | exit |
+|-------|------|
+| not 2 or 3 arguments (show the usage) | 1 |
+| `file` is not a readable regular file (name it) | 2 |
+| `start` or `end` (if given) is not a positive integer (digits, not starting with 0) (name it) | 3 |
+| `end` is given and `start` > `end` | 4 |
+@@check
+SCRIPT_NAME=lines.sh
+SEEDS=2
+COMPARE="stdout exit errmsg"
+setup() {
+  { randtext "$(randr 2 5)"; echo '   indented \t line'; randtext "$(randr 3 8)"; } > "my notes.txt"
+  randtext "$(randr 4 12)" > log.txt
+  : > empty.txt
+  echo secret > locked.txt; chmod 000 locked.txt
+  mkdir sub
+}
+ARGS=('"my notes.txt" 2 4' '"my notes.txt" 3' 'log.txt 1 100' 'log.txt 50' 'empty.txt 1' '"my notes.txt" 5 2' '"my notes.txt" 0 3' '"my notes.txt" 2 x' '"my notes.txt" 02' 'nofile 1 2' 'locked.txt 1' 'sub 1' '"my notes.txt"' 'a 1 2 3' '"$W/log.txt" 2 2' 'log.txt 3 3')
+extra_check() {
+  local tok
+  if [[ $REF_CODE == [23] ]]; then
+    tok=$(sed -n "s/^[^']*'\(.*\)'.*$/\1/p" <<< "$REF_ERR" | head -n 1)
+    [[ -n $tok ]] && mentions "$tok"
+  fi
+  true
+}
+@@solution
+#!/bin/bash
+# lines.sh file start [end] - print a range of lines of a file
+
+if [ $# -lt 2 ] || [ $# -gt 3 ]; then
+  echo "Usage: $(basename "$0") file start [end]" >&2
+  exit 1
+fi
+file=$1
+if [ ! -f "$file" ] || [ ! -r "$file" ]; then
+  echo "Error: '$file' is not a readable regular file" >&2
+  exit 2
+fi
+for n in "${@:2}"; do
+  if [[ ! $n =~ ^[1-9][0-9]*$ ]]; then
+    echo "Error: '$n' is not a positive integer" >&2
+    exit 3
+  fi
+done
+start=$2
+if [ $# -eq 3 ] && [ "$start" -gt "$3" ]; then
+  echo "Error: start ($start) is greater than end ($3)" >&2
+  exit 4
+fi
+
+total=$(wc -l < "$file")
+end=${3:-$total}
+[ "$end" -gt "$total" ] && end=$total
+
+k=0 num=0
+while IFS= read -r line; do
+  num=$((num + 1))
+  if [ $num -ge "$start" ] && [ $num -le "$end" ]; then
+    echo "$num: $line"
+    k=$((k + 1))
+  fi
+done < "$file"
+echo "Printed $k of $total lines of $file"
+
+@@ex 1324 col_sums | colsum.sh: adding up columns
+@@level 4
+@@cmds option -d, shift 2, cut, head, tail, exit codes
+@@readme
+Write `colsum.sh`:
+
+```
+colsum.sh [-d C] file col...
+```
+
+`file` is a table whose fields are separated by the character `C` (default `,`). Its **first line**
+is a header with the column names; every other line is a data row whose fields are integers
+(possibly negative). For every `col` (a column number, 1-based), in the order given (repetitions
+allowed), print
+
+```
+<column name>: <sum of that column over all data rows>
+```
+
+and finally `Rows: N` (number of data rows).
+
+The option `-d C` is only recognised as the **first** argument. Errors, checked in this order
+(message on **stderr**, wording free, nothing on stdout):
+
+| error | exit |
+|-------|------|
+| `-d` without a value, a value that is not exactly one character, or fewer than 2 arguments after the option (show the usage) | 1 |
+| `file` is not a readable regular file (name it) | 2 |
+| a `col` that is not a positive integer or is bigger than the number of columns of the header (name it) | 3 |
+
+The number of columns is the number of fields of the header line with that separator (a file
+separated with `;` read with the default `,` has only 1 column).
+@@check
+SCRIPT_NAME=colsum.sh
+SEEDS=3
+COMPARE="stdout exit errmsg"
+setup() {
+  local r ncol c line
+  ncol=$(randr 3 5)
+  line=id; for ((c = 2; c <= ncol; c++)); do line+=",$(word)$c"; done
+  echo "$line" > "sales 2024.csv"
+  for ((r = 1; r <= $(randr 3 8); r++)); do
+    line=$r; for ((c = 2; c <= ncol; c++)); do line+=",$(randr -50 500)"; done
+    echo "$line" >> "sales 2024.csv"
+  done
+  echo "code;$(word)A;$(word)B" > stock.txt
+  for ((r = 0; r < $(randr 2 6); r++)); do echo "$(randr 100 999);$(randr 0 40);$(randr -5 5)" >> stock.txt; done
+  echo "a,b" > locked.csv; chmod 000 locked.csv
+  mkdir sub
+}
+ARGS=('"sales 2024.csv" 2' '"sales 2024.csv" 3 2 3' '-d ";" stock.txt 3 1' 'stock.txt 2' '"sales 2024.csv" 6' '"sales 2024.csv" 0' '"sales 2024.csv" x' 'nofile 1' 'locked.csv 1' '' '"sales 2024.csv"' '-d' '-d ";"' '-d ";;" stock.txt 1' 'sub 1' '-d , "$W/sales 2024.csv" 1')
+extra_check() {
+  local tok
+  if [[ $REF_CODE == [23] ]]; then
+    tok=$(sed -n "s/^[^']*'\(.*\)'.*$/\1/p" <<< "$REF_ERR" | head -n 1)
+    [[ -n $tok ]] && mentions "$tok"
+  fi
+  true
+}
+@@solution
+#!/bin/bash
+# colsum.sh [-d C] file col... - sum columns of a delimited table with a header
+
+usage() {
+  echo "Usage: $(basename "$0") [-d C] file col..." >&2
+  exit 1
+}
+
+d=,
+if [ "$1" = "-d" ]; then
+  [ $# -ge 2 ] || usage
+  [ ${#2} -eq 1 ] || usage
+  d=$2
+  shift 2
+fi
+[ $# -ge 2 ] || usage
+
+file=$1
+shift
+if [ ! -f "$file" ] || [ ! -r "$file" ]; then
+  echo "Error: '$file' is not a readable regular file" >&2
+  exit 2
+fi
+
+# number of columns = number of separators in the header + 1
+seps=$(head -n 1 "$file" | tr -cd "$d" | wc -c)
+ncols=$((seps + 1))
+for c in "$@"; do
+  if [[ ! $c =~ ^[1-9][0-9]*$ ]] || [ "$c" -gt "$ncols" ]; then
+    echo "Error: invalid column '$c' (the file has $ncols columns)" >&2
+    exit 3
+  fi
+done
+
+for c in "$@"; do
+  name=$(head -n 1 "$file" | cut -d "$d" -f "$c")
+  sum=0
+  for v in $(tail -n +2 "$file" | cut -d "$d" -f "$c"); do
+    sum=$((sum + v))
+  done
+  echo "$name: $sum"
+done
+echo "Rows: $(tail -n +2 "$file" | wc -l)"
+
+@@ex 1325 notes_cmd | notes.sh: a command with subcommands
+@@level 4
+@@cmds shift, "$*", case, sed -i, exit codes
+@@readme
+Write `notes.sh`, a tiny note keeper that stores one note per line in `$HOME/notes.txt`:
+
+```
+notes.sh add <text>...     append a note
+notes.sh list              show the notes
+notes.sh del <n>           delete note number n
+notes.sh count             how many notes there are
+```
+
+- `add`: the note is all the remaining arguments joined by single spaces (`"$*"` after `shift`).
+  Append it to the file (create it if needed) and print `Added note N`, N = its line number.
+- `list`: print every note as `N: text`; if there are no notes (file missing or empty) print `No notes`.
+- `del n`: delete line `n` and print `Deleted note n: text` (the deleted text).
+- `count`: print `N notes` (`0 notes` if the file does not exist).
+
+Errors (message on **stderr**, wording free, the file is not modified):
+
+| error | exit |
+|-------|------|
+| no arguments (show the usage) | 1 |
+| unknown subcommand (name it) | 2 |
+| wrong number of arguments for the subcommand (`add` needs at least 1, `del` exactly 1, `list`/`count` none) | 3 |
+| `del` with something that is not the number of an existing note (name it) | 4 |
+@@check
+SCRIPT_NAME=notes.sh
+SEEDS=3
+COMPARE="stdout exit errmsg files"
+setup() {
+  local i
+  case $(rand 3) in
+    0) ;;
+    1) : > "$H/notes.txt" ;;
+    *) for ((i = 0; i < $(randr 2 5); i++)); do words "$(randr 1 4)"; done > "$H/notes.txt" ;;
+  esac
+}
+ARGS=('' 'list' 'count' 'add buy milk' 'add "x  y" z' 'del 2' 'del 1' 'del 99' 'del x' 'del 0' 'del' 'list extra' 'count 1' 'add' 'foo' 'del 1 2' 'LIST')
+extra_check() {
+  local tok
+  if [[ $REF_CODE == [24] ]]; then
+    tok=$(sed -n "s/^[^']*'\(.*\)'.*$/\1/p" <<< "$REF_ERR" | head -n 1)
+    [[ -n $tok ]] && mentions "$tok"
+  fi
+  true
+}
+@@solution
+#!/bin/bash
+# notes.sh add <text>... | list | del <n> | count
+
+F=$HOME/notes.txt
+
+usage() {
+  echo "Usage: $(basename "$0") add <text>... | list | del <n> | count" >&2
+}
+wrong_args() {
+  echo "Error: wrong number of arguments for '$1'" >&2
+  usage
+  exit 3
+}
+
+if [ $# -eq 0 ]; then
+  usage
+  exit 1
+fi
+cmd=$1
+shift
+
+total=0
+[ -f "$F" ] && total=$(wc -l < "$F")
+
+case $cmd in
+  add)
+    [ $# -ge 1 ] || wrong_args add
+    echo "$*" >> "$F"
+    echo "Added note $((total + 1))"
+    ;;
+  list)
+    [ $# -eq 0 ] || wrong_args list
+    if [ "$total" -eq 0 ]; then
+      echo "No notes"
+    else
+      n=0
+      while IFS= read -r line; do
+        n=$((n + 1))
+        echo "$n: $line"
+      done < "$F"
+    fi
+    ;;
+  del)
+    [ $# -eq 1 ] || wrong_args del
+    if [[ ! $1 =~ ^[1-9][0-9]*$ ]] || [ "$1" -gt "$total" ]; then
+      echo "Error: there is no note '$1'" >&2
+      exit 4
+    fi
+    text=$(sed -n "${1}p" "$F")
+    sed -i "${1}d" "$F"
+    echo "Deleted note $1: $text"
+    ;;
+  count)
+    [ $# -eq 0 ] || wrong_args count
+    echo "$total notes"
+    ;;
+  *)
+    echo "Error: unknown subcommand '$cmd'" >&2
+    usage
+    exit 2
+    ;;
+esac
+
+@@ex 1326 new_project | mkproj.sh: a project skeleton
+@@level 4
+@@cmds ${2:-sh}, [[ =~ ]], case, mkdir -p, chmod, exit codes
+@@readme
+Write `mkproj.sh`:
+
+```
+mkproj.sh name [lang]
+```
+
+It creates, in the current directory, a project called `name` for language `lang` (default `sh`):
+
+```
+name/
+├── README          one line: "# name"
+├── src/
+│   └── main.EXT    (see below)
+└── tests/          empty
+```
+
+| lang | file | content | permissions |
+|------|------|---------|-------------|
+| `sh` | `src/main.sh` | two lines: `#!/bin/bash` and `echo "Hello from name"` | 755 |
+| `py` | `src/main.py` | one line: `print("Hello from name")` | 644 |
+| `c`  | `src/main.c`  | one line: `int main(void) { return 0; }` | 644 |
+
+(`name` in the contents is the project name.) On success print exactly
+`Project <name> created (<lang>)`.
+
+Errors, checked in this order (message on **stderr**, wording free, nothing created):
+
+| error | exit |
+|-------|------|
+| not 1 or 2 arguments (show the usage) | 1 |
+| `name` does not match: a letter followed by letters, digits, `_` or `-` (name it) | 2 |
+| `lang` is not exactly `sh`, `py` or `c` (name it) | 3 |
+| something called `name` already exists in the current directory (file, directory...) (name it) | 4 |
+@@check
+SCRIPT_NAME=mkproj.sh
+SEEDS=3
+COMPARE="stdout exit errmsg files"
+setup() {
+  local t
+  t=$(word)$(randr 1 9)
+  mkdir -p "$t/src"; echo "# $t" > "$t/README"; echo "$t" > taken
+  echo "$(word)_$(randr 10 99)$(pick '' -x _y) $(pick sh py c)" > newargs
+  echo "$(word)" > "note$(randr 1 3)"
+  echo notes > notes
+}
+ARGS=('demo' 'tool_1 c' 'my-proj py' '$(cat newargs)' '$(cat taken)' '$(cat taken) py' 'notes sh' '"bad name"' '9lives' '_x' 'ok java' 'x-y SH' '' 'a b c' 'ok ""' 'bad.name c')
+extra_check() {
+  local tok
+  if [[ $REF_CODE == [234] ]]; then
+    tok=$(sed -n "s/^[^']*'\(.*\)'.*$/\1/p" <<< "$REF_ERR" | head -n 1)
+    [[ -n $tok ]] && mentions "$tok"
+  fi
+  true
+}
+@@solution
+#!/bin/bash
+# mkproj.sh name [lang] - create a project skeleton
+
+if [ $# -lt 1 ] || [ $# -gt 2 ]; then
+  echo "Usage: $(basename "$0") name [sh|py|c]" >&2
+  exit 1
+fi
+name=$1
+lang=${2-sh}
+
+if [[ ! $name =~ ^[A-Za-z][A-Za-z0-9_-]*$ ]]; then
+  echo "Error: invalid project name '$name'" >&2
+  exit 2
+fi
+case $lang in
+  sh | py | c) ;;
+  *) echo "Error: unknown language '$lang'" >&2; exit 3 ;;
+esac
+# -e is false for a broken symlink, so also check -L
+if [ -e "$name" ] || [ -L "$name" ]; then
+  echo "Error: '$name' already exists" >&2
+  exit 4
+fi
+
+mkdir -p "$name/src" "$name/tests"
+echo "# $name" > "$name/README"
+main=$name/src/main.$lang
+case $lang in
+  sh)
+    printf '#!/bin/bash\necho "Hello from %s"\n' "$name" > "$main"
+    chmod 755 "$main"
+    ;;
+  py) echo "print(\"Hello from $name\")" > "$main" ;;
+  c)  echo 'int main(void) { return 0; }' > "$main" ;;
+esac
+echo "Project $name created ($lang)"
+
+@@ex 1327 rename_ext | chext.sh: changing file extensions
+@@level 4
+@@cmds ${3:-.}, [[ =~ ]], test -f -e, mv, exit codes
+@@readme
+Write `chext.sh`:
+
+```
+chext.sh old new [directory]
+```
+
+It renames every **regular file** directly inside `directory` (default: the current directory; not
+recursive, hidden files excluded) whose name ends in `.old` so that it ends in `.new` instead
+(`report.old` → `report.new`). Extensions are given without the dot and are case-sensitive.
+
+For each candidate, in the order of the `*.old` glob:
+
+- if a file called `<base>.new` already exists there: do not touch it, print
+  `skipped: <name> (<base>.new exists)` on **stderr**
+- otherwise rename it and print `renamed: <name> -> <base>.new` on stdout
+
+(names without the directory). Finally print `Renamed R, skipped S` on stdout and exit 0.
+
+Errors, checked in this order (message on **stderr**, wording free, nothing renamed):
+
+| error | exit |
+|-------|------|
+| not 2 or 3 arguments (show the usage) | 1 |
+| an extension is empty or has characters other than letters and digits (name it) | 2 |
+| `old` and `new` are the same | 3 |
+| `directory` does not exist (name it) | 4 |
+| `directory` is not a directory (name it) | 5 |
+@@check
+SCRIPT_NAME=chext.sh
+SEEDS=3
+COMPARE="stdout exit errmsg files"
+setup() {
+  local d i n
+  mkdir "my files"
+  for d in "my files" .; do
+    for ((i = 1; i <= $(randr 2 4); i++)); do
+      n=$(pick "$(word)$i" "my $(word)$i" "$(word) $(word)$i")
+      echo "$i" > "$d/$n.$(pick txt txt log)"
+    done
+    n=$(word)
+    echo a > "$d/$n.txt"; echo b > "$d/$n.$(pick md log)"
+    echo c > "$d/x$(rand 9).txt.bak"; echo d > "$d/$(word).TXT"; echo e > "$d/.hidden.txt"
+    echo f > "$d/txtfile"; mkdir "$d/dir$(rand 9).txt"
+  done
+  echo z > notadir
+}
+ARGS=('txt md "my files"' 'log txt "my files"' 'txt md' 'txt md noexiste' 'txt md notadir' 'txt txt' 't.x md' 'txt ""' 'txt' 'a b c d' 'log bak "$W/my files"' 'TXT txt')
+extra_check() {
+  local tok
+  if [[ $REF_CODE == [245] ]]; then
+    tok=$(sed -n "s/^[^']*'\(.*\)'.*$/\1/p" <<< "$REF_ERR" | head -n 1)
+    [[ -n $tok ]] && mentions "$tok"
+  fi
+  true
+}
+@@solution
+#!/bin/bash
+# chext.sh old new [directory] - change the extension of regular files
+
+if [ $# -lt 2 ] || [ $# -gt 3 ]; then
+  echo "Usage: $(basename "$0") old new [directory]" >&2
+  exit 1
+fi
+old=$1 new=$2 dir=${3:-.}
+
+for e in "$old" "$new"; do
+  if [[ ! $e =~ ^[A-Za-z0-9]+$ ]]; then
+    echo "Error: invalid extension '$e'" >&2
+    exit 2
+  fi
+done
+if [ "$old" = "$new" ]; then
+  echo "Error: both extensions are '$old'" >&2
+  exit 3
+fi
+if [ ! -e "$dir" ]; then
+  echo "Error: '$dir' does not exist" >&2
+  exit 4
+fi
+if [ ! -d "$dir" ]; then
+  echo "Error: '$dir' is not a directory" >&2
+  exit 5
+fi
+
+r=0 s=0
+for f in "$dir"/*."$old"; do
+  [ -f "$f" ] || continue          # also skips the literal pattern when nothing matches
+  name=$(basename "$f")
+  base=${name%."$old"}
+  if [ -e "$dir/$base.$new" ]; then
+    echo "skipped: $name ($base.$new exists)" >&2
+    s=$((s + 1))
+  else
+    mv "$f" "$dir/$base.$new"
+    echo "renamed: $name -> $base.$new"
+    r=$((r + 1))
+  fi
+done
+echo "Renamed $r, skipped $s"
+
+@@ex 1328 set_compare | samelines.sh: do two files have the same lines?
+@@level 4
+@@cmds sort -u, grep -F -x -v -f, exit status 0/1/2 like diff
+@@readme
+Write `samelines.sh`, which compares the **sets** of lines of two files (order and repetitions do
+not matter), and reports through its exit code like `diff`/`cmp` do:
+
+```
+samelines.sh [-q] file1 file2
+```
+
+Output (unless `-q`, the first argument, is given; with `-q` print nothing on stdout):
+
+1. every distinct line that is only in `file1`, prefixed by `< `, sorted with `sort`
+2. every distinct line that is only in `file2`, prefixed by `> `, sorted with `sort`
+3. `Common: C, only in <file1>: A, only in <file2>: B` (C = distinct lines present in both;
+   file names as given)
+
+Lines are compared **whole** (`apple` is not the same line as `apple pie`).
+
+Exit codes:
+
+| situation | exit |
+|-----------|------|
+| same set of lines | 0 |
+| different | 1 |
+| wrong number of arguments (show the usage on stderr) | 2 |
+| a file is not a readable regular file (message on stderr naming it) | 3 |
+@@check
+SCRIPT_NAME=samelines.sh
+SEEDS=3
+COMPARE="stdout exit errmsg"
+setup() {
+  local pool=() i
+  for ((i = 0; i < 8; i++)); do pool+=("$(word)" "$(word) $(word)"); done
+  for ((i = 0; i < $(randr 4 9); i++)); do pick "${pool[@]}"; done > "list one.txt"
+  for ((i = 0; i < $(randr 4 9); i++)); do pick "${pool[@]}"; done > "list two.txt"
+  echo "${pool[0]}" >> "list one.txt"; echo "${pool[0]} pie" >> "list two.txt"
+  { tac "list one.txt"; head -n 2 "list one.txt"; } > same.txt
+  : > empty.txt
+  echo x > locked.txt; chmod 000 locked.txt
+}
+ARGS=('"list one.txt" "list two.txt"' '-q "list one.txt" "list two.txt"' '"list one.txt" same.txt' '-q same.txt "list one.txt"' '"list two.txt" empty.txt' 'empty.txt empty.txt' '' 'a' '-q a' 'a b c' '"list one.txt" nofile' 'locked.txt same.txt' '-x same.txt empty.txt' '"$W/same.txt" "list one.txt"')
+extra_check() {
+  local tok
+  if [[ $REF_CODE == 3 ]]; then
+    tok=$(sed -n "s/^[^']*'\(.*\)'.*$/\1/p" <<< "$REF_ERR" | head -n 1)
+    [[ -n $tok ]] && mentions "$tok"
+  fi
+  true
+}
+@@solution
+#!/bin/bash
+# samelines.sh [-q] file1 file2 - compare the sets of lines of two files
+
+quiet=0
+if [ "$1" = "-q" ]; then
+  quiet=1
+  shift
+fi
+if [ $# -ne 2 ]; then
+  echo "Usage: $(basename "$0") [-q] file1 file2" >&2
+  exit 2
+fi
+for f in "$1" "$2"; do
+  if [ ! -f "$f" ] || [ ! -r "$f" ]; then
+    echo "Error: '$f' is not a readable regular file" >&2
+    exit 3
+  fi
+done
+
+t1=$(mktemp) t2=$(mktemp)
+sort -u "$1" > "$t1"
+sort -u "$2" > "$t2"
+a=$(grep -cFxv -f "$t2" "$t1")
+b=$(grep -cFxv -f "$t1" "$t2")
+c=$(grep -cFx -f "$t2" "$t1")
+if [ $quiet -eq 0 ]; then
+  grep -Fxv -f "$t2" "$t1" | sed 's/^/< /'
+  grep -Fxv -f "$t1" "$t2" | sed 's/^/> /'
+  echo "Common: $c, only in $1: $a, only in $2: $b"
+fi
+rm -f "$t1" "$t2"
+[ "$a" -eq 0 ] && [ "$b" -eq 0 ] && exit 0
+exit 1
+
+@@ex 1329 mkdirs | mkdirs.sh: numbered directories
+@@level 4
+@@cmds ${3:-dir}, printf %02d, test -e -d, [[ =~ ]], exit codes
+@@readme
+Write `mkdirs.sh`:
+
+```
+mkdirs.sh base count [prefix]
+```
+
+It makes sure that directory `base` contains the entries `<prefix>01`, `<prefix>02`, ...,
+`<prefix>NN` (two digits, NN = `count`); `prefix` defaults to `dir`. For each number, in order:
+
+- if something with that name already exists (directory, file...), print `exists: <base>/<name>`
+  and leave it alone
+- otherwise create the directory and print `created: <base>/<name>`
+
+(`<base>` exactly as given). Finally print `Created C, existing E`.
+
+Errors, checked in this order (message on **stderr**, wording free, nothing created):
+
+| error | exit |
+|-------|------|
+| not 2 or 3 arguments (show the usage) | 1 |
+| `base` does not exist (name it) | 2 |
+| `base` is not a directory (name it) | 3 |
+| `count` is not an integer from 1 to 99 written without leading zeros (name it) | 4 |
+| `prefix` is empty or has characters other than letters and `_` (name it) | 5 |
+@@check
+SCRIPT_NAME=mkdirs.sh
+SEEDS=3
+COMPARE="stdout exit errmsg files"
+setup() {
+  local i
+  mkdir "my base" proj
+  for i in 1 2 3 4 5 6; do
+    case $(rand 4) in
+      0) mkdir "my base/dir0$i" ;;
+      1) echo x > "my base/dir0$i" ;;
+    esac
+  done
+  mkdir "proj/part0$(randr 1 9)"; echo y > "proj/part1$(rand 3)"
+  echo z > file.txt
+}
+ARGS=('"my base" 6' '"my base" 3 run_' 'proj 12 part' '"my base" 0' '"my base" 100' '"my base" 07' '"my base" x' 'nobase 3' 'file.txt 3' '"my base" 3 bad-prefix' '"my base" 2 ""' '' 'a' 'a 1 b c' '"$W/proj" 2 part')
+extra_check() {
+  local tok
+  if [[ $REF_CODE == [2345] ]]; then
+    tok=$(sed -n "s/^[^']*'\(.*\)'.*$/\1/p" <<< "$REF_ERR" | head -n 1)
+    [[ -n $tok ]] && mentions "$tok"
+  fi
+  true
+}
+@@solution
+#!/bin/bash
+# mkdirs.sh base count [prefix] - create numbered directories
+
+if [ $# -lt 2 ] || [ $# -gt 3 ]; then
+  echo "Usage: $(basename "$0") base count [prefix]" >&2
+  exit 1
+fi
+base=$1 count=$2 prefix=${3-dir}
+
+if [ ! -e "$base" ]; then
+  echo "Error: '$base' does not exist" >&2
+  exit 2
+fi
+if [ ! -d "$base" ]; then
+  echo "Error: '$base' is not a directory" >&2
+  exit 3
+fi
+if [[ ! $count =~ ^[1-9][0-9]?$ ]]; then
+  echo "Error: invalid count '$count' (1-99)" >&2
+  exit 4
+fi
+if [[ ! $prefix =~ ^[A-Za-z_]+$ ]]; then
+  echo "Error: invalid prefix '$prefix'" >&2
+  exit 5
+fi
+
+c=0 e=0
+for ((i = 1; i <= count; i++)); do
+  p=$base/$(printf '%s%02d' "$prefix" "$i")
+  if [ -e "$p" ] || [ -L "$p" ]; then
+    echo "exists: $p"
+    e=$((e + 1))
+  else
+    mkdir "$p"
+    echo "created: $p"
+    c=$((c + 1))
+  fi
+done
+echo "Created $c, existing $e"
+
+@@ex 1330 run_all | runall.sh: a batch runner that collects exit codes
+@@level 4
+@@cmds $?, bash -c, while read, option -e, exit codes
+@@readme
+Write `runall.sh`:
+
+```
+runall.sh [-e] file
+```
+
+`file` contains one shell command per line. Skip lines that are empty or whose first character is
+`#`. Run every other line, in order, with `bash -c "<line>"` (in the current directory, with its
+stdout and stderr hidden and its stdin from `/dev/null`), and print
+
+- `[ok] <line>` if it exited with 0
+- `[fail N] <line>` otherwise (N = its exit code)
+
+If `-e` is given (only as the first argument), stop after the first failing command and print
+`Stopped at line L` (L = its line number in the file, counting every line).
+
+Finally print `Commands: N, failed: F` (N = commands actually run).
+
+Exit codes:
+
+| situation | exit |
+|-----------|------|
+| every command run succeeded | 0 |
+| some command failed | 1 |
+| wrong arguments (not `[-e] file`; show the usage on stderr) | 2 |
+| `file` is not a readable regular file (message on stderr naming it) | 3 |
+@@check
+SCRIPT_NAME=runall.sh
+SEEDS=3
+COMPARE="stdout exit errmsg files"
+setup() {
+  local i pool
+  mkdir sub
+  randtext 4 > data.txt
+  pool=("true" "false" "test -d sub" "test -f nothere" "grep -q $(word) data.txt" "exit $(randr 3 9)"
+        "ls \"no such file\"" "mkdir -p \"out/$(word)\"" "touch \"sub/f $(rand 9)\"" "# a comment" ""
+        "cat data.txt" "[ \$(wc -l < data.txt) -gt 2 ]" "cp data.txt \"sub/copy $(rand 9)\"")
+  for ((i = 0; i < $(randr 5 9); i++)); do pick "${pool[@]}"; done > "jobs list.txt"
+  echo false >> "jobs list.txt"
+  printf '%s\n' "# setup" "mkdir -p build" "" "test -d build" "echo done" > "all ok.txt"
+  echo true > locked.txt; chmod 000 locked.txt
+}
+ARGS=('"jobs list.txt"' '-e "jobs list.txt"' '"all ok.txt"' '-e "all ok.txt"' '' '-e' 'a b' '-e a b' 'nofile' 'locked.txt' 'sub' '-x "jobs list.txt"' '"$W/all ok.txt"')
+extra_check() {
+  local tok
+  if [[ $REF_CODE == 3 ]]; then
+    tok=$(sed -n "s/^[^']*'\(.*\)'.*$/\1/p" <<< "$REF_ERR" | head -n 1)
+    [[ -n $tok ]] && mentions "$tok"
+  fi
+  true
+}
+@@solution
+#!/bin/bash
+# runall.sh [-e] file - run each line of file as a command and report exit codes
+
+stop=0
+if [ "$1" = "-e" ]; then
+  stop=1
+  shift
+fi
+if [ $# -ne 1 ]; then
+  echo "Usage: $(basename "$0") [-e] file" >&2
+  exit 2
+fi
+file=$1
+if [ ! -f "$file" ] || [ ! -r "$file" ]; then
+  echo "Error: '$file' is not a readable regular file" >&2
+  exit 3
+fi
+
+n=0 failed=0 num=0
+while IFS= read -r line; do
+  num=$((num + 1))
+  [ -z "$line" ] && continue
+  [[ $line == \#* ]] && continue
+  bash -c "$line" > /dev/null 2>&1 < /dev/null
+  rc=$?
+  n=$((n + 1))
+  if [ $rc -eq 0 ]; then
+    echo "[ok] $line"
+  else
+    echo "[fail $rc] $line"
+    failed=$((failed + 1))
+    if [ $stop -eq 1 ]; then
+      echo "Stopped at line $num"
+      break
+    fi
+  fi
+done < "$file"
+echo "Commands: $n, failed: $failed"
+[ $failed -eq 0 ] || exit 1

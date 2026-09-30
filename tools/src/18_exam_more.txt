@@ -1,0 +1,1155 @@
+@@topic 18_exam_scripts | Exam-style scripts
+@@ex 1823 countext | Counting files by extension
+@@level 3
+@@cmds find -name, sort, wc -l
+@@readme
+Write `countext.sh DIR EXT` (both arguments mandatory) that prints, sorted, the path of every
+**regular file** under `DIR` (recursively) whose name ends in `.EXT` (`EXT` is given **without** a
+leading dot, matched literally and case-sensitively), then a final line
+`Total: N files with extension .EXT`.
+
+Checks, in this order:
+- not exactly 2 arguments: usage message on stderr, exit **1**.
+- `DIR` is not a directory: message on stderr (naming `DIR`), exit **2**.
+
+File names may contain spaces.
+@@check
+SCRIPT_NAME=countext.sh
+COMPARE="stdout exit errmsg"
+setup() {
+  mkdir -p d/sub "d/con espacio"
+  local i f
+  for i in $(seq 10); do
+    f="d/$(pick . sub 'con espacio')/$(word)$i$(pick .txt .txt .log .sh '')"
+    touch "$f"
+  done
+  mkdir -p d/carpeta.txt
+  touch d/rare.txtx d/notxt
+  touch nodir
+}
+ARGS=('' 'd' 'd txt extra' 'd txt' 'd log' 'd sh' 'd zzz' 'noexiste txt' 'nodir txt')
+extra_check() {
+  case $REF_CODE in
+    1) [[ -n $ERR ]] || fail "expected a usage message on stderr" ;;
+    2) mentions "$(eval "set -- $CASE"; echo "$1")" ;;
+  esac
+}
+@@solution
+#!/bin/bash
+# countext.sh DIR EXT
+[ $# -eq 2 ] || { echo "Usage: $(basename "$0") DIR EXT" >&2; exit 1; }
+DIR=$1
+EXT=$2
+[ -d "$DIR" ] || { echo "Error: '$DIR' is not a directory" >&2; exit 2; }
+R=$(find "$DIR" -type f -name "*.$EXT" | sort)
+[ -n "$R" ] && echo "$R"
+N=$(find "$DIR" -type f -name "*.$EXT" | wc -l)
+echo "Total: $N files with extension .$EXT"
+
+@@ex 1824 emptyfiles | Finding empty files
+@@level 3
+@@cmds find -empty, sort, wc -l
+@@readme
+Write `emptyfiles.sh [DIR]` (default: current directory) that prints, recursively and sorted, the
+path of every **regular empty file** under `DIR`, then a final line `Total: N empty files`.
+
+Checks, in this order:
+- more than 1 argument: usage on stderr, exit **1**.
+- `DIR` is not a directory: message on stderr (naming `DIR`), exit **2**.
+
+Empty directories and symbolic links are never listed, even if they point to an empty file. File
+names may contain spaces.
+@@check
+SCRIPT_NAME=emptyfiles.sh
+COMPARE="stdout exit errmsg"
+setup() {
+  mkdir -p d/sub "d/con espacio"
+  local i f
+  for i in $(seq 8); do
+    f="d/$(pick . sub 'con espacio')/$(word)$i"
+    if [[ $(rand 2) == 1 ]]; then : > "$f"; else echo "$(word)" > "$f"; fi
+  done
+  mkdir -p d/vacio_dir
+  ln -s "$(word)" d/enlace_roto
+  touch nodir
+}
+ARGS=('' 'd' 'd extra' 'noexiste' 'nodir' 'd/sub')
+extra_check() {
+  case $REF_CODE in
+    1) [[ -n $ERR ]] || fail "expected a usage message on stderr" ;;
+    2) mentions "$(eval "set -- $CASE"; echo "${1:-.}")" ;;
+  esac
+}
+@@solution
+#!/bin/bash
+# emptyfiles.sh [DIR]
+[ $# -le 1 ] || { echo "Usage: $(basename "$0") [DIR]" >&2; exit 1; }
+DIR=${1:-.}
+[ -d "$DIR" ] || { echo "Error: '$DIR' is not a directory" >&2; exit 2; }
+R=$(find "$DIR" -type f -empty | sort)
+[ -n "$R" ] && echo "$R"
+N=$(find "$DIR" -type f -empty | wc -l)
+echo "Total: $N empty files"
+
+@@ex 1825 nlinks | Files with more than one hard link
+@@level 3
+@@cmds find -links, -printf %n, sort
+@@readme
+Write `nlinks.sh [DIR]` (default: current directory) that prints, recursively and sorted by path,
+every **regular file** under `DIR` that has more than one hard link, as `<path> <nlinks>`
+(`nlinks` is the hard-link count, like `find -printf '%n'` or `stat -c %h`). Finally print
+`Total: N files`.
+
+Checks, in this order:
+- more than 1 argument: usage on stderr, exit **1**.
+- `DIR` is not a directory: message on stderr (naming `DIR`), exit **2**.
+
+Directories are never listed (their own link count is unrelated to hard links between files).
+@@check
+SCRIPT_NAME=nlinks.sh
+COMPARE="stdout exit errmsg"
+setup() {
+  mkdir -p d/sub "d/con espacio"
+  touch d/original1
+  ln d/original1 d/copia1
+  local i f g
+  for i in $(seq 5); do
+    f="d/$(pick . sub 'con espacio')/$(word)$i"
+    touch "$f"
+    if [[ $(rand 2) == 1 ]]; then
+      g="d/$(pick . sub)/$(word)link$i"
+      ln "$f" "$g"
+    fi
+  done
+  touch solo
+}
+ARGS=('' 'd' 'd extra' 'noexiste' 'solo' 'd/sub')
+extra_check() {
+  case $REF_CODE in
+    1) [[ -n $ERR ]] || fail "expected a usage message on stderr" ;;
+    2) mentions "$(eval "set -- $CASE"; echo "${1:-.}")" ;;
+  esac
+}
+@@solution
+#!/bin/bash
+# nlinks.sh [DIR]
+[ $# -le 1 ] || { echo "Usage: $(basename "$0") [DIR]" >&2; exit 1; }
+DIR=${1:-.}
+[ -d "$DIR" ] || { echo "Error: '$DIR' is not a directory" >&2; exit 2; }
+R=$(find "$DIR" -type f -links +1 -printf '%p %n\n' | sort)
+[ -n "$R" ] && echo "$R"
+N=$(find "$DIR" -type f -links +1 | wc -l)
+echo "Total: $N files"
+
+@@ex 1826 topwords | Most frequent words in a file
+@@level 3
+@@cmds tr -cs, sort, uniq -c, head
+@@readme
+Write `topwords.sh FILE [N]` (N default 5) that finds the N most frequent words in `FILE`. A "word"
+is a maximal run of letters (`a-zA-Z`); everything else (digits, punctuation, spaces) is a
+separator, and case is ignored (words are compared and printed in **lowercase**).
+
+Print one line `<word> <count>` per word, ordered by count **descending**, ties broken
+**alphabetically** (ascending). If `FILE` has fewer than N distinct words, print all of them.
+Finally print `Total distinct words: N` (the real number of distinct words, not the requested N).
+
+Checks, in this order:
+- wrong number of arguments (not 1 or 2), or a given `N` that is not a positive integer: usage on
+  stderr, exit **1**.
+- `FILE` is not a readable regular file: message on stderr (naming `FILE`), exit **2**.
+@@check
+SCRIPT_NAME=topwords.sh
+COMPARE="stdout exit errmsg"
+setup() {
+  local i
+  {
+    for i in 1 2 3; do echo "Bash Bash bash SCRIPT script Process process thread $(word) $(word)"; done
+    echo "Kernel kernel KERNEL buffer buffer cache Cache signal"
+  } > texto.txt
+  cp texto.txt "texto con espacio.txt"
+  : > vacio.txt
+  touch noleible.txt
+  chmod 000 noleible.txt
+}
+ARGS=('' 'texto.txt' 'texto.txt 0' 'texto.txt abc' 'texto.txt 2' 'texto.txt' 'texto.txt 100' 'noleible.txt' 'noexiste.txt' 'vacio.txt' '"texto con espacio.txt" 3' 'a b c')
+extra_check() {
+  case $REF_CODE in
+    1) [[ -n $ERR ]] || fail "expected a usage message on stderr" ;;
+    2) mentions "$(eval "set -- $CASE"; echo "$1")" ;;
+  esac
+}
+@@solution
+#!/bin/bash
+# topwords.sh FILE [N]
+usage() { echo "Usage: $(basename "$0") FILE [N]" >&2; }
+[ $# -ge 1 ] && [ $# -le 2 ] || { usage; exit 1; }
+FILE=$1
+N=${2:-5}
+if [ $# -eq 2 ]; then [[ $N =~ ^[0-9]+$ ]] && [ "$N" -gt 0 ] || { usage; exit 1; }; fi
+[ -f "$FILE" ] && [ -r "$FILE" ] || { echo "Error: cannot read '$FILE'" >&2; exit 2; }
+WORDS=$(tr -cs 'A-Za-z' '\n' < "$FILE" | tr 'A-Z' 'a-z' | grep -v '^$')
+echo "$WORDS" | sort | uniq -c | sort -k1,1nr -k2,2 | head -n "$N" | while read -r c w; do echo "$w $c"; done
+TOTAL=$(echo "$WORDS" | sort -u | grep -c .)
+echo "Total distinct words: $TOTAL"
+
+@@ex 1827 csvcol | Extracting a column from a CSV
+@@level 3
+@@cmds cut -d, -f, wc -l
+@@readme
+Write `csvcol.sh FILE COL` that prints the result of `cut -d, -f<COL> FILE` (COL is 1-based; a line
+with fewer fields than `COL` behaves exactly as `cut` defines it), then a final line
+`Total: N lines` where N is the number of lines of `FILE` (`wc -l`).
+
+Checks, in this order:
+- not exactly 2 arguments, or `COL` not a positive integer: usage on stderr, exit **1**.
+- `FILE` is not a readable regular file: message on stderr (naming `FILE`), exit **2**.
+@@check
+SCRIPT_NAME=csvcol.sh
+COMPARE="stdout exit errmsg"
+setup() {
+  mkfl datos.csv \
+    "$(word),$(word),$(randr 1 99),$(word)" \
+    "$(word),$(word),$(randr 1 99),$(word)" \
+    "$(word),$(word)" \
+    "$(word),$(word),$(randr 1 99),$(word),$(word)"
+  cp datos.csv "datos con espacio.csv"
+  touch novalido.csv
+  chmod 000 novalido.csv
+  mkdir carpeta.csv
+}
+ARGS=('' 'datos.csv' 'datos.csv 0' 'datos.csv abc' 'datos.csv 1' 'datos.csv 3' 'datos.csv 5' 'novalido.csv 1' 'noexiste.csv 1' '"datos con espacio.csv" 2' 'carpeta.csv 1' 'a b c')
+extra_check() {
+  case $REF_CODE in
+    1) [[ -n $ERR ]] || fail "expected a usage message on stderr" ;;
+    2) mentions "$(eval "set -- $CASE"; echo "$1")" ;;
+  esac
+}
+@@solution
+#!/bin/bash
+# csvcol.sh FILE COL
+usage() { echo "Usage: $(basename "$0") FILE COL" >&2; }
+[ $# -eq 2 ] || { usage; exit 1; }
+FILE=$1
+COL=$2
+[[ $COL =~ ^[0-9]+$ ]] && [ "$COL" -gt 0 ] || { usage; exit 1; }
+[ -f "$FILE" ] && [ -r "$FILE" ] || { echo "Error: cannot read '$FILE'" >&2; exit 2; }
+cut -d, -f"$COL" "$FILE"
+N=$(wc -l < "$FILE")
+echo "Total: $N lines"
+
+@@ex 1828 newer_than | Files newer than a reference file
+@@level 3
+@@cmds find -newer, sort, wc -l
+@@readme
+Write `newer_than.sh DIR REFFILE` that prints, recursively and sorted, the path of every
+**regular file** under `DIR` that is strictly newer (modification time) than `REFFILE`
+(`find -newer`), then `Total: N files`.
+
+Checks, in this order:
+- not exactly 2 arguments: usage on stderr, exit **1**.
+- `DIR` is not a directory: message on stderr (naming `DIR`), exit **2**.
+- `REFFILE` does not exist: message on stderr (naming `REFFILE`), exit **3**.
+@@check
+SCRIPT_NAME=newer_than.sh
+COMPARE="stdout exit errmsg"
+setup() {
+  mkdir -p d/sub "d/con espacio"
+  touch -d '2026-06-10 09:00' ref.txt
+  touch -d '2026-06-05 09:00' d/old_guaranteed
+  touch -d '2026-06-20 09:00' d/new_guaranteed
+  local i f
+  for i in $(seq 5); do
+    f="d/$(pick . sub 'con espacio')/$(word)$i"
+    touch -d "2026-06-$(printf '%02d' "$(randr 1 28)") 09:00" "$f"
+  done
+  touch archivo_no_dir
+}
+ARGS=('' 'd ref.txt' 'd ref.txt extra' 'noexiste ref.txt' 'archivo_no_dir ref.txt' 'd noexiste.txt' 'd/sub ref.txt')
+extra_check() {
+  case $REF_CODE in
+    1) [[ -n $ERR ]] || fail "expected a usage message on stderr" ;;
+    2) mentions "$(eval "set -- $CASE"; echo "$1")" ;;
+    3) mentions "$(eval "set -- $CASE"; echo "$2")" ;;
+  esac
+}
+@@solution
+#!/bin/bash
+# newer_than.sh DIR REFFILE
+usage() { echo "Usage: $(basename "$0") DIR REFFILE" >&2; }
+[ $# -eq 2 ] || { usage; exit 1; }
+DIR=$1
+REF=$2
+[ -d "$DIR" ] || { echo "Error: '$DIR' is not a directory" >&2; exit 2; }
+[ -e "$REF" ] || { echo "Error: '$REF' does not exist" >&2; exit 3; }
+R=$(find "$DIR" -type f -newer "$REF" | sort)
+[ -n "$R" ] && echo "$R"
+N=$(find "$DIR" -type f -newer "$REF" | wc -l)
+echo "Total: $N files"
+
+@@ex 1829 dupnames | Filenames common to two directories
+@@level 3
+@@cmds find -maxdepth, sort, uniq -d
+@@readme
+Write `dupnames.sh DIR1 DIR2` that prints, sorted, the **name** (basename) of every regular file
+that exists **directly inside** both `DIR1` and `DIR2` (not recursive, hidden files ignored), then
+`Total: N common names`.
+
+Checks, in this order:
+- not exactly 2 arguments: usage on stderr, exit **1**.
+- `DIR1` is not a directory: message on stderr (naming `DIR1`), exit **2**.
+- `DIR2` is not a directory: message on stderr (naming `DIR2`), exit **3**.
+@@check
+SCRIPT_NAME=dupnames.sh
+COMPARE="stdout exit errmsg"
+setup() {
+  mkdir -p uno dos
+  touch uno/comun1 dos/comun1
+  touch uno/comun2 dos/comun2
+  touch "uno/con espacio" "dos/con espacio"
+  local i
+  for i in $(seq 4); do touch "uno/$(word)$i"; done
+  for i in $(seq 4); do touch "dos/$(word)$i"; done
+  touch uno/.oculto dos/.oculto
+  mkdir uno/sub dos/sub
+  touch soloarchivo
+}
+ARGS=('' 'uno' 'uno dos extra' 'noexiste dos' 'uno noexiste' 'soloarchivo dos' 'uno soloarchivo' 'uno dos')
+extra_check() {
+  case $REF_CODE in
+    1) [[ -n $ERR ]] || fail "expected a usage message on stderr" ;;
+    2) mentions "$(eval "set -- $CASE"; echo "$1")" ;;
+    3) mentions "$(eval "set -- $CASE"; echo "$2")" ;;
+  esac
+}
+@@solution
+#!/bin/bash
+# dupnames.sh DIR1 DIR2
+usage() { echo "Usage: $(basename "$0") DIR1 DIR2" >&2; }
+[ $# -eq 2 ] || { usage; exit 1; }
+D1=$1
+D2=$2
+[ -d "$D1" ] || { echo "Error: '$D1' is not a directory" >&2; exit 2; }
+[ -d "$D2" ] || { echo "Error: '$D2' is not a directory" >&2; exit 3; }
+list() { find "$1" -maxdepth 1 -type f ! -name '.*' -printf '%f\n'; }
+R=$( { list "$D1"; list "$D2"; } | sort | uniq -d )
+[ -n "$R" ] && echo "$R"
+N=$(echo "$R" | grep -c .)
+echo "Total: $N common names"
+
+@@ex 1830 countperm | Counting files with an exact permission mode
+@@level 3
+@@cmds find -perm, sort, wc -l
+@@readme
+Write `countperm.sh DIR MODE` (`MODE` is an octal permission like `chmod` accepts: 3 or 4 digits)
+that prints, recursively and sorted, the path of every **regular file** under `DIR` whose
+permission bits are **exactly** `MODE` (`find -perm MODE`, an exact match — a 3-digit `MODE` never
+matches a file with the setuid/setgid/sticky bit set), then `Total: N files with mode MODE`.
+
+Checks, in this order:
+- not exactly 2 arguments: usage on stderr, exit **1**.
+- `DIR` is not a directory: message on stderr (naming `DIR`), exit **2**.
+- `MODE` is not 3-4 octal digits: message on stderr, exit **3**.
+@@check
+SCRIPT_NAME=countperm.sh
+COMPARE="stdout exit errmsg"
+setup() {
+  mkdir -p d/sub "d/con espacio"
+  touch d/a1 d/a2 d/sub/b1 "d/con espacio/c1" d/b2 d/c3
+  chmod 644 d/a1 d/a2
+  chmod 755 d/sub/b1
+  chmod 600 "d/con espacio/c1"
+  chmod 4755 d/b2
+  chmod 700 d/c3
+  touch archivo_no_dir
+}
+ARGS=('' 'd' 'd 644 extra' 'd 644' 'd 755' 'd 600' 'd 4755' 'd 999' 'd abc' 'noexiste 644' 'archivo_no_dir 644')
+extra_check() {
+  case $REF_CODE in
+    1) [[ -n $ERR ]] || fail "expected a usage message on stderr" ;;
+    2) mentions "$(eval "set -- $CASE"; echo "$1")" ;;
+  esac
+}
+@@solution
+#!/bin/bash
+# countperm.sh DIR MODE
+usage() { echo "Usage: $(basename "$0") DIR MODE" >&2; }
+[ $# -eq 2 ] || { usage; exit 1; }
+DIR=$1
+MODE=$2
+[ -d "$DIR" ] || { echo "Error: '$DIR' is not a directory" >&2; exit 2; }
+[[ $MODE =~ ^[0-7]{3,4}$ ]] || { echo "Error: '$MODE' is not a valid permission mode" >&2; exit 3; }
+R=$(find "$DIR" -type f -perm "$MODE" | sort)
+[ -n "$R" ] && echo "$R"
+N=$(find "$DIR" -type f -perm "$MODE" | wc -l)
+echo "Total: $N files with mode $MODE"
+
+@@ex 1831 splitlines | Splitting a file into fixed-size chunks
+@@level 3
+@@cmds split -l -d, ls, wc -l
+@@readme
+Write `splitlines.sh FILE N` that splits `FILE` into chunks of at most `N` lines, equivalent to
+`split -l N -d -a 2 FILE FILE.part` (parts named `FILE.part00`, `FILE.part01`... in the same
+directory as `FILE`). Finally print `Created K parts` (K = number of part files written).
+
+Checks, in this order:
+- not exactly 2 arguments: usage on stderr, exit **1**.
+- `FILE` is not a readable regular file: message on stderr (naming `FILE`), exit **2**.
+- `N` is not a positive integer: message on stderr, exit **3**.
+@@check
+SCRIPT_NAME=splitlines.sh
+COMPARE="stdout exit errmsg files"
+setup() {
+  local i
+  : > texto.txt
+  for i in $(seq 12); do echo "$(words 3)" >> texto.txt; done
+  cp texto.txt "texto con espacio.txt"
+  touch vacio.txt
+  touch noleible.txt
+  chmod 000 noleible.txt
+}
+ARGS=('' 'texto.txt' 'texto.txt 4 extra' 'texto.txt 4' 'texto.txt 100' 'texto.txt 0' 'texto.txt abc' 'noleible.txt 3' 'noexiste.txt 3' '"texto con espacio.txt" 5' 'vacio.txt 3')
+extra_check() {
+  case $REF_CODE in
+    1) [[ -n $ERR ]] || fail "expected a usage message on stderr" ;;
+    2) mentions "$(eval "set -- $CASE"; echo "$1")" ;;
+  esac
+}
+@@solution
+#!/bin/bash
+# splitlines.sh FILE N
+usage() { echo "Usage: $(basename "$0") FILE N" >&2; }
+[ $# -eq 2 ] || { usage; exit 1; }
+FILE=$1
+N=$2
+[ -f "$FILE" ] && [ -r "$FILE" ] || { echo "Error: cannot read '$FILE'" >&2; exit 2; }
+[[ $N =~ ^[0-9]+$ ]] && [ "$N" -gt 0 ] || { echo "Error: '$N' is not a positive integer" >&2; exit 3; }
+split -l "$N" -d -a 2 "$FILE" "$FILE.part"
+K=$(ls -1 "$FILE".part?? 2>/dev/null | wc -l)
+echo "Created $K parts"
+
+@@ex 1832 flatten_copy | Flattening a source tree into one directory
+@@level 4
+@@cmds find, sort, cp, basename
+@@readme
+Write `flatten_copy.sh SRC DEST`. It copies every **regular file** found anywhere under `SRC`
+(recursively) into `DEST`, **flattened**: only the file's basename is used, its subdirectory is
+discarded.
+
+Files are processed **in the order of `find SRC -type f | sort`** (sorted by full source path). For
+each one: if `DEST` does not yet contain an entry with that basename, copy it there and print
+`copied: <source path>`; if it does (either because it already existed before the script ran, or
+because an **earlier** file in this same run was copied there), skip it without touching `DEST` and
+print `skip: <name> (from <source path>)` to stderr.
+
+If `DEST` does not exist, create it (`mkdir -p`) and print `Directory <DEST> created` on stdout
+*before* processing any file. Finally print `Copied N files, skipped M collisions`.
+
+Checks, in this order:
+- not exactly 2 arguments: usage on stderr, exit **1**.
+- `SRC` does not exist: message on stderr (naming `SRC`), exit **2**.
+- `SRC` exists but is not a directory: message on stderr (naming `SRC`), exit **3**.
+- `DEST` exists but is not a directory: message on stderr (naming `DEST`), exit **4**.
+
+File and directory names may contain spaces.
+@@check
+SCRIPT_NAME=flatten_copy.sh
+SEEDS=2
+COMPARE="stdout exit errmsg files"
+setup() {
+  mkdir -p src/a src/b/c "src/con espacio"
+  echo one > src/a/dato.txt
+  echo two > src/b/c/dato.txt
+  echo three > "src/con espacio/otro archivo.txt"
+  local i
+  for i in $(seq 4); do echo "$(word)" > "src/$(pick . a 'b/c')/$(word)$i.txt"; done
+  mkdir -p destino
+  echo preexistente > "destino/otro archivo.txt"
+  touch destino_es_archivo
+  touch noesdir
+}
+ARGS=('' 'src' 'src destino extra' 'noexiste destino' 'noesdir destino' 'src destino_es_archivo' 'src destino' 'src "$W/dest_nuevo"' '"$W/src" destino')
+extra_check() {
+  case $REF_CODE in
+    1) [[ $ERR == *flatten_copy.sh* || $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* ]] || fail "the usage message should show how to call the script" ;;
+    2) mentions "$(eval "set -- $CASE"; echo "$1")" ;;
+    3) mentions "$(eval "set -- $CASE"; echo "$1")" ;;
+    4) mentions "$(eval "set -- $CASE"; echo "$2")" ;;
+  esac
+}
+@@solution
+#!/bin/bash
+# flatten_copy.sh SRC DEST
+usage() { echo "Usage: $(basename "$0") SRC DEST" >&2; }
+[ $# -eq 2 ] || { usage; exit 1; }
+SRC=$1
+DEST=$2
+[ -e "$SRC" ] || { echo "Error: '$SRC' does not exist" >&2; exit 2; }
+[ -d "$SRC" ] || { echo "Error: '$SRC' is not a directory" >&2; exit 3; }
+if [ -e "$DEST" ] && [ ! -d "$DEST" ]; then
+  echo "Error: '$DEST' is not a directory" >&2
+  exit 4
+fi
+if [ ! -d "$DEST" ]; then
+  mkdir -p "$DEST" || exit 5
+  echo "Directory $DEST created"
+fi
+N=0; M=0
+while IFS= read -r -d '' f; do
+  name=$(basename "$f")
+  if [ -e "$DEST/$name" ]; then
+    echo "skip: $name (from $f)" >&2
+    M=$((M + 1))
+  else
+    cp "$f" "$DEST/$name" && { echo "copied: $f"; N=$((N + 1)); }
+  fi
+done < <(find "$SRC" -type f -print0 | sort -z)
+echo "Copied $N files, skipped $M collisions"
+
+@@ex 1833 perm_fix | Normalising permissions of shell scripts
+@@level 4
+@@cmds find -name, stat -c %a, chmod
+@@readme
+Write `perm_fix.sh DIR MODE` (`MODE`: octal permission, 3 or 4 digits, like `chmod`). For every
+**regular file** ending in `.sh` under `DIR` (recursively) whose current permission bits differ from
+`MODE`, set them to `MODE` (`chmod`) and print `fixed: <path>` (sorted by path). Files whose
+permissions already equal `MODE` are left untouched and not printed. Finally print
+`Fixed N files (already correct: K)`.
+
+Checks, in this order:
+- not exactly 2 arguments: usage on stderr, exit **1**.
+- `DIR` does not exist: message on stderr (naming `DIR`), exit **2**.
+- `DIR` exists but is not a directory: message on stderr (naming `DIR`), exit **3**.
+- `MODE` is not 3-4 octal digits: message on stderr, exit **4**.
+@@check
+SCRIPT_NAME=perm_fix.sh
+SEEDS=2
+COMPARE="stdout exit errmsg files"
+setup() {
+  mkdir -p d/sub "d/con espacio"
+  touch d/a.sh d/sub/b.sh "d/con espacio/c.sh" d/keep.sh d/notme.txt
+  chmod 644 d/a.sh
+  chmod 755 d/sub/b.sh
+  chmod 600 "d/con espacio/c.sh"
+  chmod 755 d/keep.sh
+  chmod 644 d/notme.txt
+  mkdir d/carpeta.sh
+  touch soloarchivo
+}
+ARGS=('' 'd' 'd 755 extra' 'noexiste 755' 'soloarchivo 755' 'd abc' 'd 9999' 'd 755' 'd 644')
+extra_check() {
+  case $REF_CODE in
+    1) [[ $ERR == *perm_fix.sh* || $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* ]] || fail "the usage message should show how to call the script" ;;
+    2) mentions "$(eval "set -- $CASE"; echo "$1")" ;;
+    3) mentions "$(eval "set -- $CASE"; echo "$1")" ;;
+    4) mentions "$(eval "set -- $CASE"; echo "$2")" ;;
+  esac
+}
+@@solution
+#!/bin/bash
+# perm_fix.sh DIR MODE
+usage() { echo "Usage: $(basename "$0") DIR MODE" >&2; }
+[ $# -eq 2 ] || { usage; exit 1; }
+DIR=$1
+MODE=$2
+[ -e "$DIR" ] || { echo "Error: '$DIR' does not exist" >&2; exit 2; }
+[ -d "$DIR" ] || { echo "Error: '$DIR' is not a directory" >&2; exit 3; }
+[[ $MODE =~ ^[0-7]{3,4}$ ]] || { echo "Error: '$MODE' is not a valid permission mode" >&2; exit 4; }
+N=0; K=0
+while IFS= read -r -d '' f; do
+  cur=$(stat -c '%a' "$f")
+  if [ "$((8#$cur))" -ne "$((8#$MODE))" ]; then
+    chmod "$MODE" "$f" && { echo "fixed: $f"; N=$((N + 1)); }
+  else
+    K=$((K + 1))
+  fi
+done < <(find "$DIR" -type f -name '*.sh' -print0 | sort -z)
+echo "Fixed $N files (already correct: $K)"
+
+@@ex 1834 archive_recent | Archiving recently modified files
+@@level 4
+@@cmds find -mtime, tar -czf --null -T -
+@@readme
+Write `archive_recent.sh DIR DAYS DEST`. It archives every **regular file** under `DIR`
+(recursively) that matches `find DIR -type f -mtime -DAYS` (i.e. modified less than `DAYS` days
+ago) into `DEST/recent.tar.gz`, with paths inside the archive **relative to `DIR`**.
+
+If `DEST` does not exist, create it (`mkdir -p`) and print `Created <DEST>` on stdout. Finally print
+`Archived N files into <DEST>/recent.tar.gz` (`DEST` printed exactly as given).
+
+Checks, in this order:
+- not exactly 3 arguments: usage on stderr, exit **1**.
+- `DIR` does not exist: message on stderr (naming `DIR`), exit **2**.
+- `DIR` exists but is not a directory: message on stderr (naming `DIR`), exit **3**.
+- `DAYS` is not a non-negative integer: message on stderr, exit **4**.
+- no file matches: message on stderr, exit **5**, and **no** archive is created (nor is `DEST`).
+@@check
+SCRIPT_NAME=archive_recent.sh
+SEEDS=2
+COMPARE="stdout exit errmsg files"
+setup() {
+  mkdir -p proyecto/src "proyecto/con espacio" dest vacio
+  touch -d '1 days ago' proyecto/src/reciente1.log
+  touch -d '3 days ago' proyecto/src/reciente2.log
+  touch -d '10 days ago' proyecto/viejo1.log
+  touch -d '20 days ago' "proyecto/con espacio/viejo2.log"
+  local i
+  for i in $(seq 4); do touch -d "$(pick 1 2 8 15 25) days ago" "proyecto/$(pick . src)/$(word)$i.dat"; done
+  touch archivo_no_dir
+}
+ARGS=('' 'proyecto' 'proyecto 5' 'proyecto 5 dest extra' 'noexiste 5 dest' 'archivo_no_dir 5 dest' 'proyecto abc dest' 'proyecto 5 dest' 'vacio 5 dest' 'proyecto 5 "$W/nuevodest"')
+extra_check() {
+  case $REF_CODE in
+    1) [[ $ERR == *archive_recent.sh* || $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* ]] || fail "the usage message should show how to call the script" ;;
+    2) mentions "$(eval "set -- $CASE"; echo "$1")" ;;
+    3) mentions "$(eval "set -- $CASE"; echo "$1")" ;;
+    4) mentions "$(eval "set -- $CASE"; echo "$2")" ;;
+    5) [[ -n $ERR ]] || fail "expected an error message on stderr" ;;
+  esac
+}
+@@solution
+#!/bin/bash
+# archive_recent.sh DIR DAYS DEST
+usage() { echo "Usage: $(basename "$0") DIR DAYS DEST" >&2; }
+[ $# -eq 3 ] || { usage; exit 1; }
+DIR=$1
+DAYS=$2
+DEST=$3
+[ -e "$DIR" ] || { echo "Error: '$DIR' does not exist" >&2; exit 2; }
+[ -d "$DIR" ] || { echo "Error: '$DIR' is not a directory" >&2; exit 3; }
+[[ $DAYS =~ ^[0-9]+$ ]] || { echo "Error: '$DAYS' is not a non-negative integer" >&2; exit 4; }
+N=$(find "$DIR" -type f -mtime -"$DAYS" | wc -l)
+[ "$N" -gt 0 ] || { echo "Error: no files modified in the last $DAYS days under $DIR" >&2; exit 5; }
+if [ ! -d "$DEST" ]; then mkdir -p "$DEST" || exit 6; echo "Created $DEST"; fi
+ABS=$(cd "$DEST" && pwd)/recent.tar.gz
+( cd "$DIR" && find . -type f -mtime -"$DAYS" -print0 | tar -czf "$ABS" --null -T - )
+echo "Archived $N files into $DEST/recent.tar.gz"
+
+@@ex 1835 log_columns | Counting log lines by level
+@@level 4
+@@cmds cut -d' ', sort, uniq -c
+@@readme
+Write `log_columns.sh LOGFILE`. Every line of `LOGFILE` has the form `TIMESTAMP LEVEL MESSAGE...`
+(fields separated by single spaces: `TIMESTAMP` and `LEVEL` are always exactly one field each,
+`MESSAGE` is the rest of the line). Print, for every distinct `LEVEL` that appears, one line
+`<LEVEL> <count>` — sorted by count **descending**, ties broken by `LEVEL` alphabetically
+(ascending, case-sensitive). Finally print `Total: N lines`.
+
+Checks, in this order:
+- not exactly 1 argument: usage on stderr, exit **1**.
+- `LOGFILE` is not a readable regular file: message on stderr (naming `LOGFILE`), exit **2**.
+@@check
+SCRIPT_NAME=log_columns.sh
+SEEDS=2
+COMPARE="stdout exit errmsg"
+setup() {
+  local i lvl
+  : > acceso.log
+  for i in $(seq 20); do
+    lvl=$(pick INFO ERROR WARN INFO DEBUG)
+    echo "2026-06-1$(rand 9) $lvl mensaje $(word) $i" >> acceso.log
+  done
+  cp acceso.log "acceso con espacio.log"
+  touch vacio.log
+  touch privado.log
+  chmod 000 privado.log
+  mkdir carpeta.log
+}
+ARGS=('' 'acceso.log extra' 'acceso.log' 'noexiste.log' 'privado.log' 'vacio.log' '"acceso con espacio.log"' 'carpeta.log')
+extra_check() {
+  case $REF_CODE in
+    1) [[ $ERR == *log_columns.sh* || $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* ]] || fail "the usage message should show how to call the script" ;;
+    2) mentions "$(eval "set -- $CASE"; echo "$1")" ;;
+  esac
+}
+@@solution
+#!/bin/bash
+# log_columns.sh LOGFILE
+usage() { echo "Usage: $(basename "$0") LOGFILE" >&2; }
+[ $# -eq 1 ] || { usage; exit 1; }
+LOG=$1
+[ -f "$LOG" ] && [ -r "$LOG" ] || { echo "Error: cannot read '$LOG'" >&2; exit 2; }
+cut -d' ' -f2 "$LOG" | sort | uniq -c | sort -k1,1nr -k2,2 | while read -r c lvl; do echo "$lvl $c"; done
+N=$(wc -l < "$LOG")
+echo "Total: $N lines"
+
+@@ex 1836 wc_totals | Line/word/byte totals by extension
+@@level 4
+@@cmds find -name, wc -l -w -c
+@@readme
+Write `wc_totals.sh DIR EXT`. For every **regular file** under `DIR` (recursively) whose name ends
+in `.EXT` (`EXT` without a leading dot), sorted by path, print
+`<path>: <lines> lines, <words> words, <bytes> bytes` (as `wc -l -w -c` reports for that single
+file). Finally print `TOTAL: <files> files, <lines> lines, <words> words, <bytes> bytes`.
+
+Checks, in this order:
+- not exactly 2 arguments: usage on stderr, exit **1**.
+- `DIR` does not exist: message on stderr (naming `DIR`), exit **2**.
+- `DIR` exists but is not a directory: message on stderr (naming `DIR`), exit **3**.
+@@check
+SCRIPT_NAME=wc_totals.sh
+SEEDS=2
+COMPARE="stdout exit errmsg"
+setup() {
+  mkdir -p d/sub "d/con espacio"
+  mkfl d/a.txt "linea uno" "linea dos"
+  mkfl d/sub/b.txt "$(words 3)"
+  mkfl "d/con espacio/c.txt" "$(words 5)" "$(words 2)" "$(words 1)"
+  touch d/vacio.txt
+  echo otro > d/notme.dat
+  mkdir d/carpeta.txt
+  touch archivo_no_dir
+}
+ARGS=('' 'd' 'd txt extra' 'noexiste txt' 'archivo_no_dir txt' 'd txt' 'd dat' 'd zzz')
+extra_check() {
+  case $REF_CODE in
+    1) [[ $ERR == *wc_totals.sh* || $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* ]] || fail "the usage message should show how to call the script" ;;
+    2) mentions "$(eval "set -- $CASE"; echo "$1")" ;;
+    3) mentions "$(eval "set -- $CASE"; echo "$1")" ;;
+  esac
+}
+@@solution
+#!/bin/bash
+# wc_totals.sh DIR EXT
+usage() { echo "Usage: $(basename "$0") DIR EXT" >&2; }
+[ $# -eq 2 ] || { usage; exit 1; }
+DIR=$1
+EXT=$2
+[ -e "$DIR" ] || { echo "Error: '$DIR' does not exist" >&2; exit 2; }
+[ -d "$DIR" ] || { echo "Error: '$DIR' is not a directory" >&2; exit 3; }
+TF=0; TL=0; TW=0; TC=0
+while IFS= read -r -d '' f; do
+  read -r l w c _ <<< "$(wc -l -w -c < "$f")"
+  echo "$f: $l lines, $w words, $c bytes"
+  TF=$((TF + 1)); TL=$((TL + l)); TW=$((TW + w)); TC=$((TC + c))
+done < <(find "$DIR" -type f -name "*.$EXT" -print0 | sort -z)
+echo "TOTAL: $TF files, $TL lines, $TW words, $TC bytes"
+
+@@ex 1837 linkfarm | Building a symlink farm for .conf files
+@@level 4
+@@cmds find -name, ln -s, readlink
+@@readme
+Write `linkfarm.sh SRC DEST`. For every **regular file** ending in `.conf` under `SRC`
+(recursively), create in `DEST` (flat, not recursive) a **symbolic link** — with an **absolute**
+target — named after the file's basename, pointing to it.
+
+Files are processed **in the order of `find SRC -type f -name '*.conf' | sort`**. For each one: if
+`DEST` does not yet contain an entry with that basename, create the link and print
+`linked: <source path>`; otherwise (pre-existing, or created by an earlier file this run) skip it
+and print `skip: <name>` to stderr.
+
+If `DEST` does not exist, create it (`mkdir -p`) and print `Directory <DEST> created` on stdout
+before processing any file. Finally print `Linked N files, skipped M collisions`.
+
+Checks, in this order:
+- not exactly 2 arguments: usage on stderr, exit **1**.
+- `SRC` does not exist: message on stderr (naming `SRC`), exit **2**.
+- `SRC` exists but is not a directory: message on stderr (naming `SRC`), exit **3**.
+- `DEST` exists but is not a directory: message on stderr (naming `DEST`), exit **4**.
+@@check
+SCRIPT_NAME=linkfarm.sh
+SEEDS=2
+COMPARE="stdout exit errmsg files"
+setup() {
+  mkdir -p src/app src/db "src/con espacio"
+  echo cfg1 > src/app/site.conf
+  echo cfg2 > src/db/site.conf
+  echo cfg3 > "src/con espacio/otro.conf"
+  local i
+  for i in $(seq 3); do echo "$(word)" > "src/$(pick app db)/$(word)$i.conf"; done
+  mkdir -p destino
+  touch destino/otro.conf
+  touch destino_es_archivo
+  touch noesdir
+}
+ARGS=('' 'src' 'src destino extra' 'noexiste destino' 'noesdir destino' 'src destino_es_archivo' 'src destino' 'src "$W/dest_nuevo"' '"$W/src" destino')
+extra_check() {
+  case $REF_CODE in
+    1) [[ $ERR == *linkfarm.sh* || $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* ]] || fail "the usage message should show how to call the script" ;;
+    2) mentions "$(eval "set -- $CASE"; echo "$1")" ;;
+    3) mentions "$(eval "set -- $CASE"; echo "$1")" ;;
+    4) mentions "$(eval "set -- $CASE"; echo "$2")" ;;
+  esac
+}
+@@solution
+#!/bin/bash
+# linkfarm.sh SRC DEST
+usage() { echo "Usage: $(basename "$0") SRC DEST" >&2; }
+[ $# -eq 2 ] || { usage; exit 1; }
+SRC=$1
+DEST=$2
+[ -e "$SRC" ] || { echo "Error: '$SRC' does not exist" >&2; exit 2; }
+[ -d "$SRC" ] || { echo "Error: '$SRC' is not a directory" >&2; exit 3; }
+if [ -e "$DEST" ] && [ ! -d "$DEST" ]; then
+  echo "Error: '$DEST' is not a directory" >&2
+  exit 4
+fi
+if [ ! -d "$DEST" ]; then
+  mkdir -p "$DEST" || exit 5
+  echo "Directory $DEST created"
+fi
+ABS_SRC=$(cd "$SRC" && pwd)
+N=0; M=0
+while IFS= read -r -d '' f; do
+  name=$(basename "$f")
+  if [ -e "$DEST/$name" ] || [ -L "$DEST/$name" ]; then
+    echo "skip: $name" >&2
+    M=$((M + 1))
+  else
+    abs="$ABS_SRC/${f#"$SRC"/}"
+    ln -s "$abs" "$DEST/$name" && { echo "linked: $f"; N=$((N + 1)); }
+  fi
+done < <(find "$SRC" -type f -name '*.conf' -print0 | sort -z)
+echo "Linked $N files, skipped $M collisions"
+
+@@ex 1838 fix_broken_links | Removing broken symbolic links
+@@level 4
+@@cmds find -xtype l, readlink, rm
+@@readme
+Write `fix_broken_links.sh DIR`. It finds every **broken symbolic link** under `DIR` (recursively;
+a broken link is one whose target does not exist, `find -xtype l`), prints
+`broken: <path> -> <target>` (`<target>` as `readlink` reports it, sorted by path), removes each of
+them (`rm`), and finally prints `Removed N broken links`.
+
+Checks, in this order:
+- not exactly 1 argument: usage on stderr, exit **1**.
+- `DIR` does not exist: message on stderr (naming `DIR`), exit **2**.
+- `DIR` exists but is not a directory: message on stderr (naming `DIR`), exit **3**.
+
+Valid (non-broken) symbolic links are left untouched and never printed.
+@@check
+SCRIPT_NAME=fix_broken_links.sh
+SEEDS=2
+COMPARE="stdout exit errmsg files"
+setup() {
+  mkdir -p d/sub "d/con espacio"
+  touch d/real.txt
+  ln -s real.txt d/valido1
+  ln -s "$(pwd)/d/real.txt" d/sub/valido2
+  ln -s noexiste.txt d/roto1
+  ln -s /no/existe/nunca "d/con espacio/roto2"
+  ln -s otronoexiste d/sub/roto3
+  touch archivo_no_dir
+}
+ARGS=('' 'd extra' 'd' 'noexiste' 'archivo_no_dir' 'd/sub')
+extra_check() {
+  case $REF_CODE in
+    1) [[ $ERR == *fix_broken_links.sh* || $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* ]] || fail "the usage message should show how to call the script" ;;
+    2) mentions "$(eval "set -- $CASE"; echo "$1")" ;;
+    3) mentions "$(eval "set -- $CASE"; echo "$1")" ;;
+  esac
+}
+@@solution
+#!/bin/bash
+# fix_broken_links.sh DIR
+usage() { echo "Usage: $(basename "$0") DIR" >&2; }
+[ $# -eq 1 ] || { usage; exit 1; }
+DIR=$1
+[ -e "$DIR" ] || { echo "Error: '$DIR' does not exist" >&2; exit 2; }
+[ -d "$DIR" ] || { echo "Error: '$DIR' is not a directory" >&2; exit 3; }
+N=0
+while IFS= read -r -d '' f; do
+  echo "broken: $f -> $(readlink "$f")"
+  rm "$f" && N=$((N + 1))
+done < <(find "$DIR" -xtype l -print0 | sort -z)
+echo "Removed $N broken links"
+
+@@ex 1839 org_by_date | Organising files into year-month folders
+@@level 4
+@@cmds date -r, mkdir -p, mv
+@@readme
+Write `org_by_date.sh DIR`. It moves every **regular file directly inside** `DIR` (not recursive,
+hidden files ignored) into a subdirectory `DIR/<YYYY-MM>` based on its modification time
+(`date -r FILE +%Y-%m`), creating the subdirectory when needed.
+
+Print `<name> -> <YYYY-MM>/<name>` for each move, **in the alphabetical order of the original
+names** (as the `*` glob gives them). Then, sorted by bucket name, print `<YYYY-MM>: <count> files`
+for every bucket used. Finally print `Total: N files organized`.
+
+Checks, in this order:
+- not exactly 1 argument: usage on stderr, exit **1**.
+- `DIR` is not a directory: message on stderr (naming `DIR`), exit **2**.
+@@check
+SCRIPT_NAME=org_by_date.sh
+SEEDS=2
+COMPARE="stdout exit errmsg files"
+setup() {
+  mkdir -p d/sub
+  touch -d '2026-03-15 10:00' d/a1.txt
+  touch -d '2026-03-15 11:00' "d/b con espacio.txt"
+  touch -d '2026-04-15 09:00' d/c1.txt
+  touch -d '2026-04-15 09:30' d/d1.txt
+  touch -d '2026-05-15 08:00' d/e1.txt
+  touch -d '2026-04-15 09:00' d/sub/notme.txt
+  touch d/.oculto
+  touch archivo_no_dir
+}
+ARGS=('' 'd extra' 'd' 'noexiste' 'archivo_no_dir' 'd/sub')
+extra_check() {
+  case $REF_CODE in
+    1) [[ $ERR == *org_by_date.sh* || $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* ]] || fail "the usage message should show how to call the script" ;;
+    2) mentions "$(eval "set -- $CASE"; echo "$1")" ;;
+  esac
+}
+@@solution
+#!/bin/bash
+# org_by_date.sh DIR
+usage() { echo "Usage: $(basename "$0") DIR" >&2; }
+[ $# -eq 1 ] || { usage; exit 1; }
+DIR=$1
+[ -d "$DIR" ] || { echo "Error: '$DIR' is not a directory" >&2; exit 2; }
+declare -A C
+N=0
+for f in "$DIR"/*; do
+  [ -f "$f" ] || continue
+  name=$(basename "$f")
+  bucket=$(date -r "$f" +%Y-%m)
+  mkdir -p "$DIR/$bucket"
+  mv "$f" "$DIR/$bucket/"
+  echo "$name -> $bucket/$name"
+  C[$bucket]=$(( ${C[$bucket]:-0} + 1 ))
+  N=$((N + 1))
+done
+for b in "${!C[@]}"; do echo "$b: ${C[$b]} files"; done | sort
+echo "Total: $N files organized"
+
+@@ex 1840 verify_backup | Verifying a backup copy
+@@level 4
+@@cmds find, cmp -s
+@@readme
+Write `verify_backup.sh SRC DEST`. For every **regular file** under `SRC` (recursively), sorted by
+its path **relative to `SRC`**, compare it to the file at the same relative path in `DEST`:
+
+- missing in `DEST`: print `MISSING <relpath>`
+- present in `DEST` but not a regular file, or a regular file with different content (`cmp -s`):
+  print `DIFF <relpath>`
+- present and byte-identical: print `OK <relpath>`
+
+Finally print `SRC has N files: <ok> ok, <diff> differing, <missing> missing`.
+
+Checks, in this order:
+- not exactly 2 arguments: usage on stderr, exit **1**.
+- `SRC` does not exist: message on stderr (naming `SRC`), exit **2**.
+- `SRC` exists but is not a directory: message on stderr (naming `SRC`), exit **3**.
+- `DEST` does not exist: message on stderr (naming `DEST`), exit **4**.
+- `DEST` exists but is not a directory: message on stderr (naming `DEST`), exit **5**.
+@@check
+SCRIPT_NAME=verify_backup.sh
+SEEDS=2
+COMPARE="stdout exit errmsg"
+setup() {
+  mkdir -p src/a src/b "src/con espacio" dest/a dest/b
+  echo contenido1 > src/a/f1.txt
+  cp src/a/f1.txt dest/a/f1.txt
+  echo contenido2 > src/b/f2.txt
+  echo distinto > dest/b/f2.txt
+  echo contenido3 > "src/con espacio/f3.txt"
+  local i w
+  for i in $(seq 3); do
+    w=$(word)$i
+    echo "dato $w" > "src/a/$w.txt"
+    cp "src/a/$w.txt" "dest/a/$w.txt"
+  done
+  touch src_no_dir dest_no_dir
+}
+ARGS=('' 'src' 'src dest extra' 'noexiste dest' 'src_no_dir dest' 'src noexiste' 'src dest_no_dir' 'src dest')
+extra_check() {
+  case $REF_CODE in
+    1) [[ $ERR == *verify_backup.sh* || $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* ]] || fail "the usage message should show how to call the script" ;;
+    2) mentions "$(eval "set -- $CASE"; echo "$1")" ;;
+    3) mentions "$(eval "set -- $CASE"; echo "$1")" ;;
+    4) mentions "$(eval "set -- $CASE"; echo "$2")" ;;
+    5) mentions "$(eval "set -- $CASE"; echo "$2")" ;;
+  esac
+}
+@@solution
+#!/bin/bash
+# verify_backup.sh SRC DEST
+usage() { echo "Usage: $(basename "$0") SRC DEST" >&2; }
+[ $# -eq 2 ] || { usage; exit 1; }
+SRC=$1
+DEST=$2
+[ -e "$SRC" ] || { echo "Error: '$SRC' does not exist" >&2; exit 2; }
+[ -d "$SRC" ] || { echo "Error: '$SRC' is not a directory" >&2; exit 3; }
+[ -e "$DEST" ] || { echo "Error: '$DEST' does not exist" >&2; exit 4; }
+[ -d "$DEST" ] || { echo "Error: '$DEST' is not a directory" >&2; exit 5; }
+OK=0; DIF=0; MISS=0; N=0
+while IFS= read -r -d '' f; do
+  rel=${f#"$SRC"/}
+  N=$((N + 1))
+  if [ ! -e "$DEST/$rel" ]; then
+    echo "MISSING $rel"; MISS=$((MISS + 1))
+  elif [ -f "$DEST/$rel" ] && cmp -s "$f" "$DEST/$rel"; then
+    echo "OK $rel"; OK=$((OK + 1))
+  else
+    echo "DIFF $rel"; DIF=$((DIF + 1))
+  fi
+done < <(find "$SRC" -type f -print0 | sort -z)
+echo "SRC has $N files: $OK ok, $DIF differing, $MISS missing"
+
+@@ex 1841 du_alert | Files over a size threshold
+@@level 4
+@@cmds find -size, -printf %s, sort
+@@readme
+Write `du_alert.sh DIR LIMIT_KB`. It prints every **regular file** under `DIR` (recursively) whose
+size is strictly more than `LIMIT_KB` kibibytes — that means more than `LIMIT_KB * 1024` **exact**
+bytes (equivalent to `find DIR -type f -size +$((LIMIT_KB*1024))c`; do **not** use `du`, which rounds
+to block size). Sorted by size **descending**, then path (ascending) for ties, as
+`<bytes> bytes <path>`. Finally print `Total: N files over LIMIT_KB KB (SUM bytes)` (SUM = sum of
+the sizes of those files, in bytes).
+
+Checks, in this order:
+- not exactly 2 arguments: usage on stderr, exit **1**.
+- `DIR` does not exist: message on stderr (naming `DIR`), exit **2**.
+- `DIR` exists but is not a directory: message on stderr (naming `DIR`), exit **3**.
+- `LIMIT_KB` is not a positive integer: message on stderr, exit **4**.
+@@check
+SCRIPT_NAME=du_alert.sh
+SEEDS=2
+COMPARE="stdout exit errmsg"
+setup() {
+  mkdir -p d/a "d/con espacio"
+  bigfile d/a/f1 4096
+  bigfile d/a/f2 10240
+  bigfile "d/con espacio/f3" 20480
+  bigfile d/f4 1024
+  bigfile d/f5 5120
+  touch archivo_no_dir
+}
+ARGS=('' 'd' 'd 5 extra' 'noexiste 5' 'archivo_no_dir 5' 'd abc' 'd 5' 'd 100' 'd 3')
+extra_check() {
+  case $REF_CODE in
+    1) [[ $ERR == *du_alert.sh* || $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* ]] || fail "the usage message should show how to call the script" ;;
+    2) mentions "$(eval "set -- $CASE"; echo "$1")" ;;
+    3) mentions "$(eval "set -- $CASE"; echo "$1")" ;;
+    4) mentions "$(eval "set -- $CASE"; echo "$2")" ;;
+  esac
+}
+@@solution
+#!/bin/bash
+# du_alert.sh DIR LIMIT_KB
+usage() { echo "Usage: $(basename "$0") DIR LIMIT_KB" >&2; }
+[ $# -eq 2 ] || { usage; exit 1; }
+DIR=$1
+LIMIT=$2
+[ -e "$DIR" ] || { echo "Error: '$DIR' does not exist" >&2; exit 2; }
+[ -d "$DIR" ] || { echo "Error: '$DIR' is not a directory" >&2; exit 3; }
+[[ $LIMIT =~ ^[0-9]+$ ]] && [ "$LIMIT" -gt 0 ] || { echo "Error: '$LIMIT' is not a positive integer" >&2; exit 4; }
+BYTES=$((LIMIT * 1024))
+find "$DIR" -type f -size +"${BYTES}"c -printf '%s %p\n' | sort -k1,1nr -k2 | while read -r sz name; do echo "$sz bytes $name"; done
+N=0; SUM=0
+while IFS= read -r sz; do N=$((N + 1)); SUM=$((SUM + sz)); done < <(find "$DIR" -type f -size +"${BYTES}"c -printf '%s\n')
+echo "Total: $N files over $LIMIT KB ($SUM bytes)"
+
+@@ex 1842 fix_shebang | Fixing missing or wrong shebang lines
+@@level 4
+@@cmds head -n 1, mv, chmod
+@@readme
+Write `fix_shebang.sh DIR`. For every **regular file** ending in `.sh` under `DIR` (recursively,
+sorted by path): if its first line is **not exactly** `#!/bin/bash` (an empty file has no first
+line, so it counts as not matching), prepend a new first line `#!/bin/bash` before the file's
+existing content, **preserving the file's permissions**, and print `fixed: <path>`. Files that
+already start with exactly that line are left untouched and not printed. Finally print
+`Fixed N of M scripts` (M = total `.sh` files found).
+
+Checks, in this order:
+- not exactly 1 argument: usage on stderr, exit **1**.
+- `DIR` does not exist: message on stderr (naming `DIR`), exit **2**.
+- `DIR` exists but is not a directory: message on stderr (naming `DIR`), exit **3**.
+@@check
+SCRIPT_NAME=fix_shebang.sh
+SEEDS=2
+COMPARE="stdout exit errmsg files"
+setup() {
+  mkdir -p d/sub "d/con espacio"
+  mkfl d/ok.sh '#!/bin/bash' 'echo hola'
+  mkfl d/sub/nosheb.sh 'echo sin shebang' 'echo mas'
+  mkfl "d/con espacio/otro.sh" '#!/bin/sh' 'echo distinto'
+  : > d/vacio.sh
+  mkfl d/notme.txt 'echo no aplica'
+  touch archivo_no_dir
+}
+ARGS=('' 'd extra' 'd' 'noexiste' 'archivo_no_dir' 'd/sub')
+extra_check() {
+  case $REF_CODE in
+    1) [[ $ERR == *fix_shebang.sh* || $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* ]] || fail "the usage message should show how to call the script" ;;
+    2) mentions "$(eval "set -- $CASE"; echo "$1")" ;;
+    3) mentions "$(eval "set -- $CASE"; echo "$1")" ;;
+  esac
+}
+@@solution
+#!/bin/bash
+# fix_shebang.sh DIR
+usage() { echo "Usage: $(basename "$0") DIR" >&2; }
+[ $# -eq 1 ] || { usage; exit 1; }
+DIR=$1
+[ -e "$DIR" ] || { echo "Error: '$DIR' does not exist" >&2; exit 2; }
+[ -d "$DIR" ] || { echo "Error: '$DIR' is not a directory" >&2; exit 3; }
+N=0; M=0
+while IFS= read -r -d '' f; do
+  M=$((M + 1))
+  first=$(head -n 1 "$f")
+  if [ "$first" != "#!/bin/bash" ]; then
+    mode=$(stat -c '%a' "$f")
+    tmp="$f.fixshebang.tmp"
+    { echo "#!/bin/bash"; cat "$f"; } > "$tmp"
+    chmod "$mode" "$tmp"
+    mv "$tmp" "$f"
+    echo "fixed: $f"
+    N=$((N + 1))
+  fi
+done < <(find "$DIR" -type f -name '*.sh' -print0 | sort -z)
+echo "Fixed $N of $M scripts"
+
+@@ex 1843 purge_empty_dirs | Removing empty directories recursively
+@@level 4
+@@cmds find -depth -empty, rmdir, mapfile
+@@readme
+Write `purge_empty_dirs.sh DIR`. It removes every empty directory under `DIR` (excluding `DIR`
+itself), **repeating** until none remain: a directory that becomes empty only after its own empty
+subdirectories were removed must also be removed (a directory that still contains a regular file is
+never removed, even if all its subdirectories are gone).
+
+Print, **sorted**, the path of every directory removed (the full set, regardless of the order they
+were actually removed in), then `Removed N empty directories`.
+
+Checks, in this order:
+- not exactly 1 argument: usage on stderr, exit **1**.
+- `DIR` does not exist: message on stderr (naming `DIR`), exit **2**.
+- `DIR` exists but is not a directory: message on stderr (naming `DIR`), exit **3**.
+@@check
+SCRIPT_NAME=purge_empty_dirs.sh
+SEEDS=2
+COMPARE="stdout exit errmsg files"
+setup() {
+  mkdir -p d/vacio1/vacio2/vacio3 d/vacio4 d/lleno
+  touch d/lleno/archivo.txt
+  mkdir -p "d/con espacio/subvacio"
+  mkdir -p d/mixto/vacioA d/mixto/vacioB
+  touch d/mixto/no_borrar.txt
+  touch archivo_no_dir
+}
+ARGS=('' 'd extra' 'noexiste' 'archivo_no_dir' 'd/lleno' 'd/mixto' 'd')
+extra_check() {
+  case $REF_CODE in
+    1) [[ $ERR == *purge_empty_dirs.sh* || $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* ]] || fail "the usage message should show how to call the script" ;;
+    2) mentions "$(eval "set -- $CASE"; echo "$1")" ;;
+    3) mentions "$(eval "set -- $CASE"; echo "$1")" ;;
+  esac
+}
+@@solution
+#!/bin/bash
+# purge_empty_dirs.sh DIR
+usage() { echo "Usage: $(basename "$0") DIR" >&2; }
+[ $# -eq 1 ] || { usage; exit 1; }
+DIR=$1
+[ -e "$DIR" ] || { echo "Error: '$DIR' does not exist" >&2; exit 2; }
+[ -d "$DIR" ] || { echo "Error: '$DIR' is not a directory" >&2; exit 3; }
+ALL=()
+while :; do
+  mapfile -d '' -t batch < <(find "$DIR" -mindepth 1 -depth -type d -empty -print0)
+  [ ${#batch[@]} -eq 0 ] && break
+  for d in "${batch[@]}"; do rmdir "$d" && ALL+=("$d"); done
+done
+N=${#ALL[@]}
+if [ "$N" -gt 0 ]; then printf '%s\n' "${ALL[@]}" | sort; fi
+echo "Removed $N empty directories"

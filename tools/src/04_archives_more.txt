@@ -1,0 +1,891 @@
+@@topic 04_archives | tar, gzip & compression
+@@ex 0409 bzip2_basic | bzip2, bunzip2 and -k
+@@level 3
+@@cmds bzip2, bunzip2 -k, bzcat
+@@readme
+The directory `datos` contains:
+
+- a subdirectory `datos/normal/` with several `.dat` files
+- a file `datos/plantilla.dat`
+- an already-compressed `datos/notas.dat.bz2`
+- a file `datos/leeme.txt` that must **not** be touched
+
+Do, in this exact order:
+
+1. Print the content of `datos/notas.dat.bz2` **without** decompressing it to disk (`bzcat`, or
+   `bzip2 -dc`).
+2. Compress every `.dat` file inside `datos/normal` with `bzip2` (each file disappears, replaced
+   by its `.bz2`).
+3. Compress `datos/plantilla.dat` with `bzip2`, but this time **keep** the uncompressed original
+   too (see `bzip2 -k`).
+@@check
+COMPARE="stdout exit files"
+setup() {
+  mkdir -p datos/normal
+  local i n; n=$(randr 2 4)
+  for i in $(seq "$n"); do randtext 3 > "datos/normal/$(word)$i.dat"; done
+  randtext 4 > datos/plantilla.dat
+  randtext 2 > datos/notas.dat
+  bzip2 datos/notas.dat
+  randtext 2 > datos/leeme.txt
+}
+@@solution
+#!/bin/bash
+bzcat datos/notas.dat.bz2
+bzip2 datos/normal/*.dat
+bzip2 -k datos/plantilla.dat
+
+@@ex 0410 xz_keep_sizes | xz -k and measuring sizes
+@@level 3
+@@cmds xz -k, stat -c%s
+@@readme
+The directory `reportes` contains several `.rpt` files of different sizes, and a file
+`aviso.log` that must not be touched.
+
+For every `.rpt` file directly inside `reportes`, **in the order given by the `*.rpt` glob**:
+
+1. Compress it with `xz`, **keeping** the original file too (see `xz -k`).
+2. Print a line:
+
+   ```
+   <file>: <original_bytes> -> <compressed_bytes> bytes
+   ```
+
+   where `<file>` is the path as matched by the glob (e.g. `reportes/alpha1.rpt`), and both sizes
+   are measured with `stat -c%s` — the original size **before** compressing, the compressed size
+   **after**.
+
+Finally print `Total: N files processed`.
+@@check
+COMPARE="stdout exit files"
+setup() {
+  mkdir reportes
+  local i n; n=$(randr 2 4)
+  for i in $(seq "$n"); do randtext "$(randr 3 30)" > "reportes/$(word)$i.rpt"; done
+  randtext 2 > reportes/aviso.log
+}
+@@solution
+#!/bin/bash
+N=0
+for f in reportes/*.rpt; do
+  ORIG=$(stat -c%s "$f")
+  xz -k "$f"
+  COMP=$(stat -c%s "$f.xz")
+  echo "$f: $ORIG -> $COMP bytes"
+  N=$((N + 1))
+done
+echo "Total: $N files processed"
+
+@@ex 0411 tar_bz2_peek | Creating and listing a .tar.bz2
+@@level 3
+@@cmds tar -cjf, tar -tjf, sort
+@@readme
+Create a bzip2-compressed archive `entrega.tar.bz2` containing everything under the directory
+`trabajo` (paths inside must start with `trabajo/`, i.e. run `tar` from the current directory).
+
+Without extracting anything, then print:
+
+1. the **sorted** list of paths it contains, one per line (`tar -tjf entrega.tar.bz2 | sort`)
+2. a line `---`
+3. only the number of entries
+
+Use `tar -cjf`/`tar -tjf` (bzip2), not gzip.
+@@check
+COMPARE="stdout exit"
+setup() {
+  mkdir -p "trabajo/sub 1" trabajo/otros
+  local i n; n=$(randr 2 4)
+  for i in $(seq "$n"); do randtext 2 > "trabajo/$(pick "sub 1" otros)/$(word)$i.txt"; done
+}
+capture() {
+  [[ -f entrega.tar.bz2 ]] || { echo "NO ARCHIVE"; return; }
+  bzip2 -t entrega.tar.bz2 2>/dev/null && echo "valid bzip2" || echo "invalid bzip2"
+  tar -tjf entrega.tar.bz2 2>/dev/null | sort
+}
+@@solution
+#!/bin/bash
+tar -cjf entrega.tar.bz2 trabajo
+tar -tjf entrega.tar.bz2 | sort
+echo ---
+tar -tjf entrega.tar.bz2 | wc -l
+
+@@ex 0412 tar_exclude | Archiving while excluding a subdirectory
+@@level 3
+@@cmds tar -czf --exclude, tar -tzf
+@@readme
+Create a compressed archive `codigo.tgz` with everything under `proyecto` (paths inside must
+start with `proyecto/`), **excluding** the subdirectory `proyecto/tmp` and everything inside it
+(see `tar --exclude`).
+
+Then, without extracting, print the number of entries the archive contains
+(`tar -tzf codigo.tgz | wc -l`).
+@@check
+COMPARE="stdout exit files"
+setup() {
+  mkdir -p proyecto/src proyecto/tmp
+  local i n; n=$(randr 2 4)
+  for i in $(seq "$n"); do randtext 2 > "proyecto/src/$(word)$i.c"; done
+  for i in $(seq "$(randr 1 3)"); do randtext 2 > "proyecto/tmp/$(word)$i.log"; done
+  randtext 2 > proyecto/README
+}
+extra_check() {
+  [[ -f $W/codigo.tgz ]] || { fail "codigo.tgz was not created"; return; }
+  gzip -t "$W/codigo.tgz" 2>/dev/null || { fail "codigo.tgz is not gzip-compressed (use -z)"; return; }
+  local expected got
+  expected=$(cd "$W" && find proyecto -not -path 'proyecto/tmp*' | sed 's#/$##' | sort)
+  got=$(tar tzf "$W/codigo.tgz" | sed 's#/$##' | sort)
+  diff <(echo "$expected") <(echo "$got") >/dev/null || fail "the archive must contain everything under proyecto except proyecto/tmp (check with tar tzf)"
+}
+@@solution
+#!/bin/bash
+tar -czf codigo.tgz --exclude=proyecto/tmp proyecto
+tar -tzf codigo.tgz | wc -l
+
+@@ex 0413 gzip_keep | gzip -k and reporting uncompressed sizes
+@@level 3
+@@cmds gzip -k, zcat, wc -c
+@@readme
+The directory `entradas` contains several `.csv` files, and a decoy file `entradas/notas.tmp`
+that must remain untouched.
+
+1. Compress every `.csv` file in `entradas` with `gzip`, but **keep** the original files too
+   (see `gzip -k`).
+2. Then, for each resulting file `entradas/NAME.csv.gz` (in the order given by the `*.csv.gz`
+   glob), print a line:
+
+   ```
+   entradas/NAME.csv.gz: N bytes
+   ```
+
+   where `N` is the **uncompressed** size, obtained with `zcat ... | wc -c` (do not use `gzip -l`).
+@@check
+COMPARE="stdout exit files"
+setup() {
+  mkdir entradas
+  local i n; n=$(randr 2 4)
+  for i in $(seq "$n"); do randtext "$(randr 2 20)" > "entradas/$(word)$i.csv"; done
+  randtext 2 > entradas/notas.tmp
+}
+@@solution
+#!/bin/bash
+gzip -k entradas/*.csv
+for f in entradas/*.csv.gz; do
+  echo "$f: $(zcat "$f" | wc -c) bytes"
+done
+
+@@ex 0414 xz_recursive | Recursive compression without gzip -r
+@@level 3
+@@cmds find -type f, xz, wc -l
+@@readme
+Recursively compress, **in place**, every regular file under the directory `datos` using `xz`
+(each file becomes `<file>.xz`, keeping its path; empty directories are left as they are). Do not
+touch anything outside `datos` (there is a decoy file `afuera.txt` at the top level).
+
+`xz` has no `-r` option like `gzip`, so you'll need to locate the files yourself (hint:
+`find datos -type f`).
+
+Finally print `Compressed N files.` where `N` is the number of `.xz` files now under `datos`.
+@@check
+COMPARE="stdout exit files"
+setup() {
+  mkdir -p datos/a "datos/b/c 1" datos/vacio
+  local i n; n=$(randr 3 6)
+  for i in $(seq "$n"); do randtext 2 > "datos/$(pick a "b/c 1" .)/$(word)$i.txt"; done
+  randtext 2 > afuera.txt
+}
+@@solution
+#!/bin/bash
+find datos -type f -exec xz {} \;
+echo "Compressed $(find datos -type f -name '*.xz' | wc -l) files."
+
+@@ex 0415 pack_ext | pack_ext.sh: archiving files by extension
+@@level 4
+@@cmds find, tar -cJf, stat -c%s, read
+@@readme
+Write `pack_ext.sh`:
+
+```
+pack_ext.sh SRCDIR EXT OUTFILE
+```
+
+It finds every **regular file** under `SRCDIR` (recursively) whose name ends in `.EXT` (`EXT` is
+given without a leading dot, e.g. `log`), and packs them into `OUTFILE`, an **xz-compressed tar**
+(`tar -cJf`), keeping their paths **relative to `SRCDIR`** (run tar with `-C SRCDIR`).
+
+Then print exactly:
+
+```
+Packed N files (B bytes) into OUTFILE
+```
+
+where `N` is the number of files packed and `B` is the sum of their sizes in bytes (measured
+**before** packing, with `stat -c%s`).
+
+- Wrong number of arguments: usage on stderr, exit **1**.
+- `SRCDIR` does not exist: error naming it on stderr, exit **2**.
+- `SRCDIR` exists but is not a directory: error naming it on stderr, exit **3**.
+- No file under `SRCDIR` ends in `.EXT`: error on stderr, exit **4**, and `OUTFILE` must not be
+  created.
+
+Error messages go to stderr (wording is free). Names may contain spaces.
+@@check
+SCRIPT_NAME=pack_ext.sh
+SEEDS=2
+COMPARE="stdout exit errmsg"
+setup() {
+  mkdir -p "src/sub 1/deep" src/otros
+  local i n=0 f
+  for d in src "src/sub 1" "src/sub 1/deep" src/otros; do
+    for i in 1 2; do
+      n=$((n + 1))
+      f="$d/$(word)$n.$(pick log txt log csv)"
+      randtext "$(randr 1 4)" > "$f"
+    done
+  done
+  echo x > src/catalog.txt
+  echo y > src/logfile
+  mkdir -p other
+  randtext 2 > other/ignored.log
+}
+ARGS=(
+  'src log out.tar.xz'
+  '"src/sub 1" log out2.tar.xz'
+  'src csv out3.tar.xz'
+  'src'
+  'src log'
+  'src log a b'
+  'noexiste log out.tar.xz'
+  'src/catalog.txt log out.tar.xz'
+  'src pdf out.tar.xz'
+)
+capture() {
+  local f
+  for f in *.tar.xz; do
+    [ -e "$f" ] || continue
+    echo "== $f =="
+    tar -tJf "$f" 2>/dev/null | sort
+  done
+}
+extra_check() {
+  case $REF_CODE in
+    1) [[ $ERR == *pack_ext.sh* || $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* ]] || fail "the usage message should show how to call the script" ;;
+    2|3) mentions "$(eval "set -- $CASE"; echo "$1")" ;;
+  esac
+}
+@@solution
+#!/bin/bash
+if [ $# -ne 3 ]; then
+  echo "Usage: $(basename "$0") SRCDIR EXT OUTFILE" >&2
+  exit 1
+fi
+SRC=$1
+EXT=$2
+OUT=$3
+if [ ! -e "$SRC" ]; then
+  echo "Error: $SRC does not exist" >&2
+  exit 2
+fi
+if [ ! -d "$SRC" ]; then
+  echo "Error: $SRC is not a directory" >&2
+  exit 3
+fi
+
+FILES=()
+while IFS= read -r f; do FILES+=("$f"); done < <(cd "$SRC" && find . -type f -name "*.$EXT" | sed 's#^\./##' | sort)
+
+if [ ${#FILES[@]} -eq 0 ]; then
+  echo "Error: no .$EXT files found under $SRC" >&2
+  exit 4
+fi
+
+TOTAL=0
+for f in "${FILES[@]}"; do
+  SZ=$(stat -c%s "$SRC/$f")
+  TOTAL=$((TOTAL + SZ))
+done
+
+tar -cJf "$OUT" -C "$SRC" "${FILES[@]}"
+echo "Packed ${#FILES[@]} files ($TOTAL bytes) into $OUT"
+
+@@ex 0416 unpack_safe | unpack_safe.sh: rejecting path traversal
+@@level 4
+@@cmds tar -tzf, tar -xzf -C, mkdir -p, case
+@@readme
+Write `unpack_safe.sh`:
+
+```
+unpack_safe.sh ARCHIVE DEST
+```
+
+`ARCHIVE` must be a `.tgz`. Before extracting anything, list its entries (`tar -tzf`) and check
+that **none** of them would escape `DEST`: reject any entry whose path is absolute (starts with
+`/`) or contains a `..` component.
+
+- If any such entry exists: print to stderr `Unsafe path in archive: <path>` (the first offending
+  path, in the order `tar -tzf` lists them) and exit **4**. Do not create `DEST` and do not
+  extract anything.
+- Otherwise: if `DEST` does not exist, create it and print `Directory DEST created` (using the
+  `DEST` argument exactly as given). Then extract the whole archive into `DEST`
+  (`tar -xzf ARCHIVE -C DEST`) and print `Extracted N entries into DEST`, where `N` is the result
+  of `tar -tzf ARCHIVE | wc -l`.
+
+Other errors:
+- Wrong number of arguments: usage on stderr, exit **1**.
+- `ARCHIVE` does not exist: error naming it on stderr, exit **2**.
+- `ARCHIVE` exists but `tar -tzf` fails on it: error naming it on stderr, exit **3**.
+
+Names may contain spaces.
+@@check
+SCRIPT_NAME=unpack_safe.sh
+SEEDS=2
+COMPARE="stdout exit errmsg files"
+setup() {
+  mkdir -p base
+  local i n; n=$(randr 2 4)
+  for i in $(seq "$n"); do randtext 2 > "base/$(word)$i.txt"; done
+  local canary; canary="$(word).dat"
+  randtext 2 > "$canary"
+  tar -czf bueno.tgz -C base .
+  ( cd base && tar -P -czf ../malo.tgz . "../$canary" ) 2>/dev/null
+  echo "esto no es un tar" > roto.tgz
+  mkdir "ya existe"
+  randtext 1 > "ya existe/previo.txt"
+}
+ARGS=(
+  ''
+  'bueno.tgz'
+  'bueno.tgz salida1 extra'
+  'noexiste.tgz salida2'
+  'roto.tgz salida3'
+  'malo.tgz salida4'
+  'bueno.tgz salida5'
+  'bueno.tgz "ya existe"'
+)
+extra_check() {
+  case $REF_CODE in
+    1) [[ $ERR == *unpack_safe.sh* || $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* ]] || fail "the usage message should show how to call the script" ;;
+    2|3) mentions "$(eval "set -- $CASE"; echo "$1")" ;;
+    4)
+      local want; want=$(grep -oE '\.\./[^ ]+' <<< "$REF_ERR" | head -1)
+      [[ -n $want ]] && mentions "$want"
+      ;;
+  esac
+}
+@@solution
+#!/bin/bash
+if [ $# -ne 2 ]; then
+  echo "Usage: $(basename "$0") ARCHIVE DEST" >&2
+  exit 1
+fi
+ARCH=$1
+DEST=$2
+if [ ! -e "$ARCH" ]; then
+  echo "Error: $ARCH does not exist" >&2
+  exit 2
+fi
+if ! tar -tzf "$ARCH" >/dev/null 2>&1; then
+  echo "Error: $ARCH is not a valid .tgz archive" >&2
+  exit 3
+fi
+
+while IFS= read -r p; do
+  case $p in
+    /*|../*|*/../*)
+      echo "Unsafe path in archive: $p" >&2
+      exit 4
+      ;;
+  esac
+done < <(tar -tzf "$ARCH" 2>/dev/null)
+
+CREATED=0
+if [ ! -d "$DEST" ]; then
+  mkdir -p "$DEST"
+  CREATED=1
+fi
+tar -xzf "$ARCH" -C "$DEST"
+[ "$CREATED" -eq 1 ] && echo "Directory $DEST created"
+N=$(tar -tzf "$ARCH" | wc -l)
+echo "Extracted $N entries into $DEST"
+
+@@ex 0417 gz_report | gz_report.sh: reporting .gz files in a directory
+@@level 4
+@@cmds find -maxdepth 1, zcat, wc -c, sort
+@@readme
+Write `gz_report.sh`:
+
+```
+gz_report.sh DIR
+```
+
+For every `.gz` file **directly** inside `DIR` (not recursive), in alphabetical order, print:
+
+```
+name.gz: N bytes
+```
+
+where `name.gz` is the file's basename and `N` is its **uncompressed** size, obtained with
+`zcat ... | wc -c`. Finally print:
+
+```
+Total: N files, B bytes
+```
+
+with the file count and the sum of their uncompressed sizes. If there are none, print
+`Total: 0 files, 0 bytes` and exit 0 (this is not an error).
+
+- Wrong number of arguments: usage on stderr, exit **1**.
+- `DIR` does not exist: error naming it on stderr, exit **2**.
+- `DIR` exists but is not a directory: error naming it on stderr, exit **3**.
+
+Names may contain spaces.
+@@check
+SCRIPT_NAME=gz_report.sh
+SEEDS=2
+COMPARE="stdout exit errmsg files"
+setup() {
+  mkdir -p datos/sub
+  local i n; n=$(randr 2 4)
+  for i in $(seq "$n"); do
+    randtext "$(randr 1 6)" > "datos/$(word)$i.txt"
+  done
+  for f in datos/*.txt; do gzip "$f"; done
+  randtext 3 > "datos/notas de clase.txt"
+  gzip "datos/notas de clase.txt"
+  randtext 2 > "datos/sub/anidado.txt"
+  gzip "datos/sub/anidado.txt"
+  echo plano > datos/plano.txt
+  echo x > datos/falso.gz.txt
+  mkdir -p vacio
+}
+ARGS=(
+  ''
+  'datos extra'
+  'noexiste'
+  'datos/plano.txt'
+  'datos'
+  'vacio'
+  '"$W/datos"'
+)
+extra_check() {
+  case $REF_CODE in
+    1) [[ $ERR == *gz_report.sh* || $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* ]] || fail "the usage message should show how to call the script" ;;
+    2|3) mentions "$(eval "set -- $CASE"; echo "$1")" ;;
+  esac
+}
+@@solution
+#!/bin/bash
+if [ $# -ne 1 ]; then
+  echo "Usage: $(basename "$0") DIR" >&2
+  exit 1
+fi
+DIR=$1
+if [ ! -e "$DIR" ]; then
+  echo "Error: $DIR does not exist" >&2
+  exit 2
+fi
+if [ ! -d "$DIR" ]; then
+  echo "Error: $DIR is not a directory" >&2
+  exit 3
+fi
+
+TOTAL_N=0
+TOTAL_B=0
+while IFS= read -r f; do
+  SZ=$(zcat "$f" | wc -c)
+  echo "$(basename "$f"): $SZ bytes"
+  TOTAL_N=$((TOTAL_N + 1))
+  TOTAL_B=$((TOTAL_B + SZ))
+done < <(find "$DIR" -maxdepth 1 -type f -name '*.gz' | sort)
+echo "Total: $TOTAL_N files, $TOTAL_B bytes"
+
+@@ex 0418 tar_grep | tar_grep.sh: searching inside a .tgz
+@@level 4
+@@cmds tar -tzf, tar -xOzf, grep -qF
+@@readme
+Write `tar_grep.sh`:
+
+```
+tar_grep.sh ARCHIVE PATTERN
+```
+
+`ARCHIVE` is a `.tgz`. Without leaving any extracted file behind, print the path of every
+**regular file** entry whose content contains `PATTERN` (a literal substring, not a regex — use
+`grep -F`), one per line, sorted, followed by:
+
+```
+Matches: N
+```
+
+If nothing matches, print only `Matches: 0`.
+
+- Wrong number of arguments: usage on stderr, exit **1**.
+- `ARCHIVE` does not exist: error naming it on stderr, exit **2**.
+- `ARCHIVE` exists but `tar -tzf` fails on it: error naming it on stderr, exit **3**.
+
+Hint: `tar -xOzf ARCHIVE MEMBER` streams a single member's content to stdout without touching
+disk. Names may contain spaces.
+@@check
+SCRIPT_NAME=tar_grep.sh
+SEEDS=2
+COMPARE="stdout exit errmsg files"
+setup() {
+  mkdir -p paquete/docs paquete/src
+  local i n; n=$(randr 3 5)
+  for i in $(seq "$n"); do randtext 2 > "paquete/docs/$(word)$i.txt"; done
+  local k=$(randr 1 3) j
+  for j in $(seq "$k"); do
+    echo "linea $(word) con PALABRA_CLAVE dentro" > "paquete/src/$(word)$j.txt"
+  done
+  echo "no coincide con nada de esto" > "paquete/src/normal.txt"
+  echo "aqui tambien hay PALABRA_CLAVE" > "paquete/docs/archivo con espacios $(word).txt"
+  tar -czf paquete.tgz paquete
+  rm -rf paquete
+  echo basura > roto.tgz
+}
+ARGS=(
+  ''
+  'paquete.tgz'
+  'paquete.tgz PALABRA_CLAVE extra'
+  'noexiste.tgz PALABRA_CLAVE'
+  'roto.tgz PALABRA_CLAVE'
+  'paquete.tgz PALABRA_CLAVE'
+  'paquete.tgz NOEXISTE_PATRON'
+)
+extra_check() {
+  case $REF_CODE in
+    1) [[ $ERR == *tar_grep.sh* || $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* ]] || fail "the usage message should show how to call the script" ;;
+    2|3) mentions "$(eval "set -- $CASE"; echo "$1")" ;;
+  esac
+}
+@@solution
+#!/bin/bash
+if [ $# -ne 2 ]; then
+  echo "Usage: $(basename "$0") ARCHIVE PATTERN" >&2
+  exit 1
+fi
+ARCH=$1
+PAT=$2
+if [ ! -e "$ARCH" ]; then
+  echo "Error: $ARCH does not exist" >&2
+  exit 2
+fi
+if ! tar -tzf "$ARCH" >/dev/null 2>&1; then
+  echo "Error: $ARCH is not a valid .tgz archive" >&2
+  exit 3
+fi
+
+N=0
+while IFS= read -r m; do
+  [[ $m == */ ]] && continue
+  if tar -xOzf "$ARCH" "$m" 2>/dev/null | grep -qF -- "$PAT"; then
+    echo "$m"
+    N=$((N + 1))
+  fi
+done < <(tar -tzf "$ARCH" | sort)
+echo "Matches: $N"
+
+@@ex 0419 chunk_pack | chunk_pack.sh: splitting and compressing
+@@level 4
+@@cmds split -b -d, gzip, stat -c%s
+@@readme
+Write `chunk_pack.sh`:
+
+```
+chunk_pack.sh FILE SIZE
+```
+
+Split `FILE` into chunks of at most `SIZE` bytes each (`split -b SIZE -d FILE DEST/part_`, where
+`DEST` is `FILE.chunks`, created if needed), then compress each chunk individually with `gzip`.
+Leave the original `FILE` untouched.
+
+Then, in order (`part_00` before `part_01`, ...), print:
+
+```
+part_NN.gz: B bytes
+```
+
+where `B` is that chunk's size **before** compressing (measured with `stat -c%s`). Finally print:
+
+```
+Total: N chunks, B bytes original
+```
+
+with the chunk count and `FILE`'s total size.
+
+- Wrong number of arguments: usage on stderr, exit **1**.
+- `FILE` does not exist: error naming it on stderr, exit **2**.
+- `FILE` exists but is not a regular file: error naming it on stderr, exit **3**.
+- `SIZE` is not a positive integer: error on stderr, exit **4**.
+@@check
+SCRIPT_NAME=chunk_pack.sh
+SEEDS=2
+COMPARE="stdout exit errmsg files"
+setup() {
+  bigfile "grande.dat" "$(randr 2000 6000)"
+  mkdir carpeta
+  randtext 2 > carpeta/nota.txt
+}
+ARGS=(
+  ''
+  'grande.dat'
+  'grande.dat 500 extra'
+  'noexiste.dat 500'
+  'carpeta 500'
+  'grande.dat abc'
+  'grande.dat 0'
+  'grande.dat 500'
+  'grande.dat 100000'
+)
+extra_check() {
+  case $REF_CODE in
+    1) [[ $ERR == *chunk_pack.sh* || $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* ]] || fail "the usage message should show how to call the script" ;;
+    2|3) mentions "$(eval "set -- $CASE"; echo "$1")" ;;
+    4) mentions "$(eval "set -- $CASE"; echo "$2")" ;;
+  esac
+}
+@@solution
+#!/bin/bash
+if [ $# -ne 2 ]; then
+  echo "Usage: $(basename "$0") FILE SIZE" >&2
+  exit 1
+fi
+FILE=$1
+SIZE=$2
+if [ ! -e "$FILE" ]; then
+  echo "Error: $FILE does not exist" >&2
+  exit 2
+fi
+if [ ! -f "$FILE" ]; then
+  echo "Error: $FILE is not a regular file" >&2
+  exit 3
+fi
+if ! [[ $SIZE =~ ^[0-9]+$ ]] || [ "$SIZE" -le 0 ]; then
+  echo "Error: SIZE must be a positive integer, got '$SIZE'" >&2
+  exit 4
+fi
+
+DEST="$FILE.chunks"
+mkdir -p "$DEST"
+split -b "$SIZE" -d "$FILE" "$DEST/part_"
+
+TOTAL=0
+N=0
+for c in "$DEST"/part_*; do
+  SZ=$(stat -c%s "$c")
+  gzip "$c"
+  echo "$(basename "$c").gz: $SZ bytes"
+  TOTAL=$((TOTAL + SZ))
+  N=$((N + 1))
+done
+echo "Total: $N chunks, $TOTAL bytes original"
+
+@@ex 0420 xz_best | xz_best.sh: keeping the smaller of gzip/xz
+@@level 4
+@@cmds gzip -9, xz -9, stat -c%s
+@@readme
+Write `xz_best.sh`:
+
+```
+xz_best.sh DIR
+```
+
+For every **regular file** directly inside `DIR` (not recursive), compress it with both
+`gzip -9` and `xz -9`, keep only whichever result is **smaller** (delete the other, and delete the
+original), and rename the survivor to `name.gz` or `name.xz`. **On a tie, keep the `gzip` result.**
+
+**Important:** `gzip` stores the original file's name inside the compressed header, which changes
+the compressed size by a few bytes depending on the name's length — so always run `gzip -9`
+directly on the file itself (e.g. `gzip -9 -k FILE`, which keeps the original), never on a renamed
+copy of it. `xz` has no such issue (its output size never depends on the input's filename), so for
+the `xz` candidate you may freely compress a temporary copy (you need one anyway, to still have an
+uncompressed original left in case `gzip` wins).
+
+Then, sorted by original name, print:
+
+```
+name: kept EXT (B bytes, saved P%)
+```
+
+where `EXT` is `gz` or `xz`, `B` is the kept file's size, and `P` is
+`(original_bytes - B) * 100 / original_bytes` computed with **integer** arithmetic (truncated,
+no decimals). Finally print:
+
+```
+Total: N files, S bytes saved
+```
+
+with the file count and the total bytes saved (`sum(original_bytes - B)`). If `DIR` has no
+regular files directly inside it, print `Total: 0 files, 0 bytes saved` (not an error).
+
+- Wrong number of arguments: usage on stderr, exit **1**.
+- `DIR` does not exist: error naming it on stderr, exit **2**.
+- `DIR` exists but is not a directory: error naming it on stderr, exit **3**.
+
+Names may contain spaces.
+@@check
+SCRIPT_NAME=xz_best.sh
+SEEDS=2
+COMPARE="stdout exit errmsg files"
+setup() {
+  mkdir -p zona/sub
+  local i n; n=$(randr 3 5)
+  for i in $(seq "$n"); do
+    if [[ $(rand 2) == 0 ]]; then
+      randtext "$(randr 20 60)" > "zona/$(word)$i.dat"
+    else
+      bigfile "zona/$(word)$i.dat" "$(randr 200 800)"
+    fi
+  done
+  randtext 3 > "zona/archivo con espacios $(word).dat"
+  randtext 2 > zona/sub/anidado.dat
+  randtext 2 > marcador.txt
+  mkdir vacio
+}
+ARGS=(
+  ''
+  'zona extra'
+  'noexiste'
+  'marcador.txt'
+  'zona'
+  'vacio'
+)
+extra_check() {
+  case $REF_CODE in
+    1) [[ $ERR == *xz_best.sh* || $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* ]] || fail "the usage message should show how to call the script" ;;
+    2|3) mentions "$(eval "set -- $CASE"; echo "$1")" ;;
+  esac
+}
+@@solution
+#!/bin/bash
+if [ $# -ne 1 ]; then
+  echo "Usage: $(basename "$0") DIR" >&2
+  exit 1
+fi
+DIR=$1
+if [ ! -e "$DIR" ]; then
+  echo "Error: $DIR does not exist" >&2
+  exit 2
+fi
+if [ ! -d "$DIR" ]; then
+  echo "Error: $DIR is not a directory" >&2
+  exit 3
+fi
+
+TOTAL_N=0
+TOTAL_SAVED=0
+while IFS= read -r f; do
+  ORIG=$(stat -c%s "$f")
+  gzip -9 -k "$f"
+  cp "$f" "$f.xzcand"
+  xz -9 "$f.xzcand"
+  GZ_SZ=$(stat -c%s "$f.gz")
+  XZ_SZ=$(stat -c%s "$f.xzcand.xz")
+  if [ "$XZ_SZ" -lt "$GZ_SZ" ]; then
+    rm -f "$f.gz"
+    mv "$f.xzcand.xz" "$f.xz"
+    KEPT=xz
+    SZ=$XZ_SZ
+  else
+    rm -f "$f.xzcand.xz"
+    KEPT=gz
+    SZ=$GZ_SZ
+  fi
+  rm -f "$f"
+  PCT=$(( (ORIG - SZ) * 100 / ORIG ))
+  echo "$(basename "$f"): kept $KEPT ($SZ bytes, saved $PCT%)"
+  TOTAL_N=$((TOTAL_N + 1))
+  TOTAL_SAVED=$((TOTAL_SAVED + ORIG - SZ))
+done < <(find "$DIR" -maxdepth 1 -type f | sort)
+echo "Total: $TOTAL_N files, $TOTAL_SAVED bytes saved"
+
+@@ex 0421 tar_countext | tar_countext.sh: counting entries by extension
+@@level 4
+@@cmds tar -tf, sort, uniq -c
+@@readme
+Write `tar_countext.sh`:
+
+```
+tar_countext.sh ARCHIVE
+```
+
+`ARCHIVE` may be a plain `.tar` **or** a `.tgz`/`.tar.gz` — `tar -tf` (no `-z`) auto-detects the
+compression, so you don't need to branch on the extension.
+
+Count the **regular file** entries (skip directory entries, the ones `tar -tf` lists ending in
+`/`) grouped by extension: the part of the entry's basename after its last `.`; files with no `.`
+in their basename count as `(none)`. Print, one per line, **sorted with plain `sort`**:
+
+```
+EXT: N
+```
+
+using `.ext` for the extension (e.g. `.txt: 3`) or `(none)` for files without one, only for
+extensions that actually occur. Finally print `Total: N` with the total number of regular file
+entries.
+
+- Wrong number of arguments: usage on stderr, exit **1**.
+- `ARCHIVE` does not exist: error naming it on stderr, exit **2**.
+- `ARCHIVE` exists but `tar -tf` fails on it: error naming it on stderr, exit **3**.
+@@check
+SCRIPT_NAME=tar_countext.sh
+SEEDS=2
+COMPARE="stdout exit errmsg files"
+setup() {
+  mkdir -p paquete/sub
+  local exts=(txt log c sh) i n; n=$(randr 6 10)
+  for i in $(seq "$n"); do
+    randtext "$(randr 1 3)" > "paquete/$(word)$i.$(pick "${exts[@]}")"
+  done
+  randtext 1 > "paquete/sub/$(word).dat"
+  randtext 1 > "paquete/archivo con espacios.txt"
+  touch paquete/sinext
+  tar -cf plano.tar paquete
+  tar -czf comprimido.tgz paquete
+  echo "esto no es un tar" > roto.tar
+}
+ARGS=(
+  ''
+  'plano.tar extra'
+  'noexiste.tar'
+  'roto.tar'
+  'plano.tar'
+  'comprimido.tgz'
+)
+extra_check() {
+  case $REF_CODE in
+    1) [[ $ERR == *tar_countext.sh* || $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* ]] || fail "the usage message should show how to call the script" ;;
+    2|3) mentions "$(eval "set -- $CASE"; echo "$1")" ;;
+  esac
+}
+@@solution
+#!/bin/bash
+if [ $# -ne 1 ]; then
+  echo "Usage: $(basename "$0") ARCHIVE" >&2
+  exit 1
+fi
+ARCH=$1
+if [ ! -e "$ARCH" ]; then
+  echo "Error: $ARCH does not exist" >&2
+  exit 2
+fi
+if ! tar -tf "$ARCH" >/dev/null 2>&1; then
+  echo "Error: $ARCH is not a readable tar archive" >&2
+  exit 3
+fi
+
+EXTLIST=$(
+  while IFS= read -r p; do
+    [[ $p == */ ]] && continue
+    b=$(basename "$p")
+    if [[ $b == *.* ]]; then echo ".${b##*.}"; else echo "(none)"; fi
+  done < <(tar -tf "$ARCH")
+)
+
+TOTAL=0
+while read -r cnt ext; do
+  [ -z "$cnt" ] && continue
+  echo "$ext: $cnt"
+  TOTAL=$((TOTAL + cnt))
+done < <(echo "$EXTLIST" | sort | uniq -c | sort -k2,2)
+
+echo "Total: $TOTAL"

@@ -1,0 +1,1290 @@
+@@topic 07_find | find
+@@ex 0717 find_prune | Skipping directories with -prune
+@@level 3
+@@cmds find -prune -o -print, -path
+@@readme
+Under `proj` there is a JavaScript project. Print, separated by a line `---`:
+
+1. every **regular file** ending in `.js`, **sorted**, but without descending into any directory
+   called exactly `node_modules` or `.git` (at any depth). Use `-prune`:
+   `find proj \( ... \) -prune -o <conditions> -print`
+2. the **number** of regular `.js` files that are somewhere **inside** a `node_modules` directory
+   (at any depth), i.e. the ones you skipped in step 1 because of `node_modules`.
+
+Careful with the decoys: a directory like `node_modules_old` or a file called `node_modules.js`
+is **not** `node_modules`. Remember that with `-o` you need an explicit `-print` on the side you want.
+@@check
+setup() {
+  mkdir -p proj/src/lib proj/node_modules/pkg/dist proj/src/node_modules/left proj/.git/hooks proj/node_modules_old proj/docs
+  local i d
+  for i in $(seq 16); do
+    d=$(pick proj proj/src proj/src/lib proj/node_modules/pkg proj/node_modules/pkg/dist proj/src/node_modules/left proj/.git/hooks proj/node_modules_old proj/docs proj/src)
+    touch "$d/$(word)$i$(pick .js .js .ts .json .js.map)"
+  done
+  touch proj/src/node_modules.js "proj/docs/$(word) app.js" "proj/.git/hooks/$(word).js"
+  mkdir -p "proj/src/$(word).js"
+}
+extra_check() { must_use -prune; }
+@@solution
+#!/bin/bash
+find proj \( -name node_modules -o -name .git \) -prune -o -type f -name '*.js' -print | sort
+echo ---
+find proj -path '*/node_modules/*' -type f -name '*.js' | wc -l
+
+@@ex 0718 find_newermt | Between two dates (-newermt)
+@@level 3
+@@cmds find -newermt, ! -newermt, stat -c %Y
+@@readme
+The photos under `fotos` have modification dates between 2023 and 2025. Print, separated by `---`:
+
+1. the **regular files** modified during **2024**: strictly after `2024-01-01 00:00` and not after
+   `2025-01-01 00:00` (`-newermt DATE` means "modified after DATE"; negate it for the upper bound),
+   sorted.
+2. the path of the **most recently modified** regular file under `fotos` (just one line; there are
+   no ties).
+
+Hint for 2: `stat -c '%Y %n'` prints the modification time in seconds followed by the name.
+@@check
+setup() {
+  mkdir -p fotos/viaje "fotos/casa nueva"
+  local i n f
+  n=$(randr 7 11)
+  for ((i = 1; i <= n; i++)); do
+    f="fotos/$(pick . viaje 'casa nueva')/$(word)$(pick '' ' ')$i.$(pick jpg png)"
+    touch -d "$(pick 2023-11-20 2023-12-30 2024-01-03 2024-03-15 2024-07-15 2024-12-29 2025-01-03 2025-04-10) 10:$(printf %02d "$i")" "$f"
+  done
+}
+@@solution
+#!/bin/bash
+find fotos -type f -newermt '2024-01-01 00:00' ! -newermt '2025-01-01 00:00' | sort
+echo ---
+find fotos -type f -exec stat -c '%Y %n' {} + | sort -k1,1n | tail -n 1 | cut -d' ' -f2-
+
+@@ex 0719 find_size_range | Size ranges in bytes
+@@level 3
+@@cmds find -size Nc, -size +N -size -M, stat -c
+@@readme
+Under `data`, print, separated by `---`:
+
+1. every **regular file** whose size is **between 1000 and 5000 bytes, both included**, as
+   `<bytes> <path>`, sorted by size (ascending) and then by path. Use the `c` (bytes) unit of `-size`:
+   `+N` means "more than N" and `-N` "less than N".
+2. the regular files whose size is **from 1 to 1024 bytes** (both included), sorted.
+   (Fun fact: that is exactly what `-size 1k` matches, because find rounds sizes **up** to whole
+   units; and it is why `-size -1k` only matches empty files.)
+@@check
+setup() {
+  mkdir -p data/a "data/b c"
+  local i
+  for i in $(seq 12); do
+    bigfile "data/$(pick . a 'b c')/$(word)$(pick '' ' ')$i.bin" "$(pick 0 1 500 999 1000 1024 1025 2500 4096 5000 5001 8000 $(randr 1 6000))"
+  done
+}
+@@solution
+#!/bin/bash
+find data -type f -size +999c -size -5001c -exec stat -c '%s %n' {} + | sort -k1,1n -k2
+echo ---
+find data -type f -size +0c -size -1025c | sort
+
+@@ex 0720 find_regex | Regular expressions on names (-regex)
+@@level 3
+@@cmds find -regextype posix-extended -regex
+@@readme
+Under `camera`, print, separated by `---`:
+
+1. the **regular files** whose **name** is exactly `IMG_` followed by **exactly 4 digits** and the
+   extension `.jpg` or `.jpeg` (lowercase), sorted. `IMG_123.jpg`, `IMG_12345.jpg`, `img_1234.jpg`,
+   `IMG_1234.JPG` or `IMG_1234.jpg.bak` don't count.
+2. the regular files whose **name** contains a date `YYYY-MM-DD` (4 digits, `-`, 2 digits, `-`,
+   2 digits) anywhere, sorted. A date in a **directory** name doesn't count.
+
+Remember that `-regex` matches against the **whole path** (e.g. `camera/misc/IMG_1234.jpg`), not the
+name, and it must match it entirely. `-regextype posix-extended` lets you use `{4}`, `?`, `+`...
+@@check
+setup() {
+  mkdir -p camera/2024-05-01 camera/misc "camera/old stuff"
+  local i d
+  for i in $(seq 14); do
+    d="camera/$(pick . 2024-05-01 misc 'old stuff')"
+    case $(rand 12) in
+      0|1|2) touch "$d/IMG_$(randr 1000 9999).jpg" ;;
+      3)      touch "$d/IMG_$(randr 1000 9999).jpeg" ;;
+      4)      touch "$d/IMG_$(randr 100 999).jpg" "$d/IMG_$(randr 10000 99999).jpeg" ;;
+      5)      touch "$d/img_$(randr 1000 9999).jpg" "$d/IMG_$(randr 1000 9999).JPG" ;;
+      6)      touch "$d/IMG_$(randr 1000 9999).jpg.bak" "$d/IMG_abcd.jpg" ;;
+      7|8)    touch "$d/$(word) 202$(rand 6)-0$(randr 1 9)-$(randr 10 28).txt" ;;
+      9)      touch "$d/backup-2023-11-0$(randr 1 9).tar" ;;
+      10)     touch "$d/2024-5-$(randr 1 9) $(word).txt" "$d/$(word)$i.txt" ;;
+      11)     mkdir -p "$d/IMG_$(randr 1000 9999).jpg" ;;
+    esac
+  done
+  touch camera/2024-05-01/notes.txt
+}
+@@solution
+#!/bin/bash
+find camera -type f -regextype posix-extended -regex '.*/IMG_[0-9]{4}\.jpe?g' | sort
+echo ---
+find camera -type f -regextype posix-extended -regex '.*/[^/]*[0-9]{4}-[0-9]{2}-[0-9]{2}[^/]*' | sort
+
+@@ex 0721 find_hardlinks | Hard links (-links, -samefile)
+@@level 3
+@@cmds find -links, -samefile, -inum
+@@readme
+Under `store` some files have several **hard links** (several names for the same inode).
+Print, separated by `---`:
+
+1. the **regular files** that have **more than one** hard link, sorted
+2. every path under `store` that is the **same file** (same inode) as `store/original.dat`,
+   including itself, sorted
+
+A **symbolic** link to `original.dat` is a different file and must not appear in 2.
+@@check
+setup() {
+  mkdir -p store/a "store/b c/d"
+  local i n
+  mkfl store/original.dat "$(words 5)"
+  n=$(randr 1 3)
+  for i in $(seq "$n"); do ln store/original.dat "store/$(pick a 'b c' 'b c/d')/$(word) copy$i.dat"; done
+  mkfl "store/a/$(word).log" "$(words 3)"
+  for i in $(seq "$(randr 0 2)"); do ln store/a/*.log "store/$(pick . 'b c/d')/log$i.log"; done
+  for i in $(seq 4); do mkfl "store/$(pick . a 'b c' 'b c/d')/$(word)$i.txt" "$(words 2)"; done
+  ln -s ../original.dat "store/a/link to original"
+}
+@@solution
+#!/bin/bash
+find store -type f -links +1 | sort
+echo ---
+find store -samefile store/original.dat | sort
+
+@@ex 0722 find_grep_l | Which files contain a word
+@@level 3
+@@cmds find -exec grep -l {} +, grep -L
+@@readme
+Under `etc` there are configuration files. Print, separated by `---`:
+
+1. the regular files ending in `.conf` that contain the word `debug` as a **whole word**, in **any
+   case** (`debug`, `DEBUG`, `Debug`...), sorted. `debugging` or `log_debug` are not the word `debug`.
+2. the regular `.conf` files that do **not** contain it, sorted.
+
+Use `find ... -exec grep ... {} +` (one grep for many files) with the options that make grep print
+only the **names** of the files that match (`-l`) or don't match (`-L`). Some names have spaces.
+@@check
+setup() {
+  mkdir -p etc/sys "etc/app conf/extra"
+  local i f
+  for i in $(seq 10); do
+    f="etc/$(pick . sys 'app conf' 'app conf/extra')/$(word)$(pick '' ' ')$i$(pick .conf .conf .conf .conf.bak .txt)"
+    { randtext "$(randr 1 4)"; pick 'debug = true' 'DEBUG=1' '# Debug mode' 'debugging off' 'log_debug on' 'level info' 'verbose yes'; randtext "$(randr 0 3)"; } > "$f"
+  done
+}
+@@solution
+#!/bin/bash
+find etc -type f -name '*.conf' -exec grep -liw debug {} + | sort
+echo ---
+find etc -type f -name '*.conf' -exec grep -Liw debug {} + | sort
+
+@@ex 0723 find_top_lines | The longest source files
+@@level 3
+@@cmds find -exec wc -l {} \;, sort -k, head
+@@readme
+Under `src`, print the **3** regular files ending in `.c` or `.h` with the **most lines**, as
+`<lines> <path>` (exactly one space between them), from most to fewest lines; ties by path
+(alphabetical). If there are fewer than 3 such files, print them all.
+
+Careful: `wc -l file1 file2 ...` adds a `total` line at the end, which `-exec ... {} +` would give you.
+Names may contain spaces.
+@@check
+setup() {
+  mkdir -p src/core "src/net io"
+  local i
+  for i in $(seq "$(randr 3 8)"); do
+    randtext "$(pick 5 12 12 20 $(randr 1 40))" > "src/$(pick . core 'net io')/$(word)$(pick '' ' ')$i$(pick .c .h .c .cpp .txt)"
+  done
+  randtext 60 > src/core/notes.txt
+  randtext "$(randr 1 30)" > "src/main.c"
+}
+@@solution
+#!/bin/bash
+find src -type f \( -name '*.c' -o -name '*.h' \) -exec wc -l {} \; | sort -k1,1nr -k2 | head -n 3
+
+@@ex 0724 find_dup_names | Same name in several places
+@@level 3
+@@cmds find -type f, sed, sort, uniq -d
+@@readme
+Under `music` there are files with the same **name** in different directories. Print:
+
+1. the **names** (without the directory part) of the regular files that appear in **more than one**
+   directory, sorted, once each
+2. `---`
+3. the number of **different** names of regular files under `music`
+
+Directories don't count, even if they have the same name as a file. Some names have spaces.
+Hint: remove everything up to the last `/` with `sed`.
+@@check
+setup() {
+  mkdir -p music/rock music/jazz "music/pop hits/old"
+  local i
+  for i in $(seq "$(randr 8 14)"); do
+    touch "music/$(pick . rock jazz 'pop hits' 'pop hits/old')/$(pick intro outro 'track one' theme ballad "$(word)").$(pick mp3 ogg mp3)"
+  done
+  mkdir -p "music/jazz/intro.mp3"
+}
+@@solution
+#!/bin/bash
+find music -type f | sed 's#.*/##' | sort | uniq -d
+echo ---
+find music -type f | sed 's#.*/##' | sort -u | wc -l
+
+@@ex 0725 find_access | What can I read, enter and write?
+@@level 3
+@@cmds find -readable, -writable, -executable, 2>/dev/null
+@@readme
+Under `share` some files and directories have restrictive permissions. Using the tests that check
+**your** real access (`-readable`, `-writable`, `-executable`, negated with `!` when needed), print
+separated by `---`, each list sorted:
+
+1. the regular files you **cannot read**
+2. the directories you **cannot enter** (no execute permission for you)
+3. the regular files ending in `.txt` that you **can write**
+
+find will complain on stderr about directories it cannot open: hide those messages
+(`2>/dev/null`). Entries inside directories that find cannot open are simply not listed.
+@@check
+setup() {
+  mkdir -p share/pub share/priv "share/team docs" share/locked share/noread
+  local i f d
+  for i in $(seq 12); do
+    d=$(pick pub priv 'team docs' locked noread pub)
+    f="share/$d/$(word)$(pick '' ' ')$i$(pick .txt .dat .txt)"
+    echo "$(word)" > "$f"; chmod "$(pick 644 600 000 200 444 640 222 664)" "$f"
+  done
+  mkdir -p share/pub/inner "share/team docs/closed"
+  chmod "$(pick 700 000)" share/locked
+  chmod "$(pick 300 755)" share/noread
+  chmod "$(pick 000 755)" "share/team docs/closed"
+}
+@@solution
+#!/bin/bash
+find share -type f ! -readable 2>/dev/null | sort
+echo ---
+find share -type d ! -executable 2>/dev/null | sort
+echo ---
+find share -type f -name '*.txt' -writable 2>/dev/null | sort
+
+@@ex 0726 find_mirror_dirs | Copying a directory skeleton
+@@level 3
+@@cmds find -type d, mkdir -p, while read
+@@readme
+Create `dst` with the same **directory structure** as `src`: every directory under `src` (at any
+depth, including hidden ones and empty ones) must exist at the same relative place under `dst`.
+**No files** are copied, and symbolic links are not copied either (not even links to directories).
+
+Finally print `Created N directories`, where N is the number of directories under `src`,
+**not counting** `src` itself. Names may contain spaces.
+
+Example: `src/a/b c` must produce `dst/a/b c`.
+@@check
+COMPARE="stdout exit files"
+setup() {
+  local i p j n
+  mkdir -p src
+  for i in $(seq "$(randr 3 6)"); do
+    p=src
+    n=$(randr 1 3)
+    for ((j = 0; j < n; j++)); do p="$p/$(pick "$(word)" "$(word) $(word)" data)"; done
+    mkdir -p "$p"
+    [[ $(rand 2) == 1 ]] && touch "$p/$(word).txt"
+  done
+  mkdir -p src/.cache/tmp
+  touch src/readme.md
+  ln -s .cache src/cachelink
+}
+@@solution
+#!/bin/bash
+mkdir -p dst
+N=0
+while IFS= read -r d; do
+  mkdir -p "dst/${d#src/}"
+  N=$((N + 1))
+done < <(find src -mindepth 1 -type d)
+echo "Created $N directories"
+
+@@ex 0727 find_per_dir | Counting files per directory
+@@level 3
+@@cmds find, sed, sort, uniq -c, while read
+@@readme
+Under `logs`, count the regular files ending in `.log` **per directory** (the directory that
+contains them directly). Print one line per directory that has at least one, as
+
+```
+<directory>: <N>
+```
+
+sorted by N (descending) and then by directory (alphabetical). Directories are written as find
+prints them (e.g. `logs/web server`). Other files (`.txt`, `.log.1`...) don't count.
+@@check
+setup() {
+  mkdir -p logs/app "logs/web server" logs/db/old logs/empty
+  local i
+  for i in $(seq "$(randr 8 16)"); do
+    touch "logs/$(pick . app 'web server' db db/old app)/$(word)$(pick '' ' ')$i$(pick .log .log .log .txt .log.1)"
+  done
+  mkdir -p logs/dir.log
+}
+@@solution
+#!/bin/bash
+find logs -type f -name '*.log' | sed 's#/[^/]*$##' | sort | uniq -c | sort -k1,1nr -k2 |
+  while read -r n d; do
+    echo "$d: $n"
+  done
+
+@@ex 0728 bigfiles | bigfiles.sh: files over a size
+@@level 4
+@@cmds find -size Nc, stat, sort, validation, exit codes
+@@readme
+Write `bigfiles.sh`:
+
+```
+bigfiles.sh DIR KB
+```
+
+It lists every **regular file** under `DIR` (recursively) whose size is **strictly greater than
+KB kibibytes** (`KB * 1024` bytes), one per line as
+
+```
+<bytes> <path>
+```
+
+from biggest to smallest; ties by path (alphabetical). The path is as `find` prints it (starting with
+`DIR` as given). Then it prints the summary line `N files, T bytes` (T = sum of the listed sizes).
+
+Careful: `-size +4k` does **not** mean "more than 4096 bytes" (find rounds sizes up to whole units);
+work in bytes (`c`).
+
+Checks, **in this order** (messages on **stderr**, wording free):
+
+- not exactly 2 arguments: usage message, exit **1**
+- `DIR` is not a directory (or doesn't exist): message including `DIR`, exit **2**
+- `KB` is not a non-negative integer (only digits): message including `KB`, exit **3**
+
+If no file is big enough, print just `0 files, 0 bytes` and exit **4**. Otherwise exit 0.
+File names may contain spaces.
+@@check
+SCRIPT_NAME=bigfiles.sh
+SEEDS=2
+COMPARE="stdout exit errmsg"
+setup() {
+  mkdir -p "d/a b" d/c/e
+  local i
+  for i in $(seq "$(randr 8 12)"); do
+    bigfile "d/$(pick . 'a b' c c/e)/$(word)$(pick '' ' ')$i$(pick .dat .bin '')" "$(pick 0 100 1024 1025 2048 4096 4097 9000 10240 10241 30000 $(randr 1 20000))"
+  done
+  bigfile "d/a b/big one.iso" "$(randr 12000 40000)"
+  touch notadir
+}
+ARGS=('d 0' 'd 1' 'd 4' '"d/a b" 2' '"$W/d" 10' 'd 1000' 'd' 'd 1 x' 'noexiste 1' 'notadir 1' 'noexiste abc' 'd -1' 'd 1k')
+extra_check() {
+  local a; eval "a=( $CASE )"
+  [[ $REF_CODE == 2 ]] && mentions "${a[0]}"
+  [[ $REF_CODE == 3 ]] && mentions "${a[1]}"
+  true
+}
+@@solution
+#!/bin/bash
+# bigfiles.sh DIR KB - regular files bigger than KB KiB, biggest first
+if [ $# -ne 2 ]; then
+  echo "Usage: $(basename "$0") DIR KB" >&2
+  exit 1
+fi
+DIR=$1
+KB=$2
+[ -d "$DIR" ] || { echo "Error: '$DIR' is not a directory" >&2; exit 2; }
+[[ $KB =~ ^[0-9]+$ ]] || { echo "Error: '$KB' is not a non-negative integer" >&2; exit 3; }
+
+LIMIT=$((10#$KB * 1024))
+N=0
+T=0
+while read -r size path; do
+  echo "$size $path"
+  N=$((N + 1))
+  T=$((T + size))
+done < <(find "$DIR" -type f -size +"${LIMIT}c" -exec stat -c '%s %n' {} + | sort -k1,1nr -k2)
+echo "$N files, $T bytes"
+[ "$N" -gt 0 ] || exit 4
+
+@@ex 0729 ages | ages.sh: recently modified files
+@@level 4
+@@cmds find -mtime -N, stat -c %Y, date +%s, arithmetic
+@@readme
+Write `ages.sh`:
+
+```
+ages.sh DIR [DAYS]
+```
+
+(`DAYS` defaults to 7). It lists the **regular files** under `DIR` (recursively) modified **less than
+DAYS days ago**, i.e. whose **age** is smaller than DAYS, where
+
+```
+age = (now - modification time) / 86400      (integer division, times in seconds:
+                                               now = date +%s, mtime = stat -c %Y)
+```
+
+(this is exactly what `find -mtime -DAYS` selects). Print one line per file:
+
+```
+<age> <path>
+```
+
+sorted by age (ascending) and then by path; path as `find` prints it. Finally print
+`N recent files, M older` where M is the number of the **other** regular files under `DIR`.
+Symbolic links and directories are never counted.
+
+Checks, **in this order** (messages on stderr, wording free):
+
+- no arguments or more than 2: usage, exit **1**
+- `DIR` is not a directory: exit **2**
+- `DAYS` is not a positive integer (≥ 1): exit **3**
+
+Names may contain spaces.
+@@check
+SCRIPT_NAME=ages.sh
+SEEDS=2
+COMPARE="stdout exit errmsg"
+setup() {
+  mkdir -p d "d/sub dir/deep" d/x
+  local i now f
+  now=$(date +%s)
+  for i in $(seq "$(randr 8 13)"); do
+    f="d/$(pick . 'sub dir' 'sub dir/deep' x)/$(word)$(pick '' ' ')$i.$(pick txt log dat)"
+    echo "$i" > "$f"
+    touch -d "@$((now - $(pick 0 0 1 2 3 5 6 7 8 10 30 90) * 86400 - $(randr 600 30000)))" "$f"
+  done
+  ln -s "$(basename "$f")" "$(dirname "$f")/link to last"
+  touch nodir
+}
+ARGS=('d' 'd 3' 'd 1' '"d/sub dir" 10' '"$W/d" 30' '' 'd 3 x' 'noexiste' 'nodir 3' 'd 0' 'd abc')
+@@solution
+#!/bin/bash
+# ages.sh DIR [DAYS] - files modified less than DAYS days ago, with their age in days
+if [ $# -lt 1 ] || [ $# -gt 2 ]; then
+  echo "Usage: $(basename "$0") DIR [DAYS]" >&2
+  exit 1
+fi
+DIR=$1
+DAYS=${2:-7}
+[ -d "$DIR" ] || { echo "Error: '$DIR' is not a directory" >&2; exit 2; }
+if ! [[ $DAYS =~ ^[0-9]+$ ]] || [ $((10#$DAYS)) -lt 1 ]; then
+  echo "Error: DAYS must be a positive integer" >&2
+  exit 3
+fi
+DAYS=$((10#$DAYS))
+
+NOW=$(date +%s)
+N=0
+while read -r age path; do
+  echo "$age $path"
+  N=$((N + 1))
+done < <(find "$DIR" -type f -mtime -"$DAYS" -exec stat -c '%Y %n' {} + |
+           while read -r t f; do echo "$(( (NOW - t) / 86400 )) $f"; done | sort -k1,1n -k2)
+ALL=$(find "$DIR" -type f | wc -l)
+echo "$N recent files, $((ALL - N)) older"
+
+@@ex 0730 flatten | flatten.sh: collecting files into one folder
+@@level 4
+@@cmds find -name, sort, cp, basename, while read, name collisions
+@@readme
+Write `flatten.sh`:
+
+```
+flatten.sh SRC DEST EXT
+```
+
+It **copies** every regular file under `SRC` (recursively) whose name ends in `.EXT` (case-sensitive)
+into the directory `DEST`, **flat** (no subdirectories).
+
+- If `DEST` does not exist, create it and print `Created DEST` (as given) first.
+- Files are processed in **sorted path order** (`find ... | sort`).
+- **Name collisions**: if `DEST/NAME` already exists (from a previous copy of this run or from before),
+  the copy is named `BASE_2.EXT`, or `BASE_3.EXT` if that one also exists, and so on (the first free
+  number starting at 2). `BASE` is the name without the final `.EXT` (`my notes.txt` → `my notes_2.txt`).
+- For each copy print `<source path> -> <name in DEST>` (source path as `find` prints it).
+- Finally print `Copied N files`.
+
+Checks, **in this order** (messages on stderr, wording free):
+
+- not exactly 3 arguments: usage, exit **1**
+- `SRC` is not a directory: exit **2**
+- `DEST` exists but is not a directory: exit **3**
+- `EXT` is empty or contains anything other than letters and digits: exit **4**
+
+`DEST` is never inside `SRC`. Names may contain spaces.
+@@check
+SCRIPT_NAME=flatten.sh
+SEEDS=2
+COMPARE="stdout exit errmsg files"
+setup() {
+  mkdir -p src/a "src/b c/d" src/e prev
+  local i
+  for i in $(seq "$(randr 7 12)"); do
+    mkfl "src/$(pick . a 'b c' 'b c/d' e)/$(pick report notes 'my notes' data "$(word)").$(pick txt txt md TXT txt.bak)" "$i $(word)"
+  done
+  mkfl src/a/notes.txt "notes a"
+  mkfl "src/b c/notes.txt" "notes bc"
+  mkdir -p src/e/dir.txt
+  mkfl prev/notes.txt "previous"
+  [[ $(rand 2) == 1 ]] && mkfl prev/notes_2.txt "previous 2"
+  touch afile
+}
+ARGS=('src out txt' 'src "my out" md' '"$W/src" "$W/out" txt' 'src prev txt' 'src/a prev txt' 'src out' 'src out txt x' 'nosrc out txt' 'afile out txt' 'src afile txt' 'src out t.x' 'src out ""')
+@@solution
+#!/bin/bash
+# flatten.sh SRC DEST EXT - copy every *.EXT under SRC into DEST, renaming collisions
+if [ $# -ne 3 ]; then
+  echo "Usage: $(basename "$0") SRC DEST EXT" >&2
+  exit 1
+fi
+SRC=$1
+DEST=$2
+EXT=$3
+[ -d "$SRC" ] || { echo "Error: '$SRC' is not a directory" >&2; exit 2; }
+if [ -e "$DEST" ] && [ ! -d "$DEST" ]; then
+  echo "Error: '$DEST' exists and is not a directory" >&2
+  exit 3
+fi
+[[ $EXT =~ ^[[:alnum:]]+$ ]] || { echo "Error: invalid extension '$EXT'" >&2; exit 4; }
+
+if [ ! -d "$DEST" ]; then
+  mkdir -p "$DEST"
+  echo "Created $DEST"
+fi
+
+N=0
+while IFS= read -r f; do
+  name=$(basename "$f")
+  base=${name%."$EXT"}
+  target=$name
+  k=2
+  while [ -e "$DEST/$target" ]; do
+    target="${base}_$k.$EXT"
+    k=$((k + 1))
+  done
+  cp "$f" "$DEST/$target" && echo "$f -> $target" && N=$((N + 1))
+done < <(find "$SRC" -type f -name "*.$EXT" | sort)
+echo "Copied $N files"
+
+@@ex 0731 prune_empty | vaciar.sh: removing empty files and directories
+@@level 4
+@@cmds find -empty, -delete, -depth, sort -r
+@@readme
+Write `vaciar.sh`:
+
+```
+vaciar.sh DIR
+```
+
+It cleans `DIR` (recursively) in two steps:
+
+1. deletes every **empty regular file** (size 0, hidden ones included) and prints
+   `removed file <path>` for each, in `sort` order;
+2. then deletes every **empty directory**, including the ones that **become** empty when their empty
+   contents are removed (e.g. `a/b/c` with nothing else: `c`, then `b`, then `a`). `DIR` itself is
+   **never** removed. Print `removed dir <path>` for each, sorted with `sort -r` (so children come
+   before their parents).
+
+Paths as `find` prints them (starting with `DIR` as given). Finally print
+`Removed N empty files and M empty directories`.
+
+A directory that contains a symbolic link is not empty, and symbolic links are never deleted.
+
+Hint: `-delete` implies `-depth` (children are processed before their directory), so
+`find ... -type d -empty -delete` also removes the directories that become empty; add `-print`
+to know which ones.
+
+Errors (stderr, wording free): not exactly one argument → exit **1**; `DIR` is not a directory →
+exit **2**. Names may contain spaces.
+@@check
+SCRIPT_NAME=vaciar.sh
+SEEDS=2
+COMPARE="stdout exit errmsg files"
+setup() {
+  local i p
+  mkdir -p t/keep "t/sub dir/x/y" t/a/b/c t/lonely
+  for i in $(seq "$(randr 6 10)"); do
+    p="t/$(pick . keep 'sub dir' 'sub dir/x' 'sub dir/x/y' a a/b a/b/c)"
+    if [[ $(rand 2) == 1 ]]; then touch "$p/$(word)$(pick '' ' ')$i"; else echo data > "$p/$(word)$(pick '' ' ')$i.txt"; fi
+  done
+  touch "t/sub dir/x/.keep"
+  echo x > t/keep/.config
+  mkdir -p "t/empty one/two" t/withlink
+  ln -s ../keep t/withlink/link
+  ln -s "../keep/.config" t/lonely/cfg
+  touch file.txt
+}
+ARGS=('t' '"t/sub dir"' '"$W/t"' '' 't x' 'noexiste' 'file.txt')
+@@solution
+#!/bin/bash
+# vaciar.sh DIR - delete empty files, then empty (or emptied) directories
+if [ $# -ne 1 ]; then
+  echo "Usage: $(basename "$0") DIR" >&2
+  exit 1
+fi
+DIR=$1
+[ -d "$DIR" ] || { echo "Error: '$DIR' is not a directory" >&2; exit 2; }
+
+F=0
+while IFS= read -r f; do
+  rm -f "$f" && echo "removed file $f" && F=$((F + 1))
+done < <(find "$DIR" -type f -empty | sort)
+
+D=0
+while IFS= read -r d; do
+  echo "removed dir $d"
+  D=$((D + 1))
+done < <(find "$DIR" -mindepth 1 -type d -empty -delete -print | sort -r)
+
+echo "Removed $F empty files and $D empty directories"
+
+@@ex 0732 permfix | permfix.sh: normalising permissions
+@@level 4
+@@cmds find -type d -o -type f, stat -c %a, chmod
+@@readme
+Write `permfix.sh`:
+
+```
+permfix.sh DIR
+```
+
+It normalises the permissions of everything under `DIR` (recursively, `DIR` included):
+
+- directories → `755`
+- regular files whose name ends in `.sh` → `755`
+- other regular files → `644`
+- anything else (symbolic links...) is ignored
+
+For every entry whose permissions **actually change**, print (in sorted path order)
+
+```
+<old> -> <new> <path>
+```
+
+with the permissions in octal as `stat -c %a` prints them (e.g. `600 -> 644 d/notes.txt`) and the
+path as `find` prints it. Finally print `Fixed N of M entries`, where M is the number of
+directories and regular files examined.
+
+Errors (stderr, wording free): not exactly one argument → exit **1**; `DIR` is not a directory →
+exit **2**. Names may contain spaces.
+@@check
+SCRIPT_NAME=permfix.sh
+SEEDS=2
+COMPARE="stdout exit errmsg files"
+setup() {
+  mkdir -p "tree/my sub/deep" tree/bin tree/doc
+  local i f
+  for i in $(seq "$(randr 7 12)"); do
+    f="tree/$(pick . 'my sub' 'my sub/deep' bin doc)/$(word)$(pick '' ' ')$i$(pick .sh .txt .sh .md '')"
+    echo "$i" > "$f"
+    chmod "$(pick 600 640 644 664 666 700 744 755 775 777 750)" "$f"
+  done
+  for f in tree "tree/my sub" "tree/my sub/deep" tree/bin tree/doc; do chmod "$(pick 700 750 755 775 777 711 755)" "$f"; done
+  mkdir -p tree/doc/tools.sh
+  ln -s ../bin tree/doc/binlink
+  touch file.txt
+}
+ARGS=('tree' '"tree/my sub"' '"$W/tree"' '' 'tree x' 'noexiste' 'file.txt')
+@@solution
+#!/bin/bash
+# permfix.sh DIR - directories and *.sh to 755, other regular files to 644
+if [ $# -ne 1 ]; then
+  echo "Usage: $(basename "$0") DIR" >&2
+  exit 1
+fi
+DIR=$1
+[ -d "$DIR" ] || { echo "Error: '$DIR' is not a directory" >&2; exit 2; }
+
+N=0
+M=0
+while IFS= read -r p; do
+  M=$((M + 1))
+  if [ -d "$p" ] || [[ $p == *.sh ]]; then new=755; else new=644; fi
+  old=$(stat -c %a "$p")
+  if [ "$old" != "$new" ]; then
+    chmod "$new" "$p"
+    echo "$old -> $new $p"
+    N=$((N + 1))
+  fi
+done < <(find "$DIR" \( -type d -o -type f \) | sort)
+echo "Fixed $N of $M entries"
+
+@@ex 0733 where | where.sh: searching several directories
+@@level 4
+@@cmds find -name "$PAT", shift, for "$@", exit codes
+@@readme
+Write `where.sh`:
+
+```
+where.sh PATTERN DIR...
+```
+
+`PATTERN` is a glob for **names**, as used by `find -name` (e.g. `'*.txt'`, `'report*'`). For each
+`DIR`, in argument order:
+
+- if it is a directory: print a header `== DIR ==` (DIR as given) and then the **regular files** under
+  it (recursively) whose name matches `PATTERN`, sorted, paths as `find` prints them; or the line
+  `(no matches)` if there are none;
+- if it is not a directory: print an error message on **stderr** that includes `DIR`, print nothing
+  on stdout for it, and go on with the next one.
+
+Finally print `N matches in M directories` (M = number of **valid** directories searched).
+
+Exit code:
+
+- fewer than 2 arguments: usage on stderr, exit **2** (nothing on stdout)
+- some `DIR` was not a directory: **3**
+- otherwise, **1** if there were no matches at all, **0** if there was at least one
+
+Remember to quote the pattern everywhere, or the shell will expand it. Names may contain spaces.
+@@check
+SCRIPT_NAME=where.sh
+SEEDS=2
+COMPARE="stdout exit errmsg"
+setup() {
+  mkdir -p docs/old "my projects/web" src
+  local i
+  for i in $(seq "$(randr 10 16)"); do
+    touch "$(pick docs docs/old 'my projects' 'my projects/web' src)/$(pick report notes "$(word)" 'my report' README)$(pick '' ' ')$i$(pick .txt .md .sh .txt '')"
+  done
+  mkdir -p docs/dir.txt
+  touch afile.txt
+}
+ARGS=("'*.txt' docs \"my projects\"" "'report*' src docs" "'*.md' \"\$W/my projects\"" "'*.zip' docs src" "'*.txt' docs noexiste src" "'*.txt' afile.txt" "'*.txt'" '')
+extra_check() { if [[ $REF_CODE == 3 ]]; then [[ $CASE == *noexiste* ]] && mentions noexiste; [[ $CASE == *afile.txt* ]] && mentions afile.txt; fi; true; }
+@@solution
+#!/bin/bash
+# where.sh PATTERN DIR... - find files by name pattern in several directories
+if [ $# -lt 2 ]; then
+  echo "Usage: $(basename "$0") PATTERN DIR..." >&2
+  exit 2
+fi
+PAT=$1
+shift
+
+TOTAL=0
+VALID=0
+BAD=0
+for d in "$@"; do
+  if [ ! -d "$d" ]; then
+    echo "Error: '$d' is not a directory" >&2
+    BAD=1
+    continue
+  fi
+  VALID=$((VALID + 1))
+  echo "== $d =="
+  R=$(find "$d" -type f -name "$PAT" | sort)
+  if [ -z "$R" ]; then
+    echo "(no matches)"
+  else
+    echo "$R"
+    TOTAL=$((TOTAL + $(echo "$R" | wc -l)))
+  fi
+done
+echo "$TOTAL matches in $VALID directories"
+
+[ $BAD -eq 1 ] && exit 3
+[ $TOTAL -eq 0 ] && exit 1
+exit 0
+
+@@ex 0734 badlinks | badlinks.sh: broken symbolic links
+@@level 4
+@@cmds find -xtype l, readlink, option parsing, rm
+@@readme
+Write `badlinks.sh`:
+
+```
+badlinks.sh [-d] DIR
+```
+
+It finds the **broken symbolic links** under `DIR` (recursively): links whose final target does not
+exist (a link to a broken link is broken too). For each one, in sorted path order, print
+
+```
+<path> -> <target>
+```
+
+where `<target>` is the link's content exactly as `readlink` prints it, and the path is as `find`
+prints it. Then print `N broken links found`.
+
+With the option `-d` (only allowed as the **first** argument) the broken links are also **deleted**:
+the lines are printed as `deleted <path> -> <target>` and the summary is `N broken links deleted`.
+Valid links, files and directories are never touched.
+
+Errors (stderr, wording free):
+
+- missing `DIR`, too many arguments, or an unknown option (a first argument starting with `-`
+  other than `-d`): usage, exit **1**
+- `DIR` is not a directory: exit **2**
+
+Names may contain spaces.
+@@check
+SCRIPT_NAME=badlinks.sh
+SEEDS=2
+COMPARE="stdout exit errmsg files"
+setup() {
+  mkdir -p links/a "links/sub dir/deep"
+  local i d
+  echo real > links/real1; echo real > "links/sub dir/real 2"; echo out > outside.txt
+  for i in $(seq "$(randr 6 10)"); do
+    d="links/$(pick . a 'sub dir' 'sub dir/deep')"
+    case $(rand 8) in
+      0) ln -s "$W/links/real1" "$d/abs ok$i" ;;
+      1) ln -s "$W/nothere$i" "$d/abs broken$i" ;;
+      2) ln -s "missing $i.txt" "$d/$(word) $i" ;;
+      3) ln -s ../../outside.txt "links/a/out$i" ;;
+      4) ln -s "real 2" "links/sub dir/ok$i" ;;
+      5) ln -s ../a "links/sub dir/dirlink$i" ;;
+      6) ln -s "gone$i" "links/a/chain$i.1"; ln -s "chain$i.1" "links/a/chain$i.2" ;;
+      7) ln -s ../real1 "links/a/$(word)$i" ;;
+    esac
+  done
+  ln -s "does not exist" "links/sub dir/deep/old link"
+  touch afile
+}
+ARGS=('links' '-d links' '"links/sub dir"' '-d "$W/links"' '' '-d' '-x links' 'links extra' 'noexiste' '-d afile')
+@@solution
+#!/bin/bash
+# badlinks.sh [-d] DIR - list (and optionally delete) broken symbolic links
+usage() { echo "Usage: $(basename "$0") [-d] DIR" >&2; exit 1; }
+
+DEL=0
+if [ "$1" = "-d" ]; then
+  DEL=1
+  shift
+fi
+[ $# -eq 1 ] || usage
+case $1 in -*) usage ;; esac
+DIR=$1
+[ -d "$DIR" ] || { echo "Error: '$DIR' is not a directory" >&2; exit 2; }
+
+N=0
+while IFS= read -r l; do
+  t=$(readlink "$l")
+  if [ $DEL -eq 1 ]; then
+    rm -f "$l"
+    echo "deleted $l -> $t"
+  else
+    echo "$l -> $t"
+  fi
+  N=$((N + 1))
+done < <(find "$DIR" -xtype l | sort)
+
+if [ $DEL -eq 1 ]; then echo "$N broken links deleted"; else echo "$N broken links found"; fi
+
+@@ex 0735 levels | niveles.sh: entries per depth level
+@@level 4
+@@cmds find -mindepth -maxdepth, loops, arithmetic
+@@readme
+Write `niveles.sh`:
+
+```
+niveles.sh DIR [MAX]
+```
+
+`DIR` is level 0, its direct contents are level 1, and so on. Considering only **directories and
+regular files** (symbolic links and anything else are ignored everywhere), it prints one line per
+level from 1 up to the **deepest** level that has some entry (or up to `MAX` if it is given and
+smaller):
+
+```
+level <L>: <D> dirs, <F> files
+```
+
+(D and F count the entries at **exactly** that depth; hidden entries count too). Then:
+
+```
+Deepest level: <X>
+Total: <D> dirs, <F> files
+```
+
+where X is the deepest level of any directory or regular file under `DIR` (**ignoring** `MAX`; 0 if
+`DIR` is empty) and the total is the sum of the printed levels.
+
+Checks, **in this order** (stderr, wording free):
+
+- no arguments or more than 2: usage, exit **1**
+- `DIR` is not a directory: exit **2**
+- `MAX` is not a positive integer (≥ 1): exit **3**
+
+Names may contain spaces.
+@@check
+SCRIPT_NAME=niveles.sh
+SEEDS=2
+COMPARE="stdout exit errmsg"
+setup() {
+  local i j p n
+  mkdir -p "t/sub dir" vacio
+  for i in $(seq "$(randr 5 9)"); do
+    p=t; n=$(randr 0 4)
+    for ((j = 0; j < n; j++)); do p="$p/$(pick a b 'c d' 'sub dir')"; done
+    mkdir -p "$p"
+    [[ $(rand 3) != 0 ]] && touch "$p/$(word)$(pick '' ' ')$i"
+  done
+  touch "t/sub dir/.hidden"
+  ln -s ../.. "t/sub dir/uplink"
+  touch file.txt
+}
+ARGS=('t' 't 2' '"$W/t" 1' '"t/sub dir"' 'vacio' 't 99' '' 't 2 3' 'noexiste' 'file.txt' 't 0' 't x')
+@@solution
+#!/bin/bash
+# niveles.sh DIR [MAX] - directories and files per depth level
+if [ $# -lt 1 ] || [ $# -gt 2 ]; then
+  echo "Usage: $(basename "$0") DIR [MAX]" >&2
+  exit 1
+fi
+DIR=$1
+[ -d "$DIR" ] || { echo "Error: '$DIR' is not a directory" >&2; exit 2; }
+if [ $# -eq 2 ]; then
+  if ! [[ $2 =~ ^[0-9]+$ ]] || [ $((10#$2)) -lt 1 ]; then
+    echo "Error: MAX must be a positive integer" >&2
+    exit 3
+  fi
+  MAX=$((10#$2))
+fi
+
+DEEP=$(find "$DIR" -mindepth 1 \( -type d -o -type f \) -printf '%d\n' | sort -n | tail -n 1)
+DEEP=${DEEP:-0}
+LIM=$DEEP
+[ -n "$MAX" ] && [ "$MAX" -lt "$LIM" ] && LIM=$MAX
+
+TD=0
+TF=0
+for ((l = 1; l <= LIM; l++)); do
+  d=$(find "$DIR" -mindepth $l -maxdepth $l -type d | wc -l)
+  f=$(find "$DIR" -mindepth $l -maxdepth $l -type f | wc -l)
+  echo "level $l: $d dirs, $f files"
+  TD=$((TD + d))
+  TF=$((TF + f))
+done
+echo "Deepest level: $DEEP"
+echo "Total: $TD dirs, $TF files"
+
+@@ex 0736 rename_ext | cambiaext.sh: changing extensions recursively
+@@level 4
+@@cmds find -name, mv, parameter expansion ${f%.ext}, exit codes
+@@readme
+Write `cambiaext.sh`:
+
+```
+cambiaext.sh DIR OLD NEW
+```
+
+It renames every **regular file** under `DIR` (recursively) whose name ends in `.OLD` (case-sensitive)
+so that it ends in `.NEW` instead (`a b.jpeg` → `a b.jpg`, in the same directory). Files are processed
+in sorted path order. For each rename print
+
+```
+renamed <old path> -> <new path>
+```
+
+(paths as `find` prints them). If the new name **already exists**, don't rename that file: print
+`skip <old path>: <new path> exists` on **stderr** and go on. Finally print
+`Renamed N files, skipped M` on stdout.
+
+Exit code: **4** if some file was skipped, 0 otherwise. Checks, **in this order** (stderr, wording free):
+
+- not exactly 3 arguments: usage, exit **1**
+- `DIR` is not a directory: exit **2**
+- `OLD` or `NEW` is empty, or they are equal: exit **3**
+
+Directories are never renamed. Names may contain spaces.
+@@check
+SCRIPT_NAME=cambiaext.sh
+SEEDS=2
+COMPARE="stdout exit errmsg files"
+setup() {
+  mkdir -p "fotos/my trip" fotos/2024/jan
+  local i n
+  for i in $(seq "$(randr 8 13)"); do
+    n="fotos/$(pick . 'my trip' 2024 2024/jan)/$(pick "$(word)" "$(word) $(word)" beach)"
+    echo "$i" > "$n.$(pick jpeg jpeg JPEG jpeg.bak txt)"
+    [[ $(rand 4) == 0 ]] && echo old > "$n.jpg"
+  done
+  echo x > fotos/beach.jpeg; echo y > fotos/beach.jpg
+  mkdir -p fotos/album.jpeg
+  touch afile
+}
+ARGS=('fotos jpeg jpg' '"fotos/my trip" jpeg jpg' '"$W/fotos" txt md' 'fotos png gif' 'fotos jpeg' 'nodir jpeg jpg' 'afile jpeg jpg' 'fotos jpg jpg' 'fotos "" jpg')
+@@solution
+#!/bin/bash
+# cambiaext.sh DIR OLD NEW - rename *.OLD to *.NEW recursively
+if [ $# -ne 3 ]; then
+  echo "Usage: $(basename "$0") DIR OLD NEW" >&2
+  exit 1
+fi
+DIR=$1
+OLD=$2
+NEW=$3
+[ -d "$DIR" ] || { echo "Error: '$DIR' is not a directory" >&2; exit 2; }
+if [ -z "$OLD" ] || [ -z "$NEW" ] || [ "$OLD" = "$NEW" ]; then
+  echo "Error: OLD and NEW must be non-empty and different" >&2
+  exit 3
+fi
+
+N=0
+S=0
+while IFS= read -r f; do
+  new="${f%."$OLD"}.$NEW"
+  if [ -e "$new" ]; then
+    echo "skip $f: $new exists" >&2
+    S=$((S + 1))
+    continue
+  fi
+  mv "$f" "$new" && echo "renamed $f -> $new" && N=$((N + 1))
+done < <(find "$DIR" -type f -name "*.$OLD" | sort)
+echo "Renamed $N files, skipped $S"
+[ $S -eq 0 ] || exit 4
+
+@@ex 0737 find_text | buscatexto.sh: which files mention a word
+@@level 4
+@@cmds find -readable, grep -ciw, sort -k, exit codes
+@@readme
+Write `buscatexto.sh`:
+
+```
+buscatexto.sh WORD DIR [EXT]
+```
+
+It searches the **regular files** under `DIR` (recursively) — only those whose name ends in `.EXT` if
+`EXT` is given (without the dot, e.g. `log`) — for lines containing `WORD` as a **whole word** in **any
+case** (`grep -iw`). For every file with at least one such line print
+
+```
+<count> <path>
+```
+
+(count = number of matching lines), sorted by count (descending) and then by path; paths as `find`
+prints them. Finally print `WORD: L lines in N files` (WORD as given).
+
+Files you **cannot read** are silently ignored (no message at all: stderr must stay empty).
+
+Exit code: **1** if nothing was found (the summary `WORD: 0 lines in 0 files` is still printed),
+0 otherwise. Checks, **in this order** (stderr, wording free):
+
+- fewer than 2 or more than 3 arguments, or `WORD` empty: usage, exit **2**
+- `DIR` is not a directory: exit **3**
+
+Careful: `grep -c` with a single file prints only the number, with several files it prints
+`file:number`. Names may contain spaces.
+@@check
+SCRIPT_NAME=buscatexto.sh
+SEEDS=2
+COMPARE="stdout exit errmsg"
+setup() {
+  mkdir -p logs/app "logs/web app/old"
+  local i j f
+  for i in $(seq "$(randr 6 10)"); do
+    f="logs/$(pick . app 'web app' 'web app/old')/$(word)$(pick '' ' ')$i.$(pick log log txt conf)"
+    for j in $(seq "$(randr 2 8)"); do
+      echo "$(word) $(pick error Error ERROR: errors error_code timeout Timeout timeouts ok ok ok) $(word)"
+    done > "$f"
+  done
+  echo "error error" > logs/app/secret.log; chmod 000 logs/app/secret.log
+  touch afile
+}
+ARGS=('error logs' 'Error logs log' 'timeout "logs/web app"' 'error "$W/logs" txt' 'zzz logs' 'error' 'a b c d' '"" logs' 'error noexiste' 'error afile')
+@@solution
+#!/bin/bash
+# buscatexto.sh WORD DIR [EXT] - count lines with WORD (whole word, any case) per file
+if [ $# -lt 2 ] || [ $# -gt 3 ] || [ -z "$1" ]; then
+  echo "Usage: $(basename "$0") WORD DIR [EXT]" >&2
+  exit 2
+fi
+WORD=$1
+DIR=$2
+[ -d "$DIR" ] || { echo "Error: '$DIR' is not a directory" >&2; exit 3; }
+PAT='*'
+[ -n "$3" ] && PAT="*.$3"
+
+R=$(find "$DIR" -type f -name "$PAT" -readable | while IFS= read -r f; do
+      c=$(grep -ciw -- "$WORD" "$f")
+      [ "$c" -gt 0 ] && echo "$c $f"
+    done | sort -k1,1nr -k2)
+
+L=0
+N=0
+if [ -n "$R" ]; then
+  echo "$R"
+  while read -r c f; do
+    L=$((L + c))
+    N=$((N + 1))
+  done <<< "$R"
+fi
+echo "$WORD: $L lines in $N files"
+[ $N -gt 0 ] || exit 1
+
+@@ex 0738 scriptcheck | scriptcheck.sh: auditing shell scripts
+@@level 4
+@@cmds find -name '*.sh', head -n 1, test -x, chmod u+x, sed -i '1i'
+@@readme
+Write `scriptcheck.sh`:
+
+```
+scriptcheck.sh [-f] DIR
+```
+
+For every **regular file** under `DIR` (recursively) whose name ends in `.sh`, in sorted path order,
+it detects two problems:
+
+- `no shebang`: the first line does not start with `#!` (exactly at the beginning of the line)
+- `not executable`: the **user** (owner) execute permission is not set
+
+For each file with problems print `<path>: <problems>` (path as `find` prints it), where problems is
+`no shebang`, `not executable` or `no shebang, not executable`. Files without problems are not printed.
+
+- Without `-f`: finally print `N scripts checked, M with problems`; exit **1** if M > 0, else 0.
+- With `-f` (only allowed as the **first** argument): after printing each file's line, **fix** it:
+  insert the line `#!/bin/bash` at the beginning if it had no shebang, and add the user execute
+  permission (`chmod u+x`) if it wasn't executable. Finally print
+  `N scripts checked, M with problems, M fixed` and exit 0.
+
+Errors (stderr, wording free): missing `DIR`, too many arguments or an unknown option → usage,
+exit **2**; `DIR` is not a directory → exit **3**. Names may contain spaces. No script is empty.
+@@check
+SCRIPT_NAME=scriptcheck.sh
+SEEDS=2
+COMPARE="stdout exit errmsg files"
+setup() {
+  mkdir -p "scripts/old stuff" scripts/bin clean
+  local i f
+  for i in $(seq "$(randr 6 10)"); do
+    f="scripts/$(pick . 'old stuff' bin)/$(word)$(pick '' ' ')$i$(pick .sh .sh .sh .bash .txt)"
+    case $(rand 5) in
+      0) printf '#!/bin/bash\necho %s\n' "$i" ;;
+      1) printf 'echo %s\n' "$i" ;;
+      2) printf '#!/bin/sh\nls\n' ;;
+      3) printf ' #!/bin/bash\necho x\n' ;;
+      4) printf '# comment\n#!/bin/bash\necho %s\n' "$i" ;;
+    esac > "$f"
+    chmod "$(pick 644 755 744 600 700 654 664)" "$f"
+  done
+  mkdir -p scripts/tools.sh
+  printf '#!/bin/bash\necho ok\n' > "clean/good one.sh"; chmod 755 "clean/good one.sh"
+  printf '#!/bin/sh\necho ok\n' > clean/b.sh; chmod 700 clean/b.sh
+  touch afile
+}
+ARGS=('scripts' '-f scripts' '"scripts/old stuff"' '-f "$W/scripts"' 'clean' '' '-f' '-x scripts' 'a b' 'noexiste' '-f afile')
+@@solution
+#!/bin/bash
+# scriptcheck.sh [-f] DIR - find *.sh without shebang or without user execute permission
+usage() { echo "Usage: $(basename "$0") [-f] DIR" >&2; exit 2; }
+
+FIX=0
+if [ "$1" = "-f" ]; then
+  FIX=1
+  shift
+fi
+[ $# -eq 1 ] || usage
+case $1 in -*) usage ;; esac
+DIR=$1
+[ -d "$DIR" ] || { echo "Error: '$DIR' is not a directory" >&2; exit 3; }
+
+N=0
+M=0
+while IFS= read -r f; do
+  N=$((N + 1))
+  shebang=1
+  exe=1
+  [[ $(head -n 1 "$f") == '#!'* ]] || shebang=0
+  [ -x "$f" ] || exe=0
+  if [ $shebang -eq 0 ] && [ $exe -eq 0 ]; then echo "$f: no shebang, not executable"
+  elif [ $shebang -eq 0 ]; then echo "$f: no shebang"
+  elif [ $exe -eq 0 ]; then echo "$f: not executable"
+  else continue
+  fi
+  M=$((M + 1))
+  if [ $FIX -eq 1 ]; then
+    [ $shebang -eq 0 ] && sed -i '1i #!/bin/bash' "$f"
+    [ $exe -eq 0 ] && chmod u+x "$f"
+  fi
+done < <(find "$DIR" -type f -name '*.sh' | sort)
+
+if [ $FIX -eq 1 ]; then
+  echo "$N scripts checked, $M with problems, $M fixed"
+else
+  echo "$N scripts checked, $M with problems"
+  [ $M -eq 0 ] || exit 1
+fi
+
+@@ex 0739 size_classes | tallas.sh: files by size class
+@@level 4
+@@cmds find -empty, -size +Nc -size -Nc, for "$@", exit codes
+@@readme
+Write `tallas.sh`:
+
+```
+tallas.sh DIR...
+```
+
+For each `DIR`, in argument order, count its **regular files** (recursively) by size class and print
+
+```
+DIR: <E> empty, <S> small, <M> medium, <L> large
+```
+
+(DIR as given) where
+
+| class  | size in bytes            |
+|--------|--------------------------|
+| empty  | 0                        |
+| small  | 1 to 1024                |
+| medium | 1025 to 1048576 (1 MiB)  |
+| large  | more than 1048576        |
+
+If a `DIR` is not a directory, print an error message including it on **stderr**, skip it and go on.
+Finally print `Total: N files` (sum of the counts of all printed lines).
+
+Exit code: no arguments → usage on stderr, exit **1**; if some `DIR` was not a directory, exit **2**
+(after processing all of them); otherwise 0.
+
+Careful with `-size` units: `-size -1k` does **not** mean "less than 1024 bytes". Use `c`.
+Names may contain spaces.
+@@check
+SCRIPT_NAME=tallas.sh
+SEEDS=2
+COMPARE="stdout exit errmsg"
+setup() {
+  mkdir -p data/a/sub "data/b c"
+  local i
+  for i in $(seq "$(randr 8 12)"); do
+    bigfile "data/$(pick . a a/sub 'b c')/$(word)$(pick '' ' ')$i" "$(pick 0 0 1 700 1024 1025 5000 70000 1048576 $(randr 1 3000))"
+  done
+  bigfile "data/b c/big $(word).iso" 1048577
+  [[ $(rand 2) == 1 ]] && bigfile "data/a/huge.bin" 2000000
+  touch afile
+}
+ARGS=('data' 'data/a "data/b c"' '"$W/data"' 'data noexiste data/a' '' 'afile')
+extra_check() { if [[ $REF_CODE == 2 ]]; then [[ $CASE == *noexiste* ]] && mentions noexiste; [[ $CASE == afile ]] && mentions afile; fi; true; }
+@@solution
+#!/bin/bash
+# tallas.sh DIR... - regular files per size class
+if [ $# -eq 0 ]; then
+  echo "Usage: $(basename "$0") DIR..." >&2
+  exit 1
+fi
+
+BAD=0
+T=0
+for d in "$@"; do
+  if [ ! -d "$d" ]; then
+    echo "Error: '$d' is not a directory" >&2
+    BAD=1
+    continue
+  fi
+  e=$(find "$d" -type f -empty | wc -l)
+  s=$(find "$d" -type f -size +0c -size -1025c | wc -l)
+  m=$(find "$d" -type f -size +1024c -size -1048577c | wc -l)
+  l=$(find "$d" -type f -size +1048576c | wc -l)
+  echo "$d: $e empty, $s small, $m medium, $l large"
+  T=$((T + e + s + m + l))
+done
+echo "Total: $T files"
+[ $BAD -eq 0 ] || exit 2
