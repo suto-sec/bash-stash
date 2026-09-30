@@ -124,7 +124,18 @@ async function openExercise(id) {
   $('#statement-pane').scrollTop = 0;
   document.title = `${ex.id} · ${ex.title} — bash stash`;
   renderSidebar();
-  if (state.mode === 'code') openVSCode();
+  // VS Code: reload for the new exercise whenever its pane is actually visible — in split/custom
+  // layouts that's always (both panes show at once), not just when the Terminal/VS Code tab happens
+  // to be set to 'code' (that check only meant something back when the tabbed layout was the only one).
+  const layout = $('#main').dataset.layout || 'default';
+  if (layout !== 'default' || state.mode === 'code') openVSCode();
+  // Terminal: silently cd an already-running session into the new exercise's sandbox, without
+  // stealing focus or switching tabs — a fresh session (not started yet) picks up the right
+  // exercise on its own once opened, via the ?ex= it's started with.
+  if (sock && sock.readyState === 1) {
+    const dir = state.current.playDir || state.current.dir;
+    sock.send(JSON.stringify({ t: 'i', d: `cd ${shq(dir)} && clear && ls\r` }));
+  }
 }
 
 function setStatus(s) {
@@ -196,8 +207,11 @@ document.addEventListener('keydown', ev => {
 function glossaryHTML(entries, linkify) {
   const known = entries.filter(e => e.desc);
   if (!known.length) return '<p class="hint">No commands with a write-up yet for this one.</p>';
-  return known.map(e => `<div class="gl-item"><code>${linkify
-    ? `<a href="#" data-goto-cmd="${esc(e.key)}">${esc(e.name)}</a>` : esc(e.name)}</code><p>${esc(e.desc)}</p></div>`).join('');
+  return known.map(e => {
+    const inner = `<code>${esc(e.name)}</code><p>${esc(e.desc)}</p>`;
+    // the whole card is the click target, not just the command name inside it
+    return linkify ? `<a href="#" class="gl-item" data-goto-cmd="${esc(e.key)}">${inner}</a>` : `<div class="gl-item">${inner}</div>`;
+  }).join('');
 }
 
 // The single-command focused view: same name+description, plus a usage line, an options table and
@@ -252,7 +266,7 @@ function buildReferenceIndex() {
 function topicSection(t) {
   return `<section class="ref-topic" id="ref-topic-${esc(t.id)}">
     <h3><a href="#" data-action="topic" data-id="${esc(t.id)}">${esc(t.id)} · ${esc(t.title)}</a></h3>
-    <div class="glossary-list">${glossaryHTML(t.cmds)}</div>
+    <div class="glossary-list">${glossaryHTML(t.cmds, true)}</div>
   </section>`;
 }
 
@@ -322,11 +336,10 @@ $('#reference-nav').addEventListener('click', ev => {
   renderReference();
 });
 $('#reference-content').addEventListener('click', ev => {
-  const el = ev.target.closest('[data-action="topic"]');
-  if (!el) return;
-  ev.preventDefault();
-  refSel = { type: 'topic', id: el.dataset.id };
-  renderReference();
+  const topicEl = ev.target.closest('[data-action="topic"]');
+  if (topicEl) { ev.preventDefault(); refSel = { type: 'topic', id: topicEl.dataset.id }; renderReference(); return; }
+  const cmdEl = ev.target.closest('[data-goto-cmd]');
+  if (cmdEl) { ev.preventDefault(); location.hash = `#/reference/cmd/${encodeURIComponent(cmdEl.dataset.gotoCmd)}`; }
 });
 $('#reference-all').onclick = ev => { ev.preventDefault(); refSel = { type: 'all' }; renderReference(); };
 $('#reference-back').onclick = ev => {

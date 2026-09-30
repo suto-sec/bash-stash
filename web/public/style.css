@@ -337,7 +337,12 @@ dialog::backdrop { background: rgba(0,0,0,.5); }
 .ref-topic h3 a { color: inherit; text-decoration: none; }
 .ref-topic h3 a:hover { text-decoration: underline; }
 .glossary-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px; }
-.gl-item { background: var(--panel-2); border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; scroll-margin-top: 12px; }
+.gl-item {
+  display: block; background: var(--panel-2); border: 1px solid var(--border); border-radius: 6px;
+  padding: 10px 12px; scroll-margin-top: 12px; text-decoration: none; color: inherit;
+}
+a.gl-item { cursor: pointer; transition: border-color .1s, background .1s; }
+a.gl-item:hover { border-color: var(--accent); background: var(--sel); }
 .gl-item.focused { border-color: var(--accent); }
 .gl-item code { font-size: 12.5px; color: var(--accent); }
 .gl-item p { margin: 6px 0 0; font-size: 12.5px; color: var(--text); line-height: 1.5; }
