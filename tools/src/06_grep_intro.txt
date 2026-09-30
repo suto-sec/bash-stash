@@ -1,0 +1,60 @@
+@@topic 06_grep_regex | grep & regular expressions
+@@ex 0644 grep_basic_intro | grep: lines containing a string
+@@level 1
+@@cmds grep
+@@readme
+Print the lines of `colores.txt` that contain the string `rojo`.
+@@check
+SEEDS=1
+setup() { local i; for i in $(seq "$(randr 6 10)"); do echo "$(pick rojo azul verde amarillo) $(word)"; done > colores.txt; }
+extra_check() { must_use grep; }
+@@solution
+#!/bin/bash
+grep rojo colores.txt
+
+@@ex 0645 grep_options_intro | grep -i -n -v -c
+@@level 1
+@@cmds grep -i -n -v -c
+@@readme
+For the file `log.txt`, print separated by a line `---`:
+
+1. the lines containing `error` in any case, with their **line numbers**
+2. only the **number** of lines that do **not** contain `error` (any case)
+@@check
+SEEDS=1
+setup() { local i; for i in $(seq "$(randr 8 14)"); do echo "$(pick INFO warn error ERROR Error debug) $(word)"; done > log.txt; }
+@@solution
+#!/bin/bash
+grep -in error log.txt
+echo ---
+grep -vic error log.txt
+
+@@ex 0646 grep_E_intro | grep -E: extended regex basics
+@@level 1
+@@cmds grep -E, |
+@@readme
+Print the lines of `mascotas.txt` that contain `gato` **or** `perro` (one `grep -E` with `|`).
+@@check
+SEEDS=1
+setup() { local i; for i in $(seq "$(randr 6 10)"); do echo "$(pick gato perro pajaro pez) $(word)"; done > mascotas.txt; }
+extra_check() { must_use grep; }
+@@solution
+#!/bin/bash
+grep -E 'gato|perro' mascotas.txt
+
+@@ex 0647 grep_anchors_intro | Anchors ^ and $
+@@level 1
+@@cmds grep ^, $
+@@readme
+For the file `nombres.txt`, print separated by a line `---`:
+
+1. the lines that **start** with `a`
+2. the lines that **end** with `z`
+@@check
+SEEDS=1
+setup() { local i; for i in $(seq "$(randr 5 8)"); do echo "$(pick b c d e i o)$(word)"; done > nombres.txt; echo ana >> nombres.txt; echo luz >> nombres.txt; }
+@@solution
+#!/bin/bash
+grep '^a' nombres.txt
+echo ---
+grep 'z$' nombres.txt

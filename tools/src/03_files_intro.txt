@@ -1,0 +1,136 @@
+@@topic 03_files_links | Files, copies & links
+@@ex 0337 touch_intro | touch: creating an empty file
+@@level 1
+@@cmds touch
+@@readme
+Create an empty file named `nuevo.txt` in the current directory with `touch`.
+@@check
+SEEDS=1
+COMPARE="stdout exit files"
+extra_check() { must_use touch; }
+@@solution
+#!/bin/bash
+touch nuevo.txt
+
+@@ex 0338 cp_intro | cp: copying a file
+@@level 1
+@@cmds cp
+@@readme
+The current directory contains `original.txt`. Copy it to `copia.txt` (same directory).
+@@check
+COMPARE="stdout exit files"
+setup() { randtext 2 > original.txt; }
+extra_check() { must_use cp; }
+@@solution
+#!/bin/bash
+cp original.txt copia.txt
+
+@@ex 0339 cp_r_intro | cp -r: copying a directory
+@@level 1
+@@cmds cp -r
+@@readme
+Copy the whole directory `datos` (with its content) to `respaldo` (which does not exist yet)
+with a single `cp -r`.
+@@check
+COMPARE="stdout exit files"
+setup() { mkdir -p datos; randtext 2 > "datos/$(word).txt"; }
+extra_check() { must_use cp; }
+@@solution
+#!/bin/bash
+cp -r datos respaldo
+
+@@ex 0340 mv_intro | mv: renaming a file
+@@level 1
+@@cmds mv
+@@readme
+The current directory contains `viejo.txt`. Rename it to `nuevo.txt` with `mv`.
+@@check
+COMPARE="stdout exit files"
+setup() { randtext 2 > viejo.txt; }
+extra_check() { must_use mv; must_not_use cp; }
+@@solution
+#!/bin/bash
+mv viejo.txt nuevo.txt
+
+@@ex 0341 rm_intro | rm and rm -r
+@@level 1
+@@cmds rm, rm -r
+@@readme
+The current directory contains a file `borrar.txt` and a non-empty directory `carpeta`.
+
+1. Delete `borrar.txt` with `rm`.
+2. Delete `carpeta` and everything inside it with `rm -r`.
+@@check
+COMPARE="stdout exit files"
+setup() { randtext 1 > borrar.txt; mkdir carpeta; randtext 1 > "carpeta/$(word).txt"; }
+extra_check() { must_use rm; }
+@@solution
+#!/bin/bash
+rm borrar.txt
+rm -r carpeta
+
+@@ex 0342 ln_intro | ln: a hard link
+@@level 1
+@@cmds ln
+@@readme
+The current directory contains `original`. Create a hard link named `duro` pointing to it.
+@@check
+COMPARE="stdout exit files"
+setup() { randtext 2 > original; }
+extra_check() { must_use ln; must_not_use cp; }
+@@solution
+#!/bin/bash
+ln original duro
+
+@@ex 0343 ln_s_intro | ln -s: a symbolic link
+@@level 1
+@@cmds ln -s, readlink
+@@readme
+The current directory contains `original`.
+
+1. Create a symbolic link `blando` pointing to `original`.
+2. Print the target stored in `blando` with `readlink`.
+
+```
+original
+```
+@@check
+COMPARE="stdout exit files"
+setup() { randtext 2 > original; }
+extra_check() { must_use 'ln -s' readlink; }
+@@solution
+#!/bin/bash
+ln -s original blando
+readlink blando
+
+@@ex 0344 stat_intro | stat: basic metadata
+@@level 1
+@@cmds stat -c
+@@readme
+The current directory contains a file `f`. Print its size in bytes using `stat -c %s`.
+@@check
+setup() { bigfile f $(randr 1 5000); }
+extra_check() { must_use stat; }
+@@solution
+#!/bin/bash
+stat -c %s f
+
+@@ex 0345 basename_dirname_intro | basename and dirname
+@@level 1
+@@cmds basename, dirname
+@@readme
+The path `/home/alumno/datos/informe.txt` is fixed in your script (write it literally).
+Print:
+
+```
+informe.txt
+/home/alumno/datos
+```
+@@check
+SEEDS=1
+extra_check() { must_use basename dirname; }
+@@solution
+#!/bin/bash
+P=/home/alumno/datos/informe.txt
+basename "$P"
+dirname "$P"

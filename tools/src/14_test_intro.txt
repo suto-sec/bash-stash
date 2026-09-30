@@ -1,0 +1,48 @@
+@@topic 14_test_if_case | test, if & case
+@@ex 1442 test_bracket_intro | Quick refresher: test / [ ]
+@@level 1
+@@cmds test, [ ]
+@@readme
+The script receives a path as its only argument. Using `[ -e "$1" ]` (or `test -e "$1"`), print
+`exists` if the path exists, or `missing` otherwise.
+@@check
+SEEDS=1
+setup() { touch fichero; }
+ARGS=('fichero' 'noexiste')
+@@solution
+#!/bin/bash
+if [ -e "$1" ]; then echo exists; else echo missing; fi
+
+@@ex 1443 if_elif_intro | Quick refresher: if / elif / else
+@@level 1
+@@cmds if, elif, else
+@@readme
+The script receives one integer. Print `positive`, `negative` or `zero`, using an `if` / `elif` /
+`else` chain.
+@@check
+SEEDS=1
+ARGS=('5' '-3' '0')
+extra_check() { must_use if elif; }
+@@solution
+#!/bin/bash
+if [ "$1" -gt 0 ]; then echo positive
+elif [ "$1" -lt 0 ]; then echo negative
+else echo zero
+fi
+
+@@ex 1444 case_intro | Quick refresher: case
+@@level 1
+@@cmds case
+@@readme
+The script receives a day abbreviation (`mon` `tue` `wed` `thu` `fri` `sat` `sun`). Print
+`weekday` for Monday-Friday and `weekend` for Saturday/Sunday, using a `case` statement.
+@@check
+SEEDS=1
+ARGS=('mon' 'wed' 'fri' 'sat' 'sun')
+extra_check() { must_use case; }
+@@solution
+#!/bin/bash
+case $1 in
+  sat|sun) echo weekend ;;
+  *) echo weekday ;;
+esac

@@ -1,0 +1,112 @@
+@@topic 02_directories | Directories & navigation
+@@ex 0226 pwd_intro | pwd: where am I?
+@@level 1
+@@cmds pwd
+@@readme
+Quick refresher. Print the current directory with `pwd`.
+@@check
+SEEDS=1
+extra_check() { must_use pwd; }
+@@solution
+#!/bin/bash
+pwd
+
+@@ex 0227 cd_intro | cd: relative, absolute and -
+@@level 1
+@@cmds cd
+@@readme
+The current directory contains `a/b`.
+
+1. Enter `a/b` with a **relative** path and print the current directory.
+2. Go to `/usr` with an **absolute** path and print the current directory.
+3. Go back to the previous directory with `cd -` (it prints the directory itself).
+
+```
+/.../work/a/b
+/usr
+/.../work/a/b
+```
+@@check
+SEEDS=1
+setup() { mkdir -p a/b; }
+extra_check() { must_use cd; }
+@@solution
+#!/bin/bash
+cd a/b
+pwd
+cd /usr
+pwd
+cd -
+
+@@ex 0228 mkdir_intro | mkdir and mkdir -p
+@@level 1
+@@cmds mkdir, mkdir -p
+@@readme
+1. Create the directory `datos` (already-existing parent).
+2. Create the nested path `proyecto/src/lib` in **one** `mkdir -p` command (no intermediate
+   directories exist yet).
+@@check
+SEEDS=1
+COMPARE="stdout exit files"
+extra_check() { must_use mkdir; }
+@@solution
+#!/bin/bash
+mkdir datos
+mkdir -p proyecto/src/lib
+
+@@ex 0229 rmdir_intro | rmdir: removing an empty directory
+@@level 1
+@@cmds rmdir
+@@readme
+The current directory contains two empty directories, `vacio` and `otro`. Remove only `vacio`
+using `rmdir`.
+@@check
+SEEDS=1
+COMPARE="stdout exit files"
+setup() { mkdir vacio otro; }
+extra_check() { must_use rmdir; must_not_use rm; }
+@@solution
+#!/bin/bash
+rmdir vacio
+
+@@ex 0230 ls_intro | ls: -a and -l
+@@level 1
+@@cmds ls -a, ls -l
+@@readme
+The directory `d` contains a normal file and a hidden file (name starting with `.`).
+
+1. List **all** entries of `d` including hidden ones, except `.` and `..` (`ls -A`).
+2. Print the **permissions field** only (first column) of `ls -l d`, one per line, in the
+   order `ls -l` lists them.
+@@check
+setup() { mkdir d; touch "d/$(word)" "d/.$(word)rc"; }
+extra_check() { must_use ls; }
+@@solution
+#!/bin/bash
+ls -A d
+ls -l d | tail -n +2 | cut -d' ' -f1
+
+@@ex 0231 ls_R_intro | ls -R: recursive listing
+@@level 1
+@@cmds ls -R
+@@readme
+Print the recursive listing of the directory `arbol` (it contains subdirectories) using `ls -R`.
+@@check
+setup() { mkdir -p arbol/sub; touch "arbol/$(word).txt" "arbol/sub/$(word).txt"; }
+extra_check() { must_use ls; }
+@@solution
+#!/bin/bash
+ls -R arbol
+
+@@ex 0232 du_sh_intro | du -sh: total size, human readable
+@@level 1
+@@cmds du -sh
+@@readme
+Print the total size of the directory `datos` in human readable form with a single
+`du -sh` (exactly what it prints).
+@@check
+setup() { mkdir -p datos/sub; bigfile "datos/$(word)" $(( $(randr 1 20) * 1024 )); bigfile "datos/sub/$(word)" $(( $(randr 1 20) * 1024 )); }
+extra_check() { must_use du; }
+@@solution
+#!/bin/bash
+du -sh datos

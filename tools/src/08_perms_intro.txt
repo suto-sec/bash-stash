@@ -1,0 +1,60 @@
+@@topic 08_permissions | Permissions, chmod, umask, chown
+@@ex 0835 chmod_symbolic_intro | Quick refresher: chmod symbolic
+@@level 1
+@@cmds chmod u+x
+@@readme
+Give the **user** execute permission on `script.sh`, using **symbolic** `chmod` (`u+x`).
+Nothing to print.
+@@check
+COMPARE="stdout exit files"
+SEEDS=1
+setup() { touch script.sh; chmod 644 script.sh; }
+extra_check() { ans_code | grep -qE 'chmod +[0-7]{3}' && fail "use symbolic mode (u+x), not octal, in this exercise"; }
+@@solution
+#!/bin/bash
+chmod u+x script.sh
+
+@@ex 0836 chmod_octal_intro | Quick refresher: chmod octal
+@@level 1
+@@cmds chmod 644
+@@readme
+Using an **octal** mode, set the permissions of `datos.txt` to `rw-r--r--` (`644`).
+Nothing to print.
+@@check
+COMPARE="stdout exit files"
+SEEDS=1
+setup() { touch datos.txt; chmod 777 datos.txt; }
+extra_check() { must_use chmod; }
+@@solution
+#!/bin/bash
+chmod 644 datos.txt
+
+@@ex 0837 chown_intro | Quick refresher: chown
+@@level 1
+@@cmds chown
+@@readme
+This script is run **as root** by the checker (in real life, use `sudo`). In the current
+directory, make `luke` the owner of `informe.txt`. Nothing to print.
+@@check
+COMPARE="stdout exit files owner"
+RUN_AS_ROOT=1
+SEEDS=1
+setup() { touch informe.txt; }
+extra_check() { must_use chown; }
+@@solution
+#!/bin/bash
+chown luke informe.txt
+
+@@ex 0838 umask_intro | Quick refresher: umask
+@@level 1
+@@cmds umask
+@@readme
+Set the `umask` to `077` and then create a file `secreto.txt` (e.g. with `touch`) so that only
+the owner can read or write it. Print nothing besides what `touch` prints (nothing).
+@@check
+COMPARE="stdout exit files"
+SEEDS=1
+@@solution
+#!/bin/bash
+umask 077
+touch secreto.txt

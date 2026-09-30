@@ -1,0 +1,130 @@
+@@topic 01_echo_quoting | Echo, quoting & substitution
+@@ex 0122 echo_intro | echo: print a line, echo -n
+@@level 1
+@@cmds echo, echo -n
+@@readme
+Quick refresher.
+
+1. Print the line `Listo` with `echo`.
+2. Print `Sin salto` with `echo -n` (no trailing newline), then print `!` with a normal `echo`.
+
+```
+Listo
+Sin salto!
+```
+@@check
+SEEDS=1
+extra_check() { must_use echo; }
+@@solution
+#!/bin/bash
+echo "Listo"
+echo -n "Sin salto"
+echo "!"
+
+@@ex 0123 echo_e_intro | echo -e: escape sequences
+@@level 1
+@@cmds echo -e
+@@readme
+Using `echo -e`, print two lines separated by a `\n` escape and a tab between the two words
+of the second line:
+
+```
+primera linea
+uno	dos
+```
+@@check
+SEEDS=1
+extra_check() { must_use 'echo -e'; }
+@@solution
+#!/bin/bash
+echo -e "primera linea\nuno\tdos"
+
+@@ex 0124 printf_intro | printf: a basic format string
+@@level 1
+@@cmds printf
+@@readme
+The variable-like values `nombre=Ana` and `edad=23` are fixed. Using **one** `printf` with a
+format string (no `echo`), print:
+
+```
+Ana tiene 23 anios
+```
+@@check
+SEEDS=1
+extra_check() { must_use printf; must_not_use echo; }
+@@solution
+#!/bin/bash
+printf '%s tiene %s anios\n' Ana 23
+
+@@ex 0125 quotes_intro | Single vs double quotes
+@@level 1
+@@cmds ', ", $VAR
+@@readme
+`NOMBRE=Kernel` is set at the top of your script. Print these two lines: the first with
+**single** quotes (so `$NOMBRE` is shown literally), the second with **double** quotes
+(so it expands):
+
+```
+Hola $NOMBRE
+Hola Kernel
+```
+@@check
+SEEDS=1
+@@solution
+#!/bin/bash
+NOMBRE=Kernel
+echo 'Hola $NOMBRE'
+echo "Hola $NOMBRE"
+
+@@ex 0126 var_expansion_intro | $VAR and ${VAR}
+@@level 1
+@@cmds $VAR, ${VAR}
+@@readme
+Set `CURSO=so`, then print `so2026` by concatenating `$CURSO` with the literal `2026`,
+using `${CURSO}` so the shell doesn't look for a variable named `CURSO2026`:
+
+```
+so2026
+```
+@@check
+SEEDS=1
+@@solution
+#!/bin/bash
+CURSO=so
+echo "${CURSO}2026"
+
+@@ex 0127 cmd_subst_intro | Command substitution $( )
+@@level 1
+@@cmds $(...)
+@@readme
+Store the output of `whoami` in a variable using `$( )`, then print:
+
+```
+Soy alumno
+```
+
+(`alumno` is whatever `whoami` prints for your user.)
+@@check
+SEEDS=1
+extra_check() { must_use whoami; }
+@@solution
+#!/bin/bash
+WHO=$(whoami)
+echo "Soy $WHO"
+
+@@ex 0128 brace_range_intro | Brace expansion {a..b}
+@@level 1
+@@cmds {1..N}
+@@readme
+Using brace expansion (no loop, no seq), print on one line the numbers 1 to 5 separated by
+spaces:
+
+```
+1 2 3 4 5
+```
+@@check
+SEEDS=1
+extra_check() { must_not_use for while seq; }
+@@solution
+#!/bin/bash
+echo {1..5}

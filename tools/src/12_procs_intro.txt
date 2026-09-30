@@ -1,0 +1,65 @@
+@@topic 12_processes_jobs | Processes, jobs & signals
+@@ex 1223 ps_intro | ps: checking a process exists
+@@level 1
+@@cmds ps -p
+@@readme
+Start `sleep 300` in the **background** and save its PID (`$!`). Print `found` if `ps -p PID`
+succeeds (exit code 0, redirect its output to `/dev/null`), or `not found` otherwise.
+@@check
+SEEDS=1
+@@solution
+#!/bin/bash
+sleep 300 &
+P=$!
+if ps -p "$P" > /dev/null; then echo found; else echo "not found"; fi
+kill "$P" 2>/dev/null
+
+@@ex 1224 kill_intro | kill: terminating a background process
+@@level 1
+@@cmds kill, wait
+@@readme
+Start `sleep 300` in the background and save its PID. Terminate it with `kill` (default signal,
+SIGTERM), then `wait` for it and print the exit status returned by `wait` (a process killed by
+SIGTERM exits with `143`).
+@@check
+SEEDS=1
+@@solution
+#!/bin/bash
+sleep 300 &
+P=$!
+kill "$P"
+wait "$P"
+echo $?
+
+@@ex 1225 jobs_intro | jobs: listing background jobs
+@@level 1
+@@cmds jobs
+@@readme
+Start `sleep 0.3` and `sleep 0.4` in the background (in that order) and immediately print the job
+table with `jobs`.
+@@check
+SEEDS=1
+filter() { sed 's/  */ /g'; }
+@@solution
+#!/bin/bash
+sleep 0.3 &
+sleep 0.4 &
+jobs
+
+@@ex 1226 background_intro | &: running a command in the background
+@@level 1
+@@cmds &, $!, wait
+@@readme
+Run `sleep 0.2` in the **background** (`&`) and save its PID with `$!`. Print `launched`
+right away (before waiting: `&` returns immediately). Then `wait` for the process and print
+`done`.
+@@check
+SEEDS=1
+extra_check() { must_use wait; }
+@@solution
+#!/bin/bash
+sleep 0.2 &
+P=$!
+echo launched
+wait "$P"
+echo done
