@@ -1,0 +1,43 @@
+@@topic 10_pipes_xargs | Pipes, xargs & command substitution
+@@ex 1034 pipe_intro | The pipe |
+@@level 1
+@@cmds |, wc
+@@readme
+In the current directory, print how many entries there are, piping `ls` into `wc -l`
+(`ls | wc -l`).
+@@check
+SEEDS=1
+setup() { local i; for i in $(seq "$(randr 2 9)"); do touch "$(word)$i"; done; }
+extra_check() { must_use '\|'; }
+@@solution
+#!/bin/bash
+ls | wc -l
+
+@@ex 1035 xargs_intro | xargs: turning lines into arguments
+@@level 1
+@@cmds xargs
+@@readme
+The file `nombres.txt` has one word per line. Print them all on a single line, separated by
+spaces, piping the file through `xargs` (`cat nombres.txt | xargs`).
+@@check
+SEEDS=1
+setup() { mkfl nombres.txt "$(word)" "$(word)" "$(word)"; }
+extra_check() { must_use xargs; }
+@@solution
+#!/bin/bash
+cat nombres.txt | xargs
+
+@@ex 1036 tee_intro | tee: save and print at the same time
+@@level 1
+@@cmds tee
+@@readme
+The file `entrada.txt` contains one line of text. Pipe it through `cat` and `tee salida.txt`, so
+the line is printed to stdout **and** saved into `salida.txt`.
+@@check
+SEEDS=1
+COMPARE="stdout exit files"
+setup() { mkfl entrada.txt "$(words 3)"; }
+extra_check() { must_use tee; }
+@@solution
+#!/bin/bash
+cat entrada.txt | tee salida.txt

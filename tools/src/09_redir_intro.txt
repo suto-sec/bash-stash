@@ -1,0 +1,91 @@
+@@topic 09_redirection | Redirection: > >> 2> < << <<<
+@@ex 0926 redir_out_intro | Quick refresher: > (stdout to a file)
+@@level 1
+@@cmds >
+@@readme
+Save the output of `echo hola` into a file called `saludo.txt` (overwrite it). Nothing printed
+on screen.
+@@check
+COMPARE="stdout exit files"
+SEEDS=1
+setup() { echo "old" > saludo.txt; }
+@@solution
+#!/bin/bash
+echo hola > saludo.txt
+
+@@ex 0927 redir_append_intro | Quick refresher: >> (append)
+@@level 1
+@@cmds >>
+@@readme
+`nota.txt` already contains one line. **Append** the line `fin` to it with `>>` (don't overwrite
+what is already there). Nothing printed on screen.
+@@check
+COMPARE="stdout exit files"
+SEEDS=1
+setup() { echo "primera linea" > nota.txt; }
+@@solution
+#!/bin/bash
+echo fin >> nota.txt
+
+@@ex 0928 redir_in_intro | Quick refresher: < (stdin from a file)
+@@level 1
+@@cmds <
+@@readme
+Print the number of lines of `datos.txt` using `wc -l`, feeding the file with **input
+redirection** (`<`), not as an argument.
+@@check
+SEEDS=1
+setup() { local i; for i in $(seq "$(randr 2 6)"); do word; done > datos.txt; }
+extra_check() { ans_code | grep -qE 'wc[^<|]*datos\.txt' && fail "pass the file with < (not as an argument)"; }
+@@solution
+#!/bin/bash
+wc -l < datos.txt
+
+@@ex 0929 redir_err_intro | Quick refresher: 2> (stderr to a file)
+@@level 1
+@@cmds 2>
+@@readme
+Run `ls no_existe.txt` (a file that doesn't exist) so its error message goes to `error.txt`
+instead of the screen. Nothing printed on screen.
+@@check
+COMPARE="stdout exit files"
+SEEDS=1
+extra_check() { must_use '2>'; }
+@@solution
+#!/bin/bash
+ls no_existe.txt 2> error.txt
+
+@@ex 0930 pipe_intro | Quick refresher: pipe
+@@level 1
+@@cmds |
+@@readme
+Print how many lines `/etc/passwd` has, by piping `cat /etc/passwd` into `wc -l`
+(just the number).
+@@check
+SEEDS=1
+extra_check() { must_use '\|'; }
+@@solution
+#!/bin/bash
+cat /etc/passwd | wc -l
+
+@@ex 0931 heredoc_intro | Quick refresher: << (heredoc)
+@@level 1
+@@cmds << EOF
+@@readme
+Create `saludo.txt` with a **here document** (`cat > saludo.txt << EOF`) containing exactly
+these two lines:
+
+```
+hola
+adios
+```
+@@check
+COMPARE="stdout exit files"
+SEEDS=1
+extra_check() { must_use '<<'; }
+@@solution
+#!/bin/bash
+cat > saludo.txt << EOF
+hola
+adios
+EOF

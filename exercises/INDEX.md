@@ -23,6 +23,13 @@
 - [0119 · calc.sh: a calculator that survives *](01_echo_quoting/0119_calc/README.md)
 - [0120 · genmv.sh: printing a safely quoted rename script](01_echo_quoting/0120_genmv/README.md)
 - [0121 · genconf.sh: a config file from a here document](01_echo_quoting/0121_genconf/README.md)
+- [0122 · echo: print a line, echo -n](01_echo_quoting/0122_echo_intro/README.md)
+- [0123 · echo -e: escape sequences](01_echo_quoting/0123_echo_e_intro/README.md)
+- [0124 · printf: a basic format string](01_echo_quoting/0124_printf_intro/README.md)
+- [0125 · Single vs double quotes](01_echo_quoting/0125_quotes_intro/README.md)
+- [0126 · $VAR and ${VAR}](01_echo_quoting/0126_var_expansion_intro/README.md)
+- [0127 · Command substitution $( )](01_echo_quoting/0127_cmd_subst_intro/README.md)
+- [0128 · Brace expansion {a..b}](01_echo_quoting/0128_brace_range_intro/README.md)
 
 ## 02_directories
 
@@ -51,6 +58,13 @@
 - [0223 · cleanempty.sh: removing empty directory trees](02_directories/0223_clean_empty/README.md)
 - [0224 · mirror.sh: copying only the directory structure](02_directories/0224_mirror/README.md)
 - [0225 · cuota.sh: which directories are over the limit](02_directories/0225_quota/README.md)
+- [0226 · pwd: where am I?](02_directories/0226_pwd_intro/README.md)
+- [0227 · cd: relative, absolute and -](02_directories/0227_cd_intro/README.md)
+- [0228 · mkdir and mkdir -p](02_directories/0228_mkdir_intro/README.md)
+- [0229 · rmdir: removing an empty directory](02_directories/0229_rmdir_intro/README.md)
+- [0230 · ls: -a and -l](02_directories/0230_ls_intro/README.md)
+- [0231 · ls -R: recursive listing](02_directories/0231_ls_R_intro/README.md)
+- [0232 · du -sh: total size, human readable](02_directories/0232_du_sh_intro/README.md)
 
 ## 03_files_links
 
@@ -90,6 +104,15 @@
 - [0334 · rotate_backup.sh: numbered backups that shift instead of collide](03_files_links/0334_rotate_backup/README.md)
 - [0335 · sync_copy.sh: copying only what changed](03_files_links/0335_sync_copy/README.md)
 - [0336 · batch_rename.sh: changing an extension in bulk, without collisions](03_files_links/0336_batch_rename/README.md)
+- [0337 · touch: creating an empty file](03_files_links/0337_touch_intro/README.md)
+- [0338 · cp: copying a file](03_files_links/0338_cp_intro/README.md)
+- [0339 · cp -r: copying a directory](03_files_links/0339_cp_r_intro/README.md)
+- [0340 · mv: renaming a file](03_files_links/0340_mv_intro/README.md)
+- [0341 · rm and rm -r](03_files_links/0341_rm_intro/README.md)
+- [0342 · ln: a hard link](03_files_links/0342_ln_intro/README.md)
+- [0343 · ln -s: a symbolic link](03_files_links/0343_ln_s_intro/README.md)
+- [0344 · stat: basic metadata](03_files_links/0344_stat_intro/README.md)
+- [0345 · basename and dirname](03_files_links/0345_basename_dirname_intro/README.md)
 
 ## 04_archives
 
@@ -118,6 +141,11 @@
 - [0423 · verify_backup.sh: diffing a directory against a .tar.gz](04_archives/0423_verify_backup/README.md)
 - [0424 · archive_manifest.sh: reading tar's verbose listing](04_archives/0424_archive_manifest/README.md)
 - [0425 · safe_extract.sh: refusing to extract a bomb](04_archives/0425_safe_extract/README.md)
+- [0426 · tar -c: creating an archive](04_archives/0426_tar_c_intro/README.md)
+- [0427 · tar -t: listing an archive](04_archives/0427_tar_t_intro/README.md)
+- [0428 · tar -x: extracting an archive](04_archives/0428_tar_x_intro/README.md)
+- [0429 · gzip: compressing a file](04_archives/0429_gzip_intro/README.md)
+- [0430 · gunzip: decompressing a file](04_archives/0430_gunzip_intro/README.md)
 
 ## 05_filters
 
@@ -179,6 +207,14 @@
 - [0556 · logmonth.sh: chronological order with sort -M](05_filters/0556_logmonth/README.md)
 - [0557 · bytesdiff.sh: wrapping cmp -l with validation](05_filters/0557_bytesdiff/README.md)
 - [0558 · chunkjoin.sh: dynamic paste grouping](05_filters/0558_chunkjoin/README.md)
+- [0559 · cat: printing a file](05_filters/0559_cat_intro/README.md)
+- [0560 · head and tail: first/last lines](05_filters/0560_head_tail_intro/README.md)
+- [0561 · wc: counting lines](05_filters/0561_wc_intro/README.md)
+- [0562 · cut: extracting a field](05_filters/0562_cut_intro/README.md)
+- [0563 · sort: alphabetical order](05_filters/0563_sort_intro/README.md)
+- [0564 · uniq: removing adjacent duplicates](05_filters/0564_uniq_intro/README.md)
+- [0565 · tr: translating characters](05_filters/0565_tr_intro/README.md)
+- [0566 · sed: basic s/// substitution](05_filters/0566_sed_intro/README.md)
 
 ## 06_grep_regex
 
@@ -225,6 +261,10 @@
 - [0641 · errscan.sh: scanning several files for a pattern](06_grep_regex/0641_errscan/README.md)
 - [0642 · ipfilter.sh: filtering by an IP prefix (the escaping trap)](06_grep_regex/0642_ipfilter/README.md)
 - [0643 · colgrep.sh: matching a regex against one column](06_grep_regex/0643_colgrep/README.md)
+- [0644 · grep: lines containing a string](06_grep_regex/0644_grep_basic_intro/README.md)
+- [0645 · grep -i -n -v -c](06_grep_regex/0645_grep_options_intro/README.md)
+- [0646 · grep -E: extended regex basics](06_grep_regex/0646_grep_E_intro/README.md)
+- [0647 · Anchors ^ and $](06_grep_regex/0647_grep_anchors_intro/README.md)
 
 ## 07_find
 
@@ -279,6 +319,11 @@
 - [0749 · depth_report.sh: direct vs nested files](07_find/0749_depth_report/README.md)
 - [0750 · big_by_ext.sh: large files grouped by extension](07_find/0750_big_by_ext/README.md)
 - [0751 · possible_dupes.sh: files that might be duplicates](07_find/0751_possible_dupes/README.md)
+- [0752 · Quick refresher: find -name](07_find/0752_find_name_intro/README.md)
+- [0753 · Quick refresher: find -type](07_find/0753_find_type_intro/README.md)
+- [0754 · Quick refresher: find -size](07_find/0754_find_size_intro/README.md)
+- [0755 · Quick refresher: find -mtime](07_find/0755_find_mtime_intro/README.md)
+- [0756 · Quick refresher: find -exec](07_find/0756_find_exec_intro/README.md)
 
 ## 08_permissions
 
@@ -316,6 +361,10 @@
 - [0832 · Permissions live on the inode, not the name](08_permissions/0832_hardlink_chmod/README.md)
 - [0833 · perm_histogram.sh: a histogram of file modes](08_permissions/0833_perm_histogram/README.md)
 - [0834 · check_access.sh: asking the kernel, not computing it yourself](08_permissions/0834_check_access/README.md)
+- [0835 · Quick refresher: chmod symbolic](08_permissions/0835_chmod_symbolic_intro/README.md)
+- [0836 · Quick refresher: chmod octal](08_permissions/0836_chmod_octal_intro/README.md)
+- [0837 · Quick refresher: chown](08_permissions/0837_chown_intro/README.md)
+- [0838 · Quick refresher: umask](08_permissions/0838_umask_intro/README.md)
 
 ## 09_redirection
 
@@ -344,6 +393,12 @@
 - [0923 · runall.sh (running scripts with their output logged)](09_redirection/0923_runall/README.md)
 - [0924 · newuser.sh (prompts on stderr, answers from stdin)](09_redirection/0924_newuser/README.md)
 - [0925 · numsum.sh (numbers from a file or from stdin)](09_redirection/0925_numsum/README.md)
+- [0926 · Quick refresher: > (stdout to a file)](09_redirection/0926_redir_out_intro/README.md)
+- [0927 · Quick refresher: >> (append)](09_redirection/0927_redir_append_intro/README.md)
+- [0928 · Quick refresher: < (stdin from a file)](09_redirection/0928_redir_in_intro/README.md)
+- [0929 · Quick refresher: 2> (stderr to a file)](09_redirection/0929_redir_err_intro/README.md)
+- [0930 · Quick refresher: pipe](09_redirection/0930_pipe_intro/README.md)
+- [0931 · Quick refresher: << (heredoc)](09_redirection/0931_heredoc_intro/README.md)
 
 ## 10_pipes_xargs
 
@@ -380,6 +435,9 @@
 - [1031 · tags.sh (tags of markdown notes)](10_pipes_xargs/1031_tags/README.md)
 - [1032 · cmpdirs.sh (compare two directory trees)](10_pipes_xargs/1032_cmpdirs/README.md)
 - [1033 · grepall.sh (lines with all the words)](10_pipes_xargs/1033_grepall/README.md)
+- [1034 · The pipe](10_pipes_xargs/1034_pipe_intro/README.md)
+- [1035 · xargs: turning lines into arguments](10_pipes_xargs/1035_xargs_intro/README.md)
+- [1036 · tee: save and print at the same time](10_pipes_xargs/1036_tee_intro/README.md)
 
 ## 11_variables_arith
 
@@ -408,6 +466,10 @@
 - [1123 · portfolio.sh (holdings with bc)](11_variables_arith/1123_portfolio/README.md)
 - [1124 · rangecalc.sh (stats with expr and bc)](11_variables_arith/1124_rangecalc/README.md)
 - [1125 · checksum.sh (manual decimal-to-binary)](11_variables_arith/1125_checksum/README.md)
+- [1126 · Creating and reading a variable](11_variables_arith/1126_var_intro/README.md)
+- [1127 · Arithmetic with $(( ))](11_variables_arith/1127_arith_intro/README.md)
+- [1128 · export: passing a variable to a child shell](11_variables_arith/1128_export_intro/README.md)
+- [1129 · read: loading a line into a variable](11_variables_arith/1129_read_intro/README.md)
 
 ## 12_processes_jobs
 
@@ -433,6 +495,10 @@
 - [1220 · job_summary.sh (parametrised job exit codes)](12_processes_jobs/1220_job_summary/README.md)
 - [1221 · supervise.sh (retry until success)](12_processes_jobs/1221_supervise/README.md)
 - [1222 · multi_signal_report.sh (comma-separated signal list)](12_processes_jobs/1222_multi_signal_report/README.md)
+- [1223 · ps: checking a process exists](12_processes_jobs/1223_ps_intro/README.md)
+- [1224 · kill: terminating a background process](12_processes_jobs/1224_kill_intro/README.md)
+- [1225 · jobs: listing background jobs](12_processes_jobs/1225_jobs_intro/README.md)
+- [1226 · &: running a command in the background](12_processes_jobs/1226_background_intro/README.md)
 
 ## 13_script_params
 
@@ -474,6 +540,9 @@
 - [1336 · last_success.sh: tracking the last file that could be read](13_script_params/1336_last_success/README.md)
 - [1337 · Simulating a command chain that stops at the first failure](13_script_params/1337_sum_exit_chain/README.md)
 - [1338 · wrapper_capture.sh: prefixing a command's captured output](13_script_params/1338_wrapper_capture/README.md)
+- [1339 · $1, $2 and $#](13_script_params/1339_positional_intro/README.md)
+- [1340 · "$@" keeps arguments intact](13_script_params/1340_at_intro/README.md)
+- [1341 · shift](13_script_params/1341_shift_intro/README.md)
 
 ## 14_test_if_case
 
@@ -518,6 +587,9 @@
 - [1439 · safe_delete.sh: deleting only files older than a reference](14_test_if_case/1439_safe_delete/README.md)
 - [1440 · poll.sh: tallying votes read from stdin](14_test_if_case/1440_poll/README.md)
 - [1441 · numeric_range.sh: validating that every argument is an integer within a range](14_test_if_case/1441_numeric_range/README.md)
+- [1442 · Quick refresher: test / [ ]](14_test_if_case/1442_test_bracket_intro/README.md)
+- [1443 · Quick refresher: if / elif / else](14_test_if_case/1443_if_elif_intro/README.md)
+- [1444 · Quick refresher: case](14_test_if_case/1444_case_intro/README.md)
 
 ## 15_loops_read
 
@@ -568,6 +640,10 @@
 - [1545 · grep_dir.sh: counting matches across a tree](15_loops_read/1545_grep_dir/README.md)
 - [1546 · limpiar_tmp.sh: deleting matched files while tallying bytes freed](15_loops_read/1546_limpiar_tmp/README.md)
 - [1547 · clasifica_arbol.sh: dispatching find results with case](15_loops_read/1547_clasifica_arbol/README.md)
+- [1548 · Quick refresher: for](15_loops_read/1548_for_intro/README.md)
+- [1549 · Quick refresher: while](15_loops_read/1549_while_intro/README.md)
+- [1550 · Quick refresher: read](15_loops_read/1550_read_intro/README.md)
+- [1551 · Quick refresher: read -p](15_loops_read/1551_read_prompt_intro/README.md)
 
 ## 16_functions
 
@@ -600,6 +676,9 @@
 - [1627 · A function called per loop item, its echo used by the caller](16_functions/1627_clasifica_valor/README.md)
 - [1628 · informe_scripts.sh: die plus a per-file function](16_functions/1628_informe_scripts/README.md)
 - [1629 · tamano_rec.sh: a recursive du -s, in miniature](16_functions/1629_tamano_rec/README.md)
+- [1630 · Quick refresher: defining and calling a function](16_functions/1630_func_def_intro/README.md)
+- [1631 · Quick refresher: $1 inside a function](16_functions/1631_func_args_intro/README.md)
+- [1632 · Quick refresher: local](16_functions/1632_local_intro/README.md)
 
 ## 17_users_logs_admin
 
@@ -639,6 +718,10 @@
 - [1734 · Apache: paths with most errors](17_users_logs_admin/1734_web_errors/README.md)
 - [1735 · A small pwck](17_users_logs_admin/1735_passwd_check/README.md)
 - [1736 · Home directories over a quota](17_users_logs_admin/1736_home_quota/README.md)
+- [1737 · Quick refresher: who](17_users_logs_admin/1737_who_intro/README.md)
+- [1738 · Quick refresher: id](17_users_logs_admin/1738_id_intro/README.md)
+- [1739 · Quick refresher: passwd -S](17_users_logs_admin/1739_passwd_status_intro/README.md)
+- [1740 · Quick refresher: sudo -u](17_users_logs_admin/1740_sudo_intro/README.md)
 
 ## 18_exam_scripts
 

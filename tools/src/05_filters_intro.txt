@@ -1,0 +1,113 @@
+@@topic 05_filters | Filters: wc, head, tail, cut, sort, uniq, tr, sed, tee...
+@@ex 0559 cat_intro | cat: printing a file
+@@level 1
+@@cmds cat
+@@readme
+Print the content of the file `nota.txt`.
+@@check
+SEEDS=1
+setup() { randtext 3 > nota.txt; }
+extra_check() { must_use cat; }
+@@solution
+#!/bin/bash
+cat nota.txt
+
+@@ex 0560 head_tail_intro | head and tail: first/last lines
+@@level 1
+@@cmds head -n, tail -n
+@@readme
+For the file `datos.txt`, print separated by a line `---`:
+
+1. its first 3 lines
+2. its last 2 lines
+@@check
+SEEDS=1
+setup() { local i; for i in $(seq "$(randr 8 12)"); do echo "$i $(word)"; done > datos.txt; }
+@@solution
+#!/bin/bash
+head -n 3 datos.txt
+echo ---
+tail -n 2 datos.txt
+
+@@ex 0561 wc_intro | wc: counting lines
+@@level 1
+@@cmds wc -l
+@@readme
+Print **only the number** of lines of `texto.txt` (no file name).
+
+Hint: `wc -l < texto.txt` doesn't print the name; `wc -l texto.txt` does.
+@@check
+SEEDS=1
+setup() { randtext "$(randr 5 20)" > texto.txt; }
+extra_check() { must_use wc; }
+@@solution
+#!/bin/bash
+wc -l < texto.txt
+
+@@ex 0562 cut_intro | cut: extracting a field
+@@level 1
+@@cmds cut -d -f
+@@readme
+The file `datos.txt` has lines `name:age:city` (fields separated by `:`). Print only the second
+field (the age) of every line.
+@@check
+SEEDS=1
+setup() { local i; for i in $(seq "$(randr 5 10)"); do echo "$(word):$(randr 1 99):$(word)"; done > datos.txt; }
+extra_check() { must_use cut; }
+@@solution
+#!/bin/bash
+cut -d: -f2 datos.txt
+
+@@ex 0563 sort_intro | sort: alphabetical order
+@@level 1
+@@cmds sort
+@@readme
+Print the lines of `nombres.txt` in alphabetical order.
+@@check
+SEEDS=1
+setup() { local i; for i in $(seq "$(randr 6 12)"); do word; done > nombres.txt; }
+extra_check() { must_use sort; }
+@@solution
+#!/bin/bash
+sort nombres.txt
+
+@@ex 0564 uniq_intro | uniq: removing adjacent duplicates
+@@level 1
+@@cmds uniq
+@@readme
+`lista.txt` is already sorted and has some repeated adjacent lines. Print it with every
+repetition collapsed into a single line (like `uniq` does).
+@@check
+SEEDS=1
+setup() { local n w; n=$(randr 3 5); { for i in $(seq "$n"); do w=$(word); echo "$w"; echo "$w"; done; } | sort > lista.txt; }
+extra_check() { must_use uniq; }
+@@solution
+#!/bin/bash
+uniq lista.txt
+
+@@ex 0565 tr_intro | tr: translating characters
+@@level 1
+@@cmds tr
+@@readme
+The script reads text from **standard input**. Convert every lowercase letter to uppercase.
+@@check
+SEEDS=1
+input() { words "$(randr 3 6)"; }
+extra_check() { must_use tr; }
+@@solution
+#!/bin/bash
+tr 'a-z' 'A-Z'
+
+@@ex 0566 sed_intro | sed: basic s/// substitution
+@@level 1
+@@cmds sed s///
+@@readme
+For the file `frase.txt`, print its content replacing the **first** occurrence of `hola` on each
+line with `adios`.
+@@check
+SEEDS=1
+setup() { echo "hola $(word) hola $(word)" > frase.txt; }
+extra_check() { must_use sed; }
+@@solution
+#!/bin/bash
+sed 's/hola/adios/' frase.txt

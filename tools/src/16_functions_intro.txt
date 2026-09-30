@@ -1,0 +1,44 @@
+@@topic 16_functions | Functions
+@@ex 1630 func_def_intro | Quick refresher: defining and calling a function
+@@level 1
+@@cmds name() { }
+@@readme
+Define a function `saluda` that prints `hola`, then call it.
+@@check
+SEEDS=1
+@@solution
+#!/bin/bash
+saluda() { echo hola; }
+saluda
+
+@@ex 1631 func_args_intro | Quick refresher: $1 inside a function
+@@level 1
+@@cmds $1
+@@readme
+Define a function `saluda` that prints `Hola, <first argument>!`, using `$1` **inside** the
+function. Call it once with the script's first argument.
+@@check
+SEEDS=1
+ARGS=('Ana' 'Luis')
+@@solution
+#!/bin/bash
+saluda() { echo "Hola, $1!"; }
+saluda "$1"
+
+@@ex 1632 local_intro | Quick refresher: local
+@@level 1
+@@cmds local
+@@readme
+Set `X=fuera` and print it. Define a function `f` that sets a **local** `X=dentro` and prints it,
+then call `f`. Finally print `X` once more: it must still be `fuera`, since `f`'s `X` was local and
+never touched the outer one.
+@@check
+SEEDS=1
+extra_check() { must_use local; }
+@@solution
+#!/bin/bash
+X=fuera
+f() { local X=dentro; echo "$X"; }
+echo "$X"
+f
+echo "$X"

@@ -1,0 +1,50 @@
+@@topic 17_users_logs_admin | Users, groups, sessions, logs & cron
+@@ex 1737 who_intro | Quick refresher: who
+@@level 1
+@@cmds who
+@@readme
+Print the number of currently open sessions, using `who | wc -l` (`w` shows the same list plus
+what each user is doing, but only `who` is used in this course).
+@@check
+SEEDS=1
+extra_check() { must_use who; }
+@@solution
+#!/bin/bash
+who | wc -l
+
+@@ex 1738 id_intro | Quick refresher: id
+@@level 1
+@@cmds id -u
+@@readme
+Print your own numeric UID, using `id -u`.
+@@check
+SEEDS=1
+extra_check() { must_use id; }
+@@solution
+#!/bin/bash
+id -u
+
+@@ex 1739 passwd_status_intro | Quick refresher: passwd -S
+@@level 1
+@@cmds passwd -S
+@@readme
+Run `passwd -S` on your own user (`$(whoami)`) and print just the **first field** (the login
+name), with `cut`.
+@@check
+SEEDS=1
+extra_check() { must_use passwd; }
+@@solution
+#!/bin/bash
+passwd -S "$(whoami)" | cut -d' ' -f1
+
+@@ex 1740 sudo_intro | Quick refresher: sudo -u
+@@level 1
+@@cmds sudo -u
+@@readme
+Print the result of running `whoami` **as user luke**, using `sudo -u luke whoami`.
+@@check
+SEEDS=1
+extra_check() { must_use sudo; }
+@@solution
+#!/bin/bash
+sudo -u luke whoami

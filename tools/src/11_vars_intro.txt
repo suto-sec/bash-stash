@@ -1,0 +1,56 @@
+@@topic 11_variables_arith | Variables, arithmetic & environment
+@@ex 1126 var_intro | Creating and reading a variable
+@@level 1
+@@cmds =, $
+@@readme
+Create a variable `NOMBRE` with the value `Ada` (no spaces around `=`) and print `Hola, Ada`,
+substituting the variable's value.
+@@check
+SEEDS=1
+@@solution
+#!/bin/bash
+NOMBRE=Ada
+echo "Hola, $NOMBRE"
+
+@@ex 1127 arith_intro | Arithmetic with $(( ))
+@@level 1
+@@cmds $(( ))
+@@readme
+Create `A=6` and `B=7`, and print the value of `A * B` using `$(( ))`.
+@@check
+SEEDS=1
+extra_check() { ans_code | grep -q '\$((' || fail "use \$(( ))"; }
+@@solution
+#!/bin/bash
+A=6
+B=7
+echo $((A * B))
+
+@@ex 1128 export_intro | export: passing a variable to a child shell
+@@level 1
+@@cmds export
+@@readme
+Create a variable `MSG=hola`, export it, and then run a child shell that prints it:
+`bash -c 'echo "$MSG"'`.
+@@check
+SEEDS=1
+extra_check() { must_use export; }
+@@solution
+#!/bin/bash
+export MSG=hola
+bash -c 'echo "$MSG"'
+
+@@ex 1129 read_intro | read: loading a line into a variable
+@@level 1
+@@cmds read
+@@readme
+The file `dato.txt` contains a single line of text. Read it into a variable `X` with
+`read X < dato.txt` and print `Leido: ` followed by the value.
+@@check
+SEEDS=1
+setup() { mkfl dato.txt "$(word)"; }
+extra_check() { must_use read; }
+@@solution
+#!/bin/bash
+read X < dato.txt
+echo "Leido: $X"

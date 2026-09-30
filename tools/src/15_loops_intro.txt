@@ -1,0 +1,59 @@
+@@topic 15_loops_read | Loops: for, while, until, read
+@@ex 1548 for_intro | Quick refresher: for
+@@level 1
+@@cmds for in, seq
+@@readme
+The script receives N. Using a `for` loop, print the numbers 1 to N, one per line.
+@@check
+SEEDS=1
+ARGS=('1' '3' '5')
+extra_check() { must_use for; }
+@@solution
+#!/bin/bash
+for ((i = 1; i <= $1; i++)); do echo "$i"; done
+
+@@ex 1549 while_intro | Quick refresher: while
+@@level 1
+@@cmds while
+@@readme
+The script receives N. Using a `while` loop, print a countdown from N down to 1, one per line.
+@@check
+SEEDS=1
+ARGS=('1' '3' '5')
+extra_check() { must_use while; }
+@@solution
+#!/bin/bash
+i=$1
+while [ "$i" -ge 1 ]; do
+  echo "$i"
+  i=$((i - 1))
+done
+
+@@ex 1550 read_intro | Quick refresher: read
+@@level 1
+@@cmds read
+@@readme
+Read **one line** from standard input and print it prefixed with `you said: `.
+@@check
+SEEDS=3
+input() { words "$(randr 1 4)"; }
+extra_check() { must_use read; }
+@@solution
+#!/bin/bash
+read -r line
+echo "you said: $line"
+
+@@ex 1551 read_prompt_intro | Quick refresher: read -p
+@@level 1
+@@cmds read -p
+@@readme
+Ask for the user's name with `read -p "Name: " NAME` (the prompt goes to stderr, the checker
+ignores it) and print `Hello, NAME!`.
+@@check
+SEEDS=3
+input() { word; }
+extra_check() { must_use read; }
+@@solution
+#!/bin/bash
+read -p "Name: " NAME
+echo "Hello, $NAME!"

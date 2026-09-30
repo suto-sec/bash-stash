@@ -1,0 +1,70 @@
+@@topic 04_archives | tar, gzip & compression
+@@ex 0426 tar_c_intro | tar -c: creating an archive
+@@level 1
+@@cmds tar -cf
+@@readme
+Create an (uncompressed) archive `archivo.tar` in the current directory that contains the file
+`datos.txt`.
+@@check
+SEEDS=1
+setup() { randtext 3 > datos.txt; }
+extra_check() {
+  [[ -f $W/archivo.tar ]] || { fail "archivo.tar was not created"; return; }
+  tar tf "$W/archivo.tar" 2>/dev/null | grep -qx datos.txt || fail "archivo.tar doesn't contain datos.txt"
+}
+@@solution
+#!/bin/bash
+tar -cf archivo.tar datos.txt
+
+@@ex 0427 tar_t_intro | tar -t: listing an archive
+@@level 1
+@@cmds tar -tf
+@@readme
+The file `paquete.tar` exists in the current directory. Without extracting it, print the list of
+paths it contains.
+@@check
+SEEDS=1
+setup() { local i; for i in 1 2 3; do randtext 2 > "f$i.txt"; done; tar --sort=name -cf paquete.tar f1.txt f2.txt f3.txt; rm f1.txt f2.txt f3.txt; }
+@@solution
+#!/bin/bash
+tar -tf paquete.tar
+
+@@ex 0428 tar_x_intro | tar -x: extracting an archive
+@@level 1
+@@cmds tar -xf
+@@readme
+The file `paquete.tar` exists in the current directory. Extract its contents into the current
+directory.
+@@check
+SEEDS=1
+COMPARE="stdout exit files"
+setup() { randtext 3 > dato.txt; tar -cf paquete.tar dato.txt; rm dato.txt; }
+@@solution
+#!/bin/bash
+tar -xf paquete.tar
+
+@@ex 0429 gzip_intro | gzip: compressing a file
+@@level 1
+@@cmds gzip
+@@readme
+Compress the file `informe.txt` with `gzip` (the original disappears, you get `informe.txt.gz`).
+@@check
+SEEDS=1
+COMPARE="stdout exit files"
+setup() { randtext 4 > informe.txt; }
+@@solution
+#!/bin/bash
+gzip informe.txt
+
+@@ex 0430 gunzip_intro | gunzip: decompressing a file
+@@level 1
+@@cmds gunzip
+@@readme
+The file `datos.csv.gz` exists in the current directory. Decompress it back into `datos.csv`.
+@@check
+SEEDS=1
+COMPARE="stdout exit files"
+setup() { randtext 4 > datos.csv; gzip datos.csv; }
+@@solution
+#!/bin/bash
+gunzip datos.csv.gz

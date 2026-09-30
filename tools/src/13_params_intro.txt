@@ -1,0 +1,49 @@
+@@topic 13_script_params | Script parameters & exit codes
+@@ex 1339 positional_intro | $1, $2 and $#
+@@level 1
+@@cmds $1, $2, $#
+@@readme
+Print, one per line:
+
+```
+Primero: <$1>
+Segundo: <$2>
+Total: <$#>
+```
+@@check
+SEEDS=1
+ARGS=('' 'uno' 'uno dos' 'uno dos tres')
+@@solution
+#!/bin/bash
+echo "Primero: $1"
+echo "Segundo: $2"
+echo "Total: $#"
+
+@@ex 1340 at_intro | "$@" keeps arguments intact
+@@level 1
+@@cmds "$@", for
+@@readme
+Print every argument on its own line, prefixed with `- `. Use `"$@"` so arguments with spaces
+stay whole.
+@@check
+SEEDS=1
+ARGS=('' 'uno' 'uno dos tres' '"a b" c')
+@@solution
+#!/bin/bash
+for a in "$@"; do
+  echo "- $a"
+done
+
+@@ex 1341 shift_intro | shift
+@@level 1
+@@cmds shift
+@@readme
+Print `Primero: <$1>`. Then `shift` and print `Ahora: <new $1>`, or `none` if there isn't one.
+@@check
+SEEDS=1
+ARGS=('' 'uno' 'uno dos' 'uno dos tres')
+@@solution
+#!/bin/bash
+echo "Primero: $1"
+shift
+if [ $# -eq 0 ]; then echo none; else echo "Ahora: $1"; fi
