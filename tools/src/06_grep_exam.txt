@@ -1,0 +1,333 @@
+@@topic 06_grep_regex | grep & regular expressions
+@@ex 0638 grep_semver | Extracting and version-sorting X.Y.Z numbers
+@@level 3
+@@cmds grep -Eo, \b, sort -t -k (numeric, multiple keys), sort -u
+@@readme
+`versiones.txt` has lines of free text, some of which contain a version number in `X.Y.Z` form
+(each of `X`, `Y`, `Z` is `0` or a number **without a leading zero**). Extract every such version
+with a **single** `grep -Eo` call and print them **sorted numerically** (major, then minor, then
+patch — not alphabetically: `2.0.0` must come before `10.0.0`), **without duplicates**.
+
+Decoys that must **not** be extracted: a component with a leading zero (`01.2.3`), fewer than three
+components (`1.2`), a non-digit component (`1.a.3`), and a version glued to a letter with no
+separation (`v10.0.0` — there is no boundary between `v` and `1`, so it must not match; use `\b` to
+require one).
+@@check
+setup() {
+  local n i maj min pat
+  n=$(randr 3 5)
+  : > versiones.txt
+  for i in $(seq "$n"); do
+    maj=$(pick 0 1 2 3 9 10 20 "$(randr 0 99)")
+    min=$(pick 0 1 2 5 9 "$(randr 0 99)")
+    pat=$(pick 0 1 3 7 22 "$(randr 0 99)")
+    echo "$(word) $maj.$min.$pat $(word)" >> versiones.txt
+  done
+  echo "otra vez $maj.$min.$pat visto de nuevo" >> versiones.txt
+  echo "bad 0$(randr 1 9).2.3 here" >> versiones.txt
+  echo "too.short $(randr 1 9).$(randr 1 9) end" >> versiones.txt
+  echo "letters $(randr 1 9).x.$(randr 1 9) skip" >> versiones.txt
+  echo "glued v$(randr 10 99).0.0 shipped" >> versiones.txt
+}
+@@solution
+#!/bin/bash
+grep -Eo '\b(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\b' versiones.txt |
+  sort -t. -k1,1n -k2,2n -k3,3n -u
+
+@@ex 0639 grep_rank_files | Ranking files by how often a word appears
+@@level 3
+@@cmds grep -ci, sort -k (numeric + text), cat
+@@readme
+Under `logs/` there are several files (no subdirectories). For every file that contains **at least
+one** line with the word `timeout` in **any** letter case, print:
+
+```
+<count> <path>
+```
+
+(`count` = number of matching **lines** in that file, `path` exactly as `logs/name`), **sorted by
+count descending, then by path ascending**. Files with zero matches are not listed individually.
+Finally print:
+
+```
+Total: N
+```
+
+where `N` is the number of matching lines summed over **every** file in `logs/` (including the ones
+with zero, which contribute nothing).
+@@check
+setup() {
+  local names=(alpha beta gamma delta epsilon zeta) n i cnt fill f j
+  mkdir -p logs
+  n=$(randr 4 6)
+  for i in $(seq "$n"); do
+    f="logs/${names[$((i - 1))]}.log"
+    cnt=$(pick 0 0 1 2 3)
+    fill=$(randr 1 4)
+    : > "$f"
+    for j in $(seq "$cnt"); do echo "$(pick Timeout TIMEOUT timeout) $(word)" >> "$f"; done
+    for j in $(seq "$fill"); do echo "$(word) $(word)" >> "$f"; done
+  done
+}
+@@solution
+#!/bin/bash
+for f in logs/*; do
+  n=$(grep -ci timeout "$f")
+  [ "$n" -gt 0 ] && echo "$n $f"
+done | sort -k1,1nr -k2,2
+echo "Total: $(cat logs/*.log | grep -ci timeout)"
+
+@@ex 0640 grep_mac_dedup | Extracting and normalising MAC addresses
+@@level 3
+@@cmds grep -Eo, {n}, tr, sort -u
+@@readme
+`dispositivos.txt` has lines of free text, some containing a MAC address: six pairs of hexadecimal
+digits separated by `:` (case-insensitive). Extract every valid one with a **single** `grep -Eo`
+call, convert them all to **lowercase**, and print them **sorted, without duplicates** — so the same
+address written in different letter case counts once.
+
+Decoys that must **not** match: groups separated by `-` instead of `:`, fewer than six groups, and a
+group containing a non-hexadecimal letter (`G`-`Z`).
+@@check
+setup() {
+  local mac1 mac2 i p
+  mac1=""
+  for i in $(seq 6); do p=$(printf '%02X' "$(rand 256)"); mac1+="${mac1:+:}$p"; done
+  mac2=""
+  for i in $(seq 6); do p=$(printf '%02X' "$(rand 256)"); mac2+="${mac2:+:}$p"; done
+  : > dispositivos.txt
+  echo "host1 mac $mac1 activo" >> dispositivos.txt
+  echo "host2 mac $(echo "$mac1" | tr 'A-F' 'a-f') duplicado" >> dispositivos.txt
+  echo "host3 mac $mac2 nuevo" >> dispositivos.txt
+  echo "host4 mac $(echo "$mac1" | tr ':' '-') guion" >> dispositivos.txt
+  echo "host5 mac ${mac1%:*} corto" >> dispositivos.txt
+  echo "host6 mac ${mac1/${mac1:0:2}/GG} hexmalo" >> dispositivos.txt
+}
+@@solution
+#!/bin/bash
+grep -Eo '\b([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}\b' dispositivos.txt | tr 'A-F' 'a-f' | sort -u
+
+@@ex 0641 errscan | errscan.sh: scanning several files for a pattern
+@@level 4
+@@cmds grep -E (several files), script arguments (variadic)
+@@readme
+Write `errscan.sh`:
+
+```
+errscan.sh FILE...
+```
+
+Takes **one or more** file names. Using a **single** `grep -E` call over all of them, print every
+line that matches `ERROR` or `CRITICAL` (exact case), prefixed with its file name and a colon
+exactly as `grep` does automatically when given more than one file (in the order the files are
+given on the command line). Then print:
+
+```
+Total: N
+```
+
+where `N` is the number of matching lines over all files.
+
+Errors (message on **stderr**, nothing on stdout):
+
+- no arguments: error and usage, exit **1**
+- any argument is not a readable regular file: message naming it, exit **2** (check the arguments
+  left to right; report the first bad one)
+@@check
+SCRIPT_NAME=errscan.sh
+SEEDS=2
+COMPARE="stdout exit errmsg"
+ARGS=('s1.log s2.log s3.log' 's2.log' 's3.log' 's1.log s3.log' '' 's1.log nofile.log' 'nofile.log s2.log')
+setup() {
+  local i
+  : > s1.log
+  for i in $(seq "$(randr 3 6)"); do echo "$(pick ok fine "$(word)")" >> s1.log; done
+  echo "ERROR $(word)" >> s1.log
+  : > s2.log
+  for i in $(seq "$(randr 2 5)"); do echo "$(word)" >> s2.log; done
+  echo "CRITICAL $(word)" >> s2.log
+  echo "CRITICAL $(word)" >> s2.log
+  : > s3.log
+  for i in $(seq "$(randr 2 4)"); do echo "$(word) $(word)" >> s3.log; done
+}
+extra_check() {
+  [[ -n $REF_ERR && -n $OUT ]] && fail "on errors nothing must be printed on stdout"
+  case $REF_CODE in
+    1) [[ $ERR == *errscan.sh* || $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* ]] || fail "the usage message should show how to call the script" ;;
+    2) [[ $CASE == nofile* ]] && mentions nofile.log
+       [[ $CASE == *nofile.log ]] && mentions nofile.log ;;
+  esac
+}
+@@solution
+#!/bin/bash
+# errscan.sh FILE...: lines matching ERROR or CRITICAL across several files
+
+if [ $# -lt 1 ]; then
+  echo "Error: wrong number of arguments" >&2
+  echo "Usage: $(basename "$0") FILE..." >&2
+  exit 1
+fi
+for f in "$@"; do
+  if [ ! -f "$f" ] || [ ! -r "$f" ]; then
+    echo "Error: cannot read '$f'" >&2
+    exit 2
+  fi
+done
+
+R=$(grep -E 'ERROR|CRITICAL' -- "$@")
+[ -n "$R" ] && echo "$R"
+if [ -z "$R" ]; then N=0; else N=$(grep -c . <<< "$R"); fi
+echo "Total: $N"
+
+@@ex 0642 ipfilter | ipfilter.sh: filtering by an IP prefix (the escaping trap)
+@@level 4
+@@cmds grep -E, sed (escaping dots), [[ =~ ]], script argument
+@@readme
+Write `ipfilter.sh`:
+
+```
+ipfilter.sh FILE PREFIX
+```
+
+`PREFIX` looks like the start of a dotted IPv4 address (`192.`, `192.168.`, `192.168.1.`...).
+Print the lines of `FILE` that contain an IPv4-looking address starting with exactly `PREFIX`
+followed by at least one more digit.
+
+This is a classic trap: `PREFIX`'s dots are **literal dots**, not "any character" — if you build the
+`grep` pattern from `PREFIX` without escaping them first, `192.168.1.` would also match text like
+`192x168x1x9`, and (worse) `192.168.1.` would wrongly match inside `192.168.10.5` unless the dot
+right after the prefix is required to be literal too. Escape every `.` in `PREFIX` (e.g. with `sed
+'s/\./\\./g'`) before using it inside the pattern.
+
+Errors (message on **stderr**, nothing on stdout):
+
+- not exactly 2 arguments: error and usage, exit **1**
+- `FILE` is not a readable regular file: message with its name, exit **2**
+- `PREFIX` doesn't look like the start of an IPv4 address (only digits and dots, 1 to 3 groups,
+  optionally ending in a dot): message with it, exit **3**
+@@check
+SCRIPT_NAME=ipfilter.sh
+SEEDS=2
+COMPARE="stdout exit errmsg"
+ARGS=('red.log "192.168.1."' 'red.log "192.168.10."' 'red.log "10.0.0."' 'red.log' 'red.log "192.168.1." extra' 'nofile.log "192.168.1."' 'red.log abc')
+setup() {
+  local n i
+  n=$(randr 6 10)
+  : > red.log
+  for i in $(seq "$n"); do
+    echo "conn from $(pick "192.168.1." "192.168.10." "10.0.0.")$(randr 1 254) $(pick ok drop timeout)" >> red.log
+  done
+  echo "conn from 192x168x1x77 raro" >> red.log
+  echo "conn from 192.168.100.5 similar" >> red.log
+}
+extra_check() {
+  [[ -n $REF_ERR && -n $OUT ]] && fail "on errors nothing must be printed on stdout"
+  case $REF_CODE in
+    1) [[ $ERR == *ipfilter.sh* || $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* ]] || fail "the usage message should show how to call the script" ;;
+    2) mentions "$(eval "set -- $CASE"; echo "$1")" ;;
+    3) mentions "$(eval "set -- $CASE"; echo "$2")" ;;
+  esac
+}
+@@solution
+#!/bin/bash
+# ipfilter.sh FILE PREFIX: lines with an IPv4 address starting with PREFIX
+
+if [ $# -ne 2 ]; then
+  echo "Error: wrong number of arguments" >&2
+  echo "Usage: $(basename "$0") FILE PREFIX" >&2
+  exit 1
+fi
+F=$1 P=$2
+if [ ! -f "$F" ] || [ ! -r "$F" ]; then
+  echo "Error: cannot read '$F'" >&2
+  exit 2
+fi
+if ! [[ $P =~ ^[0-9]{1,3}(\.[0-9]{1,3}){0,2}\.?$ ]]; then
+  echo "Error: '$P' is not a valid IPv4 prefix" >&2
+  exit 3
+fi
+
+ESCAPED=$(printf '%s' "$P" | sed 's/\./\\./g')
+grep -E "(^|[^0-9.])${ESCAPED}[0-9]" -- "$F"
+
+@@ex 0643 colgrep | colgrep.sh: matching a regex against one column
+@@level 4
+@@cmds cut -d, grep -nE, grep -E (validity test), sed -n Np, script argument
+@@readme
+Write `colgrep.sh`:
+
+```
+colgrep.sh FILE COLNUM PATTERN
+```
+
+`FILE` has `:`-separated records, no header. Print every **whole line** of `FILE` whose field
+number `COLNUM` (1-based) matches the extended regular expression `PATTERN` (matching anywhere in
+the field, not necessarily the whole field), in file order. Then print:
+
+```
+Total: N lines
+```
+
+Errors (message on **stderr**, nothing on stdout):
+
+- not exactly 3 arguments: error and usage, exit **1**
+- `FILE` is not a readable regular file: message with its name, exit **2**
+- `COLNUM` is not a positive integer: message with it, exit **3**
+- `PATTERN` is not a syntactically valid ERE (test it against empty input first; `grep -E` exits
+  with status **2** for a bad pattern): message with it, exit **4**
+@@check
+SCRIPT_NAME=colgrep.sh
+SEEDS=2
+COMPARE="stdout exit errmsg"
+ARGS=('usuarios.txt 3 "bash$"' 'usuarios.txt 2 "^1"' 'usuarios.txt 1 x' 'usuarios.txt 3' 'usuarios.txt' 'nofile.txt 3 x' 'usuarios.txt abc x' 'usuarios.txt 3 "["')
+setup() {
+  local n i
+  n=$(randr 6 10)
+  : > usuarios.txt
+  for i in $(seq "$n"); do
+    echo "$(word)$i:$(randr 1000 1999):$(pick /bin/bash /bin/sh /usr/sbin/nologin)" >> usuarios.txt
+  done
+  echo "root:0:/bin/bash" >> usuarios.txt
+}
+extra_check() {
+  [[ -n $REF_ERR && -n $OUT ]] && fail "on errors nothing must be printed on stdout"
+  case $REF_CODE in
+    1) [[ $ERR == *colgrep.sh* || $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* ]] || fail "the usage message should show how to call the script" ;;
+    2) mentions "$(eval "set -- $CASE"; echo "$1")" ;;
+    3) mentions "$(eval "set -- $CASE"; echo "$2")" ;;
+    4) mentions "$(eval "set -- $CASE"; echo "$3")" ;;
+  esac
+}
+@@solution
+#!/bin/bash
+# colgrep.sh FILE COLNUM PATTERN: lines whose column matches an ERE
+
+if [ $# -ne 3 ]; then
+  echo "Error: wrong number of arguments" >&2
+  echo "Usage: $(basename "$0") FILE COLNUM PATTERN" >&2
+  exit 1
+fi
+F=$1 C=$2 P=$3
+if [ ! -f "$F" ] || [ ! -r "$F" ]; then
+  echo "Error: cannot read '$F'" >&2
+  exit 2
+fi
+if ! [[ $C =~ ^[1-9][0-9]*$ ]]; then
+  echo "Error: '$C' is not a valid column number" >&2
+  exit 3
+fi
+grep -E -- "$P" /dev/null 2>/dev/null
+if [ $? -eq 2 ]; then
+  echo "Error: '$P' is not a valid pattern" >&2
+  exit 4
+fi
+
+MATCHES=$(cut -d: -f"$C" -- "$F" | grep -nE -- "$P" | cut -d: -f1)
+if [ -z "$MATCHES" ]; then
+  echo "Total: 0 lines"
+  exit 0
+fi
+while IFS= read -r n; do
+  sed -n "${n}p" -- "$F"
+done <<< "$MATCHES"
+echo "Total: $(echo "$MATCHES" | wc -l) lines"

@@ -1,0 +1,250 @@
+@@topic 16_functions | Functions
+@@ex 1626 avisos | A shared helper called at several validation points
+@@level 3
+@@cmds function, >&2, global counter
+@@readme
+The script receives arguments of the form `NOMBRE=EDAD`. Write a helper `queja MSG...` that prints
+MSG to **stderr** (wording free, but it must name the offending argument) and increments a global
+counter `ERRORES` — it must **not** exit. Call `queja` at each of these validation points, in order,
+for every argument (stop checking that argument at the first failure and move to the next one):
+
+1. the argument must contain **exactly one** `=` with a non-empty part before it (NOMBRE) — otherwise
+   `queja`
+2. the part after `=` (EDAD) must be made only of digits — otherwise `queja`
+3. EDAD must be between 0 and 120 (inclusive) — otherwise `queja`
+
+When an argument passes all three checks, print `NOMBRE: EDAD anios`. Finally print
+`validos: V, avisos: ERRORES`. Exit 0 if `ERRORES` is 0, 1 otherwise.
+@@check
+SEEDS=1
+COMPARE="stdout errmsg exit"
+ARGS=('ana=30' 'ana=30 luis=20' 'malformato' 'x=abc' '=5' 'a=1=2' '' 'ana=30 x=abc y=200 lu=15' 'pedro=121 luis=0')
+extra_check() {
+  local a t nm ed; eval "a=( $CASE )"
+  for t in "${a[@]}"; do
+    case $t in
+      *=*)
+        nm=${t%%=*}; ed=${t#*=}
+        if [[ -z $nm || $ed == *=* ]]; then mentions "$t"; continue; fi
+        if [[ ! $ed =~ ^[0-9]+$ ]]; then mentions "$t"; continue; fi
+        if (( 10#$ed > 120 )); then mentions "$t"; fi
+        ;;
+      *) mentions "$t" ;;
+    esac
+  done
+  must_use queja
+}
+@@solution
+#!/bin/bash
+ERRORES=0
+queja() {
+  echo "$*" >&2
+  ERRORES=$((ERRORES + 1))
+}
+V=0
+for arg in "$@"; do
+  case $arg in
+    *=*)
+      nombre=${arg%%=*}
+      edad=${arg#*=}
+      if [[ -z $nombre || $edad == *=* ]]; then
+        queja "formato invalido: $arg"; continue
+      fi
+      ;;
+    *)
+      queja "formato invalido: $arg"; continue
+      ;;
+  esac
+  if [[ ! $edad =~ ^[0-9]+$ ]]; then
+    queja "edad no numerica: $arg"; continue
+  fi
+  if (( 10#$edad > 120 )); then
+    queja "edad fuera de rango: $arg"; continue
+  fi
+  echo "$nombre: $edad anios"
+  V=$((V + 1))
+done
+echo "validos: $V, avisos: $ERRORES"
+[ "$ERRORES" -eq 0 ]
+
+@@ex 1627 clasifica_valor | A function called per loop item, its echo used by the caller
+@@level 3
+@@cmds while read, $(func), local
+@@readme
+`medidas.txt` has one integer per line (it may be negative). Write a function `clasifica VALOR` that
+**echoes** exactly one word: `negativo` (VALOR < 0), `cero` (VALOR == 0), `bajo` (1-9), `medio`
+(10-99) or `alto` (>= 100).
+
+Read `medidas.txt` line by line. For each line, call `clasifica` and capture its echoed word with
+`$(...)`; use that value to print `VALOR: CATEGORIA` and to accumulate a per-category counter.
+
+After the loop, print every category that occurred **at least once**, sorted alphabetically, as
+`CATEGORIA: N`. Finally print `total: T` (T = number of lines processed).
+@@check
+SEEDS=4
+setup() {
+  local i n
+  n=$(randr 6 12)
+  for i in $(seq "$n"); do
+    pick "$(randr -50 -1)" 0 "$(randr 1 9)" "$(randr 10 99)" "$(randr 100 500)"
+  done > medidas.txt
+}
+extra_check() { must_use clasifica; }
+@@solution
+#!/bin/bash
+clasifica() {
+  local v=$1
+  if [ "$v" -lt 0 ]; then echo negativo
+  elif [ "$v" -eq 0 ]; then echo cero
+  elif [ "$v" -lt 10 ]; then echo bajo
+  elif [ "$v" -lt 100 ]; then echo medio
+  else echo alto
+  fi
+}
+declare -A CNT
+t=0
+while read -r v; do
+  cat=$(clasifica "$v")
+  echo "$v: $cat"
+  CNT[$cat]=$(( ${CNT[$cat]:-0} + 1 ))
+  t=$((t + 1))
+done < medidas.txt
+for c in "${!CNT[@]}"; do echo "$c: ${CNT[$c]}"; done | sort
+echo "total: $t"
+
+@@ex 1628 informe_scripts | informe_scripts.sh: die plus a per-file function
+@@level 4
+@@cmds die/usage pattern, find -print0, while read -r -d '', $(func), read
+@@readme
+Write `informe_scripts.sh DIR`. Write a helper `die CODE MESSAGE...` (prints `ERROR: MESSAGE` on
+stderr, exits the script with CODE) and use it for every validation:
+
+| situation | exit |
+|-----------|------|
+| not exactly 1 argument (show the usage) | 1 |
+| DIR is not a directory (name it) | 2 |
+
+Write a function `analizar ARCHIVO` that **echoes** two words on one line: `exec` or `noexec`
+(whether the file has any execute bit set) and `shebang` or `sin-shebang` (whether its first line
+starts with `#!`, check with `head -n 1`).
+
+Recursively visit every regular file under DIR whose name ends in `.sh`, safely and sorted
+(`find DIR -type f -name '*.sh' -print0 | sort -z | while IFS= read -r -d '' f; do ... done`, names
+may contain spaces). For each one, call `analizar "$f"` and capture its two words with
+`read -r e s <<< "$(analizar "$f")"`; print `FILE: E, S`.
+
+Finally print `TOTAL: N scripts, E ejecutables, S con shebang`.
+@@check
+SCRIPT_NAME=informe_scripts.sh
+SEEDS=3
+COMPARE="stdout exit errmsg"
+setup() {
+  mkdir -p "prog/sub uno" "prog/sub dos"
+  local f1 f2 f3 f4
+  f1="prog/a $(word)1.sh"; mkfl "$f1" '#!/bin/bash' 'echo hi'; chmod +x "$f1"
+  f2="prog/sub uno/b $(word)2.sh"; mkfl "$f2" 'echo hi'
+  f3="prog/sub dos/c $(word)3.sh"; mkfl "$f3" '#!/bin/bash' 'echo hi'; chmod +x "$f3"
+  f4="prog/d $(word)4.sh"; mkfl "$f4" '#!/bin/bash' 'echo hi'
+  touch "prog/nota.txt"
+  touch nota.txt
+}
+ARGS=('prog' '' 'prog extra' 'nota.txt' 'noexiste')
+extra_check() {
+  local a; eval "a=( $CASE )"
+  [[ $REF_CODE == 2 ]] && mentions "${a[0]}"
+  must_use die analizar read
+}
+@@solution
+#!/bin/bash
+# informe_scripts.sh DIR
+die() {
+  local code=$1; shift
+  echo "ERROR: $*" >&2
+  exit "$code"
+}
+[ $# -eq 1 ] || die 1 "usage: $(basename "$0") DIR"
+D=$1
+[ -d "$D" ] || die 2 "'$D' no es un directorio"
+
+analizar() {
+  local f=$1 e s
+  if [ -x "$f" ]; then e=exec; else e=noexec; fi
+  if head -n 1 -- "$f" | grep -q '^#!'; then s=shebang; else s=sin-shebang; fi
+  echo "$e $s"
+}
+
+n=0; ex=0; sh=0
+while IFS= read -r -d '' f; do
+  read -r e s <<< "$(analizar "$f")"
+  echo "$f: $e, $s"
+  n=$((n + 1))
+  [ "$e" = exec ] && ex=$((ex + 1))
+  [ "$s" = shebang ] && sh=$((sh + 1))
+done < <(find "$D" -type f -name '*.sh' -print0 | sort -z)
+echo "TOTAL: $n scripts, $ex ejecutables, $sh con shebang"
+
+@@ex 1629 tamano_rec | tamano_rec.sh: a recursive du -s, in miniature
+@@level 4
+@@cmds recursion, find -maxdepth 1 -print0, read (multi-value), local
+@@readme
+Write `tamano_rec.sh DIR`, a recursive stand-in for `du -s`. Write a **recursive** function
+`tamano DIR` that **echoes** three numbers on one line: `BYTES FILES DIRS` — the total size in
+bytes of every regular file under DIR (any depth, hidden files included), the count of such files,
+and the count of subdirectories under DIR at any depth (DIR itself not counted). Symbolic links are
+ignored (neither followed nor counted).
+
+Implement it by listing DIR's **direct** entries safely:
+`find DIR -mindepth 1 -maxdepth 1 -print0 | while IFS= read -r -d '' e; do ... done`. For a direct
+entry that is itself a directory, get its own totals with `read -r b f d <<< "$(tamano "$e")"` and
+add them in (plus 1 for that subdirectory itself).
+
+Print `TOTAL: DIR = B bytes (F files, D dirs)`.
+
+Errors (stderr, wording free): not exactly 1 argument -> usage, exit **1**; DIR is not a directory
+-> exit **2** (name it).
+@@check
+SCRIPT_NAME=tamano_rec.sh
+SEEDS=3
+COMPARE="stdout exit errmsg"
+setup() {
+  mkdir -p "raiz/sub uno/deep" "raiz/sub dos" "raiz/.oculto"
+  local i
+  for i in $(seq 3); do bigfile "raiz/$(word)$(pick '' ' ')$i.dat" "$(randr 0 300)"; done
+  for i in $(seq 2); do bigfile "raiz/sub uno/$(word)$(pick '' ' ')$i.dat" "$(randr 0 300)"; done
+  bigfile "raiz/sub uno/deep/$(word).dat" "$(randr 0 300)"
+  bigfile "raiz/sub dos/$(word).dat" "$(randr 0 300)"
+  bigfile "raiz/.oculto/$(word).dat" "$(randr 0 300)"
+  ln -s "sub uno" "raiz/enlace"
+  touch nota.txt
+}
+ARGS=('raiz' '' 'raiz extra' 'nota.txt' 'noexiste')
+extra_check() {
+  local a; eval "a=( $CASE )"
+  [[ $REF_CODE == 2 ]] && mentions "${a[0]}"
+  must_use tamano read
+}
+@@solution
+#!/bin/bash
+# tamano_rec.sh DIR
+[ $# -eq 1 ] || { echo "usage: $(basename "$0") DIR" >&2; exit 1; }
+[ -d "$1" ] || { echo "error: '$1' no es un directorio" >&2; exit 2; }
+
+tamano() {
+  local dir=$1 bytes=0 files=0 dirs=0
+  while IFS= read -r -d '' e; do
+    if [ -L "$e" ]; then
+      continue
+    elif [ -d "$e" ]; then
+      local b f d
+      read -r b f d <<< "$(tamano "$e")"
+      bytes=$((bytes + b)); files=$((files + f)); dirs=$((dirs + d + 1))
+    elif [ -f "$e" ]; then
+      bytes=$((bytes + $(stat -c %s "$e")))
+      files=$((files + 1))
+    fi
+  done < <(find "$dir" -mindepth 1 -maxdepth 1 -print0)
+  echo "$bytes $files $dirs"
+}
+
+read -r B F D <<< "$(tamano "$1")"
+echo "TOTAL: $1 = $B bytes ($F files, $D dirs)"

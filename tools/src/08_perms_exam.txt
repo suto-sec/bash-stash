@@ -1,0 +1,379 @@
+@@topic 08_permissions | Permissions, chmod, umask, chown
+@@ex 0829 symlink_target_perms | A symlink's permissions are not its own
+@@level 3
+@@cmds stat -c %a, test -L -e, readlink, ln -s
+@@readme
+The directory `enlaces` contains regular files and symbolic links to them (some links are
+**broken**). A symbolic link's own mode is meaningless for access control (it is always shown as
+`rwxrwxrwx`); what matters is the permissions of whatever it points to — and `stat -c %a` on a link
+already reports the **target's** mode automatically, not the link's own.
+
+For every entry directly inside `enlaces`, in the order of the `enlaces/*` glob:
+
+- if it is a broken symbolic link, print `NAME: broken`
+- if it is a symbolic link to something that exists, print `NAME -> TARGET: MODE`, where `TARGET` is
+  its stored target (`readlink`) and `MODE` is the octal mode of what it resolves to (`stat -c %a`)
+- otherwise (a regular file, not a link), print `NAME: MODE`
+@@check
+COMPARE="stdout exit files"
+setup() {
+  mkdir enlaces
+  local i f names=()
+  for i in 1 2 3; do
+    f=$(pick "$(word)$i.txt" "$(word) $i.dat")
+    randtext 1 > "enlaces/$f"
+    chmod "$(pick 644 600 640 755 700)" "enlaces/$f"
+    names+=("$f")
+  done
+  ln -s "${names[0]}" "enlaces/link_a"
+  ln -s "$PWD/enlaces/${names[1]}" "enlaces/link_b abs"
+  ln -s "no_existe_$(word)" "enlaces/roto"
+}
+@@solution
+#!/bin/bash
+for f in enlaces/*; do
+  name=$(basename "$f")
+  if [ -L "$f" ]; then
+    if [ ! -e "$f" ]; then
+      echo "$name: broken"
+    else
+      echo "$name -> $(readlink "$f"): $(stat -c %a "$f")"
+    fi
+  else
+    echo "$name: $(stat -c %a "$f")"
+  fi
+done
+
+@@ex 0830 preserve_special | preserve_special.sh: chmod without erasing setuid/setgid/sticky
+@@level 4
+@@cmds stat -c %a, chmod, exit codes
+@@readme
+`chmod 750 FILE` looks harmless, but if `FILE` already had its setuid, setgid or sticky bit set,
+**plain octal `chmod` with only 3 digits silently clears those special bits** — `stat -c %a` prints
+`4750` before and `750` after. Write `preserve_special.sh`:
+
+```
+preserve_special.sh FILE MODE
+```
+
+`MODE` is always exactly **3** octal digits (the base `rwx` bits, no special-bit digit — reject
+anything else). Change `FILE`'s base permission bits to `MODE` while **keeping** whatever special
+bits (setuid/setgid/sticky) it already had, by computing the correct 4-digit mode yourself before
+calling `chmod` (instead of calling `chmod MODE FILE` directly, which would erase them). Print
+`OLD -> NEW`, where `OLD` and `NEW` are exactly what `stat -c %a FILE` shows before and after (3
+digits when there are no special bits, 4 when there are).
+
+Errors (message on stderr): not exactly 2 arguments → usage, exit **1**; `FILE` is not a regular file
+→ exit **2** (message includes `FILE`); `MODE` is not exactly 3 octal digits → exit **3** (message
+includes `MODE`).
+@@check
+SCRIPT_NAME=preserve_special.sh
+SEEDS=3
+COMPARE="stdout exit errmsg files"
+setup() {
+  touch a b c d e f_plain "mi archivo"
+  chmod "$(pick 755 700 711 644)" a
+  chmod "$(pick 4755 4700 4711)" b
+  chmod "$(pick 2750 2700 2770)" c
+  chmod "$(pick 1777 1755)" d
+  chmod "$(pick 6750 6755)" e
+  chmod "$(pick 644 640 600)" f_plain
+  chmod "$(pick 4640 2600 700)" "mi archivo"
+  mkdir carpeta
+}
+ARGS=(
+  'a 700'
+  'b 700'
+  'c 640'
+  'd 777'
+  'e 711'
+  'f_plain 600'
+  '"mi archivo" 640'
+  '"$W/a" 700'
+  'a 7000'
+  'a rwx'
+  'a'
+  'carpeta 700'
+  'noexiste 700'
+  ''
+)
+extra_check() {
+  case $REF_CODE in
+    2) mentions "$(eval "set -- $CASE"; echo "$1")" ;;
+    3) mentions "$(eval "set -- $CASE"; echo "$2")" ;;
+  esac
+}
+@@solution
+#!/bin/bash
+if [ $# -ne 2 ]; then
+  echo "Usage: $(basename "$0") FILE MODE" >&2
+  exit 1
+fi
+FILE=$1
+MODE=$2
+[ -f "$FILE" ] || { echo "Error: '$FILE' is not a regular file" >&2; exit 2; }
+[[ $MODE =~ ^[0-7]{3}$ ]] || { echo "Error: '$MODE' is not exactly 3 octal digits" >&2; exit 3; }
+
+OLD=$(stat -c %a "$FILE")
+if [ ${#OLD} -eq 4 ]; then
+  special=${OLD:0:1}
+  new="$special$MODE"
+else
+  new=$MODE
+fi
+chmod "$new" "$FILE"
+NEW=$(stat -c %a "$FILE")
+echo "$OLD -> $NEW"
+
+@@ex 0831 stickygap | stickygap.sh: world-writable directories missing the sticky bit
+@@level 4
+@@cmds find -perm -0002 ! -perm -1000, chmod +t, options, exit codes
+@@readme
+A directory that is writable by **others** but does **not** have the sticky bit is dangerous: any
+user can delete or rename any other user's files inside it (that's exactly why `/tmp` has mode
+`1777`, not `0777`). Write `stickygap.sh`:
+
+```
+stickygap.sh [-f] DIR
+```
+
+Find every **directory** under `DIR` (recursively, `DIR` itself included) that is writable by others
+(`-perm -0002`) but does **not** have the sticky bit set (`! -perm -1000`). Sorted by path (as
+`find DIR` prints it, sorted with `sort`):
+
+- without `-f`: print `<path>: <mode>` (mode as `stat -c %a`)
+- with `-f`: add the sticky bit (`chmod +t`) and print `<path>: <mode> -> <new mode>`
+
+Finally print `N directories found` (or, with `-f`, `N directories fixed`).
+
+Exit codes: **0** if none were found (or `-f` fixed them all); **1** if some were found and `-f` was
+not given; **2** wrong usage — anything other than an optional `-f` followed by exactly one directory
+argument (usage on stderr); **3** if `DIR` is not a directory (message includes `DIR`).
+@@check
+SCRIPT_NAME=stickygap.sh
+SEEDS=3
+COMPARE="stdout exit errmsg files"
+setup() {
+  mkdir -p "arbol/pub/sub compartido" arbol/priv arbol/tmp_ok
+  chmod "$(pick 777 775 757)" arbol/pub
+  chmod "$(pick 777 773)" "arbol/pub/sub compartido"
+  chmod "$(pick 755 700 750)" arbol/priv
+  chmod 1777 arbol/tmp_ok
+  touch arbol/pub/a "arbol/pub/sub compartido/b"
+  chmod 666 arbol/pub/a
+  mkdir "carpeta suelta"
+  chmod 777 "carpeta suelta"
+  touch fich
+}
+ARGS=(
+  'arbol'
+  '-f arbol'
+  '"$W/arbol"'
+  '"carpeta suelta"'
+  '-f "carpeta suelta"'
+  'arbol/priv'
+  '-f'
+  '-x arbol'
+  'arbol extra'
+  'noexiste'
+  'fich'
+  ''
+)
+extra_check() {
+  case $REF_CODE in
+    3) mentions "$(eval "set -- $CASE"; echo "${@: -1}")" ;;
+  esac
+}
+@@solution
+#!/bin/bash
+FIX=0
+if [ "$1" = -f ]; then
+  FIX=1
+  shift
+fi
+if [ $# -ne 1 ]; then
+  echo "Usage: $(basename "$0") [-f] DIR" >&2
+  exit 2
+fi
+DIR=$1
+[ -d "$DIR" ] || { echo "Error: '$DIR' is not a directory" >&2; exit 3; }
+
+n=0
+while IFS= read -r p; do
+  old=$(stat -c %a "$p")
+  if [ $FIX -eq 1 ]; then
+    chmod +t "$p"
+    new=$(stat -c %a "$p")
+    echo "$p: $old -> $new"
+  else
+    echo "$p: $old"
+  fi
+  n=$((n + 1))
+done < <(find "$DIR" -type d -perm -0002 ! -perm -1000 | sort)
+
+if [ $FIX -eq 1 ]; then
+  echo "$n directories fixed"
+else
+  echo "$n directories found"
+  [ $n -eq 0 ] || exit 1
+fi
+
+@@ex 0832 hardlink_chmod | Permissions live on the inode, not the name
+@@level 3
+@@cmds ln, chmod, stat -c '%a %n'
+@@readme
+`a` and `b` are two names for the very same file (hard links: same inode), and `c` is a separate
+file that merely has identical content. Predict, then verify:
+
+1. `chmod 640 a`
+2. print `stat -c '%a %n'` of `a`, `b` and `c`, in that order
+3. `chmod 600 b`
+4. print `stat -c '%a %n'` of `a`, `b` and `c` again
+
+Because a permission mode belongs to the **inode**, changing it through any one of its hard-linked
+names changes it for all of them — `c`, being a different inode, is never affected.
+@@check
+COMPARE="stdout exit files"
+setup() {
+  local content
+  content=$(randtext 2)
+  printf '%s\n' "$content" > a
+  ln a b
+  printf '%s\n' "$content" > c
+  chmod "$(pick 755 700 644)" a
+  chmod "$(pick 755 700 644)" c
+}
+extra_check() { must_use chmod; }
+@@solution
+#!/bin/bash
+chmod 640 a
+stat -c '%a %n' a b c
+chmod 600 b
+stat -c '%a %n' a b c
+
+@@ex 0833 perm_histogram | perm_histogram.sh: a histogram of file modes
+@@level 4
+@@cmds find -type f -printf %m, sort, exit codes
+@@readme
+Write `perm_histogram.sh`:
+
+```
+perm_histogram.sh DIR
+```
+
+Under `DIR` (recursively), group the **regular files** by their exact octal mode (the value `chmod`
+would take, e.g. `644`; symbolic links and directories are not counted). Print one line per distinct
+mode, **sorted by mode ascending** (as a string, e.g. `600` before `644` before `755`):
+
+```
+MODE: N
+```
+
+Then print `Total: T files` (`T` = total regular files, the sum over all modes). If `DIR` has no
+regular files, print only `Total: 0 files`.
+
+Errors (message on stderr): not exactly 1 argument → usage, exit **1**; `DIR` is not a directory →
+exit **2** (message includes `DIR`).
+@@check
+SCRIPT_NAME=perm_histogram.sh
+SEEDS=3
+COMPARE="stdout exit errmsg"
+setup() {
+  mkdir -p "arbol/a/b" arbol/c vacio
+  local i f
+  for i in $(seq 10); do
+    f="arbol/$(pick . a "a/b" c)/$(pick "$(word)$i" "$(word) $i")"
+    touch "$f"
+    chmod "$(pick 644 600 755 640 700)" "$f"
+  done
+  local extra_dir; extra_dir=$(word)
+  mkdir "arbol/${extra_dir}_dir"; chmod 755 "arbol/${extra_dir}_dir"
+  ln -s "no_existe_$(word)" "arbol/$(word)_broken_link"
+  touch fich
+}
+ARGS=('arbol' '"$W/arbol"' 'vacio' 'arbol extra' '' 'noexiste' 'fich')
+extra_check() {
+  case $REF_CODE in
+    2) mentions "$(eval "set -- $CASE"; echo "$1")" ;;
+  esac
+}
+@@solution
+#!/bin/bash
+if [ $# -ne 1 ]; then
+  echo "Usage: $(basename "$0") DIR" >&2
+  exit 1
+fi
+DIR=$1
+[ -d "$DIR" ] || { echo "Error: '$DIR' is not a directory" >&2; exit 2; }
+
+declare -A count
+total=0
+while IFS= read -r m; do
+  count[$m]=$(( ${count[$m]:-0} + 1 ))
+  total=$((total + 1))
+done < <(find "$DIR" -type f -printf '%m\n')
+
+for m in $(printf '%s\n' "${!count[@]}" | sort); do
+  echo "$m: ${count[$m]}"
+done
+echo "Total: $total files"
+
+@@ex 0834 check_access | check_access.sh: asking the kernel, not computing it yourself
+@@level 4
+@@cmds sudo -u, test -r -w -x, id, exit codes
+@@readme
+This script runs **as root**. A tempting shortcut to check whether some other user could read a file
+is `[ -r FILE ]` — but that is **wrong** when your script runs as root: the `test`/`[` builtin, like
+every other program, asks the kernel "can **the process running me** do this?", and root always gets
+"yes", regardless of the file's permissions. Write `check_access.sh`:
+
+```
+check_access.sh USER FILE
+```
+
+Determine, for real, whether `USER` (not root, not you) could read, write and execute/enter `FILE`,
+by asking the kernel to check it **as that user**: run the test itself under
+`sudo -u USER -- test -r FILE` (and `-w`, `-x`) instead of computing it from `stat` and group
+membership yourself. Print exactly:
+
+```
+read:yes|no write:yes|no exec:yes|no
+```
+
+Errors (message on stderr): not exactly 2 arguments → usage, exit **1**; `USER` does not exist →
+exit **2** (message includes `USER`); `FILE` does not exist → exit **3** (message includes `FILE`).
+@@check
+SCRIPT_NAME=check_access.sh
+SEEDS=3
+RUN_AS_ROOT=1
+COMPARE="stdout exit errmsg"
+setup() {
+  local f
+  for f in a b c d "mi archivo"; do
+    touch "$f"
+    chmod "$(pick 644 600 640 750 705 044 070 007 755 460 406 066)" "$f"
+    chgrp "$(pick alumno adm secops audio video cdrom)" "$f"
+  done
+}
+ARGS=('jgarcia a' 'alumno b' 'luke c' 'sally d' 'rod a' 'jgarcia "mi archivo"' 'nadie a' 'root a' 'jgarcia noexiste' 'jgarcia' '')
+extra_check() {
+  [[ $CASE == 'nadie a' ]] && mentions nadie
+  [[ $CASE == *noexiste* ]] && mentions noexiste
+  true
+}
+@@solution
+#!/bin/bash
+if [ $# -ne 2 ]; then
+  echo "Usage: $(basename "$0") USER FILE" >&2
+  exit 1
+fi
+U=$1
+F=$2
+id "$U" > /dev/null 2>&1 || { echo "Error: user '$U' does not exist" >&2; exit 2; }
+[ -e "$F" ] || { echo "Error: '$F' does not exist" >&2; exit 3; }
+
+r=no; w=no; x=no
+sudo -u "$U" -- test -r "$F" && r=yes
+sudo -u "$U" -- test -w "$F" && w=yes
+sudo -u "$U" -- test -x "$F" && x=yes
+echo "read:$r write:$w exec:$x"

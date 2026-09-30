@@ -1,0 +1,435 @@
+@@topic 05_filters | Filters: wc, head, tail, cut, sort, uniq, tr, sed, tee...
+@@ex 0551 sed_marker_blocks | Extracting several blocks with sed ranges
+@@level 3
+@@cmds sed -n, /pat/,/pat/, address deletion, s///
+@@readme
+`bitacora.txt` contains several blocks delimited by a line that is **exactly** `BEGIN` and, later, a
+line that is **exactly** `END` (several such blocks appear in the file, with other lines in between
+that are not part of any block). Using a **single** `sed` command, print the inner lines of every
+block followed by a line containing exactly `---` (so `---` is printed once per block, including the
+last one).
+
+Watch the decoys: a line that merely contains the word `BEGIN` or `END` as part of a longer line
+(like `BEGINNING` or `ENDED`) is **not** a marker and must be ignored — matching the marker lines
+requires anchoring the whole line (`^BEGIN$`, `^END$`), not just searching for the word.
+@@check
+setup() {
+  local nb i j nl
+  nb=$(randr 3 5)
+  : > bitacora.txt
+  echo "$(word) inicio" >> bitacora.txt
+  echo "BEGINNING no es una marca real" >> bitacora.txt
+  for i in $(seq "$nb"); do
+    echo "$(word) fuera $i" >> bitacora.txt
+    echo "BEGIN" >> bitacora.txt
+    nl=$(randr 1 4)
+    for j in $(seq "$nl"); do echo "$(word)$j" >> bitacora.txt; done
+    echo "END" >> bitacora.txt
+  done
+  echo "ENDED tampoco es una marca" >> bitacora.txt
+  echo "$(word) final" >> bitacora.txt
+}
+@@solution
+#!/bin/bash
+sed -n '/^BEGIN$/,/^END$/{/^BEGIN$/d;s/^END$/---/;p}' bitacora.txt
+
+@@ex 0552 paste_stitch | paste's "- - -" trick: grouping every N lines
+@@level 3
+@@cmds paste -d, - - -
+@@readme
+`datos.txt` has a number of lines that is always a **multiple of 3**. Using a **single** `paste`
+call — not a loop, not `sed`, not `sort` — group every three consecutive lines into one output
+line, the three values joined by a comma, in file order (`paste -d, - - -` reads three lines from
+its input for every output line, one per `-`).
+@@check
+setup() {
+  local n i
+  n=$(( 3 * $(randr 3 6) ))
+  : > datos.txt
+  for i in $(seq "$n"); do echo "$(word)$i"; done > datos.txt
+}
+@@solution
+#!/bin/bash
+paste -d, - - - < datos.txt
+
+@@ex 0553 cmp_all_diffs | Every differing byte with cmp -l
+@@level 3
+@@cmds cmp -l, wc -l
+@@readme
+`orig.bin` and `mod.bin` are two files of the **same size** that differ in one or more bytes.
+Print every byte position where they differ, exactly as `cmp -l` prints it (position, then each
+file's byte value in octal, one differing byte per line). Then print:
+
+```
+Total: N bytes differ
+```
+@@check
+setup() {
+  local content s pos i n len
+  content=""
+  for i in $(seq "$(randr 10 18)"); do content+="$(word)"; done
+  s=$content
+  len=${#s}
+  n=$(randr 1 3)
+  for i in $(seq "$n"); do
+    pos=$(rand "$len")
+    s="${s:0:pos}#${s:pos+1}"
+  done
+  printf '%s' "$content" > orig.bin
+  printf '%s' "$s" > mod.bin
+}
+@@solution
+#!/bin/bash
+D=$(cmp -l orig.bin mod.bin)
+echo "$D"
+echo "Total: $(echo "$D" | wc -l) bytes differ"
+
+@@ex 0554 uniq_skip_field | uniq -f: ignoring a leading field
+@@level 3
+@@cmds uniq -f, uniq -c
+@@readme
+`estado.log` has lines `HH:MM:SS mensaje` (the message may contain spaces and is never empty).
+Using a **single** `uniq` call, collapse every run of **consecutive** lines that share the same
+message — ignoring the timestamp when comparing (`uniq -f1` skips the first field) — and prefix
+each surviving line with how many lines it represents, exactly the format `uniq -c` produces (the
+line kept is the **first** one of the run, timestamp included).
+
+The same message reappearing **later, without being part of that consecutive run**, must **not**
+be merged with the earlier one — that is exactly what makes `uniq -f1 -c` different from grouping
+by message globally.
+@@check
+setup() {
+  local n i j reps msg hh
+  n=$(randr 4 7)
+  hh=0
+  : > estado.log
+  for i in $(seq "$n"); do
+    msg=$(pick "disco ok" "red activa" "cpu alta" "memoria baja" "servicio activo")
+    reps=$(randr 1 4)
+    for j in $(seq "$reps"); do
+      hh=$((hh + 1))
+      printf '%02d:%02d:00 %s\n' $((hh / 60)) $((hh % 60)) "$msg" >> estado.log
+    done
+  done
+}
+@@solution
+#!/bin/bash
+uniq -f1 -c estado.log
+
+@@ex 0555 splitcount | splitcount.sh: line/word counts of split chunks
+@@level 4
+@@cmds split -l, mktemp -d, wc -l, wc -w, script argument
+@@readme
+Write `splitcount.sh`:
+
+```
+splitcount.sh FILE N
+```
+
+Splits `FILE` into chunks of at most `N` lines each (`split -l N`, in a scratch directory so the
+original directory is left untouched) and, for each chunk **in order**, prints:
+
+```
+chunk K: L lines, W words
+```
+
+(`K` starting at 1, `L` and `W` from `wc`). Finally prints:
+
+```
+Total: C chunks
+```
+
+Errors (message on **stderr**, nothing on stdout):
+
+- not exactly 2 arguments: error and usage, exit **1**
+- `FILE` is not a readable regular file: message with its name, exit **2**
+- `N` is not a positive integer: message with it, exit **3**
+@@check
+SCRIPT_NAME=splitcount.sh
+SEEDS=2
+COMPARE="stdout exit errmsg"
+ARGS=('datos.txt 5' 'datos.txt 7' 'pocas.txt 3' 'pocas.txt 100' 'datos.txt' 'datos.txt 3 x' 'nofile.txt 5' 'datos.txt abc' 'datos.txt 0')
+setup() {
+  local n i
+  n=$(randr 15 40)
+  : > datos.txt
+  for i in $(seq "$n"); do echo "$(word)"; done > datos.txt
+  n=$(randr 5 12)
+  : > pocas.txt
+  for i in $(seq "$n"); do echo "$(word) $(word)"; done > pocas.txt
+}
+extra_check() {
+  [[ -n $REF_ERR && -n $OUT ]] && fail "on errors nothing must be printed on stdout"
+  case $REF_CODE in
+    1) [[ $ERR == *splitcount.sh* || $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* ]] || fail "the usage message should show how to call the script" ;;
+    2) mentions "$(eval "set -- $CASE"; echo "$1")" ;;
+    3) mentions "$(eval "set -- $CASE"; echo "$2")" ;;
+  esac
+}
+@@solution
+#!/bin/bash
+# splitcount.sh FILE N: line/word counts of FILE split into chunks of N lines
+
+if [ $# -ne 2 ]; then
+  echo "Error: wrong number of arguments" >&2
+  echo "Usage: $(basename "$0") FILE N" >&2
+  exit 1
+fi
+F=$1 N=$2
+if [ ! -f "$F" ] || [ ! -r "$F" ]; then
+  echo "Error: cannot read '$F'" >&2
+  exit 2
+fi
+if ! [[ $N =~ ^[1-9][0-9]*$ ]]; then
+  echo "Error: '$N' is not a positive integer" >&2
+  exit 3
+fi
+
+TMP=$(mktemp -d)
+split -l "$N" -- "$F" "$TMP/part_"
+
+i=0
+for p in "$TMP"/part_*; do
+  i=$((i + 1))
+  echo "chunk $i: $(wc -l < "$p") lines, $(wc -w < "$p") words"
+done
+echo "Total: $i chunks"
+rm -rf "$TMP"
+
+@@ex 0556 logmonth | logmonth.sh: chronological order with sort -M
+@@level 4
+@@cmds sort -k M, -k n, script argument
+@@readme
+Write `logmonth.sh`:
+
+```
+logmonth.sh FILE [N]
+```
+
+`FILE` has syslog-style lines `MON DD HH:MM:SS resto...` (`MON` a 3-letter month abbreviation,
+`DD` a zero-padded day). Print the lines sorted **chronologically within the year**: by month
+(`Jan` before `Feb` before ... before `Dec` — this is what `sort`'s `M` key type does), then by day
+as a number, then by time; ties broken the way `sort` breaks them by default (comparing the rest of
+the line). If `N` is given, print only the first `N` lines of that order.
+
+Errors (message on **stderr**, nothing on stdout):
+
+- not 1 or 2 arguments: error and usage, exit **1**
+- `FILE` is not a readable regular file: message with its name, exit **2**
+- `N` is not a positive integer: message with it, exit **3**
+@@check
+SCRIPT_NAME=logmonth.sh
+SEEDS=2
+COMPARE="stdout exit errmsg"
+ARGS=('syslog.txt' 'syslog.txt 5' 'corto.txt 2' 'corto.txt 100' 'syslog.txt 3 x' 'nofile.txt' 'syslog.txt abc' 'syslog.txt 0')
+setup() {
+  local months=(Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec)
+  local n i mo da h m s
+  n=$(randr 8 14)
+  : > syslog.txt
+  for i in $(seq "$n"); do
+    mo=$(pick "${months[@]}")
+    da=$(printf '%02d' "$(randr 1 28)")
+    h=$(printf '%02d' "$(randr 0 23)")
+    m=$(printf '%02d' "$(randr 0 59)")
+    s=$(printf '%02d' "$(randr 0 59)")
+    echo "$mo $da $h:$m:$s host $(word) $(word)" >> syslog.txt
+  done
+  n=$(randr 4 8)
+  : > corto.txt
+  for i in $(seq "$n"); do
+    mo=$(pick "${months[@]}")
+    da=$(printf '%02d' "$(randr 1 28)")
+    h=$(printf '%02d' "$(randr 0 23)")
+    echo "$mo $da $h:00:00 host $(word)" >> corto.txt
+  done
+}
+extra_check() {
+  [[ -n $REF_ERR && -n $OUT ]] && fail "on errors nothing must be printed on stdout"
+  case $REF_CODE in
+    1) [[ $ERR == *logmonth.sh* || $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* ]] || fail "the usage message should show how to call the script" ;;
+    2) mentions "$(eval "set -- $CASE"; echo "$1")" ;;
+    3) mentions "$(eval "set -- $CASE"; echo "$2")" ;;
+  esac
+}
+@@solution
+#!/bin/bash
+# logmonth.sh FILE [N]: chronological order by month, day and time
+
+if [ $# -lt 1 ] || [ $# -gt 2 ]; then
+  echo "Error: wrong number of arguments" >&2
+  echo "Usage: $(basename "$0") FILE [N]" >&2
+  exit 1
+fi
+F=$1
+if [ ! -f "$F" ] || [ ! -r "$F" ]; then
+  echo "Error: cannot read '$F'" >&2
+  exit 2
+fi
+if [ $# -eq 2 ]; then
+  N=$2
+  if ! [[ $N =~ ^[1-9][0-9]*$ ]]; then
+    echo "Error: '$N' is not a positive integer" >&2
+    exit 3
+  fi
+fi
+
+if [ -n "${N:-}" ]; then
+  sort -k1,1M -k2,2n -k3,3 -- "$F" | head -n "$N"
+else
+  sort -k1,1M -k2,2n -k3,3 -- "$F"
+fi
+
+@@ex 0557 bytesdiff | bytesdiff.sh: wrapping cmp -l with validation
+@@level 4
+@@cmds cmp -l, wc -c, script argument, distinct exit codes
+@@readme
+Write `bytesdiff.sh`:
+
+```
+bytesdiff.sh FILE1 FILE2
+```
+
+If both files are byte-identical, print exactly `Identical` and exit **0**. Otherwise, if they have
+the **same size**, print every differing byte exactly as `cmp -l` prints it, then a line
+`Total: N bytes differ`, and exit **4**.
+
+Errors (message on **stderr**, nothing on stdout), checked in this order:
+
+- not exactly 2 arguments: error and usage, exit **1**
+- one of the files is not a readable regular file: message with its name, exit **2**
+- the files have **different sizes** (so a byte-by-byte comparison is not meaningful): message
+  naming both files, exit **3**
+@@check
+SCRIPT_NAME=bytesdiff.sh
+SEEDS=2
+COMPARE="stdout exit errmsg"
+ARGS=('a.bin b.bin' 'a.bin c.bin' 'a.bin corto.bin' 'a.bin' 'a.bin b.bin extra' 'nofile.bin b.bin' 'a.bin nofile.bin')
+setup() {
+  local content s pos i n len
+  content=""
+  for i in $(seq "$(randr 10 18)"); do content+="$(word)"; done
+  s=$content
+  len=${#s}
+  n=$(randr 1 3)
+  for i in $(seq "$n"); do
+    pos=$(rand "$len")
+    s="${s:0:pos}#${s:pos+1}"
+  done
+  printf '%s' "$content" > a.bin
+  printf '%s' "$s" > b.bin
+  printf '%s' "$content" > c.bin
+  printf '%sX' "$content" > corto.bin
+}
+extra_check() {
+  [[ $REF_CODE == [123] && -n $OUT ]] && fail "on errors nothing must be printed on stdout"
+  case $REF_CODE in
+    1) [[ $ERR == *bytesdiff.sh* || $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* ]] || fail "the usage message should show how to call the script" ;;
+    2) [[ $CASE == nofile* ]] && mentions nofile.bin
+       [[ $CASE == *nofile.bin ]] && mentions nofile.bin ;;
+    3) mentions corto.bin ;;
+  esac
+}
+@@solution
+#!/bin/bash
+# bytesdiff.sh FILE1 FILE2: reports byte differences between two files
+
+if [ $# -ne 2 ]; then
+  echo "Error: wrong number of arguments" >&2
+  echo "Usage: $(basename "$0") FILE1 FILE2" >&2
+  exit 1
+fi
+A=$1 B=$2
+for f in "$A" "$B"; do
+  if [ ! -f "$f" ] || [ ! -r "$f" ]; then
+    echo "Error: cannot read '$f'" >&2
+    exit 2
+  fi
+done
+SA=$(wc -c < "$A") SB=$(wc -c < "$B")
+if [ "$SA" -ne "$SB" ]; then
+  echo "Error: '$A' and '$B' have different sizes" >&2
+  exit 3
+fi
+
+D=$(cmp -l -- "$A" "$B")
+if [ -z "$D" ]; then
+  echo "Identical"
+  exit 0
+fi
+echo "$D"
+echo "Total: $(echo "$D" | wc -l) bytes differ"
+exit 4
+
+@@ex 0558 chunkjoin | chunkjoin.sh: dynamic paste grouping
+@@level 4
+@@cmds paste -d, (dynamic placeholders), seq, wc -l, script argument
+@@readme
+Write `chunkjoin.sh`:
+
+```
+chunkjoin.sh FILE K
+```
+
+Groups every `K` consecutive lines of `FILE` into one comma-joined output line, in file order,
+using the `paste -d, - - ...` trick from exercise 0552 — except here `K` is only known at run
+time, so the `K` placeholders (`-`) must be **built dynamically** (hint: `seq "$K"` to generate `K`
+of them into an array, then pass that array to `paste`).
+
+Errors (message on **stderr**, nothing on stdout):
+
+- not exactly 2 arguments: error and usage, exit **1**
+- `FILE` is not a readable regular file: message with its name, exit **2**
+- `K` is not a positive integer: message with it, exit **3**
+- the number of lines of `FILE` is not a multiple of `K`: message naming `FILE` and its line count,
+  exit **4**
+@@check
+SCRIPT_NAME=chunkjoin.sh
+SEEDS=2
+COMPARE="stdout exit errmsg"
+ARGS=('datos.txt 3' 'datos.txt 1' 'impar.txt 4' 'datos.txt' 'datos.txt 3 x' 'nofile.txt 3' 'datos.txt abc' 'datos.txt 0')
+setup() {
+  local n i
+  n=$(( 3 * $(randr 4 8) ))
+  : > datos.txt
+  for i in $(seq "$n"); do echo "$(word)$i"; done > datos.txt
+  n=$(pick 5 6 7 9 10 11 13 14)
+  : > impar.txt
+  for i in $(seq "$n"); do echo "$(word)"; done > impar.txt
+}
+extra_check() {
+  [[ -n $REF_ERR && -n $OUT ]] && fail "on errors nothing must be printed on stdout"
+  case $REF_CODE in
+    1) [[ $ERR == *chunkjoin.sh* || $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* ]] || fail "the usage message should show how to call the script" ;;
+    2) mentions "$(eval "set -- $CASE"; echo "$1")" ;;
+    3) mentions "$(eval "set -- $CASE"; echo "$2")" ;;
+    4) mentions "$(eval "set -- $CASE"; echo "$1")" ;;
+  esac
+}
+@@solution
+#!/bin/bash
+# chunkjoin.sh FILE K: group every K lines into one comma-joined line
+
+if [ $# -ne 2 ]; then
+  echo "Error: wrong number of arguments" >&2
+  echo "Usage: $(basename "$0") FILE K" >&2
+  exit 1
+fi
+F=$1 K=$2
+if [ ! -f "$F" ] || [ ! -r "$F" ]; then
+  echo "Error: cannot read '$F'" >&2
+  exit 2
+fi
+if ! [[ $K =~ ^[1-9][0-9]*$ ]]; then
+  echo "Error: '$K' is not a positive integer" >&2
+  exit 3
+fi
+LINES=$(wc -l < "$F")
+if [ $((LINES % K)) -ne 0 ]; then
+  echo "Error: '$F' has $LINES lines, not a multiple of $K" >&2
+  exit 4
+fi
+
+DASHES=()
+for i in $(seq "$K"); do DASHES+=(-); done
+paste -d, "${DASHES[@]}" < "$F"

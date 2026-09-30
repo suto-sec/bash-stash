@@ -1,0 +1,295 @@
+@@topic 13_script_params | Script parameters & exit codes
+@@ex 1331 verbose_flag | Counting a repeatable flag among positionals
+@@level 3
+@@cmds case, for, "$@", $#
+@@readme
+The script receives a mix of the literal flag `-v` and file names, in any order (the flag may repeat
+or not appear at all). Using a `for`/`case` loop over `"$@"` (not `getopts`), separate the flags from
+the file names:
+
+- for every non-flag argument, in order, print `archivo: NAME`
+- ignore (do not print) the `-v` occurrences themselves
+
+Finally print `verbosidad: V, archivos: M` (V = number of times `-v` appeared, M = number of file
+names). With no arguments at all, print only `verbosidad: 0, archivos: 0`.
+@@check
+SEEDS=1
+ARGS=('' '-v' 'a.txt' '-v a.txt' 'a.txt -v b.txt' '-v -v -v' '"a b.txt" -v -v "c.txt"' 'x -v y -v -v z')
+extra_check() { must_use case; }
+@@solution
+#!/bin/bash
+V=0
+M=0
+for a in "$@"; do
+  case $a in
+    -v) V=$((V + 1)) ;;
+    *) echo "archivo: $a"; M=$((M + 1)) ;;
+  esac
+done
+echo "verbosidad: $V, archivos: $M"
+
+@@ex 1332 rotate_args | Rotating the positional parameters
+@@level 3
+@@cmds set --, shift, $(( % )), "$@"
+@@readme
+The first argument is an integer K (may be `0` or larger than the number of remaining arguments); the
+rest are a list of items. Rotate the list **left** by K positions, cyclically (K is taken modulo the
+list length), and print the result **one item per line**. Do it with `shift` (to drop items off the
+front) and `set --` (to re-append them at the end) — do not use arrays.
+
+If there are no items after the first argument, print `Error: no hay elementos` on stderr and exit 1.
+If K is not a non-negative integer, print `Error: K invalido` on stderr and exit 2 (checked only once
+there is at least one item).
+@@check
+SEEDS=1
+COMPARE="stdout exit errmsg"
+ARGS=('0 a b c' '1 a b c' '2 a b c' '3 a b c' '5 a b c d' 'abc a b' '-1 a b' '2' '0')
+extra_check() { must_not_use "declare -a"; }
+@@solution
+#!/bin/bash
+K=$1
+shift
+if [ $# -eq 0 ]; then
+  echo "Error: no hay elementos" >&2
+  exit 1
+fi
+if ! [[ $K =~ ^[0-9]+$ ]]; then
+  echo "Error: K invalido" >&2
+  exit 2
+fi
+K=$((K % $#))
+i=0
+while [ "$i" -lt "$K" ]; do
+  first=$1
+  shift
+  set -- "$@" "$first"
+  i=$((i + 1))
+done
+for a in "$@"; do echo "$a"; done
+
+@@ex 1333 copy_pairs | copy_pairs.sh: consuming SRC/DST pairs with shift
+@@level 4
+@@cmds shift N, $#, test -e, cp, exit codes
+@@readme
+Write `copy_pairs.sh SRC1 DST1 [SRC2 DST2 ...]`: the arguments form pairs, each pair a source file to
+copy and its destination. Process the pairs **in order**, two at a time (`shift 2` per pair): for
+each pair, copy SRC to DST with `cp` and print `copiado: SRC -> DST`.
+
+Errors (stderr, wording free; check in this order): an **odd** number of arguments -> usage message,
+exit **1**; a SRC that does not exist -> a message **naming it**, exit **2** (stop immediately, do
+not process the remaining pairs).
+
+If every pair is copied, finally print `TOTAL: N copias` (N = number of pairs) and exit 0.
+@@check
+SCRIPT_NAME=copy_pairs.sh
+SEEDS=2
+COMPARE="stdout exit errmsg files"
+setup() { mkf "origen uno.txt" "$(randtext 1)"; mkf origen_dos.txt "$(randtext 1)"; mkdir sub; }
+ARGS=('' '"origen uno.txt"' '"origen uno.txt" destino1.txt' '"origen uno.txt" destino1.txt origen_dos.txt "sub/destino dos.txt"' '"origen uno.txt" destino1.txt noexiste.txt destino2.txt' 'noexiste.txt destino.txt')
+extra_check() { [[ $REF_CODE == 2 ]] && mentions "noexiste.txt"; }
+@@solution
+#!/bin/bash
+# copy_pairs.sh SRC DST [SRC DST ...]
+if [ $(( $# % 2 )) -ne 0 ]; then
+  echo "usage: $(basename "$0") SRC DST [SRC DST ...]" >&2
+  exit 1
+fi
+N=0
+while [ $# -gt 0 ]; do
+  src=$1
+  dst=$2
+  shift 2
+  if [ ! -e "$src" ]; then
+    echo "error: '$src' does not exist" >&2
+    exit 2
+  fi
+  cp "$src" "$dst"
+  echo "copiado: $src -> $dst"
+  N=$((N + 1))
+done
+echo "TOTAL: $N copias"
+
+@@ex 1334 retry_cmd | retry_cmd.sh: retrying a command up to N times
+@@level 3
+@@cmds shift, $?, while, exit
+@@readme
+Write `retry_cmd.sh N CMD [ARGS...]`: run `CMD ARGS...` (hiding its stdout and stderr) up to **N**
+times, stopping as soon as one attempt succeeds. For every attempt actually run, print
+`intento K: exit E` (E = its exit code). Afterwards:
+
+- if some attempt succeeded, print `resultado: exito en el intento K` (K = the first successful one)
+  and exit 0
+- if none did, print `resultado: fallo tras N intentos` and exit with the exit code of the **last**
+  attempt
+
+If fewer than 2 arguments are given, or N is not a positive integer, print a usage message on stderr
+and exit 1 (without attempting anything).
+@@check
+SEEDS=1
+SCRIPT_NAME=retry_cmd.sh
+COMPARE="stdout exit errmsg"
+ARGS=('' '3' 'abc true' '0 true' '1 true' '3 true' '1 false' '4 false' '2 test 3 -eq 3' '2 test 3 -eq 4')
+@@solution
+#!/bin/bash
+# retry_cmd.sh N CMD [ARGS...]
+if [ $# -lt 2 ] || ! [[ $1 =~ ^[0-9]+$ ]] || [ "$1" -eq 0 ]; then
+  echo "usage: $(basename "$0") N CMD [ARGS...]" >&2
+  exit 1
+fi
+N=$1
+shift
+K=0
+LAST=1
+ok=
+while [ "$K" -lt "$N" ]; do
+  K=$((K + 1))
+  "$@" > /dev/null 2>&1
+  LAST=$?
+  echo "intento $K: exit $LAST"
+  if [ "$LAST" -eq 0 ]; then
+    ok=$K
+    break
+  fi
+done
+if [ -n "$ok" ]; then
+  echo "resultado: exito en el intento $ok"
+  exit 0
+else
+  echo "resultado: fallo tras $N intentos"
+  exit "$LAST"
+fi
+
+@@ex 1335 arg_hist | Counting how many times each argument appears
+@@level 3
+@@cmds for, arrays, sort
+@@readme
+The script receives words as arguments (some may repeat, in any order). For every **distinct** word,
+sorted **alphabetically**, print `WORD: N` (N = how many times it appears among the arguments).
+Finally print `total: T argumentos, D distintos`. With no arguments, print only
+`total: 0 argumentos, 0 distintos`.
+@@check
+SEEDS=1
+ARGS=('' 'a' 'a a a' 'a b a c b a' 'zeta alfa zeta' '"a b" x "a b"' 'x y z')
+@@solution
+#!/bin/bash
+declare -A CNT
+for a in "$@"; do
+  CNT[$a]=$(( ${CNT[$a]:-0} + 1 ))
+done
+for k in "${!CNT[@]}"; do echo "$k: ${CNT[$k]}"; done | sort
+echo "total: $# argumentos, ${#CNT[@]} distintos"
+
+@@ex 1336 last_success | last_success.sh: tracking the last file that could be read
+@@level 4
+@@cmds for, test -r, exit codes
+@@readme
+Write `last_success.sh FILE...`: for every argument, in order, try to read it (`cat FILE > /dev/null
+2>&1`) and print `OK: FILE` or `FAIL: FILE`. Keep the **1-based position** of the last one that
+succeeded (`ok_pos`; `0` if none did). Finally print `ultimo_ok: P de N` (P = that position, N = total
+arguments).
+
+With no arguments, print a usage message on stderr and exit 1 (without printing anything else).
+Otherwise always exit 0, even if every file failed.
+@@check
+SCRIPT_NAME=last_success.sh
+SEEDS=2
+COMPARE="stdout exit errmsg"
+setup() { mkf "legible archivo.txt" "$(randtext 2)"; touch sinpermiso.txt; chmod 000 sinpermiso.txt; mkdir soydir; }
+ARGS=('' '"legible archivo.txt"' 'noexiste.txt' '"legible archivo.txt" noexiste.txt' 'noexiste.txt "legible archivo.txt"' 'sinpermiso.txt "legible archivo.txt" soydir' 'noexiste.txt noexiste2.txt')
+@@solution
+#!/bin/bash
+# last_success.sh FILE...
+if [ $# -eq 0 ]; then
+  echo "usage: $(basename "$0") FILE..." >&2
+  exit 1
+fi
+ok_pos=0
+i=0
+for f in "$@"; do
+  i=$((i + 1))
+  if cat -- "$f" > /dev/null 2>&1; then
+    echo "OK: $f"
+    ok_pos=$i
+  else
+    echo "FAIL: $f"
+  fi
+done
+echo "ultimo_ok: $ok_pos de $#"
+
+@@ex 1337 sum_exit_chain | Simulating a command chain that stops at the first failure
+@@level 3
+@@cmds for, break, exit
+@@readme
+The script receives a sequence of exit codes (integers 0-255) as arguments, simulating the exit
+status of commands run one after another. Process them **in order**: for each one print
+`paso K: CODE (ok)` if CODE is 0, or `paso K: CODE (fallo)` otherwise; **stop processing** (as a real
+`cmd1 && cmd2 && ...` chain would) as soon as one is not 0 — no later argument is printed.
+
+If it never stopped early, print `todo ok`; otherwise print `detenido en paso K`. Finally, always
+print `pasos_ejecutados: K` (the number of steps actually printed). With no arguments, print
+`todo ok` and `pasos_ejecutados: 0`.
+@@check
+SEEDS=1
+ARGS=('' '0' '1' '0 0 0' '0 0 1 0' '5 0 0' '0 1 2 3' '255' '0 0 0 0 0')
+extra_check() { must_use break; }
+@@solution
+#!/bin/bash
+K=0
+parada=
+for c in "$@"; do
+  K=$((K + 1))
+  if [ "$c" -eq 0 ]; then
+    echo "paso $K: $c (ok)"
+  else
+    echo "paso $K: $c (fallo)"
+    parada=$K
+    break
+  fi
+done
+if [ -n "$parada" ]; then
+  echo "detenido en paso $parada"
+else
+  echo "todo ok"
+fi
+echo "pasos_ejecutados: $K"
+
+@@ex 1338 wrapper_capture | wrapper_capture.sh: prefixing a command's captured output
+@@level 4
+@@cmds "$@", $(...), $?, while read
+@@readme
+Write `wrapper_capture.sh CMD [ARGS...]`: run `CMD ARGS...`, capture its standard output (its stderr
+is discarded) and print:
+
+```
+salida:
+> line1
+> line2
+...
+exit: CODE
+```
+
+(one `> ` per captured line, in order; if it produced no output at all, print nothing between
+`salida:` and the `exit:` line). CODE is the command's exit code.
+
+With no arguments, print a usage message on stderr and exit 1 (without running anything). Otherwise
+the script's own exit code is always 0, regardless of CODE.
+@@check
+SCRIPT_NAME=wrapper_capture.sh
+SEEDS=2
+COMPARE="stdout exit errmsg"
+ARGS=('' 'echo hola' 'seq 1 3' 'echo' 'false' 'printf "a\nb"' 'ls /no/existe/aaa')
+@@solution
+#!/bin/bash
+# wrapper_capture.sh CMD [ARGS...]
+if [ $# -eq 0 ]; then
+  echo "usage: $(basename "$0") CMD [ARGS...]" >&2
+  exit 1
+fi
+OUT=$("$@" 2>/dev/null)
+CODE=$?
+echo "salida:"
+if [ -n "$OUT" ]; then
+  while IFS= read -r line; do echo "> $line"; done <<< "$OUT"
+fi
+echo "exit: $CODE"
+exit 0

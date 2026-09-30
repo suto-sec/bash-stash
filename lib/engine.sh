@@ -122,12 +122,20 @@ content_hash() { # file -> hash of its *content* (archives: of what they contain
 }
 
 snapshot() { # -> stdout: state of work+home
-  local fmt='%y %M %n %p -> %l' f pre=()
-  [[ $COMPARE == *owner* ]] && fmt+=' %u:%g'
-  [[ $COMPARE == *mtime* ]] && fmt+=' %TY-%Tm-%Td_%TH:%TM'
+  local base='%y %M %n %p -> %l' f pre=()
+  [[ $COMPARE == *owner* ]] && base+=' %u:%g'
   [[ -n $RUN_AS_ROOT ]] && pre=(sudo)
   cd "$SB" || return
-  "${pre[@]}" find work home -mindepth 1 -printf "$fmt\n" 2>/dev/null | sed 's/ -> $//' | sort
+  if [[ $COMPARE == *mtime* ]]; then
+    # A directory's mtime just reflects when something was last added/removed inside it, at real
+    # wall-clock time (mkdir/touch take no -d for dirs) — comparing it would flake an otherwise
+    # correct answer whenever the two independent setup() runs land in different real minutes.
+    # Only a regular file's mtime is ever meaningful for what an exercise actually tests.
+    "${pre[@]}" find work home -mindepth 1 -not -type f -printf "$base\n" 2>/dev/null
+    "${pre[@]}" find work home -mindepth 1 -type f -printf "$base %TY-%Tm-%Td_%TH:%TM\n" 2>/dev/null
+  else
+    "${pre[@]}" find work home -mindepth 1 -printf "$base\n" 2>/dev/null
+  fi | sed 's/ -> $//' | sort
   "${pre[@]}" find work home -type f -print0 2>/dev/null | sort -z |
     while IFS= read -r -d '' f; do echo "$(content_hash "$f")  $f"; done
   cd - >/dev/null

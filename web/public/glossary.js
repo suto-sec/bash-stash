@@ -125,7 +125,6 @@ const GLOSSARY = {
   '$( )': { name: '$( command )', desc: "Command substitution: runs a command and substitutes its output as text. `` `command` `` is the older, equivalent syntax." },
   '$(func)': { name: '$(function)', desc: 'Calling a function inside `$( )` captures whatever it prints, letting a function "return" data (as opposed to `return`, which only sets a 0-255 exit code).' },
   '${...}': { name: '${VAR}', desc: 'Braces around a variable name disambiguate it from surrounding text, and enable expansions like `${VAR:-default}`, `${VAR#prefix}`, `${VAR%suffix}`, `${VAR/old/new}`, `${VAR:offset:length}`.' },
-  '${var}': { name: '${VAR}', desc: 'Braces around a variable name disambiguate it from surrounding text, and enable expansions like `${VAR:-default}`, `${VAR#prefix}`, `${VAR%suffix}`, `${VAR/old/new}`, `${VAR:offset:length}`.' },
   quoting: { name: 'quoting', desc: 'Double quotes `"..."` still expand `$variables` and `$(...)` but protect spaces/globs; single quotes `\'...\'` take everything literally.' },
   arrays: { name: 'arrays', desc: 'Bash arrays: `a=(x y z)`, `${a[0]}` an element, `${a[@]}` all elements, `${#a[@]}` the count, `a+=(w)` to append.' },
 
@@ -225,6 +224,8 @@ const GLOSSARY = {
   'if elif': { name: 'if / elif / else', desc: 'A chain of conditions tried in order; the block under the first true one runs, `else` catches the rest.' },
   options: { name: 'option parsing', desc: "Reading flags like `-n`/`-m` out of a script's own arguments, usually with a `while`/`case` loop that shifts each one off before reaching the real arguments." },
   '( ) &': { name: '( commands ) &', desc: 'Runs a group of commands in a subshell, in the background — useful to isolate `cd`/variable changes or to launch several things at once.' },
+  ';': { name: '; (command separator)', desc: 'Separates commands on the same line, run one after another regardless of whether the previous one succeeded.' },
+  '`...`': { name: '`command` (backtick substitution)', desc: 'The older syntax for command substitution — runs a command and substitutes its output as text. `$(command)` is the modern, equivalent form.' },
   '$home': { name: '$HOME', desc: "The current user's home directory." },
   '$hostname': { name: '$HOSTNAME', desc: "The machine's name, available directly as a variable (no command needed)." },
   '$var': { name: '$VAR', desc: 'Expands to the value of the variable VAR.' },
@@ -243,18 +244,19 @@ function norm(s) { return s.trim().toLowerCase(); }
 
 // Returns {key, name, desc} for a raw "Commands:" token, falling back to the token itself
 // (desc: null) when nothing in the glossary matches.
+// Each fallback carries its own canonical key, so two different raw tokens matched by the same
+// rule (e.g. "${NAME}" and "${x#pat}") collapse into one entry instead of duplicate-looking cards.
 const FALLBACK_PATTERNS = [
-  [/^\$\{/, { name: '${...} (parameter expansion)', desc: 'Braces around a variable enable expansions beyond a plain `$VAR` — trimming, defaults, substring, case changes and more.' }],
-  [/^\$\(\(/, { name: '$(( ))', desc: 'Evaluates an integer arithmetic expression and substitutes its value.' }],
-  [/^\[\[/, { name: '[[ ]]', desc: "Bash's extended conditional test." }],
-  [/^-[a-z]/i, { name: 'a command-line option', desc: 'A flag of the command this appears alongside in the exercise — check that command\'s own glossary entry or `man`.' }],
+  [/^\$\{/, 'param-expansion-fallback', { name: '${...} (parameter expansion)', desc: 'Braces around a variable enable expansions beyond a plain `$VAR` — trimming, defaults, substring, case changes and more.' }],
+  [/^\$\(\(/, '$(( ))', { name: '$(( ))', desc: 'Evaluates an integer arithmetic expression and substitutes its value.' }],
+  [/^\[\[/, '[[ ]]', { name: '[[ ]]', desc: "Bash's extended conditional test." }],
 ];
 function explainToken(token) {
   const t = norm(token);
   if (GLOSSARY[t]) return { key: t, ...GLOSSARY[t] };
   const b = norm(baseWord(t));
   if (GLOSSARY[b]) return { key: b, ...GLOSSARY[b] };
-  for (const [re, entry] of FALLBACK_PATTERNS) if (re.test(t)) return { key: t, ...entry };
+  for (const [re, key, entry] of FALLBACK_PATTERNS) if (re.test(t)) return { key, ...entry };
   return { key: t, name: token.trim(), desc: null };
 }
 

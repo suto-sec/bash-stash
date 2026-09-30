@@ -1,0 +1,434 @@
+@@topic 07_find | find
+@@ex 0740 find_stale_logs | Combining type, name, size and mtime
+@@level 3
+@@cmds find -type f, -iname, -size, -mtime
+@@readme
+Under `var/log`, print **sorted** the regular files whose name ends in `.log` (any case: use `-iname`)
+that are **larger than 5 KiB** (`-size +5k`) **and** were **last modified more than 14 days ago**
+(`-mtime +14`). All three conditions must hold at the same time — this is a single `find` with four
+predicates ANDed together (`-type`, `-iname`, `-size`, `-mtime`).
+@@check
+setup() {
+  mkdir -p "var/log"
+  local i f sz days
+  for i in $(seq 12); do
+    f="var/log/$(word)$i$(pick .log .LOG .Log .txt .logx .logbak)"
+    sz=$(pick 3000 5000 5200 9000 20000)
+    bigfile "$f" "$sz"
+    days=$(pick 1 5 13 15 45)
+    touch -d "$days days ago" "$f"
+  done
+}
+@@solution
+#!/bin/bash
+find var/log -type f -iname '*.log' -size +5k -mtime +14 | sort
+
+@@ex 0741 find_perm_audit | Combining -perm forms: /mode, -mode and !
+@@level 3
+@@cmds find -perm /mode, -perm -mode, !
+@@readme
+Under `sistema`, print sorted, separated by `---`:
+
+1. regular files where **at least one** of group or other has **write** permission
+   (`-perm /022`) — a classic "world/group writable" security check.
+2. regular files where the **owner has full `rwx`** *and* **neither group nor other has any
+   permission at all** (`-perm -700 ! -perm /077`).
+3. regular files that have the **setuid bit** set **and** are **executable by the owner**
+   (`-perm -4100`). Beware: a file can have the setuid bit without being owner-executable —
+   that must **not** match.
+@@check
+setup() {
+  mkdir -p sistema/sub
+  local i f
+  local perms=(755 644 600 700 777 4755 4644 4100 750 770 666 4711 700 640)
+  i=0
+  for perm in "${perms[@]}"; do
+    i=$((i+1))
+    f="sistema/$(pick . sub)/$(word)$i"
+    touch "$f"
+    chmod "$perm" "$f"
+  done
+}
+@@solution
+#!/bin/bash
+find sistema -type f -perm /022 | sort
+echo ---
+find sistema -type f -perm -700 ! -perm /077 | sort
+echo ---
+find sistema -type f -perm -4100 | sort
+
+@@ex 0742 find_or_exclude | \( -o \) and ! : a precedence trap with -path
+@@level 3
+@@cmds find \( -o \), !, -path, -type f
+@@readme
+Under `cache`, print **sorted** the regular files whose name ends in `.tmp` or `.cache`, **excluding**
+any that live (at any depth) inside a directory called exactly `keep`.
+
+This is a precedence trap: `find cache -type f -name '*.tmp' -o -name '*.cache' ! -path '*/keep/*'`
+is **wrong** — `-o` binds looser than the implicit AND between tests, so the `!` exclusion only
+applies to the second branch of the `-o`. You must group the OR explicitly:
+`\( -name '*.tmp' -o -name '*.cache' \) ! -path '*/keep/*'`.
+
+Watch the decoys: a directory literally called `keeper` is **not** `keep` (its files must stay), and
+a top-level file called `keep.tmp` is not *inside* a directory called `keep` (it must stay too).
+@@check
+setup() {
+  mkdir -p cache/keep/sub cache/keeper cache/other
+  local i f
+  for i in $(seq 12); do
+    f="cache/$(pick . keep keep/sub keeper other)/$(word)$i$(pick .tmp .cache .txt .tmpx)"
+    touch "$f"
+  done
+  touch cache/keep.tmp
+}
+@@solution
+#!/bin/bash
+find cache -type f \( -name '*.tmp' -o -name '*.cache' \) ! -path '*/keep/*' | sort
+
+@@ex 0743 find_exec_filter | -exec ... {} \; as a per-file test
+@@level 3
+@@cmds find -exec {} \; -print, ! -path
+@@readme
+Under `registros`, print **sorted** the regular files that contain a line **exactly equal to**
+`ERROR` (case-sensitive, the whole line, nothing else on it), **excluding** anything under a
+directory called `descartados`.
+
+Use `find` with `-exec grep -qx ERROR {} \; -print`: `-exec` here works as a per-file **test**
+(true/false, like `-name` or `-size`) rather than an action, so `-print` only runs for the files
+where the `grep` succeeded. It must be `{} \;` (one `grep` call per file, one exit status per file) —
+`{} +` would batch several files into a single `grep` call and you would lose the per-file result.
+@@check
+setup() {
+  mkdir -p registros/descartados registros/sub
+  local i f n
+  for i in $(seq 10); do
+    f="registros/$(pick . sub descartados)/$(word)$i.log"
+    n=$(randr 1 5)
+    randtext "$n" > "$f"
+    case $(rand 3) in
+      0) echo ERROR >> "$f" ;;
+      1) echo "ERRORCODE99" >> "$f" ;;
+      2) : ;;
+    esac
+  done
+  : > registros/vacio.log
+  echo ERROR > registros/descartados/oculto.log
+}
+@@solution
+#!/bin/bash
+find registros -type f ! -path '*/descartados/*' -exec grep -qx ERROR {} \; -print | sort
+
+@@ex 0744 find_execdir | Safer deletion with -execdir
+@@level 3
+@@cmds find -execdir, -type f, -name
+@@readme
+Under `data`, delete every regular file literally named `tmp.dat`, anywhere in the tree, using
+`-execdir` instead of `-exec`. With `-execdir`, the command runs with its **current directory**
+changed to the file's own directory and `{}` is just the bare file name there — this avoids the
+symlink-race problem that plain `-exec rm {}` has when someone can rename directories while `find`
+is running. Print nothing; only the resulting files matter.
+@@check
+COMPARE="stdout exit files"
+setup() {
+  mkdir -p data/a/b data/c
+  touch data/tmp.dat data/a/tmp.dat data/a/b/tmp.dat data/c/tmp.dat
+  touch data/a/tmp.dat.bak data/keep.dat data/a/b/tmp.data
+}
+extra_check() { must_use -execdir; }
+@@solution
+#!/bin/bash
+find data -type f -name tmp.dat -execdir rm -- {} \;
+
+@@ex 0745 find_top_size | The largest files: find + xargs + sort + head
+@@level 3
+@@cmds find -print0, xargs -0, stat -c, sort -k, head
+@@readme
+Under `media`, print the **3 largest regular files** by size, one per line as `SIZE PATH` (size in
+bytes, path exactly as `find` prints it), ordered by size **descending**; break ties by path
+**ascending**.
+
+Pipeline: `find media -type f -print0 | xargs -0 stat -c '%s %n' | sort -k1,1nr -k2,2 | head -n 3`.
+A broken symlink is planted as a decoy — `-type f` must exclude it.
+@@check
+setup() {
+  mkdir -p media/sub
+  local i f sz
+  for i in $(seq 8); do
+    f="media/$(pick . sub)/$(word)$i.dat"
+    sz=$(( i * 10000 + $(randr 1 9000) ))
+    bigfile "$f" "$sz"
+  done
+  ln -s no_existe media/enlace
+}
+@@solution
+#!/bin/bash
+find media -type f -print0 | xargs -0 stat -c '%s %n' | sort -k1,1nr -k2,2 | head -n 3
+
+@@ex 0746 big_recent | big_recent.sh: files that are both new and big
+@@level 4
+@@cmds find -newer, -size, script argument, summary line
+@@readme
+Write `big_recent.sh`:
+
+```
+big_recent.sh [directory]
+```
+
+Prints, **sorted**, one per line, the paths of every **regular file** under `directory` (default:
+the current directory, searched recursively) that is **newer than** `directory/.marca` **and**
+whose size is **greater than 1 MiB** (`-size +1M`). After the list, print exactly:
+
+```
+Total: N files
+```
+
+where `N` is the number of such files. No argument-count validation is required: just default to
+`.` when no argument is given. `.marca` always exists in the tests.
+@@check
+SCRIPT_NAME=big_recent.sh
+SEEDS=2
+setup() {
+  mkdir -p dir1/sub dir2/sub
+  local d i f sz days
+  for d in dir1 dir2; do
+    touch -d "10 days ago" "$d/.marca"
+    for i in $(seq 5); do
+      f="$d/$(pick . sub)/$(word)$i.dat"
+      sz=$(pick 500000 800000 2000000 3000000 5000000)
+      bigfile "$f" "$sz"
+      days=$(pick 1 3 15 20)
+      touch -d "$days days ago" "$f"
+    done
+  done
+}
+ARGS=('dir1' 'dir2' '"$W/dir1"')
+@@solution
+#!/bin/bash
+DIR=${1:-.}
+find "$DIR" -type f -newer "$DIR/.marca" -size +1M | sort
+N=$(find "$DIR" -type f -newer "$DIR/.marca" -size +1M | wc -l)
+echo "Total: $N files"
+
+@@ex 0747 audit_scripts | audit_scripts.sh: executable scripts, skipping a subtree
+@@level 4
+@@cmds find -prune -o -print, -perm /111, script argument, summary line
+@@readme
+Write `audit_scripts.sh`:
+
+```
+audit_scripts.sh [directory]
+```
+
+Prints, **sorted**, the paths of every **regular file** under `directory` (default: the current
+directory) that has **some execute permission** (`-perm /111`) and whose name ends in `.sh`, but
+**skips entirely** any subtree rooted at a directory named exactly `vendor` — don't even descend
+into it (use `-prune`). A directory called `vendor_old` is **not** `vendor` and must still be
+searched. After the list, print exactly:
+
+```
+Total: N scripts
+```
+
+No argument-count validation is required: default to `.` when no argument is given.
+@@check
+SCRIPT_NAME=audit_scripts.sh
+SEEDS=2
+setup() {
+  mkdir -p proj/src proj/vendor/pkg proj/vendor_old proj/tools
+  local i f
+  for i in $(seq 10); do
+    f="proj/$(pick . src vendor vendor/pkg vendor_old tools)/$(word)$i$(pick .sh .sh .txt .shx)"
+    touch "$f"
+    chmod "$(pick 755 644 700 600 754)" "$f"
+  done
+  echo ok > proj/tools/keepme.sh;        chmod 755 proj/tools/keepme.sh
+  echo ok > proj/vendor/pkg/hidden.sh;   chmod 755 proj/vendor/pkg/hidden.sh
+  echo ok > proj/vendor_old/notvendor.sh; chmod 755 proj/vendor_old/notvendor.sh
+}
+ARGS=('' 'proj' '"$W/proj"')
+@@solution
+#!/bin/bash
+DIR=${1:-.}
+find "$DIR" -name vendor -prune -o -type f -perm /111 -name '*.sh' -print | sort
+N=$(find "$DIR" -name vendor -prune -o -type f -perm /111 -name '*.sh' -print | wc -l)
+echo "Total: $N scripts"
+
+@@ex 0748 total_csv | total_csv.sh: -exec {} + and the wc total line
+@@level 4
+@@cmds find -exec {} +, wc -l, script argument
+@@readme
+Write `total_csv.sh`:
+
+```
+total_csv.sh [directory]
+```
+
+Prints a single number: the total number of lines across every regular file ending in `.csv` under
+`directory` (default: the current directory, searched recursively). If there are no matching files,
+print `0`.
+
+Hint: batch all the matches into **one** invocation of `wc -l` with `-exec ... {} +` (not
+`{} \;`) — `wc` only prints an extra `total` line when it is given **more than one** file at once;
+give it the files one at a time with `{} \;` and you never get that combined total, so you would
+have to add the numbers up yourself instead.
+@@check
+SCRIPT_NAME=total_csv.sh
+SEEDS=2
+setup() {
+  mkdir -p multi/sub none onlyone
+  local i c
+  for i in $(seq "$(randr 3 5)"); do
+    c=$(randr 1 12)
+    randtext "$c" > "multi/$(pick . sub)/f$i.csv"
+  done
+  randtext 5 > multi/decoy.txt
+  c=$(randr 1 12)
+  randtext "$c" > "onlyone/solo.csv"
+  randtext 3 > onlyone/decoy.dat
+  touch none/.keep
+}
+ARGS=('multi' 'none' 'onlyone' '"$W/multi"')
+@@solution
+#!/bin/bash
+DIR=${1:-.}
+LAST=$(find "$DIR" -type f -name '*.csv' -exec wc -l {} + 2>/dev/null | tail -n1)
+if [[ -z $LAST ]]; then
+  echo 0
+else
+  read -r n _ <<< "$LAST"
+  echo "$n"
+fi
+
+@@ex 0749 depth_report | depth_report.sh: direct vs nested files
+@@level 4
+@@cmds find -mindepth, -maxdepth, -type f, script argument
+@@readme
+Write `depth_report.sh`:
+
+```
+depth_report.sh [directory]
+```
+
+Under `directory` (default: the current directory), count **regular files** whose name does
+**not** start with `.`:
+
+- those directly inside `directory` (depth 1)
+- those **nested** two or more levels down (depth ≥ 2)
+
+Print exactly two lines:
+
+```
+Directos: A
+Anidados: B
+```
+@@check
+SCRIPT_NAME=depth_report.sh
+SEEDS=2
+setup() {
+  mkdir -p arbol/a/b/c arbol/d
+  local i f depth
+  for i in $(seq 12); do
+    depth=$(pick 1 1 2 2 3)
+    case $depth in
+      1) f="arbol/$(word)$i.txt" ;;
+      2) f="arbol/$(pick a d)/$(word)$i.txt" ;;
+      3) f="arbol/a/b/$(pick c c .)/$(word)$i.txt" ;;
+    esac
+    touch "$f"
+  done
+  touch "arbol/.oculto1" "arbol/a/.oculto2" "arbol/a/b/c/.oculto3"
+}
+ARGS=('arbol' '"$W/arbol"')
+@@solution
+#!/bin/bash
+DIR=${1:-.}
+A=$(find "$DIR" -mindepth 1 -maxdepth 1 -type f ! -name '.*' | wc -l)
+B=$(find "$DIR" -mindepth 2 -type f ! -name '.*' | wc -l)
+echo "Directos: $A"
+echo "Anidados: $B"
+
+@@ex 0750 big_by_ext | big_by_ext.sh: large files grouped by extension
+@@level 4
+@@cmds find -size +Nk, sed, sort, uniq -c, script argument
+@@readme
+Write `big_by_ext.sh`:
+
+```
+big_by_ext.sh [directory]
+```
+
+Under `directory` (default: the current directory), among the **regular files larger than 100 KiB**
+(`-size +100k`), count them **grouped by extension** (the part of the name after the last `.`;
+files without a dot are ignored). Print exactly what `uniq -c` produces, **sorted by count
+descending, then by extension ascending** (same convention as exercise 0716), one group per line.
+Then print exactly:
+
+```
+Total: N files
+```
+
+where `N` is the number of big files counted (the sum over all groups, not the number of groups).
+@@check
+SCRIPT_NAME=big_by_ext.sh
+SEEDS=2
+setup() {
+  mkdir -p repo/a repo/b/c
+  local i f sz ext
+  for i in $(seq 18); do
+    ext=$(pick c c h md txt c '')
+    if [[ -n $ext ]]; then f="repo/$(pick . a b/c)/$(word)$i.$ext"; else f="repo/$(pick . a b/c)/$(word)$i"; fi
+    sz=$(pick 50000 60000 150000 200000 300000 120000)
+    bigfile "$f" "$sz"
+  done
+}
+ARGS=('repo' '"$W/repo"')
+@@solution
+#!/bin/bash
+DIR=${1:-.}
+find "$DIR" -type f -size +100k -name '*.*' | sed 's/.*\.//' | sort | uniq -c | sort -k1,1nr -k2,2
+N=$(find "$DIR" -type f -size +100k -name '*.*' | wc -l)
+echo "Total: $N files"
+
+@@ex 0751 possible_dupes | possible_dupes.sh: files that might be duplicates
+@@level 4
+@@cmds find -printf, sort -n, uniq -c, grep -v, script argument
+@@readme
+Write `possible_dupes.sh`:
+
+```
+possible_dupes.sh [directory]
+```
+
+Under `directory` (default: the current directory), regular files that share the **exact same
+size** (in bytes) as at least one other regular file are potential duplicates. Using
+`find ... -printf '%s\n' | sort -n | uniq -c`, print only the size groups with **more than one**
+file, in the same format `uniq -c` produces (count then size), ordered by size ascending. Then
+print exactly:
+
+```
+Total: N grupos
+```
+
+where `N` is the number of such groups (not the number of files).
+@@check
+SCRIPT_NAME=possible_dupes.sh
+SEEDS=2
+setup() {
+  mkdir -p store/a store/b
+  local i s1 s2 s3 s4 s5
+  s1=$(randr 1000 9000); s2=$(randr 10000 19000); s3=$(randr 20000 29000)
+  s4=$(randr 30000 39000); s5=$(randr 40000 49000)
+  local sizes=($s1 $s1 $s2 $s3 $s3 $s3 $s4 $s5 $s5)
+  i=0
+  for s in "${sizes[@]}"; do
+    i=$((i+1))
+    bigfile "store/$(pick . a b)/$(word)$i.dat" "$s"
+  done
+}
+ARGS=('store' '"$W/store"')
+@@solution
+#!/bin/bash
+DIR=${1:-.}
+find "$DIR" -type f -printf '%s\n' | sort -n | uniq -c | grep -vE '^ *1 '
+N=$(find "$DIR" -type f -printf '%s\n' | sort -n | uniq -c | grep -vE '^ *1 ' | wc -l)
+echo "Total: $N grupos"

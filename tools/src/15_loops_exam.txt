@@ -1,0 +1,443 @@
+@@topic 15_loops_read | Loops: for, while, until, read
+@@ex 1540 conteo_duplicados | Nested loops: counting duplicates without arrays
+@@level 3
+@@cmds nested for, arrays, [ ]
+@@readme
+`palabras.txt` has one word per line (a word may repeat). **Without associative arrays**, using
+only nested loops over a plain array, for every **distinct** word, in the order of its first
+appearance, print `WORD: N veces` if it appears **more than once** in the file (N = total number of
+times it appears). Words that appear only once print nothing.
+
+Finally print `distintas repetidas: D` (D = number of distinct words that appear more than once).
+
+Suggested approach: load every line into an array `w`. Keep a second array `seen` of the words
+already reported on. For each word of `w` not yet in `seen` (checked with an inner loop), count its
+occurrences with another inner loop over `w`.
+@@check
+SEEDS=4
+setup() {
+  local i pool=() n total
+  n=$(randr 3 6)
+  for i in $(seq "$n"); do pool+=("$(word)"); done
+  total=$(randr 8 14)
+  for i in $(seq "$total"); do pick "${pool[@]}"; done > palabras.txt
+}
+extra_check() {
+  ans_code | grep -qE 'declare[[:space:]]+-A' && fail "no associative arrays: use nested loops instead"
+}
+@@solution
+#!/bin/bash
+w=()
+while IFS= read -r line; do w+=("$line"); done < palabras.txt
+
+seen=()
+d=0
+for ((i = 0; i < ${#w[@]}; i++)); do
+  word=${w[i]}
+  already=0
+  for s in "${seen[@]}"; do [ "$s" = "$word" ] && { already=1; break; }; done
+  [ "$already" -eq 1 ] && continue
+  seen+=("$word")
+  n=0
+  for ((j = 0; j < ${#w[@]}; j++)); do [ "${w[j]}" = "$word" ] && n=$((n + 1)); done
+  if [ "$n" -gt 1 ]; then echo "$word: $n veces"; d=$((d + 1)); fi
+done
+echo "distintas repetidas: $d"
+
+@@ex 1541 cadena_tareas | break and continue with a real stop condition
+@@level 3
+@@cmds while read, case, break, continue
+@@readme
+`tareas.txt` has lines `NOMBRE ESTADO`, ESTADO being `pendiente`, `hecho` or `fallo`. Process the
+lines **in order** with a `while read` loop and a `case`:
+
+- `hecho`: skip it (`continue`), it counts for nothing.
+- `fallo`: print `parada en: NOMBRE` and **stop reading the rest of the file** (`break`) — no line
+  after it is processed, not even other `fallo` or `pendiente` lines.
+- `pendiente`: print `procesando: NOMBRE` and count it.
+
+If the loop reaches the end of the file without ever meeting a `fallo` line, print `todo ok` instead
+of the stop message. In both cases, finally print `procesadas: N` (N = the count of `pendiente`
+lines actually printed).
+@@check
+SEEDS=5
+setup() {
+  local i n falpos
+  n=$(randr 4 9)
+  falpos=0
+  [[ $(rand 3) != 0 ]] && falpos=$(randr 1 "$n")
+  for i in $(seq "$n"); do
+    if [ "$i" -eq "$falpos" ]; then
+      echo "$(word)$i fallo"
+    else
+      echo "$(word)$i $(pick pendiente hecho)"
+    fi
+  done > tareas.txt
+}
+extra_check() { must_use break continue; }
+@@solution
+#!/bin/bash
+n=0
+parada=
+while read -r nombre estado; do
+  case $estado in
+    hecho) continue ;;
+    fallo) echo "parada en: $nombre"; parada=1; break ;;
+    pendiente) echo "procesando: $nombre"; n=$((n + 1)) ;;
+  esac
+done < tareas.txt
+[ -z "$parada" ] && echo "todo ok"
+echo "procesadas: $n"
+
+@@ex 1542 clasifica_lista | Loop + case: per-item dispatch
+@@level 3
+@@cmds while read, case
+@@readme
+`entradas.txt` has one file name per line (names may contain spaces; they are plain names, not
+paths). Read it line by line and, for each name, use a `case` on its extension to dispatch it into a
+category:
+
+- `.sh` -> `scripts`
+- `.txt` or `.md` -> `docs`
+- `.jpg`, `.png` or `.gif` -> `imagenes`
+- anything else (including no extension) -> `otros`
+
+Print `NAME -> CATEGORIA` for every line, in file order. After the loop, print every category that
+got at least one entry, **sorted alphabetically**, as `CATEGORIA: N`. Finally print `TOTAL: T`
+(T = number of lines processed).
+@@check
+SEEDS=4
+setup() {
+  local i n exts=(sh txt md jpg png gif dat '') e
+  n=$(randr 5 10)
+  for i in $(seq "$n"); do
+    e=$(pick "${exts[@]}")
+    if [ -n "$e" ]; then echo "$(word)$(pick '' ' ')$i.$e"; else echo "$(word)$(pick '' ' ')$i"; fi
+  done > entradas.txt
+}
+extra_check() { must_use case; }
+@@solution
+#!/bin/bash
+declare -A cnt
+t=0
+while IFS= read -r name; do
+  case $name in
+    *.sh) cat=scripts ;;
+    *.txt | *.md) cat=docs ;;
+    *.jpg | *.png | *.gif) cat=imagenes ;;
+    *) cat=otros ;;
+  esac
+  echo "$name -> $cat"
+  cnt[$cat]=$(( ${cnt[$cat]:-0} + 1 ))
+  t=$((t + 1))
+done < entradas.txt
+for k in "${!cnt[@]}"; do echo "$k: ${cnt[$k]}"; done | sort
+echo "TOTAL: $t"
+
+@@ex 1543 sensores | Accumulating per-key stats while skipping outliers
+@@level 3
+@@cmds while read, arrays, continue
+@@readme
+`sensores.txt` has lines `SENSOR VALOR` (VALOR an integer, possibly negative or out of range).
+A reading is **invalid** when VALOR is outside -50..150 (inclusive): print
+`SENSOR: lectura invalida (VALOR)` and skip it (`continue`), it must not affect any statistic.
+
+For every valid reading accumulate, per SENSOR, the count, the sum, the minimum and the maximum.
+After the loop, for every sensor that had at least one valid reading, **sorted alphabetically by
+name**, print:
+
+```
+SENSOR: N lecturas, min MIN, max MAX, media MEDIA
+```
+
+MEDIA is the integer average (`suma / N`). Finally print `total validas: V, invalidas: I`.
+@@check
+SEEDS=4
+setup() {
+  local i n ns sensors=() s val
+  ns=$(randr 2 4)
+  for i in $(seq "$ns"); do sensors+=("S$(word)$i"); done
+  n=$(randr 6 14)
+  for i in $(seq "$n"); do
+    s=$(pick "${sensors[@]}")
+    case $(rand 6) in
+      0) val=$(randr -100 -51) ;;
+      1) val=$(randr 151 300) ;;
+      *) val=$(randr -50 150) ;;
+    esac
+    echo "$s $val"
+  done > sensores.txt
+}
+extra_check() { must_use continue; }
+@@solution
+#!/bin/bash
+declare -A CNT SUM MIN MAX
+v=0; inv=0
+while read -r s val; do
+  if [ "$val" -lt -50 ] || [ "$val" -gt 150 ]; then
+    echo "$s: lectura invalida ($val)"
+    inv=$((inv + 1))
+    continue
+  fi
+  v=$((v + 1))
+  CNT[$s]=$(( ${CNT[$s]:-0} + 1 ))
+  SUM[$s]=$(( ${SUM[$s]:-0} + val ))
+  if [ -z "${MIN[$s]}" ] || [ "$val" -lt "${MIN[$s]}" ]; then MIN[$s]=$val; fi
+  if [ -z "${MAX[$s]}" ] || [ "$val" -gt "${MAX[$s]}" ]; then MAX[$s]=$val; fi
+done < sensores.txt
+for s in "${!CNT[@]}"; do
+  echo "$s: ${CNT[$s]} lecturas, min ${MIN[$s]}, max ${MAX[$s]}, media $(( SUM[$s] / CNT[$s] ))"
+done | sort
+echo "total validas: $v, invalidas: $inv"
+
+@@ex 1544 dup_files | dup_files.sh: finding byte-identical files with find + cmp
+@@level 4
+@@cmds find -print0, sort -z, while read -r -d '', cmp -s
+@@readme
+Write `dup_files.sh DIR`. Recursively visit every **regular file** under DIR (any depth), safely, in
+`sort -z` order (`find DIR -type f -print0 | sort -z | while IFS= read -r -d '' f; do ... done`,
+names may contain spaces). Keep a list of files already "kept". For each file, in that order:
+
+- compare it (`cmp -s`) against every **previously kept** file that has the **same size**
+  (`stat -c %s`), in the order they were kept; if it matches one byte-for-byte, print
+  `DUP: PATH == ORIGINAL` (ORIGINAL = the matching kept file) and do **not** add it to the kept list
+- otherwise add it to the kept list (print nothing)
+
+Finally print `TOTAL: N files, K unicos, D duplicados` (N = files visited, K = files kept,
+D = duplicates found).
+
+Errors (stderr, wording free, checked in this order): not exactly 1 argument -> usage, exit **1**;
+DIR does not exist -> exit **2** (name it); DIR exists but is not a directory -> exit **3** (name it).
+@@check
+SCRIPT_NAME=dup_files.sh
+SEEDS=2
+COMPARE="stdout exit errmsg"
+setup() {
+  mkdir -p "arbol/sub uno/x" "arbol/sub dos"
+  local c1 c2 c3
+  c1=$(randtext 2); c2=$(randtext 3); c3=$(randtext 1)
+  mkf "arbol/a $(word)1.txt" "$c1"
+  mkf "arbol/sub uno/b $(word)2.txt" "$c1"
+  mkf "arbol/sub dos/c $(word)3.txt" "$c2"
+  mkf "arbol/sub uno/x/d $(word)4.txt" "$c2"
+  mkf "arbol/e $(word)5.txt" "$c3"
+  mkf "arbol/sub dos/f1.txt" "abcde"
+  mkf "arbol/f2.txt" "vwxyz"
+  touch "arbol/vacio1.txt" "arbol/sub dos/vacio2.txt"
+  touch nota.txt
+}
+ARGS=('arbol' '' 'arbol extra' 'noexiste' 'nota.txt')
+extra_check() {
+  local a; eval "a=( $CASE )"
+  [[ $REF_CODE == 2 ]] && mentions "${a[0]}"
+  [[ $REF_CODE == 3 ]] && mentions "${a[0]}"
+  must_use read
+}
+@@solution
+#!/bin/bash
+# dup_files.sh DIR
+if [ $# -ne 1 ]; then
+  echo "usage: $(basename "$0") DIR" >&2
+  exit 1
+fi
+D=$1
+if [ ! -e "$D" ]; then
+  echo "error: '$D' does not exist" >&2
+  exit 2
+fi
+if [ ! -d "$D" ]; then
+  echo "error: '$D' is not a directory" >&2
+  exit 3
+fi
+
+kept=()
+n=0; dup=0
+while IFS= read -r -d '' f; do
+  n=$((n + 1))
+  sz=$(stat -c %s "$f")
+  match=
+  for k in "${kept[@]}"; do
+    [ "$(stat -c %s "$k")" -eq "$sz" ] || continue
+    if cmp -s "$f" "$k"; then match=$k; break; fi
+  done
+  if [ -n "$match" ]; then
+    echo "DUP: $f == $match"
+    dup=$((dup + 1))
+  else
+    kept+=("$f")
+  fi
+done < <(find "$D" -type f -print0 | sort -z)
+echo "TOTAL: $n files, ${#kept[@]} unicos, $dup duplicados"
+
+@@ex 1545 grep_dir | grep_dir.sh: counting matches across a tree
+@@level 4
+@@cmds find -print0, sort -z, while read -r -d '', grep -c
+@@readme
+Write `grep_dir.sh DIR PATTERN`. Recursively visit every **regular file** under DIR (any depth,
+hidden included), safely (`find DIR -type f -print0 | sort -z | while IFS= read -r -d '' f; do
+... done`, names may contain spaces), and count its matching lines with `grep -c -- "$PATTERN" "$f"`.
+
+For every file with **at least one** match, in that order, print `PATH: N`. Files with 0 matches
+print nothing but still count as scanned. Finally print
+`TOTAL: T matches in M files (of F escaneados)` (T = sum of matches, M = files with >=1 match,
+F = files scanned).
+
+Errors (stderr, wording free, checked in this order): not exactly 2 arguments -> usage, exit **1**;
+DIR is not a directory -> exit **2** (name it); PATTERN is the empty string -> exit **3**.
+@@check
+SCRIPT_NAME=grep_dir.sh
+SEEDS=2
+COMPARE="stdout exit errmsg"
+setup() {
+  mkdir -p "logs/sub uno" "logs/sub dos/deep"
+  mkfl "logs/a $(word)1.txt" "linux kernel" "process signal" "linux linux"
+  mkfl "logs/sub uno/b $(word)2.txt" "socket buffer" "linux"
+  mkfl "logs/sub dos/c $(word)3.txt" "nothing here"
+  mkfl "logs/sub dos/deep/d $(word)4.txt" "linux thread linux"
+  touch "logs/vacio.txt"
+  touch nota.txt
+}
+ARGS=('logs linux' 'logs socket' 'logs nomatch' '' 'logs' 'nada linux' 'nota.txt linux' 'logs ""')
+extra_check() {
+  local a; eval "a=( $CASE )"
+  [[ $REF_CODE == 2 ]] && mentions "${a[0]}"
+  must_use read
+}
+@@solution
+#!/bin/bash
+# grep_dir.sh DIR PATTERN
+if [ $# -ne 2 ]; then
+  echo "usage: $(basename "$0") DIR PATTERN" >&2
+  exit 1
+fi
+D=$1; PAT=$2
+[ -d "$D" ] || { echo "error: '$D' is not a directory" >&2; exit 2; }
+[ -n "$PAT" ] || { echo "error: empty pattern" >&2; exit 3; }
+
+T=0; M=0; F=0
+while IFS= read -r -d '' f; do
+  F=$((F + 1))
+  n=$(grep -c -- "$PAT" "$f")
+  if [ "$n" -gt 0 ]; then
+    echo "$f: $n"
+    T=$((T + n)); M=$((M + 1))
+  fi
+done < <(find "$D" -type f -print0 | sort -z)
+echo "TOTAL: $T matches in $M files (of $F escaneados)"
+
+@@ex 1546 limpiar_tmp | limpiar_tmp.sh: deleting matched files while tallying bytes freed
+@@level 4
+@@cmds find -print0, sort -z, while read -r -d '', rm, stat
+@@readme
+Write `limpiar_tmp.sh DIR`. Recursively find every **regular file** under DIR (any depth) whose name
+ends in `.tmp` or `.bak` (case-sensitive), safely (`find ... -print0 | sort -z | while IFS= read -r
+-d '' f; do ... done`, names may contain spaces). For each match, in that order: get its size, delete
+it (`rm`), and print `borrado: PATH (N bytes)`.
+
+Finally print `TOTAL: borrados R archivos, L bytes liberados` (R = files deleted, L = bytes freed).
+A file like `keep2.bakup` does **not** count (it does not end in exactly `.bak`).
+
+Errors (stderr, wording free, checked in this order): not exactly 1 argument -> usage, exit **1**;
+DIR does not exist -> exit **2** (name it); DIR exists but is not a directory -> exit **3** (name it).
+@@check
+SCRIPT_NAME=limpiar_tmp.sh
+SEEDS=2
+COMPARE="stdout exit errmsg files"
+setup() {
+  mkdir -p "proj/sub uno" "proj/sub dos"
+  local i d dirs=(proj "proj/sub uno" "proj/sub dos")
+  for i in $(seq 3); do d=$(pick "${dirs[@]}"); bigfile "$d/$(word)$(pick '' ' ')$i.tmp" "$(randr 0 300)"; done
+  for i in $(seq 2); do d=$(pick "${dirs[@]}"); bigfile "$d/$(word)$(pick '' ' ')$i.bak" "$(randr 0 300)"; done
+  bigfile "proj/keep$(pick '' ' ').txt" "$(randr 0 300)"
+  bigfile "proj/sub uno/keep2.bakup" "$(randr 0 300)"
+  touch nota.txt
+}
+ARGS=('proj' '' 'proj extra' 'noexiste' 'nota.txt')
+extra_check() {
+  local a; eval "a=( $CASE )"
+  [[ $REF_CODE == 2 ]] && mentions "${a[0]}"
+  [[ $REF_CODE == 3 ]] && mentions "${a[0]}"
+  must_use read
+}
+@@solution
+#!/bin/bash
+# limpiar_tmp.sh DIR
+[ $# -eq 1 ] || { echo "usage: $(basename "$0") DIR" >&2; exit 1; }
+D=$1
+[ -e "$D" ] || { echo "error: '$D' does not exist" >&2; exit 2; }
+[ -d "$D" ] || { echo "error: '$D' is not a directory" >&2; exit 3; }
+
+R=0; L=0
+while IFS= read -r -d '' f; do
+  sz=$(stat -c %s "$f")
+  rm -- "$f"
+  echo "borrado: $f ($sz bytes)"
+  R=$((R + 1)); L=$((L + sz))
+done < <(find "$D" -type f \( -name '*.tmp' -o -name '*.bak' \) -print0 | sort -z)
+echo "TOTAL: borrados $R archivos, $L bytes liberados"
+
+@@ex 1547 clasifica_arbol | clasifica_arbol.sh: dispatching find results with case
+@@level 4
+@@cmds find -print0, sort -z, while read -r -d '', case
+@@readme
+Write `clasifica_arbol.sh DIR`. Recursively visit every **regular file** under DIR (any depth,
+hidden included), safely (`find DIR -type f -print0 | sort -z | while IFS= read -r -d '' f; do
+... done`, names may contain spaces), and classify each one with a `case` on its extension:
+
+- `*.sh` -> `scripts`
+- `*.txt`, `*.md` -> `docs`
+- `*.jpg`, `*.png` -> `imagenes`
+- anything else (including no extension) -> `otros`
+
+For every category that got at least one file, **sorted alphabetically**, print
+`CATEGORIA: N archivos, S bytes` (S = sum of sizes in that category). Finally print
+`TOTAL: F archivos, S bytes` over everything.
+
+Errors (stderr, wording free): not exactly 1 argument -> usage, exit **1**; DIR is not a directory
+-> exit **2** (name it).
+@@check
+SCRIPT_NAME=clasifica_arbol.sh
+SEEDS=2
+COMPARE="stdout exit errmsg"
+setup() {
+  mkdir -p "arbol2/sub uno" "arbol2/sub dos/deep"
+  local i n=8 exts=(sh txt md jpg png dat '') e d
+  local dirs=(arbol2 "arbol2/sub uno" "arbol2/sub dos" "arbol2/sub dos/deep")
+  for i in $(seq "$n"); do
+    e=$(pick "${exts[@]}")
+    d=$(pick "${dirs[@]}")
+    if [ -n "$e" ]; then bigfile "$d/$(word)$(pick '' ' ')$i.$e" "$(randr 0 400)"
+    else bigfile "$d/$(word)$(pick '' ' ')$i" "$(randr 0 400)"
+    fi
+  done
+  touch nota.txt
+}
+ARGS=('arbol2' '' 'arbol2 extra' 'noexiste' 'nota.txt')
+extra_check() {
+  local a; eval "a=( $CASE )"
+  [[ $REF_CODE == 2 ]] && mentions "${a[0]}"
+  must_use case read
+}
+@@solution
+#!/bin/bash
+# clasifica_arbol.sh DIR
+[ $# -eq 1 ] || { echo "usage: $(basename "$0") DIR" >&2; exit 1; }
+D=$1
+[ -d "$D" ] || { echo "error: '$D' is not a directory" >&2; exit 2; }
+
+declare -A CNT SZ
+F=0; TS=0
+while IFS= read -r -d '' f; do
+  case $f in
+    *.sh) c=scripts ;;
+    *.txt | *.md) c=docs ;;
+    *.jpg | *.png) c=imagenes ;;
+    *) c=otros ;;
+  esac
+  sz=$(stat -c %s "$f")
+  CNT[$c]=$(( ${CNT[$c]:-0} + 1 ))
+  SZ[$c]=$(( ${SZ[$c]:-0} + sz ))
+  F=$((F + 1)); TS=$((TS + sz))
+done < <(find "$D" -type f -print0 | sort -z)
+for c in "${!CNT[@]}"; do echo "$c: ${CNT[$c]} archivos, ${SZ[$c]} bytes"; done | sort
+echo "TOTAL: $F archivos, $TS bytes"
