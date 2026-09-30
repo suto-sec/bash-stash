@@ -111,7 +111,6 @@ async function openExercise(id) {
   $('#ex-cmds').textContent = ex.cmds;
   setStatus(ex.status);
   $('#answer-path').textContent = 'answer: ' + ex.answer.replace(/^\/home\/alumno\/lab\//, '');
-  $('#edit-btn').textContent = ex.quiz ? 'nano answer.txt' : 'nano answer.sh';
   const md = ex.readme.replace(/\n---\n[\s\S]*$/, ''); // footer is about the CLI; the buttons replace it
   $('#readme').innerHTML = marked.parse(md);
   $('#result').classList.add('hidden');
@@ -403,7 +402,6 @@ $('#cd-btn').onclick = async () => {
     if (j.playDir) { state.current.playDir = j.playDir; typeInTerminal(`cd ${shq(j.playDir)} && clear && ls`); }
   } finally { $('#cd-btn').disabled = false; }
 };
-$('#edit-btn').onclick = () => state.current && typeInTerminal(`nano ${shq(state.current.answer)}`);
 
 // ------------------------------------------------------------------ VS Code
 function openVSCode() {
@@ -444,15 +442,13 @@ function setMode(m) {
   $('#tab-code').classList.toggle('hidden', layout !== 'default');
   $('#term').classList.toggle('hidden', !showTerm);
   $('#code').classList.toggle('hidden', !showCode);
-  for (const id of ['#cd-btn', '#edit-btn', '#restart-btn']) $(id).classList.toggle('hidden', layout === 'default' && m !== 'term');
-  $('#vsc-reload-btn').classList.toggle('hidden', layout === 'default' && m !== 'code');
+  for (const id of ['#cd-btn', '#restart-btn']) $(id).classList.toggle('hidden', layout === 'default' && m !== 'term');
   try { localStorage.setItem('mode', m); } catch { /* private mode */ }
   if (showCode) openVSCode();
   if (showTerm) { if (!term) startTerminal(); else { fit.fit(); if (m === 'term') term.focus(); } }
 }
 $('#tab-term').onclick = () => setMode('term');
 $('#tab-code').onclick = () => setMode('code');
-$('#vsc-reload-btn').onclick = () => { state.codeFor = null; openVSCode(); };
 
 // ------------------------------------------------------------------ custom layout (freeform drag-to-dock)
 const PANEL_EL = { instr: $('#cpanel-instr'), term: $('#cpanel-term'), code: $('#cpanel-code') };
@@ -713,19 +709,55 @@ function route() {
 }
 window.addEventListener('hashchange', route);
 
-// ------------------------------------------------------------------ sidebar collapse
-$('#sidebar-toggle').innerHTML = '<span class="arrow">‹</span>';
-$('#sidebar-toggle').onclick = () => {
-  const collapsed = document.querySelector('.layout').classList.toggle('sidebar-collapsed');
-  $('#sidebar-toggle').title = collapsed ? 'Expand sidebar' : 'Collapse sidebar';
-  try { localStorage.setItem('sidebarCollapsed', collapsed ? '1' : ''); } catch { /* private mode */ }
-};
-try {
-  if (localStorage.getItem('sidebarCollapsed')) {
-    document.querySelector('.layout').classList.add('sidebar-collapsed');
-    $('#sidebar-toggle').title = 'Expand sidebar';
+// ------------------------------------------------------------------ sidebar collapse & resize
+// The same full-height strip both collapses the sidebar (a plain click) and resizes it
+// (dragging it sideways) — a small pointer-movement threshold tells the two apart.
+(() => {
+  const btn = $('#sidebar-toggle'), sidebar = $('#sidebar'), layoutEl = document.querySelector('.layout');
+  const MIN = 180, MAX = 480, DEFAULT_W = 290;
+  let savedWidth = DEFAULT_W;
+  try { savedWidth = parseInt(localStorage.getItem('sidebarWidth'), 10) || DEFAULT_W; } catch { /* private mode */ }
+  sidebar.style.width = savedWidth + 'px';
+
+  function setCollapsed(collapsed) {
+    layoutEl.classList.toggle('sidebar-collapsed', collapsed);
+    if (!collapsed) sidebar.style.width = savedWidth + 'px';
+    btn.title = collapsed ? 'Expand sidebar' : 'Collapse sidebar';
+    try { localStorage.setItem('sidebarCollapsed', collapsed ? '1' : ''); } catch { /* private mode */ }
   }
-} catch { /* private mode */ }
+  try { if (localStorage.getItem('sidebarCollapsed')) setCollapsed(true); } catch { /* private mode */ }
+
+  let startX = 0, startW = 0, dragging = false;
+  btn.onpointerdown = ev => {
+    startX = ev.clientX; startW = sidebar.getBoundingClientRect().width; dragging = false;
+    btn.setPointerCapture(ev.pointerId);
+  };
+  btn.onpointermove = ev => {
+    if (!btn.hasPointerCapture(ev.pointerId)) return;
+    const dx = ev.clientX - startX;
+    if (!dragging && Math.abs(dx) > 4) {
+      dragging = true;
+      btn.classList.add('resizing');
+      sidebar.classList.add('no-transition');
+      document.querySelectorAll('iframe').forEach(f => f.style.pointerEvents = 'none');
+    }
+    if (dragging && !layoutEl.classList.contains('sidebar-collapsed')) {
+      savedWidth = Math.min(MAX, Math.max(MIN, startW + dx));
+      sidebar.style.width = savedWidth + 'px';
+    }
+  };
+  btn.onpointerup = () => {
+    document.querySelectorAll('iframe').forEach(f => f.style.pointerEvents = '');
+    sidebar.classList.remove('no-transition');
+    if (dragging) {
+      btn.classList.remove('resizing');
+      try { localStorage.setItem('sidebarWidth', String(Math.round(savedWidth))); } catch { /* private mode */ }
+    } else {
+      setCollapsed(!layoutEl.classList.contains('sidebar-collapsed'));
+    }
+    dragging = false;
+  };
+})();
 
 (async () => {
   applyTheme(currentTheme(), false);
