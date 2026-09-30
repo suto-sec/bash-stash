@@ -77,7 +77,7 @@ function exerciseInfo(topicDir, name) {
   const cmds = (meta.match(/\*\*Commands:\*\*\s*(.*)$/) || [, ''])[1];
   const quiz = fs.existsSync(path.join(dir, 'answer.txt'));
   const answer = path.join(dir, quiz ? 'answer.txt' : 'answer.sh');
-  const tier = TIER_MAP[id] || 1;
+  const tier = id in TIER_MAP ? TIER_MAP[id] : 1; // tier can legitimately be 0 — `||` would misfire on it
   let status = 'new';
   if (fs.existsSync(path.join(PROGRESS, id))) status = 'pass';
   else if (fs.existsSync(path.join(PROGRESS, id + '.viewed'))) status = 'viewed';
