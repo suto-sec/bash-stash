@@ -111,11 +111,21 @@ content), owners/mtimes, and custom state. Some exercises also require/forbid a 
 
 Progress is stored in `.progress/` (delete it to start over).
 
+## Theory quizzes
+
+Besides the exercises, the web UI has a **Theory** section on the home page: interactive quizzes (single
+and multiple choice, fill in the blank, ordering by drag and drop, matching, sorting into categories)
+graded in the browser with instant feedback. After each answer *every* option is explained: why the
+right ones are right and why each wrong one is not. Clicking a collection replaces the sidebar with its
+questions grouped by subcategory. Results are stored per question in `.progress/theory/` and do not
+count towards the exercise totals. Sources: `tools/theory/*.txt` (see `tools/THEORY_AUTHORING.md`).
+
 ## For maintenance
 
 - `tools/src/*.txt` — source of every exercise (statement + checker spec + solution);
   `tools/build.sh` regenerates `exercises/` and `solutions/` (never overwrites your answers).
 - `lib/engine.sh` — the checker (spec format documented at the top).
+- `tools/theory/*.txt` + `node tools/build_theory.js` — theory quiz sources and their compiler/validator (writes `theory/*.json`).
 - `tools/validate.sh [ids]` (inside the lab) — proves every reference passes and an empty answer fails.
 - `container/` — image definition (users, fake logs, sessions, code-server).
 - `web/` — web UI: `server.js` (Node: API, terminal over websocket, proxy to code-server) and `public/`.
