@@ -22,6 +22,7 @@ try { state.introCategory = localStorage.getItem('introCategory') || null; } cat
 // minimal=tier 1, intermediate=tiers 1-2, complete/full=everything except tier 0.
 const TRACK_MAX = { minimal: 1, intermediate: 2, complete: 3 };
 function visibleInTopic(t, e) {
+  if (state.introCategory === 'all') return e.tier === 0;
   if (state.introCategory) return state.introCategory === t.id && e.tier === 0;
   if (e.tier === 0) return false;
   return state.track === 'full' || e.tier <= TRACK_MAX[state.track];
@@ -774,6 +775,7 @@ document.addEventListener('click', ev => {
 const TRACK_LABELS = { minimal: 'Minimal', intermediate: 'Intermediate', complete: 'Complete' };
 function updateTrackBadge() {
   const badge = $('#track-badge');
+  if (state.introCategory === 'all') { badge.textContent = 'Intro: Full set'; badge.classList.remove('hidden'); return; }
   if (state.introCategory) {
     const t = state.index.find(x => x.id === state.introCategory);
     badge.textContent = 'Intro: ' + (t ? t.title : state.introCategory);
@@ -785,27 +787,43 @@ function updateTrackBadge() {
   badge.classList.remove('hidden');
 }
 function renderHomePage() {
-  const counts = { full: 0, minimal: 0, intermediate: 0 };
+  const stats = { full: [0, 0], minimal: [0, 0], intermediate: [0, 0] }; // [done, total]
+  let introDone = 0, introTotal = 0;
   for (const e of state.flat) {
-    if (e.tier === 0) continue; // Introduction refreshers never count toward a track
-    counts.full++;
-    if (e.tier <= 1) counts.minimal++;
-    if (e.tier <= 2) counts.intermediate++;
+    if (e.tier === 0) { introTotal++; if (e.status === 'pass') introDone++; continue; }
+    stats.full[1]++; if (e.status === 'pass') stats.full[0]++;
+    if (e.tier <= 1) { stats.minimal[1]++; if (e.status === 'pass') stats.minimal[0]++; }
+    if (e.tier <= 2) { stats.intermediate[1]++; if (e.status === 'pass') stats.intermediate[0]++; }
   }
-  for (const el of document.querySelectorAll('.track-card-count')) el.textContent = `${counts[el.dataset.count]} exercises`;
+  for (const el of document.querySelectorAll('#track-grid .track-card-count')) {
+    const [done, total] = stats[el.dataset.count];
+    el.textContent = `${done}/${total} exercises`;
+  }
+  $('[data-count="intro-all"]').textContent = `${introDone}/${introTotal} exercises`;
   for (const el of document.querySelectorAll('#track-grid .track-card')) el.classList.toggle('current', !state.introCategory && el.dataset.track === state.track);
+  $('#intro-all-card').classList.toggle('current', state.introCategory === 'all');
   renderIntroGrid();
 }
 function renderIntroGrid() {
   const grid = $('#intro-grid');
   grid.innerHTML = state.index.filter(t => t.id !== '18' && t.id !== '19').map(t => {
-    const n = t.exercises.filter(e => e.tier === 0).length;
+    const exs = t.exercises.filter(e => e.tier === 0);
+    const done = exs.filter(e => e.status === 'pass').length;
     const cur = state.introCategory === t.id;
     return `<button class="track-card${cur ? ' current' : ''}" data-intro-topic="${esc(t.id)}">
       <div class="track-card-title">${esc(t.id)} · ${esc(t.title)}</div>
-      <div class="track-card-count">${n} exercise${n === 1 ? '' : 's'}</div>
+      <div class="track-card-count">${done}/${exs.length} exercises</div>
     </button>`;
   }).join('');
+}
+function selectIntroCategory(id) {
+  state.introCategory = id;
+  try { localStorage.setItem('introCategory', id); } catch { /* private mode */ }
+  updateTrackBadge();
+  renderSidebar();
+  const pool = visibleFlat();
+  const next = pool.find(e => e.status !== 'pass') || pool[0];
+  location.hash = next ? `#/ex/${next.id}` : '#/home';
 }
 $('#track-grid').addEventListener('click', ev => {
   const card = ev.target.closest('.track-card');
@@ -822,14 +840,9 @@ $('#track-grid').addEventListener('click', ev => {
 $('#intro-grid').addEventListener('click', ev => {
   const card = ev.target.closest('[data-intro-topic]');
   if (!card) return;
-  state.introCategory = card.dataset.introTopic;
-  try { localStorage.setItem('introCategory', state.introCategory); } catch { /* private mode */ }
-  updateTrackBadge();
-  renderSidebar();
-  const pool = visibleFlat();
-  const next = pool.find(e => e.status !== 'pass') || pool[0];
-  location.hash = next ? `#/ex/${next.id}` : '#/home';
+  selectIntroCategory(card.dataset.introTopic);
 });
+$('#intro-all-card').onclick = () => selectIntroCategory('all');
 $('#track-badge').onclick = () => { location.hash = '#/home'; };
 $('#home-back').onclick = ev => {
   ev.preventDefault();
