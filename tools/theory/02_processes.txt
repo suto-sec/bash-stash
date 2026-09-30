@@ -1,0 +1,434 @@
+@@collection 02_processes | Jobs, processes & signals
+@@about
+Foreground, background and suspended jobs; processes, PIDs and their parents; reading ps and top; signals, kill and exit statuses of killed programs.
+
+@@group Foreground, background, suspended
+@@q sort | State of a job
+@@buckets Foreground | Background | Suspended
+Where does each job stand in the shell right after the action described?
+(Foreground) You type `sleep 100` and press Enter :: A plain command runs in the foreground: the shell waits and gives no prompt until it ends.
+(Foreground) You run `fg` on a background job :: `fg` brings the job to the foreground and the shell waits for it again.
+(Background) You type `sleep 100 &` :: The trailing `&` starts the job and returns the prompt at once.
+(Background) You suspend a job with `Ctrl+Z` and then type `bg` :: `bg` resumes the stopped job, but in the background.
+(Suspended) You press `Ctrl+Z` while `sleep 100` runs :: The job is stopped (not ended) and stays in memory until you resume or kill it.
+(Suspended) You run `kill -STOP %1` on a running job :: `SIGSTOP` freezes the process just like `Ctrl+Z`.
+
+@@q single | Effect of the ampersand
+What does putting `&` at the end of a command line do?
+(+) It starts the command in the background and gives the prompt back immediately. :: The shell does not wait for the job; you can keep typing commands.
+(-) It runs the command as the administrator. :: Privilege has nothing to do with `&`; `sudo` does that.
+(-) It runs the command twice. :: `&` does not duplicate anything.
+(-) It hides the command's output. :: Output still goes to the terminal unless you redirect it.
+
+@@q single | Ctrl+Z is not kill
+After pressing `Ctrl+Z` on a running `sleep 100`, what is the state of that process?
+(+) Stopped: it still exists, uses memory, and can be resumed with `fg` or `bg`. :: Suspending freezes it; nothing has terminated.
+(-) Terminated, and its resources are freed. :: That is what `Ctrl+C` (or `kill`) would do.
+(-) Running in the background. :: It does not run at all until you use `bg`.
+(-) Waiting for input from the keyboard. :: It is frozen by a signal, not blocked on input.
+
+@@q match | Job control commands
+Match each command with its effect.
+(=) `jobs` => List the jobs of the current shell :: It shows numbered jobs with their state.
+(=) `bg` => Resume a stopped job in the background :: The job continues to run while you keep the prompt.
+(=) `fg` => Bring a job to the foreground :: The shell waits for it and it reads the keyboard.
+(=) `kill %1` => Send SIGTERM to job number 1 :: `%n` refers to a job of this shell, not to a PID.
+(-) Start a new shell for each job :: None of the commands above does this.
+
+@@q single | Job numbers versus PIDs
+What is the difference between `%1` and a PID such as `4174`?
+(+) `%1` is a job number that is only meaningful inside the current shell, while a PID identifies a process system-wide. :: Jobs are the shell's own bookkeeping; the kernel knows only PIDs.
+(-) `%1` is the PID of the first process ever started. :: The first process is PID 1 (`init`/`systemd`) and is unrelated to job 1.
+(-) They are two names for the same number. :: They are independent numbering schemes.
+(-) `%1` is a file name. :: The percent sign introduces a job specification to `kill`, `fg` and `bg`.
+
+@@q fill | Resume in the foreground
+A job stopped with Ctrl+Z can be continued in the foreground with `{{fg}}` and in the background with `{{bg}}`.
+(x) jobs :: `jobs` only lists jobs; it does not resume any.
+(x) resume :: There is no such builtin.
+@@note
+Both commands take an optional job spec (`fg %2`); without one they act on the most recent job, marked with `+` in `jobs`.
+
+@@q order | Suspend and resume
+Put these steps in order for running a long command, pausing it and finishing it in the background.
+(>) Start `sleep 300` in the foreground :: The command must exist as a running job first.
+(>) Press `Ctrl+Z` :: This suspends it and returns the prompt.
+(>) Run `bg` :: This resumes the stopped job in the background.
+(>) Run `jobs` to confirm it is listed as Running :: A check only makes sense after the state changed.
+
+@@q single | Reading jobs output
+In the output of `jobs`, a line starts with `[2]+`. What does the `+` mean?
+(+) It marks the current job, the one `fg` or `bg` act on when you give no job number. :: `-` marks the previous job.
+(-) It means the job is running as root. :: Users are not shown in `jobs`.
+(-) It means the job finished successfully. :: Finished jobs are reported as `Done`.
+(-) It means the job uses more than 100% of the CPU. :: `jobs` does not report CPU usage.
+
+@@q multi | Jobs listing facts
+Select the true statements about the `jobs` command.
+(+) It shows only the jobs started from the current shell session. :: Processes of other terminals are not listed.
+(+) `jobs -l` also shows the PID of each job. :: Plain `jobs` shows numbers and states only.
+(+) It reports the states Running, Stopped and Done. :: That is the lifecycle of a job as the shell sees it.
+(-) It lists every process of the system. :: That is `ps -e`.
+(-) It is an external program in `/usr/bin`. :: It is a shell builtin because jobs belong to the shell.
+
+@@q single | Closing the terminal
+You start `sleep 500 &` and then close the terminal window. What normally happens to the job?
+(+) The shell sends it `SIGHUP` when it exits, and the job terminates unless it ignores that signal or was started with `nohup`/`disown`. :: The hangup signal was designed for "the terminal went away".
+(-) It keeps running forever because it is in the background. :: Background jobs are still tied to the session.
+(-) It is moved to the foreground of the next terminal. :: There is no such migration.
+(-) It becomes a zombie that cannot be removed. :: A zombie is a finished process whose parent has not collected it; that is not the case here.
+
+@@q single | Foreground job and keyboard
+Which statement explains why only the foreground job can read what you type?
+(+) The terminal delivers keyboard input to the foreground job; a background job that tries to read from it is stopped. :: That is how the shell and the terminal share a single keyboard.
+(-) Background jobs are read-only and cannot use a keyboard at all. :: Only terminal input is restricted, and only when they try to read it.
+(-) The keyboard works only for the first job started. :: Any job can be brought to the foreground.
+(-) `&` disconnects the job from the machine. :: It merely leaves the terminal to the shell.
+
+@@group Processes and PIDs
+@@q single | What is a process
+Which is the best definition of a process?
+(+) A program in execution, with its own PID, memory and open files. :: The same program started twice gives two processes.
+(-) A file on disk containing machine code. :: That is a program (an executable), not yet a process.
+(-) A command typed in the shell. :: A command line may start zero, one or several processes.
+(-) A user account. :: Users own processes; they are not processes themselves.
+
+@@q fill | Identifying a process
+Every process has a unique numeric identifier called its `{{PID}}`, and the PID of its creator is called its `{{PPID}}`.
+(x) UID :: The UID identifies a *user*, not a process.
+@@note
+`$$` holds the PID of the current shell and `$PPID` that of its parent.
+
+@@q single | The first process
+Which process is the ancestor of all other user-space processes on a Linux system and has PID 1?
+(+) `init`, which on modern systems is usually `systemd`. :: The kernel starts it last during boot, and it adopts orphaned processes.
+(-) `bash` :: Your login shell is a descendant of PID 1, not the ancestor of everything.
+(-) `kernel` :: The kernel itself is not listed as a normal process with PID 1.
+(-) `login` :: `login` (or the display manager) is started by PID 1 later.
+
+@@q single | How a command starts
+When you run `ls` from bash, what does the shell do at a high level?
+(+) It creates a child process that then loads the `ls` program, and the shell waits for it (in the foreground). :: The fork-then-exec pattern is how Unix starts programs.
+(-) It replaces itself with `ls`, so the shell disappears. :: That is what `exec ls` does; normally you keep your shell.
+(-) It copies the `ls` code into its own memory and calls it like a function. :: That is the behaviour of a builtin, not of an external program.
+(-) It asks the user to start `ls` in another terminal. :: Nothing like that happens.
+
+@@q single | Effect of exec
+What does `exec ls` do in a bash session?
+(+) It replaces the shell process with `ls`; when `ls` ends, the session closes because the shell no longer exists. :: No new process is created; the same PID now runs `ls`.
+(-) It runs `ls` in the background. :: `exec` does not create a job.
+(-) It runs `ls` with administrator rights. :: `exec` does not change privileges.
+(-) It lists the processes that have been executed. :: That is something `ps` or `history` would approximate.
+
+@@q multi | The three kinds of process
+Which are the usual categories of processes?
+(+) Interactive processes tied to a terminal, in the foreground or background. :: What you start from your shell.
+(+) Batch processes that run scheduled or queued work, such as scripts run by `cron`. :: No user needs to be present.
+(+) Daemons that work in the background providing system services. :: Web servers, `cron` itself, `sshd`.
+(-) Only processes started by root. :: Ordinary users own processes too.
+(-) Zombies as a fourth planned kind that are created on purpose. :: A zombie is an error-like transient state, not a designed category.
+
+@@q match | Kinds of process
+Match each example with its kind.
+(=) You run `find / -name x` in your terminal => Interactive process :: You interact with it and can suspend or kill it from the shell.
+(=) `sshd` waiting for connections => Daemon :: Serves requests in the background from boot until shutdown.
+(=) A nightly backup script run by `cron` => Batch process :: Launched by a scheduler with no terminal.
+(-) A finished process whose exit status nobody has read yet => Daemon :: It is a zombie, not a service.
+
+@@q single | Parent after death
+What happens to a running child when its parent process dies?
+(+) The child is adopted by PID 1 (or a sub-reaper) and keeps running. :: Orphans are not killed automatically.
+(-) It is killed immediately by the kernel. :: That happens only with specific signals (like `SIGHUP` on hangup) or options.
+(-) It turns into a zombie at once. :: A zombie is a *dead* child, not a live orphan.
+(-) It is moved to the foreground. :: Nothing is moved; the job table belonged to the parent shell.
+
+@@q single | Zombie process
+What is a zombie process?
+(+) A process that has finished, but whose entry stays in the process table until its parent reads the exit status. :: It uses no CPU or memory beyond its table entry; it cannot be killed because it is already dead.
+(-) A process stuck in an infinite loop. :: That process is running, typically state `R`, and can be killed.
+(-) A process that cannot be stopped even with `kill -9`, because it is waiting for disk I/O. :: That describes uninterruptible sleep (state `D`), not a zombie.
+(-) A background process with no terminal. :: That is a daemon.
+
+@@q single | Killing a zombie
+Why does `kill -9` on a zombie not make it disappear?
+(+) It is already dead; only its parent reading the exit status (or the parent exiting) removes the entry. :: There is nothing left to signal.
+(-) `SIGKILL` is blocked for all processes whose state is `Z`. :: The process no longer runs, so signals have no effect at all.
+(-) Zombies are immune because they run as root. :: Privilege is irrelevant.
+(-) `kill -9` only works on background processes. :: It works on any process that can receive signals.
+
+@@q single | PID size
+Historically PIDs were limited to 32767 for compatibility with 16-bit systems. What happens when the PID counter reaches the limit?
+(+) Allocation wraps around and reuses numbers that are not in use by live processes. :: PIDs are recycled, so a PID is unique only among currently existing processes.
+(-) The system refuses to start new processes. :: It would be unusable after a short time.
+(-) The machine reboots. :: Nothing so dramatic.
+(-) New processes get negative PIDs. :: PIDs are always positive integers.
+
+@@q multi | Variables about processes
+Select the special shell variables that hold process information.
+(+) `$$` :: PID of the current shell.
+(+) `$PPID` :: PID of the parent of the current shell.
+(+) `$!` :: PID of the most recently started background job.
+(-) `$?` :: That is an exit status, not a PID.
+(-) `$#` :: That is the number of positional parameters.
+
+@@q single | Subshell and cd
+Why does `(cd /tmp; pwd); pwd` end in the original directory?
+(+) The parentheses run the commands in a child shell, whose `cd` does not affect the parent. :: Each process has its own working directory.
+(-) Because `pwd` always prints the home directory. :: It prints the current directory of the process that runs it.
+(-) Because `cd` does not work inside parentheses. :: It works, but only for the child.
+(-) Because `;` restores the directory. :: The semicolon only separates commands.
+
+@@group Watching processes: ps, top, pstree
+@@q single | Default ps output
+What does plain `ps` (no options) show in a terminal?
+(+) Only the processes that belong to your current terminal session, with columns PID, TTY, TIME and CMD. :: It is a short, per-terminal listing.
+(-) Every process on the machine. :: That needs `-e` or `aux`.
+(-) Only the processes of root. :: `ps` does not filter by root.
+(-) The jobs of the shell, numbered from `[1]`. :: Jobs are shown by `jobs`.
+
+@@q match | ps options
+Match each command with the listing it gives.
+(=) `ps` => Processes of the current terminal :: The most basic and shortest listing.
+(=) `ps -e` => Every process on the system :: `-e` is "everything".
+(=) `ps -l` => Long format with extra columns :: Adds fields such as UID, PPID, priority.
+(=) `ps aux` => All processes with the owning user :: BSD style; includes %CPU, %MEM and STAT.
+(-) Processes sorted by memory and refreshed live :: That is what `top` does, not `ps`.
+
+@@q multi | Columns of ps aux
+Select the columns that appear in `ps aux`.
+(+) USER :: The owner of the process.
+(+) %CPU :: Share of processor time used.
+(+) STAT :: The process state code.
+(+) COMMAND :: The command line that started it.
+(-) UID only, never the user name :: `ps aux` shows the name; `ps -l` shows the numeric UID.
+(-) JOBNUM :: Job numbers belong to the shell, not to `ps`.
+
+@@q match | Process state letters
+Match each STAT letter of `ps` with its meaning.
+(=) `R` => Running or runnable :: Using the CPU or ready to.
+(=) `S` => Sleeping, waiting for an event :: Interruptible sleep: for input, a timer, etc.
+(=) `T` => Stopped by a signal (for example Ctrl+Z) :: Not running until continued.
+(=) `D` => Uninterruptible sleep, usually waiting for disk I/O :: It ignores signals until the I/O ends.
+(=) `Z` => Zombie (finished, not yet reaped) :: Waiting for the parent to read its status.
+(-) Terminated and removed from the table :: A removed process no longer appears in `ps`.
+
+@@q single | T is not terminating
+In the output of `ps`, a process has state `T`. What does it mean?
+(+) It is stopped, for example suspended with `Ctrl+Z`. :: `T` means stopped (or traced by a debugger).
+(-) It is terminating and will disappear in a moment. :: Terminating processes are briefly in state `Z` or vanish; `T` does not mean that.
+(-) It is a system thread. :: Threads appear with other markers, such as `l`.
+(-) It is waiting for a terminal. :: That is normally state `S`.
+
+@@q single | Trailing plus in STAT
+A `+` after the state letter, as in `S+`, tells you that...
+(+) the process is in the foreground process group of its terminal. :: Useful to see which jobs currently own the keyboard.
+(-) the process is using more CPU than average. :: STAT flags do not measure CPU.
+(-) the process has a higher priority. :: That is the `<` flag.
+(-) the process has more than one thread. :: That is the `l` flag.
+
+@@q fill | Find a specific PID
+To list all processes with a full view and filter those of the program `sshd`: `ps {{aux ;; -ef ;; -e}} | grep sshd`
+(x) jobs :: `jobs` is a shell builtin about jobs; it cannot be used as an argument of `ps`.
+@@note
+`ps aux` or `ps -ef` produces the full list; `grep` then filters it. (`pgrep sshd` is a shorter way.)
+
+@@q single | top basics
+Which statement describes `top` correctly?
+(+) It shows a live, periodically refreshed list of processes, by default ordered by CPU use. :: Updating the screen is its main difference from `ps`.
+(-) It prints the list once and exits, like `ps`. :: `top` keeps running until you press `q`.
+(-) It lists only the processes of your shell. :: It shows the whole system.
+(-) It kills the process that uses the most memory. :: It only displays; killing needs a key (`k`) or a command.
+
+@@q multi | Interactive top keys
+Which keys work inside the standard `top`?
+(+) `q` to quit. :: Leaves `top` and returns to the shell.
+(+) `h` to show help. :: Lists the available interactive commands.
+(+) `M` to sort by memory. :: Changes the sort column from CPU to memory.
+(+) `k` to send a signal to a process. :: Prompts for a PID and a signal.
+(-) `Ctrl+Z` to go back to the previous screen. :: It suspends `top` like any foreground program.
+
+@@q single | pstree
+What does `pstree` show that `ps aux` does not show at a glance?
+(+) The parent-child relationships between processes, drawn as a tree. :: Good for seeing where a process came from.
+(-) The memory used by each process. :: Not its purpose.
+(-) The users connected to the system. :: That is `who` or `w`.
+(-) The command history. :: That is `history`.
+
+@@q single | pgrep
+Which command prints the PIDs of processes whose name matches `sshd`, without using a pipe?
+(+) `pgrep sshd` :: It searches the process table by name and prints matching PIDs.
+(-) `grep sshd` :: It would wait for input on standard input instead of searching processes.
+(-) `kill sshd` :: `kill` needs a PID or job spec, not a name.
+(-) `jobs sshd` :: `jobs` knows only your shell's jobs.
+
+@@q order | Find and stop a runaway
+You notice a program eating CPU. Put the sensible sequence of steps in order.
+(>) Run `top` or `ps aux` to find the offender and its PID :: You need the PID before you can signal anything.
+(>) Send a gentle `kill PID` (SIGTERM) :: Give the program the chance to clean up and exit.
+(>) Check with `ps -p PID` that it is gone :: Verify the result of the first attempt.
+(>) Only if it is still there, send `kill -9 PID` :: SIGKILL is the last resort because it allows no cleanup.
+
+@@group Signals and kill
+@@q single | What is a signal
+What is a signal in Unix?
+(+) A short notification sent to a process, asynchronously, telling it that an event happened. :: The process can react with a default action or its own handler, for most signals.
+(-) A message sent from one user to another. :: That would be `write` or `mail`.
+(-) A kind of file in `/dev`. :: Signals are not files.
+(-) A variable holding the exit code of a command. :: That is `$?`.
+
+@@q single | kill is misnamed
+What does the command `kill PID` do by default?
+(+) It sends `SIGTERM` (15), a polite request to terminate, which the program may handle or ignore. :: The name suggests more violence than the default deserves.
+(-) It sends `SIGKILL` (9), which ends the process immediately. :: That requires `-9` explicitly.
+(-) It erases the program file from disk. :: Killing a process does not touch files.
+(-) It pauses the process. :: Pausing is `SIGSTOP`/`SIGTSTP`.
+
+@@q match | Signal numbers
+Match each signal with its usual number on Linux.
+(=) `SIGHUP` => 1 :: The hangup signal.
+(=) `SIGINT` => 2 :: What `Ctrl+C` sends.
+(=) `SIGKILL` => 9 :: The one that cannot be caught.
+(=) `SIGTERM` => 15 :: The default of `kill`.
+(=) `SIGSTOP` => 19 :: The one that cannot be caught and freezes the process.
+(-) 100 :: There is no ordinary signal with that number; the standard ones stop below 32.
+
+@@q match | Keys and signals
+Match each keyboard combination with the signal the terminal sends.
+(=) `Ctrl+C` => SIGINT :: Asks the foreground job to interrupt.
+(=) `Ctrl+Z` => SIGTSTP :: Stop from the terminal (can be caught).
+(=) `Ctrl+\` => SIGQUIT :: Quit and usually produce a core dump.
+(-) SIGKILL :: No keyboard shortcut is bound to it by default.
+
+@@q multi | Uncatchable signals
+Which signals can a process **not** catch, block or ignore?
+(+) `SIGKILL` :: The kernel always terminates the process.
+(+) `SIGSTOP` :: The kernel always stops it.
+(-) `SIGTERM` :: A handler can do cleanup before exiting.
+(-) `SIGINT` :: Programs often catch it to ask "really quit?".
+(-) `SIGHUP` :: Daemons often catch it to reload their configuration.
+
+@@q single | Why not always -9
+Why is `kill -9` considered a last resort?
+(+) The process cannot run cleanup code, so it may leave temporary files, locks or half-written data behind. :: `SIGTERM` lets the program close files and exit properly.
+(-) Because it needs the root password. :: It works on your own processes without any password.
+(-) Because it only pauses the process. :: It terminates it.
+(-) Because it makes the PID unusable forever. :: The PID is freed and can be reused.
+
+@@q fill | Kill job number one
+To send SIGTERM to the first job of the shell, not to a PID: `kill {{%1}}`
+(x) 1 :: That would be PID 1, the init process. Normal users have no permission to kill it, and root should not.
+@@note
+The `%` marks a job specification, which bash resolves to the job's process group.
+
+@@q fill | List the signals
+To print all signal names and their numbers: `kill {{-l}}`
+(x) -a :: `-a` is not the option for that in bash.
+@@note
+`kill -l 9` prints `KILL`, and `kill -l KILL` prints `9`.
+
+@@q single | Signal names
+Which of these commands sends exactly the same signal?
+(+) `kill -9 123`, `kill -KILL 123` and `kill -SIGKILL 123` :: Number, short name and long name are interchangeable in bash's `kill`.
+(-) `kill -9 123` and `kill -15 123` :: Different signals with different behaviour.
+(-) `kill 123` and `kill -9 123` :: The first is SIGTERM, the second SIGKILL.
+(-) `kill -1 123` and `kill -2 123` :: `SIGHUP` and `SIGINT`, two different signals.
+
+@@q single | Killing by name
+Which command sends SIGTERM to every process whose command name is exactly `firefox`?
+(+) `killall firefox` :: It selects processes by exact name.
+(-) `kill firefox` :: `kill` accepts PIDs or job specs, not program names.
+(-) `jobs -k firefox` :: No such option.
+(-) `ps firefox` :: `ps` only lists; it does not send signals.
+
+@@q single | Permission to kill
+Which processes may an ordinary (non-root) user send signals to?
+(+) Only processes owned by the same user. :: Root may signal any process.
+(-) Any process of the system. :: That would let anyone stop system services.
+(-) Only processes started from the current terminal. :: Ownership matters, not the terminal.
+(-) None, `kill` is reserved for root. :: Users normally manage their own processes.
+
+@@q single | Exit status of killed process
+A foreground program is killed by `SIGKILL`. What does `$?` usually show afterwards in bash?
+(+) `137`, which is 128 plus the signal number 9. :: Bash reports death by signal N as 128 + N.
+(-) `9` :: The signal number itself is not used as the status.
+(-) `0` :: Success would be misleading for a killed process.
+(-) `1` :: That is a generic failure code, not a signal report.
+
+@@q match | Killed-by-signal statuses
+Match each cause of death with the status bash reports.
+(=) Killed with `SIGTERM` => 143 :: 128 + 15.
+(=) Killed with `SIGKILL` => 137 :: 128 + 9.
+(=) Interrupted with `Ctrl+C` => 130 :: 128 + 2.
+(-) 9 :: This would be the signal number; bash adds 128 for death by signal.
+
+@@q single | SIGHUP on daemons
+Many daemons re-read their configuration file when they receive `SIGHUP`. What does that allow an administrator to do?
+(+) Apply new settings without restarting the service and without dropping it from the system. :: A common convention: `kill -HUP PID`.
+(-) Restart the whole machine. :: Nothing reboots.
+(-) Delete the daemon's logs. :: Logs are untouched.
+(-) Change the daemon's owner. :: Ownership is a file-system matter.
+
+@@q single | Continue a stopped process
+A process was frozen with `kill -STOP PID`. Which command lets it continue?
+(+) `kill -CONT PID` :: `SIGCONT` resumes a stopped process.
+(-) `kill -TERM PID` :: It would ask the process to end.
+(-) `kill -HUP PID` :: Hangup does not resume a stopped process.
+(-) `kill -STOP PID` again :: It stays stopped.
+
+@@q single | Sleep state after signal
+After `kill -STOP` on a `sleep 50` process, `ps -o stat= -p PID` prints `T`. After `kill -CONT` it prints...
+(+) `S` :: It goes back to sleeping, waiting for the timer to elapse.
+(-) `Z` :: It is not dead.
+(-) `T` :: That is the stopped state it just left.
+(-) `D` :: That state is for uninterruptible I/O waits.
+
+@@q multi | Reasons a process ends
+Which events can end a process?
+(+) It finishes its work and returns an exit status. :: The normal way.
+(+) It receives a signal it does not handle, such as `SIGTERM`. :: The default action terminates.
+(+) It calls `exit()` after an error. :: A non-zero status signals the failure.
+(-) You press `Ctrl+Z`. :: That only suspends it.
+(-) You run `bg` on it. :: That resumes it in the background.
+
+@@group Trace: what do these commands do
+@@q single | Trace 1
+What happens with `sleep 100 & kill $!`?
+(+) A background `sleep` starts and is then sent SIGTERM via the PID in `$!`; it ends. :: `$!` expands to the PID of the job just started.
+(-) `sleep` is killed before it starts. :: It is already running by the time `kill` executes.
+(-) The shell itself is killed. :: `$!` is the background job's PID, not the shell's (`$$`).
+(-) Nothing, `&` and `kill` cannot be combined. :: They can; separators like `;` or a newline are implied here by `&`.
+
+@@q single | Trace 2
+After `sleep 100`, `Ctrl+Z`, `bg`, what does `jobs` list?
+(+) `[1]+  Running  sleep 100 &` :: `bg` resumes it in the background, so it shows Running.
+(-) `[1]+  Stopped  sleep 100` :: That was the state *before* `bg`.
+(-) `[1]+  Done  sleep 100` :: It has 100 seconds to run.
+(-) Nothing, because `bg` kills stopped jobs. :: `bg` resumes; it does not kill.
+
+@@q single | Trace 3
+You type `sleep 60`, press `Ctrl+C`, and then run `echo $?`. What prints?
+(+) `130` :: Killed by SIGINT (signal 2): 128 + 2.
+(-) `0` :: A process killed by a signal did not exit successfully.
+(-) `60` :: The argument of `sleep` is not its status.
+(-) `2` :: Bash adds 128 to the signal number.
+
+@@q single | Trace 4
+`sleep 100 & echo $!; echo $$` prints two different numbers. Which is which?
+(+) The first is the PID of the background `sleep`; the second is the PID of the shell itself. :: `$!` is the last background PID; `$$` is the shell.
+(-) They are the same process seen twice. :: A process and its child have distinct PIDs.
+(-) The first is the PPID and the second the exit status. :: Neither variable holds those.
+(-) The first is the job number and the second the PID. :: Job numbers are shown as `[1]`, never by `$!`.
+
+@@q fill | Kill the most recent background job
+Start a sleeper and end it right away: `sleep 300 & kill {{$!}}`
+(x) $$ :: That is the PID of the shell itself; you would send SIGTERM to your own shell (which ignores it when interactive, but in a script it would end the script).
+(x) $? :: That is an exit status, which is almost certainly not the PID you want.
+@@note
+`$!` is the PID of the latest background command.
+
+@@q single | Who runs what
+After `sleep 100 &`, `ps -o pid,ppid,comm` shows two lines. Which relationship do you expect?
+(+) The PPID of `sleep` equals the PID of `bash`. :: The shell created the `sleep` child.
+(-) The PID of `sleep` equals the PID of `bash`. :: Every process has a distinct PID.
+(-) The PPID of `sleep` is 0. :: PPID 0 is the kernel's scheduler, not a normal parent.
+(-) The PPID of `bash` equals the PID of `sleep`. :: The parent is the shell, never the other way round.
