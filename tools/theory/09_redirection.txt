@@ -1,0 +1,390 @@
+@@collection 09_redirection | Redirection, pipes & xargs
+@@about
+Standard input, output and error; redirecting to and from files; the order of redirections; here-documents; pipes and their exit status; tee, xargs and command substitution as ways of connecting programs.
+
+@@group Standard streams
+@@q match | The three standard streams
+Match each stream with its file descriptor and usual connection.
+(=) stdin => Descriptor 0, normally the keyboard :: Where a program reads its input.
+(=) stdout => Descriptor 1, normally the screen :: Where normal results go.
+(=) stderr => Descriptor 2, normally the screen :: Where error messages go.
+(-) Descriptor 3, always the printer :: Descriptors above 2 are free for your own use.
+
+@@q single | Why two output streams
+Why do programs have separate output streams for normal results and for errors?
+(+) So that errors remain visible (or can be logged elsewhere) even when the normal output is redirected to a file or another program. :: The two can be redirected independently.
+(-) Because the screen can only show one at a time. :: Both appear on the terminal.
+(-) Because errors are sent to another computer. :: They stay local.
+(-) Because the kernel counts them separately for billing. :: Not a reason.
+
+@@q single | Only stdout redirected
+What do you see on the screen after `ls f nonexistent > out.txt` when `f` exists and `nonexistent` does not?
+(+) The error message about `nonexistent`; the line `f` went into `out.txt`. :: `>` redirects only stdout; stderr still goes to the terminal.
+(-) Nothing, both streams went into the file. :: That needs `2>&1` or `&>`.
+(-) `f` only. :: The listing went to the file.
+(-) Both lines. :: The normal output was redirected.
+
+@@q sort | Which stream
+@@buckets stdout (1) | stderr (2)
+Through which stream does each message usually appear?
+(stdout (1)) The list of files printed by `ls` :: The normal result of the command.
+(stdout (1)) The text printed by `echo hello` :: Its purpose is to write output.
+(stdout (1)) The lines matched by `grep` :: Results of the program.
+(stderr (2)) `ls: cannot access 'x': No such file or directory` :: A diagnostic message.
+(stderr (2)) `bash: foo: command not found` :: An error reported by the shell.
+(stderr (2)) `cp: missing file operand` :: A usage error.
+
+@@group Redirecting output
+@@q match | Output redirection operators
+Match each operator with its effect.
+(=) `cmd > file` => Send stdout to `file`, replacing its contents :: Creates the file if needed.
+(=) `cmd >> file` => Append stdout to the end of `file` :: Existing contents are kept.
+(=) `cmd 2> file` => Send stderr to `file` :: Only the errors.
+(=) `cmd &> file` => Send both stdout and stderr to `file` :: A bash shorthand.
+(=) `cmd > /dev/null` => Discard stdout :: The special file that swallows everything.
+(-) Send stdin to `file` :: Input uses `<`.
+
+@@q single | Overwrite or append
+`echo one > t; echo two > t; echo three >> t; cat t` prints which lines?
+(+) `two` and `three` :: The second `>` replaced `one`; `>>` appended `three`.
+(-) `one`, `two`, `three` :: `>` truncates the file each time.
+(-) `three` only :: `>>` does not truncate.
+(-) `one` and `three` :: `one` was overwritten.
+
+@@q single | Truncation happens first
+What is left in the file after `cat data > data`?
+(+) An empty file: the shell truncates `data` when setting up the redirection, before `cat` starts reading it. :: Never redirect a command's output onto its own input.
+(-) An unchanged file with the same contents. :: The truncation destroys them.
+(-) The contents twice. :: Nothing is written.
+(-) An error prevents the command from running. :: GNU `cat` refuses in some cases, but the plain shell would already have emptied the file.
+
+@@q single | Sort in place
+Why does `sort names > names` not sort the file `names`?
+(+) The redirection empties `names` before `sort` reads it, so `sort` sorts nothing. :: Use `sort names -o names`, or write to a temporary file and move it back.
+(-) `sort` cannot read files. :: It can.
+(-) `>` appends instead of overwriting. :: That is `>>`.
+(-) `sort` needs the option `-r`. :: Unrelated.
+
+@@q fill | Sort into the same file
+Sort the file `names` and write the result back into it, safely: `sort names {{-o}} names`
+(x) > :: That truncates the input first, as seen above.
+(x) | :: A pipe needs a command on the right-hand side.
+@@note
+`-o` lets `sort` finish reading before it writes the output file.
+
+@@q single | Redirection before execution
+What happens when you run `nonexistent_cmd > out.txt 2>/dev/null` and the command does not exist?
+(+) `out.txt` is still created (empty), because the shell opens the redirections before it tries to start the command. :: The error message goes to `/dev/null`.
+(-) Nothing is created, since the command never ran. :: The redirections were set up first.
+(-) `out.txt` contains the error message. :: Stderr went to `/dev/null`.
+(-) The shell stops with a syntax error. :: The syntax is fine.
+
+@@q single | Several redirections of the same stream
+What does `echo hi > o > p` do?
+(+) Both files are created (or truncated), but the text is written only to `p`, the last one. :: Each redirection replaces the previous one for that descriptor.
+(-) The text is written to both files. :: Use `tee o p` for that.
+(-) The text is written to `o` only. :: The last one wins.
+(-) A syntax error. :: It is legal.
+
+@@q single | Protect against overwrite
+Which shell setting makes `>` refuse to overwrite an existing file, and which operator forces it anyway?
+(+) `set -o noclobber` (or `set -C`), and `>|` forces it. :: A protection against accidental overwriting.
+(-) `set -o append`, and `>>` forces it. :: No such setting.
+(-) `umask 077`, and `>!` forces it. :: The umask is about permissions.
+(-) `set -e`, and `>>` forces it. :: `-e` makes the shell exit on errors.
+
+@@q fill | Discard errors
+Run `ls /root` but hide the error messages: `ls /root {{2>/dev/null ;; 2> /dev/null}}`
+(x) > /dev/null :: That discards the normal output, not the errors.
+(x) 1>/dev/null :: Same: stream 1 is the normal output.
+@@note
+`&>/dev/null` discards both streams.
+
+@@q single | Null and zero
+What happens to data written to `/dev/null`?
+(+) It is discarded, and the write always succeeds. :: Reading from it returns end-of-file immediately.
+(-) It is stored in a hidden file. :: Nothing is stored.
+(-) It is sent to the printer. :: Not related.
+(-) It causes an error. :: Writes succeed.
+
+@@group The order of redirections
+@@q single | Both to a file
+Which command sends both the normal output and the errors of `ls f nonexist` to `out.txt`?
+(+) `ls f nonexist > out.txt 2>&1` :: First stdout goes to the file; then stderr is pointed at where stdout currently goes.
+(-) `ls f nonexist 2>&1 > out.txt` :: Stderr is pointed at the terminal (stdout's old place) before stdout moves to the file.
+(-) `ls f nonexist 2> out.txt` :: Only the errors go to the file.
+(-) `ls f nonexist > out.txt 1>&2` :: That sends stdout to the stderr destination, which is the terminal.
+
+@@q single | The wrong order
+What does `ls f nonexist 2>&1 > out.txt` do?
+(+) The error message stays on the terminal and only the normal output goes to `out.txt`. :: Redirections are processed left to right; `2>&1` copied the old destination of stdout, the terminal.
+(-) Both streams go to the file. :: That is `> out.txt 2>&1`.
+(-) Both streams stay on the screen. :: stdout goes to the file.
+(-) The command fails. :: The syntax is valid.
+
+@@q single | Copy, not link
+What does `2>&1` mean precisely?
+(+) Make descriptor 2 a duplicate of descriptor 1, pointing wherever stdout points **at that moment**. :: It copies the current destination; it does not create a permanent link.
+(-) Send the text "2" to the file named "1". :: The `&` makes it a descriptor.
+(-) Run the command twice. :: Nothing is duplicated except the descriptor.
+(-) Wait for process 1 to finish. :: Unrelated.
+
+@@q single | Errors through a pipe
+What does `ls f nonexist 2>&1 | wc -l` count?
+(+) Both the normal and the error lines, because stderr is now joined to the pipe: 2 lines. :: Without `2>&1` only stdout would enter the pipe.
+(-) Only the normal output. :: stderr was merged.
+(-) Only the error line. :: Both are counted.
+(-) Nothing, since pipes carry no errors. :: After `2>&1` they do.
+
+@@q single | Only errors through the pipe
+What does `ls f nonexist 2>&1 >/dev/null | wc -l` print?
+(+) `1` :: stderr goes to the pipe (old stdout), then stdout is discarded: only the error line is counted.
+(-) `2` :: The normal line is discarded.
+(-) `0` :: The error line enters the pipe.
+(-) `3` :: There are only two lines of output.
+
+@@q order | Build the redirection
+Put the parts in order to run `make`, keeping all its output (normal and error) in `build.log` and showing nothing on screen.
+(>) `make` :: The command comes first.
+(>) `> build.log` :: Point stdout at the file first.
+(>) `2>&1` :: Then make stderr follow stdout to the file; the terminal stays quiet.
+
+@@q match | Results of the order
+Match each command with where `ls f nonexist` output ends up (`f` exists, `nonexist` does not).
+(=) `> o 2>&1` => Both lines in the file `o` :: stdout first, then stderr copied.
+(=) `2>&1 > o` => The error on the screen, the `f` line in the file :: stderr copied the terminal, stdout moved.
+(=) `&> o` => The same result as the first form, written with the bash shorthand :: Both streams end up in `o`.
+(=) `2> o` => `f` on the screen, the error in the file :: Only stderr moved.
+(-) Both lines on the screen and an empty file :: None of the forms does that.
+
+@@group Redirecting input
+@@q match | Input operators
+Match each form with its meaning.
+(=) `cmd < file` => Read the standard input of `cmd` from `file` :: The file replaces the keyboard.
+(=) `cmd << EOF` => Take the following lines up to `EOF` as input (here-document) :: Inline multi-line text.
+(=) `cmd <<< "text"` => Use the string plus a newline as input (here-string) :: A one-line shortcut.
+(=) `cmd <<'EOF'` => A here-document without any expansion inside :: Quoted delimiter: text is literal.
+(-) Write the output of `cmd` into `file` :: That is `>`.
+
+@@q single | Redirection versus argument
+What is the difference between `wc -l data.txt` and `wc -l < data.txt`?
+(+) The first gives `wc` the file name and prints it in the result; in the second the shell opens the file and `wc` just reads its stdin, so no name is shown. :: Useful when you need only the number.
+(-) The second counts words. :: The option decides that.
+(-) The first reads from the keyboard. :: It opens the file itself.
+(-) They fail if the file has more than one line. :: Both work on any size.
+
+@@q single | Unquoted here-document
+What does `cat <<EOF` print for a body line `home: $HOME`?
+(+) The value of `$HOME` is expanded: `home: /home/alumno`. :: With an unquoted delimiter the shell expands variables and substitutions in the body.
+(-) The literal text `home: $HOME`. :: That needs `<<'EOF'`.
+(-) An error. :: Nothing is wrong.
+(-) Nothing, here-documents are ignored by `cat`. :: `cat` prints its stdin.
+
+@@q single | Quoted delimiter
+How does `cat <<'EOF'` differ from `cat <<EOF`?
+(+) With the delimiter quoted, nothing in the body is expanded: `$HOME` and `$(cmd)` stay as typed. :: Good for generating scripts.
+(-) It stops at the first blank line. :: The delimiter is what ends it.
+(-) It appends the text to a file. :: It prints to stdout.
+(-) There is no difference. :: The expansion behaviour differs.
+
+@@q single | Tabs in here-documents
+What does the `-` in `<<-EOF` do?
+(+) It strips leading tab characters from the body lines and from the delimiter line, so you can indent the here-document in a script. :: It strips tabs only, not spaces.
+(-) It strips all leading spaces and tabs. :: Only tabs.
+(-) It makes the delimiter case-insensitive. :: No.
+(-) It turns off expansion. :: Quoting the delimiter does that.
+
+@@q single | Here-string
+What does `wc -w <<< "one two three"` print?
+(+) `3` :: The string becomes the input of `wc`.
+(-) `13` :: That is the number of characters.
+(-) `1` :: That would be the line count.
+(-) Nothing, `<<<` is invalid. :: It is valid in bash.
+
+@@q fill | Uppercase a string
+Turn a literal string into upper case without a pipe: `tr a-z A-Z {{<<<}} "hello"`
+(x) < :: That would read from a file called `hello`.
+(x) | :: A pipe needs a command on its left.
+@@note
+`echo hello | tr a-z A-Z` is the pipe alternative.
+
+@@q single | Two inputs
+Which command gives `sort` its input from the file `u` and writes the result to `v`?
+(+) `sort < u > v` :: Both redirections can be combined in any order.
+(-) `sort u > v <` :: The last operator is missing its file.
+(-) `sort > u < v` :: That reads from `v` and overwrites `u`, the opposite of the goal.
+(-) `sort u | v` :: A pipe needs a command on the right.
+
+@@group Pipes
+@@q single | What a pipe does
+What does `cmd1 | cmd2` do?
+(+) It connects the standard output of `cmd1` to the standard input of `cmd2`, and runs both at the same time. :: No temporary file is needed.
+(-) It runs `cmd1`, waits, and then runs `cmd2` with the saved output. :: They run concurrently.
+(-) It writes the output of `cmd1` into a file called `cmd2`. :: That is `cmd1 > cmd2`.
+(-) It passes the exit status of `cmd1` as an argument to `cmd2`. :: Only data flows through the pipe.
+
+@@q single | Pipe versus redirection
+What is the difference between `cmd > file` and `cmd | other`?
+(+) `>` connects a program to a **file**, while `|` connects two **programs**. :: A common mistake is writing `cmd > other`, which creates a file named `other`.
+(-) There is no difference. :: The destination differs.
+(-) `|` only works for files. :: It is for programs.
+(-) `>` only works in scripts. :: It works at the prompt too.
+
+@@q single | Pipe and errors
+In `ls nonexistent | wc -l`, what is counted and what shows on the screen?
+(+) `wc` counts 0 lines; the error message still appears on the terminal, because a pipe carries only stdout. :: Use `2>&1` to include errors.
+(-) `wc` counts 1 line, the error message. :: It is on stderr.
+(-) Nothing is shown at all. :: The error is printed.
+(-) `wc` prints an error. :: It counts an empty input.
+
+@@q single | Exit status of a pipeline
+What is `$?` after `false | true` in bash (default options)?
+(+) `0`, the status of the last command of the pipeline. :: Use `${PIPESTATUS[@]}` or `set -o pipefail` to notice the failure.
+(-) `1`, the status of the first command. :: The last one counts.
+(-) `2`, the sum of both. :: Statuses are not added.
+(-) `1` because any failure marks the pipeline as failed. :: That is what `pipefail` changes.
+
+@@q single | pipefail
+What does `set -o pipefail` change?
+(+) A pipeline returns the status of the last command that failed, instead of only the last command's status. :: Helpful in scripts to notice that an early stage failed.
+(-) It makes pipes faster. :: Not its purpose.
+(-) It stops pipelines from ever failing. :: The opposite.
+(-) It sends errors through the pipe. :: That is `2>&1` (or `|&`).
+
+@@q single | Useless use of cat
+What is the preferred way of writing `cat file | grep root`?
+(+) `grep root file` :: `grep` can read the file itself: one process fewer.
+(-) `grep file | cat root` :: Arguments are mixed up.
+(-) `cat grep root file` :: `cat` would try to open files named `grep` and `root`.
+(-) `cat file > grep root` :: A redirection, not a pipe.
+
+@@q order | A classic pipeline
+Put the stages of "how many different shells are used in `/etc/passwd`?" in order.
+(>) `cut -d: -f7 /etc/passwd` :: Extract the shell field from each line.
+(>) `sort` :: Bring equal shells together.
+(>) `uniq` :: Collapse each group to one line.
+(>) `wc -l` :: Count the remaining distinct lines.
+
+@@q single | Left to right
+Why does `sort | head file` not do what `sort file | head` does?
+(+) In the first, `sort` has no file and reads the keyboard, while `head` reads `file` and ignores the pipe. :: The file operand must go to the command that should read it.
+(-) `head` refuses to read files. :: It can.
+(-) `sort` cannot be used with pipes. :: It can.
+(-) There is no difference. :: The data flow is different.
+
+@@q single | Pipe to both
+How can you both save the output of a command in a file and pass it on to the next command?
+(+) `cmd | tee out.txt | next` :: `tee` copies its input to a file and to its output.
+(-) `cmd > out.txt | next` :: Redirecting stdout leaves nothing for the pipe.
+(-) `cmd | out.txt | next` :: `out.txt` is not a command.
+(-) `cmd > next` :: That writes into a file named `next`.
+
+@@group xargs and substitution
+@@q single | xargs idea
+Why does `find . -name '*.tmp' | xargs rm` need `xargs`, instead of just `find ... | rm`?
+(+) `rm` takes file names as **arguments** and ignores its standard input; `xargs` turns lines of input into arguments. :: Not all programs read stdin.
+(-) `rm` does not support pipes at all. :: It is a matter of arguments, not of pipes.
+(-) `xargs` makes `rm` run faster. :: Not its point.
+(-) `xargs` sorts the file names first. :: It does not.
+
+@@q match | xargs options
+Match each option with its effect.
+(=) `-n1` => Pass one argument per command invocation :: Runs the command once per item.
+(=) `-I{}` => Insert each input item where `{}` appears in the command :: Also implies one invocation per line.
+(=) `-0` => Input items are separated by NUL characters :: Pairs with `find -print0`.
+(=) `-r` => Do not run the command when the input is empty :: Avoids a pointless call.
+(=) `-P4` => Run up to four commands in parallel :: For speed.
+(-) Sort the input before running :: `xargs` never sorts.
+
+@@q single | Names with spaces
+Why is `find . -print0 | xargs -0 rm` safer than `find . | xargs rm`?
+(+) File names can contain spaces or newlines; NUL separators cannot appear in names, so nothing is split wrongly. :: Otherwise `a b` would be treated as two files.
+(-) `-0` makes `rm` ask for confirmation. :: It does not.
+(-) `-0` limits the deletion to empty files. :: It has nothing to do with that.
+(-) `-print0` prints the zero size files. :: It prints names with NUL separators.
+
+@@q single | xargs with nothing
+What does `printf '' | xargs echo empty` print with GNU `xargs`?
+(+) `empty` :: GNU `xargs` runs the command once even with no input, unless `-r` is given.
+(-) Nothing, since there is no input. :: That is the behaviour with `-r`.
+(-) An error message. :: No error.
+(-) `echo`. :: The command is run with the given text.
+
+@@q single | Batching
+What does `printf 'a\nb\nc\n' | xargs -n2 echo` print?
+(+) Two lines: `a b` and `c` :: The items are grouped two at a time.
+(-) `a b c` on one line. :: `-n2` limits each call to two arguments.
+(-) Three lines. :: That would be `-n1`.
+(-) `a` and `b c` :: Grouping starts with the first items.
+
+@@q single | Substitution instead of xargs
+What is one risk of `rm $(find . -name '*.tmp')` compared with `find ... -delete`?
+(+) The shell splits the output on spaces and newlines, so file names with spaces break, and a very long list may exceed the argument limit. :: `find -delete` or `-print0 | xargs -0` avoid both.
+(-) It deletes files that do not match. :: It deletes exactly the names printed, possibly mangled.
+(-) It runs `find` twice. :: Once.
+(-) It only works for root. :: Anyone can use it.
+
+@@q single | Copy with find
+Which command copies all `.sh` files below `~` into `temporal` using `xargs`?
+(+) `find ~ -name '*.sh' | xargs -I{} cp {} temporal/` :: `-I{}` places each name where `{}` is.
+(-) `find ~ -name '*.sh' | xargs cp temporal/` :: The names would be added after `temporal/`, copying into wrong places.
+(-) `find ~ -name '*.sh' > cp temporal/` :: Writes the list into a file called `cp`.
+(-) `xargs find ~ -name '*.sh' | cp temporal/` :: Pipe order reversed.
+
+@@q single | Pipes, substitution or xargs
+Which tool do you use to put the output of a command **inside** another command's argument list, as in `echo Hello $(whoami)`?
+(+) Command substitution `$(...)` :: Its output replaces the expression.
+(-) A pipe `|` :: A pipe feeds standard input, not arguments.
+(-) Redirection `>` :: That goes to a file.
+(-) `tee` :: It copies a stream.
+
+@@group Descriptors and scripts
+@@q single | exec redirection
+What does `exec 2> err.log` do in a script?
+(+) From then on, the standard error of the script and all commands it runs goes to `err.log`. :: `exec` with only redirections changes the shell's own descriptors.
+(-) It runs a program called `err.log`. :: No command is given.
+(-) It redirects only the next command. :: It is permanent until changed.
+(-) It closes the script. :: The script continues.
+
+@@q match | Custom descriptors
+Match each `exec` form with its effect.
+(=) `exec 3< file` => Open `file` for reading as descriptor 3 :: Later read with `read -u 3`.
+(=) `exec 3> file` => Open `file` for writing as descriptor 3 :: Later write with `>&3`.
+(=) `exec 4>&3` => Make descriptor 4 a copy of descriptor 3 :: Duplicate.
+(=) `exec 3>&-` => Close descriptor 3 :: Release it.
+(-) Kill the process with PID 3 :: Descriptors are not PIDs.
+
+@@q single | Write to stderr in a script
+Which line makes a script print an error message on standard error?
+(+) `echo "error: bad input" >&2` :: Redirect the stdout of `echo` to descriptor 2.
+(-) `echo "error: bad input" 2>` :: Incomplete redirection.
+(-) `echo "error: bad input" > error` :: That creates a file named `error`.
+(-) `echo "error: bad input" | 2` :: Not a pipe target.
+
+@@q single | Logging in cron
+A script is run by `cron` and you want everything it prints (both streams) appended to `/var/log/job.log`. Which redirection do you add?
+(+) `>> /var/log/job.log 2>&1` :: Append stdout, then send stderr to the same place.
+(-) `2>&1 >> /var/log/job.log` :: The wrong order: stderr would not follow the file.
+(-) `> /var/log/job.log` :: It overwrites the log on each run and loses the errors.
+(-) `| /var/log/job.log` :: The right side of a pipe must be a command.
+
+@@q single | Swap streams
+What does `{ echo out; echo err >&2; } >/dev/null` show on the terminal?
+(+) `err` :: Only stdout was discarded; the message sent to stderr is still visible.
+(-) `out` :: That went to `/dev/null`.
+(-) `out` and `err` :: `out` is discarded.
+(-) Nothing :: The stderr message is shown.
+
+@@q single | Read input in a loop
+What is wrong with `cat names | while read n; do ...; done` if the loop must change a variable for later use?
+(+) The loop runs in a subshell because of the pipe, so assignments made inside are lost when it ends; use `while read n; do ...; done < names`. :: Redirection keeps the loop in the current shell.
+(-) `read` cannot read from a pipe. :: It can.
+(-) `while` does not accept files. :: It does, through redirection.
+(-) The loop runs forever. :: It ends at end of input.
+
+@@q single | Which redirection
+You want the results of `ls` in `list.txt`, **adding** them to what is already there. Which command?
+(+) `ls >> list.txt` :: Appends.
+(-) `ls > list.txt` :: Replaces the contents.
+(-) `ls | list.txt` :: A pipe needs a command.
+(-) `ls < list.txt` :: Input, not output.
