@@ -62,7 +62,7 @@ Match each command with its purpose (Debian-style tools).
 @@q single | The -a in usermod
 What happens if you run `usermod -G devs luke` (without `-a`)?
 (+) `luke`'s supplementary groups are replaced by `devs` alone, so the other groups are lost. :: Always use `-aG` to append.
-(-) `luke` is added to `devs` and keeps all of his other groups, as it happens with `-a`. :: That needs `-a`.
+(-) `luke` is added to `devs` and keeps all of their other groups, as it happens with `-a`. :: That needs `-a`.
 (-) `luke` becomes the owner of the group `devs`, and may add other users to it. :: No such thing.
 (-) Nothing happens, because the list of groups of a user is read-only. :: It is changed.
 
@@ -156,11 +156,11 @@ How is a line of `/etc/group` built?
 (-) `name:members`, without any numbers or password marker :: The GID is also stored.
 
 @@q single | Primary group
-The user `luke` has primary group GID 1001 in `/etc/passwd`. Is he listed in the members field of group 1001 in `/etc/group`?
+The user `luke` has primary group GID 1001 in `/etc/passwd`. Is that user listed in the members field of group 1001 in `/etc/group`?
 (+) Not necessarily: the primary group comes from the GID in `passwd`; the member list holds supplementary members. :: `id luke` shows both.
-(-) Yes, always: every user must be listed as a member of his or her primary group, or the system refuses the account. :: Not required.
-(-) No, and he does not belong to that group at all, since he is not listed. :: He is in it through the `passwd` entry.
-(-) Only if he is root, since the administrator is listed in every group. :: Unrelated.
+(-) Yes, always: every user must be listed as a member of their primary group, or the system refuses the account. :: Not required.
+(-) No, and the user does not belong to that group at all, since no entry lists them. :: The user is in that group through the GID field of the `passwd` entry.
+(-) Only if that user is root, since the administrator is listed in every group. :: Unrelated.
 
 @@q fill | Display a user's groups
 Show the groups of the user `luke`: `{{groups ;; id -Gn ;; id -nG}} luke`
@@ -232,11 +232,11 @@ What does the rule `%admin ALL=(ALL) ALL` mean?
 (-) Every user of the system may run any command, as members of a group called `admin`. :: The rule names only a group.
 
 @@q single | NOPASSWD rule
-What does `ray rushmore = PASSWD: /bin/kill, NOPASSWD: /bin/ls` allow?
-(+) User `ray`, on host `rushmore`, may run `kill` (with his password) and `ls` (without it) as root. :: Tags apply to the commands that follow them.
-(-) Root may run `kill` and `ls` on the host `rushmore`, but only when it has been asked for its password by `sudo`. :: The first word is the user.
-(-) Everyone may run `ls` on the host `rushmore` without a password, and `kill` with one. :: Only `ray`.
-(-) `ray` may run any command on the machine, without being asked for a password. :: Only the listed ones.
+What does the sudoers line `ana lab01 = PASSWD: /usr/bin/systemctl, NOPASSWD: /usr/bin/uptime` allow?
+(+) User `ana`, on host `lab01`, may run `systemctl` (with their password) and `uptime` (without it) as root. :: Tags apply to the commands that follow them.
+(-) Root may run `systemctl` and `uptime` on the host `lab01`, but only when it has been asked for its password by `sudo`. :: The first word is the user.
+(-) Everyone may run `uptime` on the host `lab01` without a password, and `systemctl` with one. :: Only `ana`.
+(-) `ana` may run any command on the machine, without being asked for a password. :: Only the listed ones.
 
 @@q single | Editing sudoers
 Why should you edit the sudoers file with `visudo` instead of a plain editor?
@@ -347,7 +347,7 @@ Decide for each file whether it applies to everybody or only to one user.
 @@q single | Login and non-login shells
 What is a login shell?
 (+) The first shell of a session, started at login (console, SSH, `su -`), which reads the profile files. :: Different files for different situations.
-(-) Any shell that asks the user for a password before it lets him or her type commands. :: Not the definition.
+(-) Any shell that asks the user for a password before it lets them type commands. :: Not the definition.
 (-) A shell that is run as root, because only the administrator is able to log in to the system from the console. :: Root status is not involved.
 (-) A shell that runs scripts, which is started by the kernel without any user present. :: Scripts run in non-interactive shells.
 
@@ -409,7 +409,7 @@ Lock the password of the account `temp` so no one can log in with it: `passwd {{
 Use `passwd -S temp` to see the status.
 
 @@q fill | Add to a group
-Add the existing user `luke` to the group `devs` without removing his other groups: `usermod {{-aG ;; -a -G ;; -Ga}} devs luke`
+Add the existing user `luke` to the group `devs` without removing their other groups: `usermod {{-aG ;; -a -G ;; -Ga}} devs luke`
 (x) -G :: Without `-a` the other supplementary groups are replaced.
 (x) -g :: That changes the primary group instead.
 @@note
@@ -435,10 +435,10 @@ Select the statements that are true about `alumno:x:1000:1000:Alumno,,,:/home/al
 
 @@q order | Give a colleague sudo rights
 Put the steps in order to let the user `ana` run commands as root with `sudo` on a Debian-like system.
-(>) `sudo usermod -aG sudo ana` :: Add her to the administrators group.
-(>) Ask her to log out and in again :: The group list is read at login.
-(>) She runs `id` to check the group list :: `sudo` should now appear.
-(>) She runs `sudo whoami` and sees `root` :: Proof that it works.
+(>) `sudo usermod -aG sudo ana` :: Add the user to the administrators group.
+(>) Ask the user to log out and in again :: The group list is read at login.
+(>) The user runs `id` to check the group list :: `sudo` should now appear.
+(>) The user runs `sudo whoami` and sees `root` :: Proof that it works.
 
 @@q match | Session commands
 Match each command with what it shows or does.

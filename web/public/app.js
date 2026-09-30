@@ -890,7 +890,7 @@ function route() {
   showReferencePage(false);
   if (location.hash === '#/home') { showHomePage(true); return; }
   showHomePage(false);
-  const th = location.hash.match(/^#\/theory\/([\w-]+)(?:\/([\w-]+))?$/);
+  const th = location.hash.match(/^#\/theory\/([\w-]+)(?:\/([\w-]*))?$/);
   if (th) return Theory.open(th[1], th[2]);
   if (state.theory) { // leaving the quiz view: back to the exercise panels
     state.theory = null;

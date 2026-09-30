@@ -550,3 +550,11 @@ a.gl-item:hover { border-color: var(--accent); background: var(--sel); }
 .th-opt .th-why { display: block; }
 .th-step-text { display: block; }
 .th-step .th-why { display: block; }
+
+/* theory view on narrow screens: sidebar above the question instead of squeezing it */
+@media (max-width: 720px) {
+  .layout:has(#theory-main:not(.hidden)) { flex-direction: column; }
+  .layout:has(#theory-main:not(.hidden)) .sidebar { width: auto !important; max-height: 34vh; border-right: none; border-bottom: 1px solid var(--border); }
+  .layout:has(#theory-main:not(.hidden)) .sidebar-toggle { display: none; }
+  .theory-head { flex-direction: column; }
+}
