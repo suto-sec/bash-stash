@@ -201,18 +201,36 @@ async function api(req, res, url) {
   return send(res, 404, { error: 'unknown endpoint' });
 }
 
-// code-server has no setting for "start with the file-explorer sidebar closed" (it is UI state,
-// not a setting), so we inject a tiny script into its HTML that closes it once, right after the
-// workbench renders — a real click on the already-active explorer icon (the same thing closing it
-// by hand does), not a keybinding, since that is far more reliably synthesised.
-const SIDEBAR_FIX = nonce => `<script nonce="${nonce}">(function(){
-  var tries = 0;
+// code-server has no settings for "start with the file-explorer sidebar closed" or "start with the
+// integrated terminal open" (both are UI/session state, not settings), so a tiny script is injected
+// into its HTML that does both once, right after the workbench renders:
+//  - sidebar: a real click on the already-active explorer icon (what closing it by hand does) —
+//    far more reliable than a keybinding for this one, since it's a plain DOM click.
+//  - terminal: a synthetic Ctrl+` keydown (VS Code's own default "toggle terminal" shortcut) —
+//    unlike the sidebar there is no single icon to click for "open, at whatever the default height
+//    is", so the keybinding is dispatched instead; VS Code's keybinding service does not require a
+//    trusted event for this one, confirmed empirically.
+const WORKBENCH_TWEAKS = nonce => `<script nonce="${nonce}">(function(){
+  var tries = 0, closedSidebar = false, openedTerminal = false;
   var t = setInterval(function() {
-    if (++tries > 600) return clearInterval(t); // give up after ~2 minutes
-    var sidebar = document.querySelector('.part.sidebar');
-    if (!sidebar || sidebar.offsetWidth === 0) return; // not rendered yet, keep polling
-    var icon = document.querySelector('.activitybar .action-item.checked, .activitybar .action-item.active');
-    if (icon) { icon.click(); clearInterval(t); }
+    if (++tries > 600 || (closedSidebar && openedTerminal)) return clearInterval(t); // ~2 minutes max
+    if (!closedSidebar) {
+      var sidebar = document.querySelector('.part.sidebar');
+      if (sidebar && sidebar.offsetWidth > 0) {
+        var icon = document.querySelector('.activitybar .action-item.checked, .activitybar .action-item.active');
+        if (icon) { icon.click(); closedSidebar = true; }
+      }
+    }
+    if (!openedTerminal) {
+      var panel = document.querySelector('.part.panel');
+      if (panel && panel.offsetHeight > 0) { openedTerminal = true; } // confirmed open, stop retrying
+      else if (document.querySelector('.monaco-workbench')) {
+        var ev = { key: '\`', code: 'Backquote', keyCode: 192, which: 192, ctrlKey: true, bubbles: true, cancelable: true, composed: true };
+        var kd = new KeyboardEvent('keydown', ev);
+        document.dispatchEvent(kd); window.dispatchEvent(kd);
+        if (document.activeElement) document.activeElement.dispatchEvent(kd);
+      }
+    }
   }, 200);
 })();</script>`;
 
@@ -237,7 +255,7 @@ proxy.on('proxyRes', (proxyRes, req, res) => {
     const htmlStr = body.toString('utf8');
     // code-server's CSP only allows inline scripts carrying its own per-response nonce
     const nonceMatch = htmlStr.match(/<script nonce="([^"]+)"/);
-    const html = nonceMatch ? htmlStr.replace('</body>', SIDEBAR_FIX(nonceMatch[1]) + '</body>') : htmlStr;
+    const html = nonceMatch ? htmlStr.replace('</body>', WORKBENCH_TWEAKS(nonceMatch[1]) + '</body>') : htmlStr;
     const out = Buffer.from(html, 'utf8');
     const headers = { ...proxyRes.headers, 'content-length': out.length };
     delete headers['content-encoding'];

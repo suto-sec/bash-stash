@@ -20,12 +20,13 @@
       <span id="overall-text">0/0</span>
     </div>
     <div class="spacer"></div>
-    <button id="reference-btn" title="Every command and concept used, grouped by topic">📖 Reference</button>
+    <a href="#/reference" id="reference-btn" title="Every command and concept used, grouped by topic">📖 Reference</a>
     <button id="theme-btn" class="icon-btn" title="Switch light/dark theme" aria-label="Switch theme"></button>
   </header>
 
   <div class="layout">
-    <aside class="sidebar">
+    <button id="sidebar-toggle" class="sidebar-toggle" title="Collapse sidebar" aria-label="Collapse sidebar">‹</button>
+    <aside class="sidebar" id="sidebar">
       <input id="search" type="search" placeholder="Search id, title or command…" autocomplete="off">
       <div class="filters">
         <label><input type="checkbox" id="hide-passed"> hide passed</label>
@@ -80,6 +81,23 @@
     </main>
   </div>
 
+  <div class="reference-page hidden" id="reference-page">
+    <div class="ref-page-head">
+      <a href="#/ex/" id="reference-back" title="Back to exercises">← Exercises</a>
+      <strong>Reference</strong>
+      <div class="spacer"></div>
+      <button id="theme-btn-ref" class="icon-btn" title="Switch light/dark theme" aria-label="Switch theme"></button>
+    </div>
+    <div class="reference-layout">
+      <nav id="reference-nav" class="reference-nav" aria-label="Categories and commands">
+        <input id="reference-search" type="search" placeholder="Filter…" autocomplete="off">
+        <a href="#/reference" id="reference-all" class="ref-nav-all">All categories</a>
+        <div id="reference-tree"></div>
+      </nav>
+      <div id="reference-content" class="reference-content"></div>
+    </div>
+  </div>
+
   <dialog id="info-dialog">
     <form method="dialog">
       <div class="dlg-head"><strong id="info-title">Commands used here</strong><button class="icon-btn" value="close" aria-label="Close">✕</button></div>
@@ -88,19 +106,6 @@
     </form>
   </dialog>
 
-  <dialog id="reference-dialog" class="wide">
-    <form method="dialog">
-      <div class="dlg-head"><strong>Reference</strong><button class="icon-btn" value="close" aria-label="Close">✕</button></div>
-      <div class="reference-layout">
-        <nav id="reference-nav" class="reference-nav" aria-label="Categories and commands">
-          <input id="reference-search" type="search" placeholder="Filter…" autocomplete="off">
-          <a href="#" id="reference-all" class="ref-nav-all">All categories</a>
-          <div id="reference-tree"></div>
-        </nav>
-        <div id="reference-content" class="reference-content"></div>
-      </div>
-    </form>
-  </dialog>
 
   <dialog id="solution-dialog">
     <form method="dialog">
