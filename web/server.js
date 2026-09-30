@@ -53,6 +53,11 @@ function buildTierMap() {
     } else if (f.endsWith('_more.txt')) {
       const base = f.slice(0, -9) + '.txt';
       if (base !== f && fileSet.has(base)) tier = 3;
+    } else if (f.endsWith('_intro.txt')) {
+      // tier 0: tiny one-concept "Introduction" refreshers, reachable only via the per-category
+      // picker on the home page — never part of any track (Minimal/Intermediate/Full all skip them)
+      const base = f.slice(0, -10) + '.txt';
+      if (base !== f && fileSet.has(base)) tier = 0;
     }
     const content = fs.readFileSync(path.join(dir, f), 'utf8');
     for (const m of content.matchAll(/^@@ex (\d{4})\b/gm)) map[m[1]] = tier;
