@@ -5,10 +5,10 @@ The directory tree and paths, inodes, hard and symbolic links, copying, moving a
 @@group The directory tree and paths
 @@q single | One tree for everything
 How does Linux present its storage devices to the user?
-(+) As a single hierarchical tree starting at `/`, where other file systems are attached at directories. :: There are no drive letters; a second disk simply appears under some directory.
-(-) As separate trees named `C:`, `D:`, and so on. :: That is the Windows model.
-(-) As a flat list of files with no directories. :: Directories are central to Unix.
-(-) As one tree per user, each rooted in the home directory. :: There is one system-wide tree; homes are branches of it.
+(+) As one hierarchical tree starting at `/`, where other file systems are attached at directories. :: There are no drive letters; a second disk simply appears under some directory.
+(-) As separate trees named `C:`, `D:` and so on, one for each disk or partition that is connected. :: That is the Windows model.
+(-) As a flat list of files with no directories, which is sorted by name and by date. :: Directories are central to Unix.
+(-) As one tree per user, each of them rooted in that user's own home directory. :: There is one system-wide tree; homes are branches of it.
 
 @@q sort | Absolute or relative
 @@buckets Absolute path | Relative path
@@ -31,10 +31,10 @@ Match each notation with its meaning.
 
 @@q single | Root directory and parent
 What does `cd ..` do when you are already in `/`?
-(+) You stay in `/`, because the root's parent is itself. :: There is nothing above the root.
-(-) It fails with an error. :: It succeeds silently.
-(-) It moves you to your home directory. :: `cd` without arguments does that.
-(-) It moves you to `/home`. :: Not related.
+(+) You stay in `/`, because the parent of the root is the root itself. :: There is nothing above the root.
+(-) It fails with an error message, because the root directory has no parent to go to. :: It succeeds silently.
+(-) It moves you to your own home directory, as a plain `cd` would do. :: `cd` without arguments does that.
+(-) It moves you to `/home`, the directory that holds the home directories. :: Not related.
 
 @@q single | cd without arguments
 Which command always takes you to your home directory?
@@ -52,10 +52,10 @@ Which of these print the current working directory?
 
 @@q single | Hidden files
 Which statement about hidden files is correct?
-(+) A file is "hidden" simply because its name starts with a dot; `ls -a` shows it. :: There is no separate hidden attribute in Unix.
-(-) They have a special permission bit called `h`. :: Nothing like that exists.
-(-) They cannot be opened by normal users. :: Hidden files are readable like any other.
-(-) They are stored in a secret area of the disk. :: Only the name differs.
+(+) A file is hidden simply because its name starts with a dot; `ls -a` shows it. :: There is no separate hidden attribute in Unix.
+(-) Hidden files carry a special permission bit called `h` that makes `ls` skip them. :: Nothing like that exists.
+(-) Hidden files cannot be opened by ordinary users, only by the administrator. :: Hidden files are readable like any other.
+(-) Hidden files are stored in a separate, secret area of the disk that `ls` ignores. :: Only the name differs.
 
 @@q match | ls options
 Match each option with its effect.
@@ -105,24 +105,24 @@ Select the information that is stored in an inode.
 
 @@q single | What a directory is
 What is a directory, internally?
-(+) A special file containing a list of names, each paired with the inode number of the file it names. :: Names belong to directories, not to inodes.
-(-) A folder that physically contains the file data. :: Data lives in blocks referenced by inodes.
-(-) A copy of every file below it. :: Directories hold only the name→inode mapping.
-(-) A table of permissions. :: Permissions are in the inodes.
+(+) A special file holding a list of names, each paired with the inode number of the file it names. :: Names belong to directories, not to inodes.
+(-) A folder that physically contains the data of the files that are listed inside it. :: Data lives in blocks referenced by inodes.
+(-) A full copy of every file below it, kept so that the whole tree can be rebuilt after a crash of the system. :: Directories hold only the name→inode mapping.
+(-) A table of the permissions of every file, which `ls -l` reads to print the mode. :: Permissions are in the inodes.
 
 @@q single | Why a rename is cheap
 Why is `mv file1 file2` inside one file system practically instant, even for a huge file?
-(+) Only the directory entry (the name) changes; the inode and the data blocks stay exactly where they are. :: No data is copied.
-(-) Because `mv` compresses the file first. :: It does not.
-(-) Because the file is moved to the trash. :: There is no trash step.
-(-) Because the data is always small in Linux. :: Size is irrelevant to a rename.
+(+) Only the directory entry (the name) changes; the inode and the data blocks stay where they are. :: No data is copied.
+(-) Because `mv` compresses the file first, so that the copy of the data is tiny and quick. :: It does not.
+(-) Because the file is first moved to a trash folder, which makes the operation instantaneous. :: There is no trash step.
+(-) Because files are always small in Linux, so copying them takes no noticeable time. :: Size is irrelevant to a rename.
 
 @@q single | Hard link meaning
 What is a hard link created with `ln f hard`?
 (+) A second directory entry (name) that points to the same inode as `f`. :: Both names are equal; neither is "the original".
-(-) A small file that stores the path `f`. :: That describes a symbolic link.
-(-) A copy of `f` with its own inode and data blocks. :: A copy would be independent; a hard link is not.
-(-) A reference that dies when `f` is deleted. :: Hard links survive the removal of any one name.
+(-) A small file that stores the path `f` and is resolved each time it is opened. :: That describes a symbolic link.
+(-) A copy of `f` with its own inode and its own data blocks on the disk. :: A copy would be independent; a hard link is not.
+(-) A reference to `f` that stops working as soon as `f` is deleted. :: Hard links survive the removal of any one name.
 
 @@q sort | Hard or symbolic link
 @@buckets Hard link | Symbolic link
@@ -137,23 +137,23 @@ Which kind of link has the described property?
 @@q single | Link count
 `ls -l` shows a number right after the mode field, for example `-rw-r--r-- 2 user group`. What is that `2`?
 (+) The number of directory entries (hard links) that point to that inode. :: A plain file normally has 1.
-(-) The number of users who can read the file. :: Not tracked there.
-(-) The size of the file in blocks. :: Size is a separate column.
-(-) The number of times the file was opened. :: Not recorded.
+(-) The number of different users who are allowed to read the file. :: Not tracked there.
+(-) The size of the file, counted in blocks of the file system. :: Size is a separate column.
+(-) The number of times the file has been opened since it was created. :: Not recorded.
 
 @@q single | Delete one name
 A file `f` has a hard link `g`. After `rm f`, what is true?
 (+) The contents remain available through `g`, and the link count drops from 2 to 1. :: The file disappears only when the count reaches 0 and nothing has it open.
-(-) `g` becomes a broken link. :: That is how a *symbolic* link behaves.
-(-) Both names vanish. :: `rm` removes only the name you give.
-(-) The data is moved into `g`. :: Nothing is moved; `g` always pointed to the same data.
+(-) `g` becomes a broken link, pointing to a name that no longer exists, and `cat g` fails with an error message. :: That is how a *symbolic* link behaves.
+(-) Both names vanish at once, because they refer to the same data. :: `rm` removes only the name you give.
+(-) The data is moved into `g`, which becomes the only copy of the file. :: Nothing is moved; `g` always pointed to the same data.
 
 @@q single | Broken symlink
 You create `ln -s f soft`, then run `rm f`. What happens with `cat soft`?
-(+) It fails with "No such file or directory", because the link still exists but its target does not. :: `ls -l soft` still shows `soft -> f`.
-(-) It prints the old contents of `f`. :: The data belonged to `f`; a symlink stores only its name.
-(-) It creates a new empty `f`. :: `cat` never creates files.
-(-) `soft` was deleted together with `f`. :: The link is a separate directory entry.
+(+) It fails with "No such file or directory", because the link exists but its target does not. :: `ls -l soft` still shows `soft -> f`.
+(-) It still prints the old contents of `f`, as the link keeps a copy of them. :: The data belonged to `f`; a symlink stores only its name.
+(-) It creates a new empty file called `f` and then prints nothing. :: `cat` never creates files.
+(-) Nothing is wrong with the link: `soft` was deleted together with `f`, so the shell reports that there is no such file. :: The link is a separate directory entry.
 
 @@q fill | Create a symbolic link
 To create a symbolic link named `short` that points to `/usr/share/dict/words`: `ln {{-s}} /usr/share/dict/words short`
@@ -170,10 +170,10 @@ In `ln -s target linkname`, which argument is the existing file?
 
 @@q single | Directory link counts
 An empty directory shows a link count of 2 in `ls -ld`. What happens to that count when you create a sub-directory inside it?
-(+) It becomes 3, because each sub-directory's `..` entry points back to the parent. :: The count is 2 plus the number of sub-directories.
-(-) It stays 2. :: The `..` entries add to the parent's count.
-(-) It becomes 1. :: Directories never drop below 2.
-(-) It increases for every file, not for directories. :: Files do not add links to their parent.
+(+) It becomes 3, because the `..` entry of the sub-directory points back to the parent. :: The count is 2 plus the number of sub-directories.
+(-) It stays at 2, because only files and not directories are counted in the link count. :: The `..` entries add to the parent's count.
+(-) It drops to 1, because the sub-directory takes over one of the two links. :: Directories never drop below 2.
+(-) It increases for every file created inside, but not for directories. :: Files do not add links to their parent.
 
 @@q multi | Symbolic link facts
 Select the true statements about symbolic links.
@@ -185,10 +185,10 @@ Select the true statements about symbolic links.
 
 @@q single | Permissions of a symlink
 Why does `ls -l` show `lrwxrwxrwx` for every symbolic link?
-(+) The permissions of the link itself are not used; access is decided by the permissions of the file it points to. :: The kernel follows the link first.
-(-) Because every symbolic link is executable. :: The shown bits mean nothing.
-(-) Because only root can create them. :: Anyone can create one.
-(-) Because the target's permissions are copied into the link. :: Nothing is copied.
+(+) The permissions of the link itself are never used; access is decided by the file it points to. :: The kernel follows the link first.
+(-) Because every symbolic link has to be executable so that the shell can follow it. :: The shown bits mean nothing.
+(-) Because only root is allowed to create symbolic links, and root needs every permission on everything it touches. :: Anyone can create one.
+(-) Because the permissions of the target are copied into the link when it is created. :: Nothing is copied.
 
 @@group Copying, moving, removing, touching
 @@q match | Basic file commands
@@ -210,16 +210,16 @@ Select the correct statements about options of `cp`.
 
 @@q single | Copying a symlink
 `cp soft copy` where `soft` is a symbolic link to a regular file. What is `copy`?
-(+) A regular file with the target's content, because `cp` follows the link by default. :: Use `-P` or `-a` to copy the link itself.
-(-) A symbolic link to the same target. :: That happens with `cp -P` or `cp -a`.
-(-) A hard link. :: That would need `cp -l`.
-(-) An empty file. :: It contains the data of the target.
+(+) A regular file with the content of the target, because `cp` follows the link by default. :: Use `-P` or `-a` to copy the link itself.
+(-) A symbolic link that points to the same target as `soft` does, so that both names refer to the same file. :: That happens with `cp -P` or `cp -a`.
+(-) A hard link to the target, sharing its inode with it. :: That would need `cp -l`.
+(-) An empty file with the same name as the link. :: It contains the data of the target.
 
 @@q single | mv a directory
 `mv dirA dirB` when `dirB` already exists and is a directory. What happens?
 (+) `dirA` is moved inside `dirB`, becoming `dirB/dirA`. :: If `dirB` did not exist it would be a rename.
 (-) `dirB` is overwritten by `dirA`. :: Non-empty directories are not replaced by `mv`.
-(-) The contents of `dirA` are merged into `dirB`. :: `mv` does not merge.
+(-) The contents of `dirA` are merged into the existing directory `dirB`, file by file. :: `mv` does not merge.
 (-) The command fails because the target exists. :: It works and nests the directory.
 
 @@q single | rm -i
@@ -231,17 +231,17 @@ Which option makes `rm` ask for confirmation before each removal?
 
 @@q single | The dangerous rm
 Which command is the most dangerous one if a variable turns out empty, as in `rm -rf "$DIR"/*` with `DIR` unset?
-(+) It expands to `rm -rf /*`, attempting to delete everything the user can. :: Always check variables before recursive deletion.
-(-) `rm -i` would be equally risky. :: It asks for every file, which gives you a chance to stop.
-(-) `rmdir "$DIR"/*` :: `rmdir` removes only empty directories.
-(-) `ls "$DIR"/*` :: It only lists.
+(+) `rm -rf "$DIR"/*`, which expands to `rm -rf /*` and tries to delete everything the user can. :: Always check variables before recursive deletion.
+(-) `rm -i "$DIR"/*`, which is equally risky, since it also deletes every file that the user confirms one by one. :: It asks for every file, which gives you a chance to stop.
+(-) `rmdir "$DIR"/*`, which removes every directory under the root. :: `rmdir` removes only empty directories.
+(-) `ls "$DIR"/*`, which lists files and can therefore damage them. :: It only lists.
 
 @@q single | touch on a missing file
 What does `touch newfile` do when `newfile` does not exist?
 (+) It creates an empty file with that name. :: Its main side use.
-(-) It fails with an error. :: No error.
-(-) It creates an empty directory. :: Directories need `mkdir`.
-(-) It opens an editor. :: `touch` has no interactive part.
+(-) It fails with an error, because the file to touch must exist already. :: No error.
+(-) It creates an empty directory with that name instead of a file. :: Directories need `mkdir`.
+(-) It opens an editor so that you can type the contents of the file. :: `touch` has no interactive part.
 
 @@q fill | Set a date
 To create `old` with the modification date set to 2 January 2020 (date only): `touch {{-d}} "2020-01-02" old`
@@ -252,24 +252,24 @@ To create `old` with the modification date set to 2 January 2020 (date only): `t
 @@q single | Temporary files
 What does `mktemp` provide compared with choosing a name like `/tmp/out`?
 (+) A unique, unpredictable file name, created safely, so two runs do not collide. :: It prints the name of the new file.
-(-) A file that is deleted automatically when the script ends. :: You must remove it yourself.
-(-) A file stored in memory. :: `/tmp` may be RAM-backed on some systems, but `mktemp` does not guarantee that.
-(-) A compressed file. :: It creates an empty file or directory.
+(-) A file that is deleted automatically when the script that created it ends. :: You must remove it yourself.
+(-) A file stored only in memory, which disappears at once when the power is cut. :: `/tmp` may be RAM-backed on some systems, but `mktemp` does not guarantee that.
+(-) A compressed file, which is unpacked again when the script needs it. :: It creates an empty file or directory.
 
 @@q single | Wildcard deletion
 In a directory you run `rm *.txt`. Which files does the shell pass to `rm`?
 (+) Every file whose name ends in `.txt`, expanded before `rm` starts. :: Globbing is done by the shell, not by `rm`.
 (-) Only one file at a time. :: All matches are passed as arguments.
-(-) The literal text `*.txt`, which `rm` then interprets. :: Only when no file matches and `nullglob` is off.
+(-) The literal text `*.txt`, which `rm` then interprets itself by looking for the matching names in the directory. :: Only when no file matches and `nullglob` is off.
 (-) Every file of the directory. :: Only those that match.
 
 @@group Mounting and disk space
 @@q single | What mounting does
 What does `mount /dev/sdb1 /mnt/usb` do?
-(+) It attaches the file system on that device to the directory `/mnt/usb`, so its files appear there. :: The directory is the mount point.
-(-) It formats the device. :: Formatting is `mkfs`.
-(-) It copies the device to `/mnt/usb`. :: Nothing is copied.
-(-) It deletes the device. :: Mounting is non-destructive.
+(+) It attaches the file system of that device to the directory `/mnt/usb`, so its files appear there. :: The directory is the mount point.
+(-) It formats the device and creates a new, empty file system on it, which is then mounted at `/mnt/usb`. :: Formatting is `mkfs`.
+(-) It copies the whole content of the device into the directory `/mnt/usb`. :: Nothing is copied.
+(-) It deletes the device node and every file that was stored on the device. :: Mounting is non-destructive.
 
 @@q single | Unmount
 Which command detaches a mounted file system?
@@ -289,17 +289,17 @@ Match each command with its output.
 
 @@q single | df versus du
 What is the main difference between `df` and `du`?
-(+) `df` reports space per file system (free and used), while `du` adds up the space used by the files of a path. :: One looks from the disk, the other from the files.
-(-) `df` works only for directories, `du` only for files. :: Both work at different scopes; this split is wrong.
-(-) `du` shows free space, `df` shows file sizes. :: Reversed.
-(-) They are the same program with two names. :: They are separate commands.
+(+) `df` reports free and used space per file system, while `du` adds up the space used by the files of a path. :: One looks from the disk, the other from the files.
+(-) `df` works only on directories and `du` works only on single files. :: Both work at different scopes; this split is wrong.
+(-) `du` shows the free space of the disks and partitions, while `df` shows the sizes of the files in a directory. :: Reversed.
+(-) They are the same program, installed under two different names. :: They are separate commands.
 
 @@q single | Human-readable
 What does the `-h` option do in `df -h` and `du -h`?
-(+) Prints sizes in units like K, M and G instead of raw blocks. :: "Human readable".
-(-) Hides the header line. :: No.
-(-) Shows hidden files. :: That is `ls -a`.
-(-) Prints a help message. :: That is `--help`.
+(+) Prints sizes in units such as K, M and G instead of raw blocks. :: "Human readable".
+(-) Hides the header line, which leaves only the numbers of the file systems. :: No.
+(-) Shows hidden files too, as the option `-a` of `ls` does. :: That is `ls -a`.
+(-) Prints a short help message about the options of the command. :: That is `--help`.
 
 @@q single | Depth of du
 Which command shows the space used by each sub-directory of the current directory, but not deeper?
@@ -310,18 +310,18 @@ Which command shows the space used by each sub-directory of the current director
 
 @@q single | Full disk vs. du
 `df` says a file system is 100% full, yet `du` of its top directory adds up to much less. Which explanation is plausible?
-(+) A deleted file is still held open by a running process, so its space is not freed yet. :: `du` no longer sees the name, `df` still counts the blocks.
-(-) `du` counts hidden files twice. :: That would make it higher, not lower.
-(-) `df` measures in bits and `du` in bytes. :: Both use blocks/bytes consistently.
-(-) Compression is applied only by `du`. :: Neither command compresses.
+(+) A deleted file is still held open by a running process, so its space has not been freed yet. :: `du` no longer sees the name, `df` still counts the blocks.
+(-) `du` counts hidden files twice, which makes its total look higher than it is, although `df` is the one that is right. :: That would make it higher, not lower.
+(-) `df` measures in bits and `du` in bytes, so the two can never agree. :: Both use blocks/bytes consistently.
+(-) Compression is applied only by `du`, so it reports smaller sizes than `df`. :: Neither command compresses.
 
 @@group Archives and compression
 @@q single | Archive versus compression
 What is the difference between tar and gzip?
-(+) `tar` bundles several files and directories into one archive file; `gzip` compresses one file or stream. :: They are often combined to get `.tar.gz` or `.tgz`.
-(-) `tar` compresses, `gzip` bundles. :: Reversed.
-(-) They are identical. :: They solve different problems.
-(-) `gzip` encrypts the archive. :: It does not encrypt.
+(+) `tar` bundles files and directories into one archive file; `gzip` compresses a single file or stream. :: They are often combined to get `.tar.gz` or `.tgz`.
+(-) `tar` compresses the files it is given, while `gzip` only bundles them together into a single archive file. :: Reversed.
+(-) They are identical tools, installed under two names for historical reasons. :: They solve different problems.
+(-) `gzip` encrypts the archive that `tar` has created, protecting it with a key. :: It does not encrypt.
 
 @@q match | tar options
 Match each tar option with its meaning.
@@ -357,15 +357,15 @@ Before extracting an archive from an untrusted source, you want to see which fil
 What does `gzip notes.txt` do by default?
 (+) It replaces `notes.txt` with the compressed `notes.txt.gz`. :: Use `-k` to keep the original.
 (-) It creates `notes.txt.gz` and keeps `notes.txt`. :: Only with `-k`.
-(-) It compresses the file in place without renaming it. :: The suffix `.gz` is added.
+(-) It compresses the file in place, keeping the same name, so the file is now `notes.txt` in a compressed form. :: The suffix `.gz` is added.
 (-) It archives the current directory. :: That is `tar`.
 
 @@q single | gunzip
 How do you decompress `notes.txt.gz`?
 (+) `gunzip notes.txt.gz` (or `gzip -d notes.txt.gz`) :: Restores `notes.txt` and removes the `.gz`.
-(-) `ungzip notes.txt.gz` :: No such command.
-(-) `tar x notes.txt.gz` :: `tar` extracts archives, not single gzip files.
-(-) `cat notes.txt.gz > notes.txt` :: That copies the compressed bytes.
+(-) `ungzip notes.txt.gz`, the counterpart of `gzip` in the same family :: No such command.
+(-) `tar x notes.txt.gz`, since `tar` extracts every kind of compressed file :: `tar` extracts archives, not single gzip files.
+(-) `cat notes.txt.gz > notes.txt`, which copies the bytes into a new file :: That copies the compressed bytes.
 
 @@q match | File extensions
 Match each extension with what you expect.
@@ -384,10 +384,10 @@ Put these steps of making and verifying a compressed backup in order.
 
 @@q single | Order of tar arguments
 You meant to archive `notes.txt` into `notes.tgz` but typed `tar czf notes.txt notes.tgz`. What is the damage?
-(+) The first name after `f` is the archive to write, so `notes.txt` is overwritten by a gzip archive, which contains the file `notes.tgz`. :: The archive name goes right after `f`; the files to add follow.
-(-) None: tar always sorts its arguments so that the archive comes last. :: It does not guess; the position after `f` decides.
-(-) tar refuses and prints a help message. :: It performs exactly what you wrote.
-(-) `z` deletes the source file. :: `z` only compresses.
+(+) The first name after `f` is the archive, so `notes.txt` is overwritten by a gzip archive containing `notes.tgz`. :: The archive name goes right after `f`; the files to add follow.
+(-) None: tar always sorts its arguments so that the name of the archive comes last. :: It does not guess; the position after `f` decides.
+(-) tar refuses to run and prints a help message that explains the correct order of arguments to the user who typed them. :: It performs exactly what you wrote.
+(-) The `z` option deletes the source file once it has been compressed. :: `z` only compresses.
 @@note
 With a directory in that position tar would fail with "Is a directory" instead; with a plain file, the original data is silently lost.
 
@@ -402,9 +402,9 @@ In an empty directory `d` you run `touch a b; mkdir c; ls -l d | wc -l` from its
 @@q single | Copy into itself
 What does `cp -r dir dir/copy` (copying a directory into itself) do in GNU `cp`?
 (+) It refuses with an error like "cannot copy a directory into itself". :: Otherwise it would recurse forever.
-(-) It creates `dir/copy` with all the contents of `dir`. :: That is what a copy to a *different* place would do.
-(-) It renames `dir` to `copy`. :: That is `mv`.
-(-) It silently does nothing. :: The error message is printed.
+(-) It creates `dir/copy` with a full copy of the contents of `dir`, then stops. :: That is what a copy to a *different* place would do.
+(-) It renames `dir` to `copy`, moving everything it contains into it. :: That is `mv`.
+(-) It silently does nothing and returns the exit status 0. :: The error message is printed.
 
 @@q single | Link count after creating links
 A file has a link count of 1. You run `ln f h` and `ln -s f s`. What is the link count of `f` now?

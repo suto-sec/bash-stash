@@ -5,10 +5,10 @@ What filters are and how they read standard input; counting, cutting, sorting, d
 @@group What a filter is
 @@q single | Definition of a filter
 What makes a command a "filter"?
-(+) It reads text from standard input (or files), transforms it, and writes the result to standard output, so it can sit in the middle of a pipe. :: `sort`, `cut`, `tr` and `wc` are typical filters.
-(-) It removes files that match a pattern. :: That is what `rm` or `find -delete` do.
-(-) It only works on files given as arguments and ignores the keyboard. :: Most filters read standard input when no file is given.
-(-) It is a command that asks the user for confirmation. :: Interactivity has nothing to do with it.
+(+) It reads text from standard input or files, transforms it and writes the result to standard output, so it fits in a pipe. :: `sort`, `cut`, `tr` and `wc` are typical filters.
+(-) It removes the files whose names match a pattern, and leaves the other files of the directory alone. :: That is what `rm` or `find -delete` do.
+(-) It works only on files given as arguments on the command line, and ignores whatever you type at the keyboard or send it in a pipe. :: Most filters read standard input when no file is given.
+(-) It asks the user for confirmation before each change it makes, like an interactive installer. :: Interactivity has nothing to do with it.
 
 @@q sort | Filter or not
 @@buckets Filter | Not a filter
@@ -24,9 +24,9 @@ Does the command read text, transform it and write text, so that it fits in a pi
 @@q single | No file given
 What does `wc -l` do when typed alone, with no file and no pipe?
 (+) It waits for input from the keyboard until you press `Ctrl+D`, then prints the number of lines typed. :: With no operand, filters read standard input.
-(-) It fails with "missing file operand". :: Filters fall back to standard input instead.
-(-) It counts the lines of the current directory listing. :: That would need `ls | wc -l`.
-(-) It prints `0` and exits. :: It does not exit until it sees end of input.
+(-) It fails at once with the error "missing file operand", since no file name was given. :: Filters fall back to standard input instead.
+(-) It counts the lines of the listing of the current directory and prints the result, as if `ls` had been run before it. :: That would need `ls | wc -l`.
+(-) It prints `0` straight away and exits, since there is nothing to count without a file. :: It does not exit until it sees end of input.
 
 @@q fill | End of input
 To tell a filter reading from the keyboard that there is no more input, press `{{Ctrl+D ;; Ctrl-D ;; ^D ;; CTRL+D}}`.
@@ -47,16 +47,16 @@ Match each option of `wc` with what it counts.
 @@q single | Lines of a file without newline
 `printf 'one two\nthree' | wc -l` prints 1, although the text seems to have two lines. Why?
 (+) `wc -l` counts newline characters, and the last line has none. :: The text has one `\n`, so the answer is 1.
-(-) `wc -l` counts only lines that have at least two words. :: Words do not matter.
+(-) `wc -l` counts only those lines that have at least two words in them, and the last line has only one. :: Words do not matter.
 (-) The first line is always ignored. :: Every newline counts.
 (-) `printf` does not support `\n`. :: It does, which is why one newline exists.
 
 @@q single | wc with a file versus stdin
 How do the outputs of `wc -l data.txt` and `wc -l < data.txt` differ?
-(+) The first prints the count followed by the file name; the second prints only the count, because `wc` does not know the file name. :: Handy when a script needs just a number.
-(-) The second counts words instead of lines. :: The option is the same.
-(-) The first counts the bytes of the name. :: It counts the lines of the file.
-(-) They are identical in every respect. :: The file name is shown only in the first.
+(+) The first prints the count followed by the file name; the second prints only the count, because `wc` does not know the name. :: Handy when a script needs just a number.
+(-) The second counts words instead of lines, because the redirection changes the meaning of `-l`. :: The option is the same.
+(-) The first counts the bytes of the file name, while the second counts the lines of the file. :: It counts the lines of the file.
+(-) They are identical in every respect, since the shell passes the same file to `wc` in both cases and the output is the same. :: The file name is shown only in the first.
 
 @@q single | Count lines of a command
 Which pipeline prints how many entries are in the current directory (hidden ones excluded)?
@@ -75,10 +75,10 @@ What does `wc` print for the input `one two\nthree\n` (two lines, three words, 1
 @@group Selecting parts: cut, head, tail
 @@q single | cut by delimiter
 `cut -d: -f1,7 /etc/passwd` prints which parts of each line?
-(+) The first and the seventh fields, separated by the colon. :: `-d` is the delimiter and `-f` the field list.
-(-) The first and seventh characters. :: That would be `-c1,7`.
-(-) Lines number 1 and 7 of the file. :: `cut` works within lines, not across them.
-(-) Everything except fields 1 and 7. :: That needs `--complement`.
+(+) The first and the seventh fields of each line, separated by the colon. :: `-d` is the delimiter and `-f` the field list.
+(-) The first and the seventh characters of each line, one after the other. :: That would be `-c1,7`.
+(-) Lines number 1 and 7 of the file, printed complete and unchanged. :: `cut` works within lines, not across them.
+(-) Everything in each line except fields 1 and 7, which are removed from it. :: That needs `--complement`.
 
 @@q match | cut field lists
 Match each option with the part of a colon-separated line it selects.
@@ -98,16 +98,16 @@ What is the default field delimiter of `cut -f2` when no `-d` is given?
 @@q single | Lines without a delimiter
 What does `echo abc | cut -d: -f2` print?
 (+) `abc`: a line without the delimiter is printed unchanged, unless `-s` is given. :: `cut -s` suppresses such lines.
-(-) An empty line. :: That is the output of `-f2` on a line that *has* the delimiter but an empty second field.
-(-) An error message. :: No error.
-(-) `:abc` :: Nothing is added.
+(-) An empty line, because the second field does not exist in the input text and so there is nothing to print at all. :: That is the output of `-f2` on a line that *has* the delimiter but an empty second field.
+(-) An error message saying that the delimiter was not found in the line. :: No error.
+(-) `:abc`, with an empty second field added at the front of the line. :: Nothing is added.
 
 @@q single | Empty field
 What does `echo 'a,b,,d' | cut -d, -f3` print?
 (+) An empty line, because the third field is empty. :: Consecutive delimiters make an empty field.
-(-) `d` :: `cut` does not skip the empty field.
-(-) `b` :: That is field 2.
-(-) An error about the field. :: An empty field is legal.
+(-) `d`, because `cut` skips the empty field and takes the next one. :: `cut` does not skip the empty field.
+(-) `b`, which is the field that comes before the empty one. :: That is field 2.
+(-) An error message about the field, because it has no value. :: An empty field is legal.
 
 @@q match | head and tail
 Match each command with the lines it prints from a 10-line input.
@@ -140,25 +140,25 @@ Which pipeline prints lines 4 to 7 of a file?
 
 @@q single | head -c
 What does `head -c 10 file` print?
-(+) The first 10 bytes of the file. :: Not lines.
-(-) The first 10 lines. :: That is `-n 10`.
-(-) The count of 10 lines. :: `-c` does not count lines.
-(-) The last 10 bytes. :: That is `tail -c 10`.
+(+) The first 10 bytes of the file, not lines. :: Not lines.
+(-) The first 10 lines of the file, as the option `-n 10` would print. :: That is `-n 10`.
+(-) The count of the 10 lines, as a number printed on the screen. :: `-c` does not count lines.
+(-) The last 10 bytes of the file, which would need `tail -c 10`. :: That is `tail -c 10`.
 
 @@q single | tail -f
 What is `tail -f /var/log/syslog` used for?
 (+) To follow the file, printing new lines as they are appended, until you press `Ctrl+C`. :: A standard way to watch logs live.
-(-) To print the first lines of the file. :: That is `head`.
-(-) To find the word "f" in the file. :: That is `grep`.
-(-) To compress the file. :: Not its job.
+(-) To print the first lines of the file and then stop, like `head` does, and to go on printing them until the end. :: That is `head`.
+(-) To find the word "f" in the file and print the lines that contain it. :: That is `grep`.
+(-) To compress the file in the background while it keeps being written. :: Not its job.
 
 @@group Sorting and duplicates
 @@q single | Default sort order
 What order does plain `sort` use for the lines `b 10`, `a 9`, `c 100`?
 (+) Alphabetical by the whole line: `a 9`, `b 10`, `c 100`. :: The default compares characters from the start of the line.
-(-) Numerical by the last number. :: That needs `-k2 -n`.
-(-) The original order. :: Sorting changes the order.
-(-) By line length. :: `sort` has no such default.
+(-) Numerical by the last number of each line, from the smallest to the largest. :: That needs `-k2 -n`.
+(-) The original order of the lines, since no option was given to `sort`. :: Sorting changes the order.
+(-) By line length, with the shortest lines first and the longest ones last. :: `sort` has no such default.
 
 @@q single | Sorting numbers as text
 Given lines `a 9`, `b 10`, `c 100`, what does `sort -k2` (no `-n`) print first?
@@ -191,10 +191,10 @@ Which command prints the three biggest numbers of a file with one number per lin
 
 @@q single | sort -u
 What is the difference between `sort -u file` and `uniq file` on an unsorted file?
-(+) `sort -u` sorts and removes all duplicates; `uniq` only merges duplicate lines that are next to each other. :: That is why `uniq` is normally used after `sort`.
-(-) They are the same. :: On unsorted input, `uniq` leaves duplicates that are not adjacent.
-(-) `uniq` sorts and `sort -u` does not. :: Reversed.
-(-) `uniq` deletes the file. :: It only prints.
+(+) `sort -u` sorts and removes all duplicates; `uniq` only merges duplicates that are next to each other. :: That is why `uniq` is normally used after `sort`.
+(-) They are the same, because `uniq` also sorts its input before it removes the duplicate lines, so the two commands give one result. :: On unsorted input, `uniq` leaves duplicates that are not adjacent.
+(-) `uniq` sorts the lines and `sort -u` does not, so the results differ only in their order. :: Reversed.
+(-) `uniq` deletes the file it reads from and writes the unique lines into a new one. :: It only prints.
 
 @@q match | uniq options
 Match each command with its result on a sorted list.
@@ -214,9 +214,9 @@ Put the stages of a pipeline in order to list the most common words of a text, o
 @@q single | Why sort before uniq
 Why does `uniq -c` usually come right after `sort` in a pipeline?
 (+) `uniq` only compares adjacent lines, so equal lines must be next to each other. :: `sort` brings them together.
-(-) `uniq` refuses to start if its input is unsorted. :: It runs but gives misleading counts.
-(-) `sort` converts the text to numbers. :: It does not.
-(-) It is only a style convention. :: It changes the result.
+(-) `uniq` refuses to start if its input is not sorted, and prints an error message. :: It runs but gives misleading counts.
+(-) `sort` converts the text to numbers, which `uniq` needs in order to count them. :: It does not.
+(-) It is only a style convention, and the result is the same without `sort`. :: It changes the result.
 
 @@q single | Predict uniq
 Given the lines `a`, `b`, `a` (in that order), what does `uniq` print?
@@ -229,9 +229,9 @@ Given the lines `a`, `b`, `a` (in that order), what does `uniq` print?
 @@q single | What tr works on
 Which statement about `tr` is correct?
 (+) It works on characters of standard input; it cannot take file names as arguments. :: Use `tr ... < file`.
-(-) It works on whole words. :: That is `sed` or `awk`.
-(-) It only takes file names, not standard input. :: The opposite.
-(-) It edits the file in place. :: It only writes to standard output.
+(-) It works on whole words, replacing each word of the first set by one of the second. :: That is `sed` or `awk`.
+(-) It only takes file names as arguments and never reads from standard input. :: The opposite.
+(-) It edits the file in place, replacing the characters of the first set by the second. :: It only writes to standard output.
 
 @@q match | tr examples
 Match each `tr` command with its effect.
@@ -279,10 +279,10 @@ Match each `sed` command with what it does to a 5-line input.
 
 @@q single | sed -n
 Why is `-n` used together with the `p` command in `sed -n '2p'`?
-(+) `-n` turns off the default printing of every line, so that only the lines selected by `p` appear. :: Without it, line 2 would be printed twice.
-(-) `-n` makes `sed` edit the file. :: That is `-i`.
-(-) `-n` numbers the output. :: That is `nl` or `cat -n`.
-(-) `-n` restricts `sed` to numbers. :: Nothing like that.
+(+) `-n` turns off the automatic printing of every line, so that only the lines selected by `p` appear. :: Without it, line 2 would be printed twice.
+(-) `-n` makes `sed` edit the file itself in place, instead of writing the result of the substitution to the screen. :: That is `-i`.
+(-) `-n` numbers the output lines, like the `nl` command does. :: That is `nl` or `cat -n`.
+(-) `-n` restricts `sed` to lines that contain numbers, skipping all the others. :: Nothing like that.
 
 @@q single | In-place editing
 Which option makes `sed` change the file itself rather than printing the result?
@@ -293,10 +293,10 @@ Which option makes `sed` change the file itself rather than printing the result?
 
 @@q single | Different delimiter
 Why is `sed 's#/usr#/opt#'` often written instead of using slashes?
-(+) Any character can separate the parts, and a `#` avoids escaping the slashes in the paths. :: `s/\/usr/\/opt/` means the same but is harder to read.
-(-) Because `#` makes the substitution global. :: That is the `g` flag.
-(-) Because slashes are not allowed in `sed`. :: They are allowed; they just need escaping in the pattern.
-(-) Because `#` starts a comment and skips the line. :: Inside `s#..#..#` it is the separator.
+(+) Any character can separate the parts, and `#` avoids escaping the slashes in the paths. :: `s/\/usr/\/opt/` means the same but is harder to read.
+(-) Because `#` makes the substitution global, so that every match on each line is replaced and not only the first one. :: That is the `g` flag.
+(-) Because slashes are not allowed inside a `sed` command and would be rejected. :: They are allowed; they just need escaping in the pattern.
+(-) Because `#` starts a comment, so the rest of the line is skipped by `sed`. :: Inside `s#..#..#` it is the separator.
 
 @@q single | Empty match surprise
 What does `echo hello | sed 's/l*/X/'` print?
@@ -339,16 +339,16 @@ Match each command with what it does.
 @@q single | tee
 In `make 2>&1 | tee build.log | grep error`, what does `tee` contribute?
 (+) It saves the complete output to `build.log` while still passing it on to `grep`. :: You keep a full log and see the filtered view.
-(-) It discards the output that `grep` does not want. :: `tee` does not filter.
-(-) It runs the command twice. :: The command runs once.
-(-) It replaces `grep`. :: It works alongside it.
+(-) It discards the output that `grep` does not want, keeping only the error lines. :: `tee` does not filter.
+(-) It runs the command `make` twice, once for the log and once for `grep`. :: The command runs once.
+(-) It replaces `grep`, since it also selects the lines that contain the word. :: It works alongside it.
 
 @@q single | tee -a
 Compared with `tee out.txt`, what does `tee -a out.txt` do differently?
 (+) It appends to the file instead of overwriting it. :: Like `>>` versus `>`.
-(-) It writes to all files of the directory. :: `-a` is not "all".
-(-) It adds line numbers. :: That is `nl`.
-(-) It suppresses standard output. :: Standard output still gets the data.
+(-) It writes to all the files of the current directory at the same time. :: `-a` is not "all".
+(-) It adds line numbers to the text that is passed through `tee`. :: That is `nl`.
+(-) It suppresses the standard output, so that nothing appears on the screen. :: Standard output still gets the data.
 
 @@q match | Comparing files
 Match each command with what it tells you.
@@ -367,32 +367,32 @@ What exit status does `diff` return when the two files differ?
 
 @@q single | Reading a diff
 In the output of `diff old new`, a line starting with `<` means...
-(+) the line is from the first file (`old`) and is missing or different in the second. :: `>` marks lines from the second file.
-(-) the line is from the second file. :: That is `>`.
-(-) the line is identical in both files. :: Identical lines are not shown.
-(-) the line is a comment. :: No.
+(+) the line comes from the first file (`old`) and is missing or different in the second one. :: `>` marks lines from the second file.
+(-) the line comes from the second file (`new`) and is missing in the first one. :: That is `>`.
+(-) the line is identical in both files, which `diff` marks so that you can skip it. :: Identical lines are not shown.
+(-) the line is a comment inserted by `diff` to explain the difference between the files. :: No.
 
 @@q single | od purpose
 What is `od -c` (octal dump) useful for?
 (+) Showing the exact bytes of a file, including invisible ones such as tabs and newlines. :: Good for debugging whitespace or binary data.
-(-) Converting numbers to octal in a script. :: Not its purpose.
-(-) Sorting data. :: That is `sort`.
-(-) Detecting duplicated files. :: That would be checksums.
+(-) Converting numbers to octal inside a script, for example before a `chmod`. :: Not its purpose.
+(-) Sorting the data of a file numerically, using the octal value of each byte as the key, so that the lines are in order. :: That is `sort`.
+(-) Detecting duplicated files by comparing the octal dump of their contents. :: That would be checksums.
 
 @@q single | split
 What does `split -l 4 data part_` do to a 10-line file?
 (+) It writes `part_aa` and `part_ab` with 4 lines each and `part_ac` with the remaining 2. :: Names get two-letter suffixes.
-(-) It deletes every 4th line. :: `split` never discards data.
-(-) It prints the first 4 lines. :: That is `head`.
-(-) It creates 4 files with 10 lines each. :: `-l 4` is lines per piece, not the number of pieces.
+(-) It deletes every fourth line of the file and keeps the remaining lines in the files whose names start with `part_`. :: `split` never discards data.
+(-) It prints the first 4 lines of the file to the screen and then stops. :: That is `head`.
+(-) It creates 4 files of 10 lines each, repeating the lines of the input. :: `-l 4` is lines per piece, not the number of pieces.
 
 @@group Combining filters: predict the result
 @@q single | Count users with bash
 Which pipeline counts the users of `/etc/passwd` whose login shell is `/bin/bash`?
 (+) `cut -d: -f7 /etc/passwd | grep -c '^/bin/bash$'` :: The shell is field 7; `grep -c` counts the matching lines.
-(-) `cut -d: -f1 /etc/passwd | wc -l` :: That counts all users, whatever their shell.
-(-) `cut -d: -f7 /etc/passwd | sort` :: Sorts the shells but does not count.
-(-) `wc -l /bin/bash` :: Counts the lines of the program file.
+(-) `cut -d: -f1 /etc/passwd | wc -l`, which counts all the users of the system, whatever shell they use :: That counts all users, whatever their shell.
+(-) `cut -d: -f7 /etc/passwd | sort`, which only sorts the shells of the users without counting them :: Sorts the shells but does not count.
+(-) `wc -l /bin/bash`, which counts the lines of the program file of the shell itself :: Counts the lines of the program file.
 
 @@q single | Users in order
 Which pipeline prints the login names of all users, sorted alphabetically?
@@ -418,13 +418,13 @@ Which command prints the length of the longest line of a file?
 @@q single | Order of filters
 What is wrong with `sort -n data | head -n 3` when you want the three *largest* numbers?
 (+) `sort -n` orders from smallest to largest, so `head` gives the three smallest; add `-r`. :: `sort -nr | head -n 3`.
-(-) Nothing, it is correct. :: It yields the smallest ones.
-(-) `head` cannot read from a pipe. :: It can.
-(-) `-n` does not work with `head`. :: It is an option of `sort` here.
+(-) Nothing is wrong with the command: it is correct as it stands, and it prints the three largest numbers of the file. :: It yields the smallest ones.
+(-) `head` cannot read from a pipe, so it would wait for the keyboard instead. :: It can.
+(-) The option `-n` does not work with `sort`, it is only valid for `head`. :: It is an option of `sort` here.
 
 @@q single | Words in a file
 `echo "the cat the dog" | tr ' ' '\n' | sort | uniq -c | sort -nr | head -n 1` prints which line?
 (+) `2 the` (with leading spaces) :: One word per line, sorted, counted, with the most frequent first.
-(-) `1 cat` :: `the` appears twice, which is the highest count.
-(-) `4 the cat the dog` :: The line is split into words first.
-(-) `the` :: `uniq -c` adds the count.
+(-) `1 cat`, because the pipeline lists the words in alphabetical order :: `the` appears twice, which is the highest count.
+(-) `4 the cat the dog`, because the line is counted as a whole :: The line is split into words first.
+(-) `the`, because `uniq -c` prints only the repeated word :: `uniq -c` adds the count.

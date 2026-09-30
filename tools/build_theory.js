@@ -171,6 +171,19 @@ function parse(file) {
   return { id: col.id, title: col.title, about: col.about.trim(), groups: col.groups };
 }
 
+// Soft lint (warning only): in a single-choice question the right option should not be conspicuously
+// longer than every wrong one, or students can guess by length. Keep the distractors as detailed as the answer.
+function lengthWarnings(c) {
+  const out = [];
+  for (const g of c.groups) for (const q of g.questions) {
+    if (q.type !== 'single') continue;
+    const ok = q.options.find(o => o.ok).t.length;
+    const worst = Math.max(...q.options.filter(o => !o.ok).map(o => o.t.length));
+    if (ok > 30 && ok > worst * 1.25) out.push(`${c.id}: "${q.title}": the right option is ${Math.round(100 * ok / worst - 100)}% longer than the longest wrong one`);
+  }
+  return out;
+}
+
 const files = process.argv.length > 2 ? process.argv.slice(2)
   : fs.readdirSync(SRC).filter(f => f.endsWith('.txt')).sort().map(f => path.join(SRC, f));
 fs.mkdirSync(OUT, { recursive: true });
@@ -183,5 +196,6 @@ for (const f of files) {
   const kinds = {};
   c.groups.forEach(g => g.questions.forEach(q => { kinds[q.type] = (kinds[q.type] || 0) + 1; }));
   console.log(`${c.id}: ${n} questions in ${c.groups.length} groups  ${JSON.stringify(kinds)}`);
+  for (const w of lengthWarnings(c)) console.warn('  warning: ' + w);
 }
 if (errors.length) { console.error('\n' + errors.join('\n')); console.error(`\n${errors.length} problem(s), nothing written`); process.exit(1); }

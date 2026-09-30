@@ -43,6 +43,7 @@ Rules that keep the quizzes useful:
 
 - **Every option, step, pair and item needs an explanation** (`:: ...`), wrong ones included: say what
   the wrong option actually does, or where it would be right. A bare "wrong" teaches nothing.
+- Make wrong options as long and as plausible as the right one: the compiler warns when the right answer of a single-choice question is much longer than all the wrong ones (students would guess by length).
 - Options are shuffled on every attempt: never write "both of the above" or "a) and b)".
 - Question text must not start a line with `(`.
 - Write original wording; teach the concept, don't transcribe course material.
