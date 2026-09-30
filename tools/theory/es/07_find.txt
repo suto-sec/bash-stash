@@ -1,0 +1,454 @@
+@@collection 07_find | Buscar ficheros con find
+@@about
+Cómo recorre find un árbol y evalúa comprobaciones y acciones: nombres, tipos, tamaños, fechas, permisos, operadores y precedencia, exec, delete, xargs y las trampas clásicas.
+
+@@group Cómo funciona find
+@@q single | Qué examina find
+¿Qué mira `find` cuando busca?
+(+) Los atributos de ficheros y directorios (nombre, tipo, tamaño, propietario, fecha, permisos), recorriendo el árbol de forma recursiva. :: No lee el contenido de los ficheros; eso es trabajo de `grep`.
+(-) El texto de dentro de los ficheros, imprimiendo cada línea que contiene la palabra o el patrón que le das, como hace `grep`. :: `grep -r` busca en el contenido.
+(-) Solo el directorio actual, sin mirar en ninguno de sus subdirectorios. :: Es recursivo por defecto (salvo que se use `-maxdepth`).
+(-) Una base de datos de nombres de fichero que el sistema regenera una vez al día, nunca el disco real. :: Eso es `locate`; `find` recorre el sistema de ficheros real cada vez.
+
+@@q single | Punto de partida por defecto
+¿Qué afirmación sobre `find` sin argumentos es cierta (con el find de GNU)?
+(+) Parte del directorio actual e imprime todo lo que cuelga de él. :: Equivale a `find . -print`.
+(-) Busca en todo el sistema de ficheros, empezando por el directorio raíz `/`. :: Tienes que dar `/` explícitamente.
+(-) Imprime un error por la ruta que falta y termina sin listar nada. :: El find de GNU usa `.` por defecto.
+(-) Solo imprime los ficheros ocultos del directorio actual e ignora los demás. :: Se lista todo.
+
+@@q match | Anatomía de un mandato find
+Empareja cada parte de `find /etc -name '*.conf' -print` con su papel.
+(=) `/etc` => El directorio de partida que se recorre :: Donde empieza la búsqueda.
+(=) `-name '*.conf'` => Una comprobación que solo deja pasar los nombres que coinciden :: Se evalúa para cada fichero encontrado.
+(=) `-print` => Una acción que escribe la ruta :: La acción por defecto cuando no se indica ninguna.
+(=) `'*.conf'` => Un patrón con comodines que interpreta el propio find :: Entre comillas para que la shell no lo toque.
+(-) Una redirección de la shell :: Ninguna de las palabras es una redirección.
+
+@@q single | Entrecomillar el patrón
+¿Por qué se escribe `find . -name "*.txt"` con comillas?
+(+) Para que la shell no expanda `*.txt` a los nombres del directorio actual antes de que se ejecute `find`. :: `find` tiene que recibir el propio patrón.
+(-) Porque `find` rechaza los patrones sin comillas y da un error de sintaxis. :: El problema lo causa la expansión de la shell.
+(-) Porque las comillas hacen que la búsqueda no distinga mayúsculas, así que también se encuentran los ficheros `.TXT`. :: Eso es `-iname`.
+(-) Porque las comillas hacen que la búsqueda sea recursiva, de modo que se entra en todos los subdirectorios del actual además de en el propio directorio. :: Es recursiva de todos modos.
+
+@@q single | La trampa del patrón sin comillas
+En un directorio que contiene un único fichero, `uno.txt`, ejecutas `find . -name *.txt`. ¿Qué pasa?
+(+) La shell convierte `*.txt` en `uno.txt`, así que `find` solo busca ficheros llamados `uno.txt` y se le escapan los demás `.txt`. :: El mandato encuentra, sin avisar, menos de lo que querías.
+(-) `find` lista todos los ficheros `.txt` de todo el árbol, porque él mismo expande el asterisco. :: Solo con comillas.
+(-) `find` falla con un error de sintaxis, porque el patrón se dio sin comillas. :: Se ejecuta normalmente, con el patrón equivocado.
+(-) `find` solo lista `uno.txt` en el directorio actual y no entra en absoluto en los subdirectorios del árbol. :: Busca ese nombre en todo el árbol.
+
+@@q fill | Buscar por nombre sin distinguir mayúsculas
+Para que coincidan `.txt`, `.TXT` y `.Txt`: `find . {{-iname}} '*.txt'`
+(x) -name :: Distingue mayúsculas: se le escaparía `.TXT`.
+(x) -i :: No es una opción de `find`.
+@@note
+`-iname` es la versión de `-name` que no distingue mayúsculas.
+
+@@q single | -name y las rutas
+¿Por qué `find . -name 'a/x.txt'` nunca encuentra nada?
+(+) `-name` solo compara el patrón con el nombre base de cada ruta; para patrones con barras usa `-path`. :: Por ejemplo `find . -path '*/a/x.txt'`.
+(-) Porque el fichero `x.txt` no existe en ningún directorio llamado `a` por debajo del inicio. :: El comportamiento no depende de eso.
+(-) Porque `-name` solo trabaja en el directorio actual y nunca entra en los subdirectorios, así que una ruta nunca puede coincidir. :: Trabaja en todo el árbol.
+(-) Porque las barras dentro de un patrón de `-name` hay que duplicarlas para que se tomen literalmente. :: No es la razón.
+
+@@q multi | Patrones que entiende find
+Marca las afirmaciones ciertas sobre el patrón de `-name`.
+(+) Usa la sintaxis de los comodines (`*`, `?`, `[...]`), no expresiones regulares. :: Como los comodines de la shell.
+(+) Se compara solo con el nombre del fichero, no con la parte del directorio. :: Solo el nombre base.
+(+) Un punto inicial sí lo cubre `*` (al contrario que en la shell), así que se encuentran los ficheros ocultos. :: `find . -name '*'` incluye los ficheros que empiezan por punto.
+(-) Es una expresión regular, así que la forma correcta es `.*\.txt`. :: Eso sería `-regex`.
+(-) No distingue mayúsculas por defecto. :: Usa `-iname`.
+
+@@q sort | Comprobaciones y acciones de find
+@@buckets Comprobación (decide si un fichero encaja) | Acción (hace algo)
+Clasifica cada primitiva de find.
+(Comprobación (decide si un fichero encaja)) `-name '*.c'` :: Selecciona ficheros por su nombre.
+(Comprobación (decide si un fichero encaja)) `-type d` :: Selecciona directorios.
+(Comprobación (decide si un fichero encaja)) `-size +1M` :: Selecciona por tamaño.
+(Comprobación (decide si un fichero encaja)) `-user alumno` :: Selecciona por propietario.
+(Acción (hace algo)) `-print` :: Escribe la ruta en la salida estándar.
+(Acción (hace algo)) `-delete` :: Borra el fichero.
+(Acción (hace algo)) `-exec ls -l {} \;` :: Ejecuta un mandato para el fichero.
+
+@@group Tipo, profundidad y nombres
+@@q match | Letras de -type
+Empareja cada letra de `-type` con el tipo de fichero.
+(=) `f` => Un fichero regular :: Datos o programas normales.
+(=) `d` => Un directorio :: Carpetas.
+(=) `l` => Un enlace simbólico :: Enlaces a otras rutas.
+(=) `b` => Un dispositivo de bloques :: Discos y similares.
+(=) `c` => Un dispositivo de caracteres :: Terminales y similares.
+(-) Un fichero oculto :: Los ficheros ocultos se encuentran por su nombre, no por su tipo.
+
+@@q single | Ficheros ocultos
+¿Cómo encuentras los ficheros cuyo nombre empieza por un punto, directamente en el directorio actual?
+(+) `find . -maxdepth 1 -name '.*' -type f` :: El patrón `.*` coincide con los nombres que empiezan por un punto.
+(-) `find . -hidden`, que solo lista los ficheros cuyo nombre empieza por un punto :: No existe la comprobación `-hidden`.
+(-) `find . -type h`, que selecciona los ficheros ocultos por su letra de tipo :: No existe ese tipo.
+(-) `find . -name '*.'`, que coincide con los nombres que terminan en un punto :: Eso coincide con nombres que terminan en punto.
+
+@@q match | Opciones de profundidad
+Empareja cada opción con su efecto.
+(=) `-maxdepth 1` => Solo el directorio de partida y sus hijos directos :: Ningún nivel más profundo.
+(=) `-mindepth 1` => Saltarse el propio punto de partida :: El nivel 0 no se muestra.
+(=) `-maxdepth 2` => Hasta los nietos del punto de partida :: Dos niveles.
+(=) `-depth` => Procesar el contenido de cada directorio antes que el propio directorio :: Necesario para trabajar de abajo arriba, por ejemplo al borrar.
+(-) Seguir todos los enlaces simbólicos :: Eso es `-L`.
+
+@@q single | Solo los hijos directos
+¿Qué mandato lista solo los ficheros regulares que están directamente dentro de `dir` (no en subdirectorios)?
+(+) `find dir -maxdepth 1 -type f` :: Se detiene tras el primer nivel.
+(-) `find dir -type f` :: Recorre todo.
+(-) `find dir -depth 1 -type f` :: `-depth` no lleva número.
+(-) `find dir -d 1 -type f` :: No es una opción válida.
+
+@@q single | Los directorios también son ficheros
+¿Por qué `find a -size +2k` imprime también nombres de directorio como `a` o `a/b`?
+(+) Los directorios son ficheros con su propio tamaño (a menudo 4096 bytes), así que una comprobación de tamaño los incluye; añade `-type f`. :: Combina siempre las comprobaciones de tamaño con `-type f` cuando te refieras a ficheros.
+(-) Porque `-size` cuenta el tamaño total de los ficheros *de dentro* de cada directorio, no el tamaño de la propia entrada del directorio. :: Usa el tamaño de la propia entrada del directorio.
+(-) Por un fallo conocido de `find` que nunca se ha corregido en ninguna versión publicada. :: Es un comportamiento documentado.
+(-) Porque `-size` ignora el tipo de fichero y siempre considera vacíos los directorios. :: Sí mira el tamaño, pero los directorios también tienen uno.
+
+@@q single | Comprobaciones sobre la ruta completa
+¿Qué comprobación se compara con la ruta completa y es la adecuada para `*/src/*.c`?
+(+) `-path '*/src/*.c'` :: Compara el patrón con la ruta entera.
+(-) `-name '*/src/*.c'` :: `-name` solo ve el nombre base.
+(-) `-type '*/src/*.c'` :: `-type` lleva una sola letra.
+(-) `-regextype '*/src/*.c'` :: Esa opción elige un dialecto de expresiones regulares.
+
+@@group Comprobaciones de tamaño, fecha y permisos
+@@q single | Sufijos de tamaño
+¿Qué selecciona `find . -size +1M`?
+(+) Los ficheros que ocupan más de 1 mebibyte (redondeado hacia arriba a MiB enteros). :: `M` significa 1024×1024 bytes.
+(-) Los ficheros cuyo tamaño es exactamente 1 MB, ni más pequeños ni más grandes. :: El signo más significa «más que».
+(-) Los ficheros que ocupan como mucho 1 MB, incluidos los ficheros vacíos del árbol. :: Eso es `-1M`.
+(-) Los ficheros modificados hace más de un minuto, sea cual sea su tamaño. :: Para el tiempo se usa `-mmin`.
+
+@@q match | Unidades de tamaño
+Empareja cada sufijo de `-size` con su unidad.
+(=) `c` => Bytes :: `-size 100c` son exactamente 100 bytes.
+(=) `k` => Kibibytes (1024 bytes) :: Redondeado hacia arriba.
+(=) `M` => Mebibytes :: Redondeado hacia arriba.
+(=) `G` => Gibibytes :: Redondeado hacia arriba.
+(=) (sin sufijo) => Bloques de 512 bytes :: El valor histórico por defecto, que a menudo sorprende.
+(-) Megabits :: Ningún sufijo significa bits.
+
+@@q single | Los tamaños se redondean hacia arriba
+¿Con qué coincide `find . -type f -size -1k`?
+(+) Solo con los ficheros vacíos, porque los tamaños se redondean hacia arriba a unidades enteras, así que «menos de 1» significa cero unidades. :: Un fichero de 1 byte cuenta como 1k.
+(-) Con todos los ficheros de menos de 1000 bytes, que es como cuenta `find` un kilobyte. :: El redondeo hace que eso sea falso.
+(-) Con todos los ficheros de exactamente 1 KiB, que es el tamaño que representa aquí el signo menos. :: Eso es `-size 1k`.
+(-) Con todos los ficheros de más de 1 KiB, ya que el signo delante del número significa «al menos» y no «menos que». :: Eso es `+1k`.
+
+@@q single | Tamaños exactos
+¿Qué mandato encuentra los ficheros de exactamente 100 bytes?
+(+) `find . -type f -size 100c` :: El sufijo `c` cuenta bytes sin redondear.
+(-) `find . -type f -size 100` :: Son 100 bloques de 512 bytes.
+(-) `find . -type f -size 100k` :: 100 kibibytes, redondeado hacia arriba.
+(-) `find . -type f -size +100c -size -100c` :: Es contradictorio: ningún fichero cumple las dos.
+
+@@q fill | Ficheros de más de dos megas
+Busca los ficheros de `/usr/lib` de más de 2 MiB: `find /usr/lib -type f -size {{+2M}}`
+(x) 2M :: Solo los ficheros cuyo tamaño redondeado es exactamente 2 MiB.
+(x) -2M :: Los ficheros *menores* de 2 MiB.
+@@note
+Un más significa «más que», un menos «menos que» y sin signo «exactamente».
+
+@@q single | Días y mtime
+Un fichero se modificó hace 36 horas. ¿Qué comprobación lo selecciona?
+(+) `-mtime 1` :: La antigüedad se cuenta en periodos enteros de 24 horas, descartando la fracción: 36 horas es 1 día.
+(-) `-mtime +1` :: Para eso hacen falta al menos 2 días completos.
+(-) `-mtime 2` :: Todavía no tiene dos días.
+(-) `-mtime -1` :: Significa menos de un día completo.
+
+@@q match | Comprobaciones de tiempo
+Empareja cada comprobación con los ficheros que selecciona.
+(=) `-mtime +7` => Modificados hace más de 7 días completos :: Ficheros antiguos.
+(=) `-mtime -1` => Modificados hace menos de un día :: Los ficheros de hoy (últimas 24 horas).
+(=) `-mmin -30` => Modificados en los últimos 30 minutos :: Minutos en lugar de días.
+(=) `-newer ref` => Modificados más recientemente que el fichero `ref` :: Compara con la fecha de otro fichero.
+(=) `-atime +30` => Leídos por última vez hace más de 30 días :: Tiempo de acceso.
+(-) Creados hace más de 30 días :: `find` no tiene una comprobación de fecha de creación en esta forma.
+
+@@q single | ¿Qué tiempo?
+¿Qué mira `-mtime` en comparación con `-ctime`?
+(+) `-mtime` es el último cambio del contenido del fichero; `-ctime` el último cambio de su i-nodo (modo, propietario, enlaces o contenido). :: `ctime` no es la «fecha de creación».
+(-) Son la misma comprobación, escrita con dos nombres distintos por compatibilidad. :: Son distintas.
+(-) `-ctime` es la fecha de creación del fichero, que Linux registra al crearlo. :: Linux no guarda la fecha de creación en ese campo.
+(-) `-mtime` es la última vez que un programa leyó el fichero, mientras que `-ctime` es la última vez que cambió su contenido. :: Eso es `-atime`.
+
+@@q fill | Modificados recientemente
+Lista los ficheros regulares cambiados en la última hora: `find . -type f {{-mmin}} -60`
+(x) -mtime :: Cuenta días, así que `-mtime -60` significa menos de 60 días.
+(x) -newer :: Compara con un fichero de referencia.
+@@note
+`-mmin` usa minutos; `-mtime`, días.
+
+@@q match | Comprobaciones de permisos
+Empareja cada comprobación con su significado.
+(=) `-perm 644` => El modo es exactamente 644 :: Ni un bit más ni uno menos.
+(=) `-perm -644` => Están activados todos los bits de 644 (puede haber otros también) :: Un menos significa «al menos estos».
+(=) `-perm /222` => Está activado alguno de los bits de escritura :: Una barra significa «cualquiera de estos».
+(=) `-perm -u+x` => El propietario puede ejecutarlo :: Forma simbólica.
+(-) No está activado ningún bit de 644 :: Ninguna forma significa eso.
+
+@@q single | Ficheros ejecutables
+¿Qué mandato encuentra los ficheros regulares que su propietario puede ejecutar?
+(+) `find . -type f -perm -u+x` :: Al menos está activado el bit de ejecución del propietario.
+(-) `find . -type f -perm u+x` :: Sin el menos, find busca exactamente ese modo.
+(-) `find . -type f -executable -user root` :: Añade una condición sobre el propietario.
+(-) `find . -perm +x -type d` :: Selecciona directorios.
+
+@@q fill | Que cualquiera pueda escribir
+Busca los ficheros en los que puede escribir **cualquiera** de propietario, grupo u otros: `find . -type f -perm {{/222 ;; /u+w,g+w,o+w}}`
+(x) -222 :: Exige los tres bits de escritura a la vez.
+(x) 222 :: Exactamente el modo 222, que es muy raro.
+@@note
+`/modo` significa «cualquiera de estos bits»; `-modo` significa «todos estos bits».
+
+@@q multi | Propietarios y grupos
+Marca las comprobaciones que seleccionan ficheros por propietario o por grupo.
+(+) `-user alumno` :: Ficheros de ese usuario.
+(+) `-group devs` :: Ficheros cuyo grupo es `devs`.
+(+) `-uid 1000` :: Identificador numérico de usuario.
+(-) `-owner alumno` :: No es una comprobación del find de GNU (lo es `-user`).
+(-) `-mine` :: No existe esa comprobación.
+
+@@q single | Ficheros y directorios vacíos
+¿Qué opción selecciona los ficheros vacíos y los directorios vacíos?
+(+) `-empty` :: Un fichero de longitud cero, o un directorio sin entradas.
+(-) `-size 0` :: Encuentra ficheros de tamaño cero y, en la práctica, no los directorios vacíos (su tamaño no es 0).
+(-) `-null` :: No es válida.
+(-) `-blank` :: No es válida.
+
+@@group Combinar comprobaciones
+@@q single | El y implícito
+¿Qué significa `find . -name '*.c' -type f` cuando no hay ningún operador entre las comprobaciones?
+(+) Que las dos comprobaciones tienen que cumplirse (un `-a` implícito). :: Un nombre que termina en `.c` y un fichero regular.
+(-) Que basta con que se cumpla cualquiera de las dos. :: Para eso hace falta `-o`.
+(-) Que la segunda comprobación se ignora. :: Cuentan las dos.
+(-) Que las comprobaciones se evalúan en un orden aleatorio. :: Se evalúan de izquierda a derecha.
+
+@@q single | El o necesita paréntesis
+Quieres los **ficheros regulares** `.txt` o `.log`. ¿Qué mandato es correcto?
+(+) `find . -type f \( -name '*.txt' -o -name '*.log' \)` :: Los paréntesis escapados agrupan las alternativas para que `-type f` se aplique a las dos.
+(-) `find . -type f -name '*.txt' -o -name '*.log'` :: El `-o` parte la expresión: `-type f -name '*.txt'` o bien `-name '*.log'`; coincidirían los directorios llamados `*.log`.
+(-) `find . -type f -name '*.txt|*.log'` :: Un comodín no admite `|`.
+(-) `find . -type f ( -name '*.txt' -o -name '*.log' )` :: Los paréntesis sin escapar son de la shell y causan un error de sintaxis.
+
+@@q single | Una precedencia sorprendente
+¿Qué imprime `find a -name '*.txt' -o -name '*.log' -print`?
+(+) Solo los ficheros `.log`: `-print` pertenece a la parte derecha, porque `-a` liga más fuerte que `-o`. :: Una coincidencia `.txt` es verdadera pero no tiene acción, así que no se imprime nada para ella.
+(-) Tanto los ficheros `.txt` como los `.log`, ya que el operador `-o` hace que el único `-print` se aplique a las dos comprobaciones. :: Para eso hacen falta paréntesis o no poner un `-print` explícito.
+(-) Solo los ficheros `.txt`, porque la primera alternativa que coincide termina la búsqueda. :: Es al revés.
+(-) Nada en absoluto, porque `-o` desactiva `-print` y no se da ninguna otra acción. :: La parte derecha sí imprime.
+
+@@q single | El print por defecto
+¿Por qué `find a -name '*.txt' -o -name '*.log'` (sin acción explícita) imprime los dos tipos?
+(+) Si no se da ninguna acción, `find` añade un `-print` implícito a la expresión **entera**. :: La trampa solo aparece cuando escribes tú un `-print`.
+(-) Porque `-o` junta las listas de resultados de las dos comprobaciones y las imprime juntas. :: Es un operador lógico.
+(-) Porque `-name` es una acción que imprime la ruta de cada fichero que coincide. :: Es una comprobación.
+(-) Porque por defecto solo se imprimen los ficheros `.log`, sea cual sea la expresión. :: No existe ese comportamiento por defecto.
+
+@@q fill | Negación
+Busca todos los ficheros regulares cuyo nombre **no** termina en `.txt`: `find . -type f {{! ;; -not}} -name '*.txt'`
+(x) ~ :: No es un operador de `find`.
+(x) -no :: No es válido.
+@@note
+Usa `\!` si tu shell trata `!` de forma especial (por ejemplo la expansión del historial en una sesión interactiva).
+
+@@q sort | ¿Qué ficheros selecciona?
+@@buckets Seleccionado | No seleccionado
+Expresión: `find . -type f \( -name '*.sh' -o -name '*.bin' \) -perm -u+x`. Decide para cada fichero.
+(Seleccionado) `./run.sh` (ejecutable por el propietario) :: Un fichero regular `.sh` con `u+x`.
+(Seleccionado) `./tools/app.bin` (modo 755) :: Un fichero `.bin` que el propietario puede ejecutar.
+(No seleccionado) `./notas.sh` (modo 644) :: El nombre es correcto, pero no tiene bit de ejecución.
+(No seleccionado) `./lib.so` (modo 755) :: Es ejecutable, pero el nombre no es ni `.sh` ni `.bin`.
+(No seleccionado) `./scripts.sh/` (un directorio con modo 755) :: El nombre encaja, pero no es un fichero regular.
+(No seleccionado) `./TOOL.BIN` (modo 755) :: `-name` distingue mayúsculas, así que `.BIN` no coincide con `*.bin`.
+
+@@group Acciones
+@@q single | Semántica de exec
+¿Qué hace `find . -name '*.log' -exec rm {} \;`?
+(+) Ejecuta `rm` una vez por cada fichero encontrado, sustituyendo `{}` por el nombre del fichero. :: El `\;` termina el mandato que se le da a `-exec`.
+(-) Borra todos los ficheros del directorio, porque `{}` representa todos los nombres de fichero. :: Solo los ficheros `.log`.
+(-) Imprime los nombres de los ficheros `.log` sin borrarlos, porque `rm` solo lo simula. :: `rm` sí borra.
+(-) Ejecuta `rm` una sola vez, pasándole todos los nombres encontrados en una única línea de mandatos. :: Esa es la forma con `+`.
+
+@@q single | Punto y coma frente a más
+¿Qué diferencia hay entre `-exec cmd {} \;` y `-exec cmd {} +`?
+(+) Con `;` el mandato se ejecuta una vez por fichero; con `+` se añaden muchos nombres a un único mandato, lo que es más rápido. :: Como `xargs`.
+(-) Son idénticos y solo se diferencian en cómo se escriben en la shell. :: Cambia el número de ejecuciones.
+(-) `+` hace que el mandato solo se ejecute sobre los directorios y nunca sobre ficheros normales, mientras que `;` se usa para los ficheros regulares. :: Trabaja sobre las coincidencias.
+(-) `;` necesita privilegios de root, mientras que `+` lo puede usar cualquier usuario normal. :: No.
+
+@@q single | Escapar el punto y coma
+¿Por qué el punto y coma detrás de `-exec` hay que escribirlo como `\;` o `';'`?
+(+) Un `;` sin escapar lo tomaría la shell como el final del propio mandato `find`. :: `find` tiene que recibir el `;` de forma literal.
+(-) Porque `find` solo acepta caracteres escapados con una barra invertida. :: Acepta el carácter normal cuando le llega.
+(-) Porque `;` significa «o» en `find`, y hay que escaparlo para que signifique el final. :: Eso es `-o`.
+(-) Porque el punto y coma no se permite en los nombres de fichero, así que hay que ocultárselo a `find`. :: Sí se permite.
+
+@@q single | Preguntar antes
+¿Qué acción pide confirmación antes de ejecutar el mandato para cada fichero?
+(+) `-ok` :: Como `-exec`, pero pregunta primero.
+(-) `-confirm` :: No es válida.
+(-) `-ask` :: No es válida.
+(-) `-interactive` :: No es válida.
+
+@@q single | La trampa de -delete
+¿Por qué es peligroso `find /tmp/trabajo -name '*' -delete`?
+(+) Coincide con todo, incluido el propio `/tmp/trabajo`, así que se borran el directorio y todo lo que contiene. :: Revísalo antes con `-print`.
+(-) Porque `-delete` necesita privilegios de root y, por tanto, dañará los ficheros del sistema. :: No con tus propios ficheros.
+(-) Porque `-delete` solo borra ficheros vacíos, así que el patrón es inofensivo y deja los datos reales en el árbol. :: Borra todo lo que coincide (los directorios tienen que estar vacíos, cosa que se cumple porque borra de abajo arriba).
+(-) Porque también borra el padre de `/tmp/trabajo`, que es donde empieza el árbol. :: Solo las coincidencias.
+
+@@q single | Orden de delete
+En `find q -name '*.tmp' -delete -print`, ¿qué ves para un fichero `q/a.tmp`?
+(+) Se imprime la ruta `q/a.tmp` después de borrarlo. :: Las acciones se ejecutan de izquierda a derecha; `-delete` tiene éxito, así que sigue `-print`.
+(-) No se imprime nada: `-delete` termina la expresión. :: Se ejecutan las dos acciones.
+(-) Primero se ejecuta `-print` y luego desaparece el fichero. :: El orden es el escrito.
+(-) Un error, porque no se pueden combinar dos acciones. :: Sí se pueden.
+
+@@q order | Limpieza segura
+Ordena estos pasos para borrar ficheros de registro antiguos con seguridad.
+(>) Ejecutar `find /var/tmp -name '*.log' -mtime +30 -type f` para ver los candidatos :: Solo `-print` (el valor por defecto) muestra lo que se borraría.
+(>) Revisar la lista: nombres esperados, nada inesperado :: El paso de revisión humana.
+(>) Volver a ejecutar el mismo mandato con `-delete` al final :: La acción va detrás de todas las comprobaciones.
+(>) Ejecutar otra vez el primer mandato para confirmar que no queda nada :: Comprobación.
+
+@@q single | find y xargs
+¿Qué mandato borra con seguridad los ficheros `.tmp` cuyos nombres pueden contener espacios?
+(+) `find . -name '*.tmp' -print0 | xargs -0 rm` :: Los nombres separados por el carácter nulo sobreviven a espacios y saltos de línea.
+(-) `find . -name '*.tmp' | xargs rm`, que funciona con nombres sin espacios pero parte los que sí los tienen :: Los nombres con espacios se parten en varios argumentos.
+(-) `rm $(find . -name '*.tmp')` :: La división en palabras rompe los nombres con espacios.
+(-) `find . -name '*.tmp' > rm` :: Crea un fichero llamado `rm`.
+
+@@q single | Sustitución de mandato frente a exec
+¿Qué desventaja tiene `rm $(find . -name '*.bak')` frente a `find . -name '*.bak' -delete`?
+(+) La shell divide el resultado por los espacios en blanco (y puede superar el límite de argumentos), así que los nombres raros fallan. :: `find` hace el trabajo internamente sin esos límites.
+(-) Siempre es mucho más lento, incluso con directorios pequeños, porque la shell tiene que lanzar `find` dos veces para obtener los nombres. :: La velocidad no es el problema.
+(-) No puede borrar ficheros en absoluto; solo puede imprimir los nombres que ha encontrado `find`. :: Sí puede.
+(-) Solo borra el primer fichero de la lista, ya que `rm` ignora los demás argumentos. :: Pasa todos los nombres.
+
+@@q single | printf
+¿Qué imprime `find . -maxdepth 1 -type f -printf '%f %s\n'`?
+(+) Para cada fichero regular: su nombre base y su tamaño en bytes. :: `%f` es el nombre y `%s` el tamaño.
+(-) Los permisos de cada fichero regular, en octal, seguidos de su nombre. :: Eso sería `%m`.
+(-) La ruta completa de cada fichero junto con el nombre de su propietario. :: `%p` y `%u`.
+(-) La lista de directorios, con el número de entradas de cada uno. :: Se limita a los ficheros.
+
+@@q single | Saltarse un directorio
+¿Qué expresión lista los ficheros del árbol actual pero sin entrar en `./node_modules`?
+(+) `find . -path ./node_modules -prune -o -type f -print` :: `-prune` detiene el descenso; el `-o` hace que el resto se aplique a las demás rutas.
+(-) `find . -type f -not -name node_modules`, que se salta un *fichero* con ese nombre pero sigue entrando en el directorio :: Excluye un fichero con ese *nombre*, pero sigue recorriendo el directorio.
+(-) `find . -maxdepth 1 -type f` :: No mira más abajo en absoluto.
+(-) `find . -skip node_modules` :: No es una opción válida.
+
+@@group Casos prácticos
+@@q single | Ficheros grandes
+¿Qué mandato lista los ficheros regulares de `/var` de más de 100 MiB?
+(+) `find /var -type f -size +100M` :: Tipo más tamaño.
+(-) `find /var -size +100` :: Está en bloques de 512 bytes, e incluye directorios.
+(-) `find /var -type f -size 100M` :: Exactamente 100 MiB (redondeado).
+(-) `du -h /var` :: Lista la ocupación de cada directorio, no ficheros sueltos.
+
+@@q single | Scripts cambiados recientemente
+¿Qué mandato lista los scripts de shell de tu directorio personal modificados en los últimos 7 días?
+(+) `find ~ -type f -name '*.sh' -mtime -7` :: `-7` es «menos de 7 días».
+(-) `find ~ -type f -name '*.sh' -mtime +7` :: De más de una semana.
+(-) `find ~ -type f -name '*.sh' -mmin 7` :: Hace exactamente 7 minutos.
+(-) `find ~ -name '*.sh' -newer 7` :: `-newer` necesita un fichero.
+
+@@q single | Ficheros propios en los que se puede escribir
+¿Qué mandato lista los ficheros de tu directorio personal en los que tienes permiso para escribir?
+(+) `find ~ -type f -writable` :: `-writable` comprueba el acceso real de escritura del usuario actual.
+(-) `find ~ -type f -perm 200` :: Solo los ficheros con modo exactamente 200.
+(-) `find ~ -type f -user root` :: Los ficheros que pertenecen a root.
+(-) `find ~ -type f -perm -o+w` :: Los ficheros en los que pueden escribir los *otros*.
+
+@@q single | Copiar los ficheros encontrados
+¿Qué mandato copia en `~/backup` todos los ficheros `.sh` que hay por debajo del directorio actual?
+(+) `find . -name '*.sh' -exec cp {} ~/backup/ \;` :: `cp` se ejecuta una vez por fichero.
+(-) `find . -name '*.sh' | cp ~/backup/`, donde se espera que `cp` lea los nombres de su entrada estándar :: `cp` no lee nombres de fichero de su entrada estándar.
+(-) `cp find . -name '*.sh' ~/backup/` :: Pasa `find` como si fuera un nombre de fichero.
+(-) `find . -name '*.sh' > ~/backup/` :: Redirige la lista de nombres a una ruta que es un directorio.
+
+@@q single | Contar coincidencias
+¿Qué mandato imprime cuántos ficheros `.conf` hay por debajo de `/etc`?
+(+) `find /etc -name '*.conf' | wc -l` :: Una ruta por línea, contadas.
+(-) `find /etc -name '*.conf' -c`, donde la opción `-c` hace que find imprima solo el número de coincidencias :: No existe esa opción.
+(-) `wc -l /etc/*.conf` :: Cuenta las líneas de los ficheros de un directorio, no los propios ficheros.
+(-) `grep -c .conf /etc` :: `/etc` es un directorio, y además miraría dentro de los ficheros.
+
+@@q single | ¿Contenido o nombres?
+¿Qué mandato lista los ficheros de `/etc` cuyo **contenido** incluye la palabra `nameserver`?
+(+) `grep -rl nameserver /etc` :: La pregunta es sobre el *contenido* de los ficheros.
+(-) `find /etc -name nameserver` :: Mira los nombres de los ficheros.
+(-) `find /etc -type nameserver` :: No es un tipo válido.
+(-) `locate nameserver` :: También busca por nombre.
+
+@@q single | find frente a locate
+¿Por qué `locate` puede no encontrar un fichero que `find` sí encontraría?
+(+) `locate` lee una base de datos ya construida que solo se actualiza periódicamente, así que faltan los ficheros recientes. :: `find` mira el sistema de ficheros real cada vez.
+(-) `locate` solo busca en el directorio actual y no entra en los subdirectorios. :: Busca en la base de datos de todo el sistema.
+(-) `locate` rechaza los nombres de fichero con puntos, que `find` acepta sin problema, así que esos ficheros nunca se listan. :: No existe ese límite.
+(-) `find` y `locate` siempre coinciden, así que un fichero que se le escapa a uno de ellos en realidad no está. :: La base de datos puede estar desactualizada.
+
+@@group Práctica variada
+@@q fill | Buscar por nombre
+Lista todos los ficheros por debajo del directorio actual cuyo nombre termina en `.log`: `find . -name '{{*.log}}'`
+(x) .log :: Un patrón sin `*` solo coincide con un fichero llamado exactamente `.log`.
+(x) *log :: También coincide con nombres como `catalog`.
+@@note
+Entrecomilla el patrón para que la shell no lo expanda.
+
+@@q fill | Solo directorios
+Lista solo los directorios que cuelgan de `/srv`: `find /srv -type {{d}}`
+(x) f :: Selecciona ficheros regulares.
+(x) l :: Selecciona enlaces simbólicos.
+@@note
+`-type f` para ficheros, `-type l` para enlaces.
+
+@@q fill | Antiguos y grandes
+Busca en `/var/log` los ficheros regulares de más de 10 MiB modificados hace más de 30 días: `find /var/log -type f -size {{+10M}} -mtime {{+30}}`
+(x) 10M :: Sin el signo más, solo los ficheros de unos 10 MiB.
+(x) -30 :: Significa *menos de* 30 días.
+@@note
+`+` significa «más que», `-` significa «menos que» y sin signo significa «exactamente».
+
+@@q sort | ¿Comprobación o acción?
+@@buckets Comprobación | Acción
+Clasifica cada primitiva de `find`.
+(Comprobación) `-mtime -1` :: Selecciona los ficheros cambiados en el último día.
+(Comprobación) `-perm -u+x` :: Selecciona los ficheros que puede ejecutar su propietario.
+(Comprobación) `-user root` :: Selecciona los ficheros de root.
+(Acción) `-delete` :: Borra el fichero.
+(Acción) `-exec chmod 644 {} \;` :: Ejecuta un mandato sobre el fichero.
+(Acción) `-print0` :: Imprime la ruta terminada en NUL.
+
+@@q multi | Formas seguras de borrar los ficheros encontrados
+Marca los mandatos que borran con seguridad todos los ficheros `.tmp` por debajo del directorio actual, aunque los nombres contengan espacios.
+(+) `find . -name '*.tmp' -delete` :: Los borra el propio `find`.
+(+) `find . -name '*.tmp' -print0 | xargs -0 rm` :: Los separadores NUL protegen los nombres raros.
+(+) `find . -name '*.tmp' -exec rm {} \;` :: `rm` se ejecuta una vez por fichero con el nombre exacto.
+(-) `rm $(find . -name '*.tmp')` :: La división en palabras rompe los nombres con espacios.
+(-) `find . -name '*.tmp' | xargs rm` :: Los espacios parten los nombres en argumentos equivocados.
+
+@@q order | Limpiar ficheros antiguos
+Ordena los pasos para limpiar con seguridad los ficheros temporales antiguos.
+(>) `find /tmp/trabajo -type f -mtime +7 -print` :: Ver qué ficheros se borrarían.
+(>) Comprobar que la lista solo contiene lo que esperas :: El paso de revisión humana.
+(>) `find /tmp/trabajo -type f -mtime +7 -delete` :: Las mismas comprobaciones, más la acción destructiva.
+(>) `find /tmp/trabajo -type f -mtime +7 | wc -l` :: Confirmar que no queda nada (imprime 0).
+
+@@q match | Comprobaciones de tiempo y tamaño
+Empareja cada comprobación con los ficheros que selecciona.
+(=) `-mtime +30` => Modificados hace más de 30 días completos :: Ficheros antiguos.
+(=) `-mmin -5` => Modificados en los últimos cinco minutos :: Ficheros muy recientes.
+(=) `-size +1G` => De más de un gibibyte :: Ficheros enormes.
+(=) `-size 0` => Ficheros vacíos (cero bloques) :: Longitud cero.
+(=) `-newer marca` => Modificados más recientemente que el fichero `marca` :: Comparar con otro fichero.
+(-) Del usuario actual :: Eso es `-user`, no una comprobación de tiempo o tamaño.
