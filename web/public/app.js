@@ -182,8 +182,9 @@ document.addEventListener('keydown', ev => {
 // ------------------------------------------------------------------ solution
 // ------------------------------------------------------------------ info & reference (glossary)
 function glossaryHTML(entries) {
-  if (!entries.length) return '<p class="hint">No commands listed for this one.</p>';
-  return entries.map(e => `<div class="gl-item"><code>${esc(e.name)}</code>${e.desc ? `<p>${esc(e.desc)}</p>` : ''}</div>`).join('');
+  const known = entries.filter(e => e.desc);
+  if (!known.length) return '<p class="hint">No commands with a write-up yet for this one.</p>';
+  return known.map(e => `<div class="gl-item"><code>${esc(e.name)}</code><p>${esc(e.desc)}</p></div>`).join('');
 }
 $('#info-btn').onclick = () => {
   if (!state.current) return;
@@ -192,37 +193,109 @@ $('#info-btn').onclick = () => {
   $('#info-dialog').showModal();
 };
 
-let referenceBuilt = false;
-function buildReference() {
-  const body = $('#reference-body');
-  body.innerHTML = state.index.map(t => {
+// An index of every topic's distinct commands, plus which topics each command appears in
+// (so a focused command view can link back to its other categories).
+let refTopics = null;      // [{id, title, cmds: [{key,name,desc}, ...]}]
+let refCmdTopics = null;   // key -> [{id, title}]
+let refSel = { type: 'all' }; // {type:'all'} | {type:'topic', id} | {type:'cmd', key}
+
+function buildReferenceIndex() {
+  refTopics = state.index.map(t => {
     const cmds = new Map();
-    for (const e of t.exercises) for (const c of explainCmds(e.cmds)) if (!cmds.has(c.key)) cmds.set(c.key, c);
-    return `<section class="ref-topic" data-topic="${esc(t.id)} ${esc(t.title.toLowerCase())}">
-      <h3>${esc(t.id)} · ${esc(t.title)}</h3>
-      <div class="glossary-list">${glossaryHTML([...cmds.values()])}</div>
-    </section>`;
-  }).join('');
-  referenceBuilt = true;
+    for (const e of t.exercises) for (const c of explainCmds(e.cmds)) if (c.desc && !cmds.has(c.key)) cmds.set(c.key, c);
+    return { id: t.id, title: t.title, cmds: [...cmds.values()].sort((a, b) => a.name.localeCompare(b.name)) };
+  });
+  refCmdTopics = new Map();
+  for (const t of refTopics) for (const c of t.cmds) {
+    if (!refCmdTopics.has(c.key)) refCmdTopics.set(c.key, []);
+    refCmdTopics.get(c.key).push({ id: t.id, title: t.title });
+  }
 }
+
+function topicSection(t) {
+  return `<section class="ref-topic" id="ref-topic-${esc(t.id)}">
+    <h3><a href="#" data-action="topic" data-id="${esc(t.id)}">${esc(t.id)} · ${esc(t.title)}</a></h3>
+    <div class="glossary-list">${glossaryHTML(t.cmds)}</div>
+  </section>`;
+}
+
+function renderReferenceContent() {
+  const content = $('#reference-content');
+  if (refSel.type === 'topic') {
+    const t = refTopics.find(x => x.id === refSel.id);
+    content.innerHTML = t ? topicSection(t) : '<p class="ref-empty">Not found.</p>';
+  } else if (refSel.type === 'cmd') {
+    const topics = refCmdTopics.get(refSel.key) || [];
+    const entry = topics.length ? refTopics.find(t => t.id === topics[0].id).cmds.find(c => c.key === refSel.key) : null;
+    content.innerHTML = entry ? `<div class="gl-focus">${glossaryHTML([entry])}
+      <div class="gl-seealso">Used in: ${topics.map(t => `<a href="#" data-action="topic" data-id="${esc(t.id)}">${esc(t.id)} · ${esc(t.title)}</a>`).join('')}</div>
+    </div>` : '<p class="ref-empty">Not found.</p>';
+  } else {
+    content.innerHTML = refTopics.map(t => topicSection(t)).join('');
+  }
+  content.scrollTop = 0;
+}
+
+function renderReferenceNav() {
+  $('#reference-all').classList.toggle('current', refSel.type === 'all');
+  $('#reference-tree').innerHTML = refTopics.map(t => `
+    <div class="ref-nav-topic${refSel.type !== 'all' ? ' open' : ''}" data-topic="${esc(t.id)} ${esc(t.title.toLowerCase())}">
+      <button class="ref-nav-topic-head${refSel.type === 'topic' && refSel.id === t.id ? ' current' : ''}" data-action="topic" data-id="${esc(t.id)}">
+        <span class="chev">▸</span>${esc(t.id)}<span class="count">${t.cmds.length}</span>
+      </button>
+      <div class="ref-nav-cmds">${t.cmds.map(c => `<a href="#" class="ref-nav-cmd${refSel.type === 'cmd' && refSel.key === c.key ? ' current' : ''}"
+        data-action="cmd" data-key="${esc(c.key)}" data-name="${esc(c.name.toLowerCase())}" title="${esc(c.name)}">${esc(c.name)}</a>`).join('')}</div>
+    </div>`).join('');
+}
+
+function renderReference() {
+  renderReferenceNav();
+  renderReferenceContent();
+}
+
+$('#reference-nav').addEventListener('click', ev => {
+  const el = ev.target.closest('[data-action]');
+  if (!el) return;
+  ev.preventDefault();
+  if (el.dataset.action === 'topic') {
+    const node = el.closest('.ref-nav-topic');
+    if (node && refSel.type === 'topic' && refSel.id === el.dataset.id) node.classList.toggle('open');
+    else if (node) node.classList.add('open');
+    refSel = { type: 'topic', id: el.dataset.id };
+  } else if (el.dataset.action === 'cmd') {
+    refSel = { type: 'cmd', key: el.dataset.key };
+  }
+  renderReference();
+});
+$('#reference-content').addEventListener('click', ev => {
+  const el = ev.target.closest('[data-action="topic"]');
+  if (!el) return;
+  ev.preventDefault();
+  refSel = { type: 'topic', id: el.dataset.id };
+  renderReference();
+});
+$('#reference-all').onclick = ev => { ev.preventDefault(); refSel = { type: 'all' }; renderReference(); };
+
 $('#reference-btn').onclick = () => {
-  if (!referenceBuilt) buildReference();
+  if (!refTopics) buildReferenceIndex();
+  refSel = { type: 'all' };
   $('#reference-search').value = '';
+  renderReference();
   $('#reference-dialog').showModal();
   setTimeout(() => $('#reference-search').focus(), 50);
 };
 $('#reference-search').oninput = () => {
   const q = $('#reference-search').value.trim().toLowerCase();
-  for (const sec of document.querySelectorAll('.ref-topic')) {
-    const hit = !q || sec.dataset.topic.includes(q) || sec.textContent.toLowerCase().includes(q);
-    sec.classList.toggle('hidden', !hit);
-    if (hit && q) {
-      for (const item of sec.querySelectorAll('.gl-item')) {
-        item.classList.toggle('hidden', !item.textContent.toLowerCase().includes(q));
-      }
-    } else {
-      for (const item of sec.querySelectorAll('.gl-item')) item.classList.remove('hidden');
+  for (const node of document.querySelectorAll('.ref-nav-topic')) {
+    const topicHit = !q || node.dataset.topic.includes(q);
+    let anyCmd = false;
+    for (const a of node.querySelectorAll('.ref-nav-cmd')) {
+      const hit = !q || topicHit || a.dataset.name.includes(q);
+      a.classList.toggle('hidden', !hit);
+      anyCmd = anyCmd || hit;
     }
+    node.classList.toggle('hidden', !(topicHit || anyCmd));
+    if (q) node.classList.add('open'); else if (refSel.type === 'all') node.classList.remove('open');
   }
 };
 

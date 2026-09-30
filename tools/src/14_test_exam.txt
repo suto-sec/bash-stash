@@ -1,0 +1,351 @@
+@@topic 14_test_if_case | test, if & case
+@@ex 1434 vowel_count | Counting vowels character by character
+@@level 3
+@@cmds case, while, ${#s}, ${s:i:1}
+@@readme
+For every argument (a word, letters only assumed), count how many of its characters are a vowel
+(`a e i o u`, any case, no accents) by looping over its characters one at a time (`${w:i:1}`) and
+matching each one with a `case` pattern. Print `WORD: N vocales`. Finally print `total: T` (T = sum
+of vowels over every argument). With no arguments, print only `total: 0`.
+@@check
+SEEDS=1
+ARGS=('' 'hola' 'xyz' 'AEIOU' 'Programacion' 'brrr' 'hola mundo bash')
+extra_check() { must_use case; }
+@@solution
+#!/bin/bash
+T=0
+for w in "$@"; do
+  n=0
+  i=0
+  while [ "$i" -lt "${#w}" ]; do
+    c=${w:i:1}
+    case $c in
+      [aeiouAEIOU]) n=$((n + 1)) ;;
+    esac
+    i=$((i + 1))
+  done
+  echo "$w: $n vocales"
+  T=$((T + n))
+done
+echo "total: $T"
+
+@@ex 1435 membership | Is this word in the list? (exact match)
+@@level 3
+@@cmds case, for, break
+@@readme
+The first argument is NEEDLE; the rest are a list of words (HAYSTACK). Using a loop and a `case`
+that matches NEEDLE **exactly** (not a substring: quote the pattern so it can't glob), find the
+**first** position (1-based) of NEEDLE in HAYSTACK. Print `SI: posicion P` if found (stop looking
+with `break`), or `NO` if it never appears. With no HAYSTACK words at all, print `NO`.
+@@check
+SEEDS=1
+ARGS=('x' 'x a b' 'a x b' 'a b x' 'a b c' 'x' 'ab a ab b' 'a a a')
+extra_check() { must_use case break; }
+@@solution
+#!/bin/bash
+needle=$1
+shift
+p=0
+found=
+for w in "$@"; do
+  p=$((p + 1))
+  case $w in
+    "$needle") found=$p; break ;;
+  esac
+done
+if [ -n "$found" ]; then
+  echo "SI: posicion $found"
+else
+  echo "NO"
+fi
+
+@@ex 1436 sign_pattern | Classifying the signs of three numbers
+@@level 3
+@@cmds test -lt -gt, case
+@@readme
+The script receives exactly three integers. For each one print its sign as `+`, `-` or `0` (one line
+each, in order). Then, using a single `case` on the three signs joined together (e.g. `+-0`), print
+exactly one of:
+
+- `con ceros` if at least one of the three is `0` (check this **first**, before any of the following)
+- `todos positivos` if all three are `+`
+- `todos negativos` if all three are `-`
+- `mixto` otherwise (a mix of `+` and `-`, no zero)
+@@check
+SEEDS=1
+ARGS=('1 2 3' '-1 -2 -3' '0 0 0' '1 -2 3' '1 0 -3' '0 5 9' '-5 -5 0' '7 -7 0')
+extra_check() { must_use case; }
+@@solution
+#!/bin/bash
+s=()
+for n in "$1" "$2" "$3"; do
+  if [ "$n" -gt 0 ]; then s+=(+)
+  elif [ "$n" -lt 0 ]; then s+=(-)
+  else s+=(0)
+  fi
+done
+echo "${s[0]}"
+echo "${s[1]}"
+echo "${s[2]}"
+pat="${s[0]}${s[1]}${s[2]}"
+case $pat in
+  *0*) echo "con ceros" ;;
+  +++) echo "todos positivos" ;;
+  ---) echo "todos negativos" ;;
+  *) echo mixto ;;
+esac
+
+@@ex 1437 bracket_balance | balance.sh: checking parentheses balance
+@@level 4
+@@cmds case, test -eq -lt, while, exit codes
+@@readme
+Write `balance.sh STRING` (exactly one argument, or it is a usage error). STRING is meant to contain
+only the characters `(` and `)`; validate that first: if any other character appears, print a message
+on stderr **naming the whole string**, exit **2**.
+
+Otherwise scan it left to right, character by character (`${STRING:i:1}` and a `case`), keeping a
+running counter that goes up on `(` and down on `)`. If the counter ever goes **negative**, print
+`desbalanceado: cierre extra en posicion P` (P = the 1-based position, that is `i+1`, where it first
+went negative) and stop scanning right there. Otherwise, after the whole string, print `balanceado`
+if the counter is exactly 0, or `desbalanceado: faltan N cierres` (N = the final counter value) if
+it's positive.
+
+Errors (stderr, wording free): not exactly 1 argument -> usage, exit **1**. Success or a detected
+imbalance always exits **0** — only argument errors give a non-zero exit code.
+@@check
+SCRIPT_NAME=balance.sh
+SEEDS=2
+COMPARE="stdout exit errmsg"
+ARGS=('' '"()"' '"(())"' '"((()))"' '")"' '"("' '"()()"' '"(()"' '"())"' '"(a)"' '"abc"' '"((())))"')
+extra_check() {
+  local a; eval "a=( $CASE )"
+  [[ ${#a[@]} -eq 1 && $REF_CODE == 2 ]] && mentions "${a[0]}"
+}
+@@solution
+#!/bin/bash
+# balance.sh STRING
+if [ $# -ne 1 ]; then
+  echo "usage: $(basename "$0") STRING" >&2
+  exit 1
+fi
+S=$1
+if [[ $S == *[!()]* ]]; then
+  echo "error: '$S' contains characters other than ( and )" >&2
+  exit 2
+fi
+c=0
+i=0
+bad=
+while [ "$i" -lt "${#S}" ]; do
+  ch=${S:i:1}
+  case $ch in
+    '(') c=$((c + 1)) ;;
+    ')') c=$((c - 1)) ;;
+  esac
+  if [ "$c" -lt 0 ]; then
+    echo "desbalanceado: cierre extra en posicion $((i + 1))"
+    bad=1
+    break
+  fi
+  i=$((i + 1))
+done
+if [ -z "$bad" ]; then
+  if [ "$c" -eq 0 ]; then
+    echo balanceado
+  else
+    echo "desbalanceado: faltan $c cierres"
+  fi
+fi
+
+@@ex 1438 dir_chain | dir_chain.sh: validating a chain of nested directories
+@@level 4
+@@cmds test -d, for, exit codes
+@@readme
+Write `dir_chain.sh NAME1 [NAME2 ...]`: each argument is one path **component** (not a full path);
+build the path incrementally, joining them with `/` (`NAME1`, then `NAME1/NAME2`, then
+`NAME1/NAME2/NAME3`, ...) and, **in order**, check that each partial path is an existing directory.
+
+Stop at the **first level** that fails and print, on stderr, a message **naming that partial path**
+and exit **2**. If every level is a directory, print `cadena valida: FULLPATH` (FULLPATH = the
+complete joined path) and exit 0.
+
+With no arguments, print a usage message on stderr and exit 1.
+@@check
+SCRIPT_NAME=dir_chain.sh
+SEEDS=2
+COMPARE="stdout exit errmsg"
+setup() { mkdir -p "nivel uno/nivel dos/nivel tres" "otro_$(word)"; touch "nivel uno/archivo.txt" archivo.txt; }
+ARGS=('' 'noexiste' '"nivel uno"' '"nivel uno" "nivel dos"' '"nivel uno" "nivel dos" "nivel tres"' '"nivel uno" noexiste' '"nivel uno" "nivel dos" noexiste' 'archivo.txt')
+extra_check() {
+  local a; eval "a=( $CASE )"
+  [[ $REF_CODE == 2 ]] && mentions "${a[$((${#a[@]} - 1))]}"
+}
+@@solution
+#!/bin/bash
+# dir_chain.sh NAME1 [NAME2 ...]
+if [ $# -eq 0 ]; then
+  echo "usage: $(basename "$0") NAME1 [NAME2 ...]" >&2
+  exit 1
+fi
+path=
+for n in "$@"; do
+  if [ -z "$path" ]; then path=$n; else path="$path/$n"; fi
+  if [ ! -d "$path" ]; then
+    echo "error: '$path' is not a directory" >&2
+    exit 2
+  fi
+done
+echo "cadena valida: $path"
+
+@@ex 1439 safe_delete | safe_delete.sh: deleting only files older than a reference
+@@level 4
+@@cmds test -f -w -x -ot, for, rm, exit codes
+@@readme
+Write `safe_delete.sh REF FILE...`: REF is a reference file; the rest are candidates. For each
+candidate, in order, delete it (`rm`) and print `borrado: FILE` **only if** it is a regular file, it
+is writable, it is **not** executable, and it is **older** than REF (`-ot`); otherwise print
+`omitido: FILE` and leave it untouched.
+
+Finally print `TOTAL: R borrados de N candidatos`.
+
+Errors (stderr, wording free; check in this order): fewer than 2 arguments -> usage, exit **1**;
+REF does not exist -> a message **naming it**, exit **2** (don't touch anything).
+@@check
+SCRIPT_NAME=safe_delete.sh
+SEEDS=2
+COMPARE="stdout exit errmsg files"
+setup() {
+  touch -d "2026-05-10 10:00" ref.txt
+  mkf "viejo espacio.txt" "$(randtext 1)"; touch -d "2026-01-01 00:00" "viejo espacio.txt"
+  mkf nuevo.txt "$(randtext 1)"; touch -d "2026-09-01 00:00" nuevo.txt
+  mkf solo_lectura.txt "$(randtext 1)"; touch -d "2026-01-01 00:00" solo_lectura.txt; chmod 444 solo_lectura.txt
+  mkf ejecutable.sh "$(randtext 1)"; touch -d "2026-01-01 00:00" ejecutable.sh; chmod 755 ejecutable.sh
+  mkdir -p carpeta_vieja; touch -d "2026-01-01 00:00" carpeta_vieja
+}
+ARGS=('' 'ref.txt' '"ref.txt" "viejo espacio.txt"' '"ref.txt" nuevo.txt' '"ref.txt" solo_lectura.txt' '"ref.txt" ejecutable.sh' '"ref.txt" carpeta_vieja' '"ref.txt" noexiste.txt' '"ref.txt" "viejo espacio.txt" nuevo.txt solo_lectura.txt ejecutable.sh carpeta_vieja noexiste.txt' 'noexiste_ref.txt "viejo espacio.txt"')
+extra_check() {
+  local a; eval "a=( $CASE )"
+  [[ $REF_CODE == 2 ]] && mentions "${a[0]}"
+}
+@@solution
+#!/bin/bash
+# safe_delete.sh REF FILE...
+if [ $# -lt 2 ]; then
+  echo "usage: $(basename "$0") REF FILE..." >&2
+  exit 1
+fi
+REF=$1
+shift
+if [ ! -e "$REF" ]; then
+  echo "error: '$REF' does not exist" >&2
+  exit 2
+fi
+R=0
+N=0
+for f in "$@"; do
+  N=$((N + 1))
+  if [ -f "$f" ] && [ -w "$f" ] && [ ! -x "$f" ] && [ "$f" -ot "$REF" ]; then
+    rm -- "$f"
+    echo "borrado: $f"
+    R=$((R + 1))
+  else
+    echo "omitido: $f"
+  fi
+done
+echo "TOTAL: $R borrados de $N candidatos"
+
+@@ex 1440 poll | poll.sh: tallying votes read from stdin
+@@level 3
+@@cmds read, case, while
+@@readme
+Read lines from standard input, one **vote** per line (`si`, `no` or anything else, which counts as
+`invalido`, case-insensitive for `si`/`no`), until end of input. For each line print `voto: RESULT`
+(RESULT being `si`, `no` or `invalido`). At the end print:
+
+```
+si: S
+no: N
+invalido: I
+```
+
+and finally `ganador: si`, `ganador: no` or `empate` (comparing S vs N only; invalid votes never
+decide the winner — a tie between S and N, even 0-0, is `empate`).
+@@check
+SEEDS=5
+input() { local i n; n=$(randr 3 8); for i in $(seq "$n"); do pick si Si SI no No NO tal_vez ''; done; }
+extra_check() { must_use read case; }
+@@solution
+#!/bin/bash
+S=0; N=0; I=0
+while read -r v; do
+  case ${v,,} in
+    si) echo "voto: si"; S=$((S + 1)) ;;
+    no) echo "voto: no"; N=$((N + 1)) ;;
+    *) echo "voto: invalido"; I=$((I + 1)) ;;
+  esac
+done
+echo "si: $S"
+echo "no: $N"
+echo "invalido: $I"
+if [ "$S" -gt "$N" ]; then echo "ganador: si"
+elif [ "$N" -gt "$S" ]; then echo "ganador: no"
+else echo "empate"
+fi
+
+@@ex 1441 numeric_range | numeric_range.sh: validating that every argument is an integer within a range
+@@level 4
+@@cmds test -lt -gt, [[ =~ ]], for, exit codes
+@@readme
+Write `numeric_range.sh MIN MAX VALUE...`. MIN and MAX must themselves be integers (may be negative,
+optional leading `-`, no leading `+`); each VALUE is checked against `[MIN, MAX]` (inclusive).
+
+For every VALUE, in order, print `VALUE: dentro` or `VALUE: fuera de rango` (a value that is not even
+a valid integer counts as `fuera de rango` too, and is never compared numerically). Finally print
+`TOTAL: D dentro, F fuera` (D + F = number of VALUEs).
+
+Errors (stderr, wording free; check in this order): fewer than 3 arguments -> usage, exit **1**; MIN
+or MAX is not a valid integer -> a message **naming the bad one**, exit **2**; MIN greater than MAX ->
+exit **3**. On success (even if some values are out of range) exit 0.
+@@check
+SCRIPT_NAME=numeric_range.sh
+SEEDS=2
+COMPARE="stdout exit errmsg"
+ARGS=('' '1 10' '1 10 5' '1 10 1 10 0 11 -5 5' '-5 5 -5 5 -6 6 0' '10 1 5' 'abc 10 5' '1 abc 5' '1 10 5 abc 3.5 5')
+extra_check() {
+  local a; eval "a=( $CASE )"
+  if [[ $REF_CODE == 2 ]]; then
+    [[ ! ${a[0]} =~ ^-?[0-9]+$ ]] && mentions "${a[0]}"
+    [[ ${a[0]} =~ ^-?[0-9]+$ && ! ${a[1]} =~ ^-?[0-9]+$ ]] && mentions "${a[1]}"
+  fi
+}
+@@solution
+#!/bin/bash
+# numeric_range.sh MIN MAX VALUE...
+if [ $# -lt 3 ]; then
+  echo "usage: $(basename "$0") MIN MAX VALUE..." >&2
+  exit 1
+fi
+MIN=$1; MAX=$2; shift 2
+if ! [[ $MIN =~ ^-?[0-9]+$ ]]; then
+  echo "error: '$MIN' is not a valid integer" >&2
+  exit 2
+fi
+if ! [[ $MAX =~ ^-?[0-9]+$ ]]; then
+  echo "error: '$MAX' is not a valid integer" >&2
+  exit 2
+fi
+if [ "$MIN" -gt "$MAX" ]; then
+  echo "error: MIN is greater than MAX" >&2
+  exit 3
+fi
+D=0; F=0
+for v in "$@"; do
+  if [[ $v =~ ^-?[0-9]+$ ]] && [ "$v" -ge "$MIN" ] && [ "$v" -le "$MAX" ]; then
+    echo "$v: dentro"
+    D=$((D + 1))
+  else
+    echo "$v: fuera de rango"
+    F=$((F + 1))
+  fi
+done
+echo "TOTAL: $D dentro, $F fuera"

@@ -1,0 +1,419 @@
+@@topic 03_files_links | Files, copies & links
+@@ex 0331 mirror_ext | Copying by extension, keeping the tree shape
+@@level 3
+@@cmds find, mkdir -p, dirname, cp
+@@readme
+Under `origen` there is a tree of subdirectories containing files with mixed extensions. Copy every
+regular file whose name ends in `.log` (any depth) into `destino`, **keeping the same relative path**
+it had under `origen` (creating whatever subdirectories are needed under `destino`). Files with other
+extensions are not copied, and `destino` may already contain unrelated files (leave them alone).
+
+Finally print, sorted, the relative path (no leading `./`) of every file copied, one per line,
+followed by `Copied: N`.
+@@check
+COMPARE="stdout exit files"
+setup() {
+  mkdir -p "origen/a/b" "origen/c" destino
+  local i f
+  for i in $(seq 10); do
+    f="origen/$(pick . a "a/b" c)/$(pick "$(word)$i.log" "$(word) $i.log" "$(word)$i.txt" "$(word)$i.dat")"
+    randtext "$(randr 1 3)" > "$f"
+  done
+  randtext 1 > destino/ya_estaba.txt
+}
+@@solution
+#!/bin/bash
+n=0
+while IFS= read -r f; do
+  rel=${f#origen/}
+  mkdir -p "destino/$(dirname "$rel")"
+  cp "$f" "destino/$rel"
+  echo "$rel"
+  n=$((n + 1))
+done < <(find origen -type f -name '*.log' | sort)
+echo "Copied: $n"
+
+@@ex 0332 swap_contents | Swapping two files without losing data
+@@level 3
+@@cmds mv, mktemp
+@@readme
+The current directory contains `a.txt` and `b.txt`, each with its own content and its own
+permission bits. Using only `mv` (no `cp`, no `cat`), make `a.txt`'s content become what `b.txt`
+had, and `b.txt`'s content become what `a.txt` had.
+
+`mv a.txt b.txt` directly would overwrite and lose `b.txt`'s original content, so route one of the
+files through a third, disposable name first — get one with `mktemp` in the current directory — to
+do a proper three-way rotation. Remember that a permission mode belongs to the **inode**, not to the
+name: `mv` carries it along with the data, so after the swap don't be surprised that each name now
+also carries the *other* file's original permissions. Nothing is printed.
+@@check
+COMPARE="stdout exit files"
+setup() {
+  randtext "$(randr 1 4)" > a.txt; chmod "$(pick 644 600 640 755)" a.txt
+  randtext "$(randr 1 4)" > b.txt; chmod "$(pick 644 600 640 755)" b.txt
+}
+@@solution
+#!/bin/bash
+tmp=$(mktemp -p .)
+mv a.txt "$tmp"
+mv b.txt a.txt
+mv "$tmp" b.txt
+
+@@ex 0333 hardlink_groups | Grouping files that are secretly the same
+@@level 3
+@@cmds test -ef, test -L, basename
+@@readme
+The directory `almacen` contains a flat set of regular files and a couple of symbolic links (ignore
+the symlinks entirely). Several of the regular files are actually **hard links** to each other (the
+same inode under different names); others merely happen to have identical content but are separate
+files.
+
+Find the groups of names that are hard links of each other. For every such group that has **two or
+more** names, print one line with the names **space-separated**, in the order they appear in the
+`almacen/*` glob; order the lines themselves by the group's first (glob-order) name. Files that are
+not hard-linked to anything else (a group of one) are not printed at all. Finally print `Groups: N`
+(`N` = number of printed groups).
+@@check
+setup() {
+  mkdir almacen
+  local n1 n2 n3 content1
+  n1=$(word); n2=$(word); n3=$(word)
+  content1=$(randtext 2)
+  printf '%s\n' "$content1" > "almacen/${n1}_1"
+  ln "almacen/${n1}_1" "almacen/${n1}_2"
+  ln "almacen/${n1}_1" "almacen/${n1}_3"
+  printf '%s\n' "$(randtext 2)" > "almacen/${n2}_1"
+  ln "almacen/${n2}_1" "almacen/${n2}_2"
+  printf '%s\n' "$content1" > "almacen/${n3}_copy"
+  local i
+  for i in $(seq "$(randr 2 4)"); do randtext 1 > "almacen/$(pick "$(word)_solo$i" "$(word) solo$i")"; done
+  ln -s "${n1}_1" "almacen/zz_sym"
+}
+extra_check() { must_use -ef; }
+@@solution
+#!/bin/bash
+declare -A seen
+n=0
+for f in almacen/*; do
+  [ -L "$f" ] && continue
+  name=$(basename "$f")
+  [ -n "${seen[$name]}" ] && continue
+  seen[$name]=1
+  group=("$name")
+  for g in almacen/*; do
+    [ -L "$g" ] && continue
+    gname=$(basename "$g")
+    [ -n "${seen[$gname]}" ] && continue
+    if [ "$g" -ef "$f" ]; then
+      group+=("$gname")
+      seen[$gname]=1
+    fi
+  done
+  if [ "${#group[@]}" -gt 1 ]; then
+    echo "${group[*]}"
+    n=$((n + 1))
+  fi
+done
+echo "Groups: $n"
+
+@@ex 0334 rotate_backup | rotate_backup.sh: numbered backups that shift instead of collide
+@@level 4
+@@cmds mv, cp -p, for (( )), exit codes
+@@readme
+Write `rotate_backup.sh`:
+
+```
+rotate_backup.sh FILE N
+```
+
+Keeps up to `N` rotating backups of `FILE` as `FILE.1` (most recent backup) through `FILE.N`
+(oldest). Each run:
+
+1. shifts the existing backups **one slot older**, from the oldest end first: `FILE.(N-1)` becomes
+   `FILE.N` (silently discarding whatever used to be `FILE.N`), then `FILE.(N-2)` becomes
+   `FILE.(N-1)`, ... down to `FILE.1` becoming `FILE.2`. Missing slots are simply skipped (nothing to
+   shift). Print `FILE.k -> FILE.k+1` for every shift actually performed, from the highest `k` down
+   to the lowest, in that order — going the other way around would silently destroy backups before
+   they are shifted.
+2. copies `FILE` to `FILE.1`, preserving its permissions and modification time (`cp -p`), and prints
+   `Saved FILE as FILE.1`.
+3. prints `K backups now`, where `K` is how many of `FILE.1`..`FILE.N` exist after step 2.
+
+`FILE` itself is left untouched. Names may contain spaces.
+
+Errors (message on stderr):
+
+- not exactly 2 arguments → usage, exit **1**
+- `FILE` is not a regular file → exit **2** (message includes `FILE`)
+- `N` is not a positive integer → exit **3** (message includes `N`)
+@@check
+SCRIPT_NAME=rotate_backup.sh
+SEEDS=3
+COMPARE="stdout exit errmsg files mtime"
+setup() {
+  randtext "$(randr 2 5)" > diario.log
+  chmod "$(pick 644 600 640)" diario.log
+  touch -d "2023-0$(randr 1 9)-1$(randr 0 8) 1$(randr 0 9):$(randr 10 59)" diario.log
+  local n k
+  n=$(pick 2 3 4)
+  for ((k = 1; k <= n; k++)); do
+    (( $(rand 4) == 0 )) && continue
+    randtext 1 > "diario.log.$k"
+    touch -d "2022-0$(randr 1 9)-1$(randr 0 8) 1$(randr 0 9):$(randr 10 59)" "diario.log.$k"
+  done
+  randtext 2 > "mi diario.log"
+  chmod 640 "mi diario.log"
+  randtext 1 > "mi diario.log.1"
+  mkdir carpeta
+  touch fich
+}
+ARGS=(
+  'diario.log 3'
+  'diario.log 1'
+  '"$W/diario.log" 4'
+  '"mi diario.log" 2'
+  'diario.log 0'
+  'diario.log abc'
+  'diario.log'
+  'noexiste.log 3'
+  'carpeta 3'
+  ''
+)
+extra_check() {
+  case $REF_CODE in
+    2) mentions "$(eval "set -- $CASE"; echo "$1")" ;;
+    3) mentions "$(eval "set -- $CASE"; echo "$2")" ;;
+  esac
+}
+@@solution
+#!/bin/bash
+if [ $# -ne 2 ]; then
+  echo "Usage: $(basename "$0") FILE N" >&2
+  exit 1
+fi
+FILE=$1
+N=$2
+if [ ! -f "$FILE" ]; then
+  echo "Error: '$FILE' is not a regular file" >&2
+  exit 2
+fi
+if ! [[ $N =~ ^[0-9]+$ ]] || [ "$N" -le 0 ]; then
+  echo "Error: N must be a positive integer, got '$N'" >&2
+  exit 3
+fi
+
+for ((k = N - 1; k >= 1; k--)); do
+  if [ -e "$FILE.$k" ]; then
+    mv -f "$FILE.$k" "$FILE.$((k + 1))"
+    echo "$FILE.$k -> $FILE.$((k + 1))"
+  fi
+done
+
+cp -p "$FILE" "$FILE.1"
+echo "Saved $FILE as $FILE.1"
+
+count=0
+for ((k = 1; k <= N; k++)); do
+  [ -e "$FILE.$k" ] && count=$((count + 1))
+done
+echo "$count backups now"
+
+@@ex 0335 sync_copy | sync_copy.sh: copying only what changed
+@@level 4
+@@cmds find, stat -c %Y, mkdir -p, cp -p, dirname, exit codes
+@@readme
+Write `sync_copy.sh`:
+
+```
+sync_copy.sh SRC DST
+```
+
+For every **regular file** under `SRC` (recursively; symbolic links are ignored), let `REL` be its
+path relative to `SRC` (no leading `./`). Copy it into `DST/REL` (creating whatever directories are
+needed) **only** when:
+
+- `DST/REL` does not exist yet, or
+- `DST/REL` exists but its modification time (`stat -c %Y`) is **older** than `SRC/REL`'s
+
+preserving permissions and modification time (`cp -p`). Files that already look up to date are left
+untouched (not even their timestamp changes) and are not printed. Anything that exists only under
+`DST` is ignored.
+
+For every file actually copied, print `REL` (as computed above), in the sorted order of
+`find SRC -type f`. Finally print `Copied C of T files` (`T` = total regular files found under `SRC`).
+
+Errors (message on stderr):
+
+- not exactly 2 arguments → usage, exit **1**
+- `SRC` is not a directory → exit **2** (message includes `SRC`)
+- `DST` exists and is not a directory → exit **3** (message includes `DST`)
+
+`DST` is created (with parents) if it does not exist. Names may contain spaces.
+@@check
+SCRIPT_NAME=sync_copy.sh
+SEEDS=3
+COMPARE="stdout exit errmsg files mtime"
+setup() {
+  mkdir -p "origen/sub 1/deep" origen/otros
+  local i f
+  for i in 1 2 3 4 5 6; do
+    f="origen/$(pick . "sub 1" "sub 1/deep" otros)/$(pick "$(word)$i.txt" "$(word) $i.dat")"
+    randtext "$(randr 1 3)" > "$f"
+    touch -d "2023-0$(randr 1 9)-1$(randr 0 8) 1$(randr 0 9):$(randr 10 59)" "$f"
+  done
+  mkdir -p "copia/sub 1/deep" copia/otros
+  while IFS= read -r rel; do
+    rel=${rel#./}
+    case $(rand 3) in
+      0) cp -p "origen/$rel" "copia/$rel" ;;
+      1) randtext 1 > "copia/$rel"; touch -d "2025-0$(randr 1 9)-1$(randr 0 8) 1$(randr 0 9):$(randr 10 59)" "copia/$rel" ;;
+      2) : ;;
+    esac
+  done < <(cd origen && find . -type f)
+  randtext 1 > copia/solo_destino.txt
+  echo hola > fich
+}
+ARGS=(
+  'origen destino1'
+  '"origen/sub 1" "destino 2"'
+  'origen copia'
+  '"$W/origen" "$W/nuevo/hondo"'
+  'origen'
+  ''
+  'noexiste destino3'
+  'fich destino4'
+  'origen fich'
+)
+extra_check() {
+  case $REF_CODE in
+    2) mentions "$(eval "set -- $CASE"; echo "$1")" ;;
+    3) mentions "$(eval "set -- $CASE"; echo "$2")" ;;
+  esac
+}
+@@solution
+#!/bin/bash
+if [ $# -ne 2 ]; then
+  echo "Usage: $(basename "$0") SRC DST" >&2
+  exit 1
+fi
+SRC=$1
+DST=$2
+[ -d "$SRC" ] || { echo "Error: '$SRC' is not a directory" >&2; exit 2; }
+if [ -e "$DST" ] && [ ! -d "$DST" ]; then
+  echo "Error: '$DST' is not a directory" >&2
+  exit 3
+fi
+mkdir -p "$DST"
+
+copied=0
+total=0
+while IFS= read -r f; do
+  total=$((total + 1))
+  rel=${f#"$SRC"/}
+  if [ ! -e "$DST/$rel" ] || [ "$(stat -c %Y "$DST/$rel")" -lt "$(stat -c %Y "$f")" ]; then
+    mkdir -p "$DST/$(dirname "$rel")"
+    cp -p "$f" "$DST/$rel"
+    echo "$rel"
+    copied=$((copied + 1))
+  fi
+done < <(find "$SRC" -type f | sort)
+echo "Copied $copied of $total files"
+
+@@ex 0336 batch_rename | batch_rename.sh: changing an extension in bulk, without collisions
+@@level 4
+@@cmds find, mv, exit codes
+@@readme
+Write `batch_rename.sh`:
+
+```
+batch_rename.sh DIR OLDEXT NEWEXT
+```
+
+For every **regular file** under `DIR` (recursively) whose name ends in exactly `.OLDEXT` (the
+literal suffix, case-sensitive; only the final extension counts, so `archivo.tar.OLDEXT` becomes
+`archivo.tar.NEWEXT`), rename it in place so its extension becomes `.NEWEXT` (same directory, same
+rest of the name).
+
+Process the matches in the sorted order of `find DIR -type f -name '*.OLDEXT'`. If the new name is
+already taken (by another file that was already there, or by a file renamed earlier in this same
+run), do **not** rename it: print `skip <old path> (<new path> already exists)` to **stderr** and
+move on. Otherwise rename it and print `<old path> -> <new path>` (paths exactly as `find` printed
+the old one). Finally print `Renamed N of M` (`M` = number of matches found).
+
+Errors (message on stderr):
+
+- not exactly 3 arguments → usage, exit **1**
+- `DIR` is not a directory → exit **2** (message includes `DIR`)
+- `OLDEXT` or `NEWEXT` is empty, or contains a `/` → exit **3**
+
+Exit code (when arguments are valid): **4** if at least one match was skipped due to a collision,
+**0** otherwise. Names may contain spaces.
+@@check
+SCRIPT_NAME=batch_rename.sh
+SEEDS=3
+COMPARE="stdout exit errmsg files"
+setup() {
+  mkdir -p "proy/src" "proy/old bin"
+  local i f
+  for i in 1 2 3 4 5; do
+    f="proy/$(pick . src "old bin")/$(pick "$(word)$i" "$(word) $i")"
+    randtext 1 > "$f.bak"
+  done
+  randtext 1 > "proy/src/paquete.tar.bak"
+  randtext 1 > "proy/colision.bak"
+  randtext 1 > "proy/colision.txt"
+  randtext 1 > "proy/old bin/otro.bak"
+  randtext 1 > "proy/old bin/otro.old"
+  randtext 2 > "proy/normal.txt"
+  mkdir "proy/vacio.bak"
+  touch fich
+}
+ARGS=(
+  'proy bak txt'
+  '"$W/proy" bak old'
+  '"proy/old bin" bak done'
+  'proy bak'
+  'proy bak bak2 extra'
+  'noexiste bak txt'
+  'fich bak txt'
+  'proy "" txt'
+  'proy bak "a/b"'
+  ''
+)
+extra_check() {
+  case $REF_CODE in
+    2) mentions "$(eval "set -- $CASE"; echo "$1")" ;;
+  esac
+}
+@@solution
+#!/bin/bash
+if [ $# -ne 3 ]; then
+  echo "Usage: $(basename "$0") DIR OLDEXT NEWEXT" >&2
+  exit 1
+fi
+DIR=$1
+OLDEXT=$2
+NEWEXT=$3
+[ -d "$DIR" ] || { echo "Error: '$DIR' is not a directory" >&2; exit 2; }
+if [ -z "$OLDEXT" ] || [ -z "$NEWEXT" ] || [[ $OLDEXT == */* ]] || [[ $NEWEXT == */* ]]; then
+  echo "Error: OLDEXT and NEWEXT must be non-empty and contain no '/'" >&2
+  exit 3
+fi
+
+renamed=0
+total=0
+skipped=0
+while IFS= read -r f; do
+  total=$((total + 1))
+  new=${f%."$OLDEXT"}.$NEWEXT
+  if [ -e "$new" ]; then
+    echo "skip $f ($new already exists)" >&2
+    skipped=$((skipped + 1))
+  else
+    mv "$f" "$new"
+    echo "$f -> $new"
+    renamed=$((renamed + 1))
+  fi
+done < <(find "$DIR" -type f -name "*.$OLDEXT" | sort)
+echo "Renamed $renamed of $total"
+[ $skipped -eq 0 ] || exit 4

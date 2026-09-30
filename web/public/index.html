@@ -90,9 +90,15 @@
 
   <dialog id="reference-dialog" class="wide">
     <form method="dialog">
-      <div class="dlg-head"><strong>Reference — every command &amp; concept, by topic</strong><button class="icon-btn" value="close" aria-label="Close">✕</button></div>
-      <input id="reference-search" type="search" placeholder="Filter…" autocomplete="off">
-      <div id="reference-body" class="reference-body"></div>
+      <div class="dlg-head"><strong>Reference</strong><button class="icon-btn" value="close" aria-label="Close">✕</button></div>
+      <div class="reference-layout">
+        <nav id="reference-nav" class="reference-nav" aria-label="Categories and commands">
+          <input id="reference-search" type="search" placeholder="Filter…" autocomplete="off">
+          <a href="#" id="reference-all" class="ref-nav-all">All categories</a>
+          <div id="reference-tree"></div>
+        </nav>
+        <div id="reference-content" class="reference-content"></div>
+      </div>
     </form>
   </dialog>
 

@@ -1,0 +1,328 @@
+@@topic 04_archives | tar, gzip & compression
+@@ex 0422 filelist_tar | Packing an explicit file list
+@@level 3
+@@cmds find, tar -T -, sort
+@@readme
+The directory `proyecto` contains a tree of files. The file `lista.txt` has one path per line,
+**relative to `proyecto`**; some of those lines point to things that do not actually exist as
+regular files under `proyecto` (typos from an old list, or a directory name) — those lines must
+simply be skipped, not treated as errors.
+
+Build `filtrado.tar.gz`, a **gzip-compressed tar** containing exactly the **existing regular files**
+named in `lista.txt` (and nothing else), with their paths **relative to `proyecto`** preserved
+(`tar -C proyecto ...`). Then print, sorted, the archive's contents (`tar -tzf`).
+
+Hint: filter `lista.txt` down to the paths that actually exist as regular files under `proyecto`
+first, then feed that filtered list to `tar -T -` (`tar` refuses the whole archive if even one
+listed path is missing).
+@@check
+COMPARE="stdout exit files"
+setup() {
+  mkdir -p proyecto/src proyecto/doc
+  local i f
+  {
+    for i in 1 2 3 4 5; do
+      f=$(pick "src/$(word)$i.c" "doc/$(word)$i.md" "$(word)$i.txt" "doc/$(word) $i.txt")
+      randtext "$(randr 1 3)" > "proyecto/$f"
+      echo "$f"
+    done
+    echo "src/no_existe_$(word).c"
+    echo "doc/borrado_$(word).md"
+    echo "src"
+  } > lista.txt
+}
+@@solution
+#!/bin/bash
+: > .filtrada
+while IFS= read -r p; do
+  [ -f "proyecto/$p" ] && echo "$p" >> .filtrada
+done < lista.txt
+tar -C proyecto -czf filtrado.tar.gz -T .filtrada
+rm -f .filtrada
+tar -tzf filtrado.tar.gz | sort
+
+@@ex 0423 verify_backup | verify_backup.sh: diffing a directory against a .tar.gz
+@@level 4
+@@cmds tar -tzf, tar -xOzf, cmp -s, sort, exit codes
+@@readme
+Write `verify_backup.sh`:
+
+```
+verify_backup.sh DIR ARCHIVE
+```
+
+Without extracting anything to disk, check whether `ARCHIVE` (a `.tar.gz`) is an up-to-date backup
+of `DIR`. Consider the **regular files** under `DIR` (recursively) by their path relative to `DIR`,
+and the **non-directory entries** of `ARCHIVE` by their path as `tar -tzf` prints it (entries ending
+in `/` are directories: ignore them). For every relative path that appears in either side, in sorted
+order, print:
+
+- `missing REL` if `DIR` has it but `ARCHIVE` does not
+- `extra REL` if `ARCHIVE` has it but `DIR` does not
+- `changed REL` if both have it but the content differs (compare `DIR/REL` against
+  `tar -xOzf ARCHIVE REL`, which streams that one member to stdout without touching disk)
+- nothing if both have it with identical content
+
+Finally print `Differences: N`. Exit **1** if `N` is greater than 0, **0** if it is 0.
+
+Other errors (message on stderr): not exactly 2 arguments → usage, exit **2**; `DIR` is not a
+directory → exit **3** (message includes `DIR`); `ARCHIVE` does not exist or `tar -tzf` fails on it
+→ exit **4** (message includes `ARCHIVE`).
+@@check
+SCRIPT_NAME=verify_backup.sh
+SEEDS=3
+COMPARE="stdout exit errmsg"
+setup() {
+  mkdir -p "actual/docs" actual/src
+  local i f
+  for i in 1 2 3 4 5; do
+    f=$(pick "docs/$(word)$i.txt" "src/$(word)$i.c" "$(word)$i.md" "docs/$(word) $i.txt")
+    randtext "$(randr 1 4)" > "actual/$f"
+  done
+  cp -r actual respaldo_ok
+  tar -C respaldo_ok -czf ok.tar.gz .
+
+  cp -r actual respaldo_mod
+  local files first last
+  files=$(cd actual && find . -type f | sed 's#^\./##' | sort)
+  first=$(head -n1 <<< "$files")
+  last=$(tail -n1 <<< "$files")
+  randtext 3 > "respaldo_mod/$first"
+  rm -f "respaldo_mod/$last"
+  randtext 1 > "respaldo_mod/extra_$(word).dat"
+  tar -C respaldo_mod -czf mod.tar.gz .
+
+  echo basura > roto.tar.gz
+  touch fich
+}
+ARGS=(
+  'actual ok.tar.gz'
+  'actual mod.tar.gz'
+  '"$W/actual" "$W/ok.tar.gz"'
+  'actual'
+  ''
+  'actual noexiste.tar.gz'
+  'actual roto.tar.gz'
+  'fich ok.tar.gz'
+)
+extra_check() {
+  case $REF_CODE in
+    3) mentions "$(eval "set -- $CASE"; echo "$1")" ;;
+    4) mentions "$(eval "set -- $CASE"; echo "$2")" ;;
+  esac
+}
+@@solution
+#!/bin/bash
+if [ $# -ne 2 ]; then
+  echo "Usage: $(basename "$0") DIR ARCHIVE" >&2
+  exit 2
+fi
+DIR=$1
+ARCH=$2
+[ -d "$DIR" ] || { echo "Error: '$DIR' is not a directory" >&2; exit 3; }
+if [ ! -e "$ARCH" ] || ! tar -tzf "$ARCH" >/dev/null 2>&1; then
+  echo "Error: '$ARCH' is not a valid .tar.gz archive" >&2
+  exit 4
+fi
+
+declare -A in_dir in_arch
+while IFS= read -r rel; do in_dir[$rel]=1; done < <(cd "$DIR" && find . -type f | sed 's#^\./##')
+while IFS= read -r rel; do
+  [[ $rel == */ ]] && continue
+  in_arch[$rel]=1
+done < <(tar -tzf "$ARCH")
+
+diffs=0
+while IFS= read -r rel; do
+  if [ -n "${in_dir[$rel]}" ] && [ -n "${in_arch[$rel]}" ]; then
+    if ! tar -xOzf "$ARCH" "$rel" 2>/dev/null | cmp -s - "$DIR/$rel"; then
+      echo "changed $rel"
+      diffs=$((diffs + 1))
+    fi
+  elif [ -n "${in_dir[$rel]}" ]; then
+    echo "missing $rel"
+    diffs=$((diffs + 1))
+  else
+    echo "extra $rel"
+    diffs=$((diffs + 1))
+  fi
+done < <({ printf '%s\n' "${!in_dir[@]}"; printf '%s\n' "${!in_arch[@]}"; } | sort -u)
+
+echo "Differences: $diffs"
+[ $diffs -eq 0 ]
+
+@@ex 0424 archive_manifest | archive_manifest.sh: reading tar's verbose listing
+@@level 4
+@@cmds tar -tvzf, find -printf, sort, exit codes
+@@readme
+Write `archive_manifest.sh`:
+
+```
+archive_manifest.sh ARCHIVE
+```
+
+`tar -tvzf ARCHIVE` prints one line per entry, e.g.:
+
+```
+-rw-r--r-- diego/diego      1234 2024-05-01 10:23 src/main.c
+```
+
+(mode, owner/group, size in bytes, date, time, name — in that column order; the name may itself
+contain spaces, but it is always the last field). Directory entries have a name ending in `/` and a
+mode starting with `d`: ignore them. For every other (regular-file) entry, sorted by name, print:
+
+```
+NAME SIZE
+```
+
+Then print `Total: N files, B bytes` (`N` entries counted, `B` = sum of their sizes).
+
+Errors (message on stderr): not exactly 1 argument → usage, exit **1**; `ARCHIVE` does not exist →
+exit **2** (message includes `ARCHIVE`); `ARCHIVE` exists but `tar -tzf` fails on it → exit **3**
+(message includes `ARCHIVE`).
+@@check
+SCRIPT_NAME=archive_manifest.sh
+SEEDS=3
+COMPARE="stdout exit errmsg"
+setup() {
+  mkdir -p "paquete/sub uno/deep" paquete/otros
+  local i f sz
+  for i in 1 2 3 4 5 6; do
+    f="paquete/$(pick . "sub uno" "sub uno/deep" otros)/$(pick "$(word)$i.dat" "$(word) $i.bin")"
+    sz=$(randr 1 9000)
+    bigfile "$f" "$sz"
+  done
+  tar -czf paquete.tar.gz paquete
+  echo basura > roto.tar.gz
+  touch fich
+}
+ARGS=(
+  'paquete.tar.gz'
+  '"$W/paquete.tar.gz"'
+  'paquete.tar.gz extra'
+  ''
+  'noexiste.tar.gz'
+  'roto.tar.gz'
+  'fich'
+)
+extra_check() {
+  case $REF_CODE in
+    2|3) mentions "$(eval "set -- $CASE"; echo "$1")" ;;
+  esac
+}
+@@solution
+#!/bin/bash
+if [ $# -ne 1 ]; then
+  echo "Usage: $(basename "$0") ARCHIVE" >&2
+  exit 1
+fi
+ARCH=$1
+[ -e "$ARCH" ] || { echo "Error: '$ARCH' does not exist" >&2; exit 2; }
+tar -tzf "$ARCH" > /dev/null 2>&1 || { echo "Error: '$ARCH' is not a valid tar.gz archive" >&2; exit 3; }
+
+declare -A sizes
+while read -r mode owner size date time name; do
+  [[ $mode == d* ]] && continue
+  sizes["$name"]=$size
+done < <(tar -tvzf "$ARCH")
+
+n=0
+total=0
+while IFS= read -r name; do
+  echo "$name ${sizes[$name]}"
+  n=$((n + 1))
+  total=$((total + sizes[$name]))
+done < <(printf '%s\n' "${!sizes[@]}" | sort)
+echo "Total: $n files, $total bytes"
+
+@@ex 0425 safe_extract | safe_extract.sh: refusing to extract a bomb
+@@level 4
+@@cmds tar -tvzf, tar -xzf -C, exit codes
+@@readme
+Write `safe_extract.sh`:
+
+```
+safe_extract.sh ARCHIVE DEST MAXBYTES
+```
+
+Before extracting anything, compute the total **uncompressed** size of every regular-file entry in
+`ARCHIVE` (a `.tar.gz`), using the size column of `tar -tvzf` (directory entries, whose mode starts
+with `d`, do not count). If that total is **greater than** `MAXBYTES`, refuse: print to stderr
+`Refused: N bytes exceed the MAXBYTES bytes limit` (with `N` = the total and `MAXBYTES` the argument,
+substituted literally), exit **4**, and do not create `DEST` or extract anything.
+
+Otherwise: create `DEST` if it does not exist (with parents) and extract the whole archive into it
+(`tar -xzf ARCHIVE -C DEST`); then print `Extracted N entries (B bytes) into DEST`, where `N` is the
+total number of entries `tar -tzf` lists (directories included) and `B` is the total computed above.
+
+Other errors (message on stderr): not exactly 3 arguments → usage, exit **1**; `ARCHIVE` does not
+exist or `tar -tzf` fails on it → exit **2** (message includes `ARCHIVE`); `MAXBYTES` is not a
+non-negative integer → exit **3** (message includes `MAXBYTES`).
+@@check
+SCRIPT_NAME=safe_extract.sh
+SEEDS=3
+COMPARE="stdout exit errmsg files"
+setup() {
+  mkdir -p chico/sub grande/sub
+  local i
+  for i in 1 2 3; do bigfile "chico/sub/$(pick "$(word)$i.dat" "$(word) $i.dat")" "$(randr 100 500)"; done
+  for i in 1 2 3 4; do bigfile "grande/sub/$(pick "$(word)$i.dat" "$(word) $i.dat")" "$(randr 50000 90000)"; done
+  tar -czf chico.tar.gz chico
+  tar -czf grande.tar.gz grande
+  echo basura > roto.tar.gz
+  mkdir "ya existe"
+  touch fich
+}
+ARGS=(
+  'chico.tar.gz salida1 100000'
+  'grande.tar.gz salida2 100000'
+  'grande.tar.gz salida3 1000000'
+  'chico.tar.gz "ya existe" 100000'
+  'chico.tar.gz salida4'
+  'chico.tar.gz salida4 100000 extra'
+  'noexiste.tar.gz salida5 100000'
+  'roto.tar.gz salida6 100000'
+  'chico.tar.gz salida7 abc'
+  'chico.tar.gz salida8 -1'
+  ''
+)
+extra_check() {
+  case $REF_CODE in
+    2) mentions "$(eval "set -- $CASE"; echo "$1")" ;;
+    3) mentions "$(eval "set -- $CASE"; echo "$3")" ;;
+    4) mentions "$(eval "set -- $CASE"; echo "$3")" ;;
+  esac
+}
+@@solution
+#!/bin/bash
+if [ $# -ne 3 ]; then
+  echo "Usage: $(basename "$0") ARCHIVE DEST MAXBYTES" >&2
+  exit 1
+fi
+ARCH=$1
+DEST=$2
+MAXBYTES=$3
+if [ ! -e "$ARCH" ] || ! tar -tzf "$ARCH" >/dev/null 2>&1; then
+  echo "Error: '$ARCH' is not a valid tar.gz archive" >&2
+  exit 2
+fi
+if ! [[ $MAXBYTES =~ ^[0-9]+$ ]]; then
+  echo "Error: MAXBYTES must be a non-negative integer, got '$MAXBYTES'" >&2
+  exit 3
+fi
+
+total=0
+while read -r mode owner size date time name; do
+  [[ $mode == d* ]] && continue
+  total=$((total + size))
+done < <(tar -tvzf "$ARCH")
+
+if [ "$total" -gt "$MAXBYTES" ]; then
+  echo "Refused: $total bytes exceed the $MAXBYTES bytes limit" >&2
+  exit 4
+fi
+
+mkdir -p "$DEST"
+tar -xzf "$ARCH" -C "$DEST"
+n=$(tar -tzf "$ARCH" | wc -l)
+echo "Extracted $n entries ($total bytes) into $DEST"

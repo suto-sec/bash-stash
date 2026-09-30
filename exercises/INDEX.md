@@ -84,6 +84,12 @@
 - [0328 · versions.sh (numbered copies)](03_files_links/0328_versions/README.md)
 - [0329 · materialize.sh (links into real copies)](03_files_links/0329_materialize/README.md)
 - [0330 · bigmove.sh (moving the big files away)](03_files_links/0330_bigmove/README.md)
+- [0331 · Copying by extension, keeping the tree shape](03_files_links/0331_mirror_ext/README.md)
+- [0332 · Swapping two files without losing data](03_files_links/0332_swap_contents/README.md)
+- [0333 · Grouping files that are secretly the same](03_files_links/0333_hardlink_groups/README.md)
+- [0334 · rotate_backup.sh: numbered backups that shift instead of collide](03_files_links/0334_rotate_backup/README.md)
+- [0335 · sync_copy.sh: copying only what changed](03_files_links/0335_sync_copy/README.md)
+- [0336 · batch_rename.sh: changing an extension in bulk, without collisions](03_files_links/0336_batch_rename/README.md)
 
 ## 04_archives
 
@@ -108,6 +114,10 @@
 - [0419 · chunk_pack.sh: splitting and compressing](04_archives/0419_chunk_pack/README.md)
 - [0420 · xz_best.sh: keeping the smaller of gzip/xz](04_archives/0420_xz_best/README.md)
 - [0421 · tar_countext.sh: counting entries by extension](04_archives/0421_tar_countext/README.md)
+- [0422 · Packing an explicit file list](04_archives/0422_filelist_tar/README.md)
+- [0423 · verify_backup.sh: diffing a directory against a .tar.gz](04_archives/0423_verify_backup/README.md)
+- [0424 · archive_manifest.sh: reading tar's verbose listing](04_archives/0424_archive_manifest/README.md)
+- [0425 · safe_extract.sh: refusing to extract a bomb](04_archives/0425_safe_extract/README.md)
 
 ## 05_filters
 
@@ -161,6 +171,14 @@
 - [0548 · dedupe.sh (remove repeated lines, keep the order)](05_filters/0548_dedupe/README.md)
 - [0549 · sanitize.sh (CR, tabs and trailing spaces)](05_filters/0549_sanitize/README.md)
 - [0550 · leaderboard.sh (ranking of players)](05_filters/0550_leaderboard/README.md)
+- [0551 · Extracting several blocks with sed ranges](05_filters/0551_sed_marker_blocks/README.md)
+- [0552 · paste's "- - -" trick: grouping every N lines](05_filters/0552_paste_stitch/README.md)
+- [0553 · Every differing byte with cmp -l](05_filters/0553_cmp_all_diffs/README.md)
+- [0554 · uniq -f: ignoring a leading field](05_filters/0554_uniq_skip_field/README.md)
+- [0555 · splitcount.sh: line/word counts of split chunks](05_filters/0555_splitcount/README.md)
+- [0556 · logmonth.sh: chronological order with sort -M](05_filters/0556_logmonth/README.md)
+- [0557 · bytesdiff.sh: wrapping cmp -l with validation](05_filters/0557_bytesdiff/README.md)
+- [0558 · chunkjoin.sh: dynamic paste grouping](05_filters/0558_chunkjoin/README.md)
 
 ## 06_grep_regex
 
@@ -201,6 +219,12 @@
 - [0635 · badnames.sh (non-portable file names)](06_grep_regex/0635_badnames/README.md)
 - [0636 · ini.sh (reading a section of an INI file)](06_grep_regex/0636_ini_section/README.md)
 - [0637 · patcount.sh (counting fixed-string patterns)](06_grep_regex/0637_patcount/README.md)
+- [0638 · Extracting and version-sorting X.Y.Z numbers](06_grep_regex/0638_grep_semver/README.md)
+- [0639 · Ranking files by how often a word appears](06_grep_regex/0639_grep_rank_files/README.md)
+- [0640 · Extracting and normalising MAC addresses](06_grep_regex/0640_grep_mac_dedup/README.md)
+- [0641 · errscan.sh: scanning several files for a pattern](06_grep_regex/0641_errscan/README.md)
+- [0642 · ipfilter.sh: filtering by an IP prefix (the escaping trap)](06_grep_regex/0642_ipfilter/README.md)
+- [0643 · colgrep.sh: matching a regex against one column](06_grep_regex/0643_colgrep/README.md)
 
 ## 07_find
 
@@ -243,6 +267,18 @@
 - [0737 · buscatexto.sh: which files mention a word](07_find/0737_find_text/README.md)
 - [0738 · scriptcheck.sh: auditing shell scripts](07_find/0738_scriptcheck/README.md)
 - [0739 · tallas.sh: files by size class](07_find/0739_size_classes/README.md)
+- [0740 · Combining type, name, size and mtime](07_find/0740_find_stale_logs/README.md)
+- [0741 · Combining -perm forms: /mode, -mode and !](07_find/0741_find_perm_audit/README.md)
+- [0742 · \( -o \) and ! : a precedence trap with -path](07_find/0742_find_or_exclude/README.md)
+- [0743 · -exec ... {} \; as a per-file test](07_find/0743_find_exec_filter/README.md)
+- [0744 · Safer deletion with -execdir](07_find/0744_find_execdir/README.md)
+- [0745 · The largest files: find + xargs + sort + head](07_find/0745_find_top_size/README.md)
+- [0746 · big_recent.sh: files that are both new and big](07_find/0746_big_recent/README.md)
+- [0747 · audit_scripts.sh: executable scripts, skipping a subtree](07_find/0747_audit_scripts/README.md)
+- [0748 · total_csv.sh: -exec {} + and the wc total line](07_find/0748_total_csv/README.md)
+- [0749 · depth_report.sh: direct vs nested files](07_find/0749_depth_report/README.md)
+- [0750 · big_by_ext.sh: large files grouped by extension](07_find/0750_big_by_ext/README.md)
+- [0751 · possible_dupes.sh: files that might be duplicates](07_find/0751_possible_dupes/README.md)
 
 ## 08_permissions
 
@@ -274,6 +310,12 @@
 - [0826 · sshcheck.sh (like sshd's StrictModes)](08_permissions/0826_sshcheck/README.md)
 - [0827 · runall.sh (run the executable scripts of a folder)](08_permissions/0827_runall/README.md)
 - [0828 · umask_audit.sh (files more open than the umask)](08_permissions/0828_umask_audit/README.md)
+- [0829 · A symlink's permissions are not its own](08_permissions/0829_symlink_target_perms/README.md)
+- [0830 · preserve_special.sh: chmod without erasing setuid/setgid/sticky](08_permissions/0830_preserve_special/README.md)
+- [0831 · stickygap.sh: world-writable directories missing the sticky bit](08_permissions/0831_stickygap/README.md)
+- [0832 · Permissions live on the inode, not the name](08_permissions/0832_hardlink_chmod/README.md)
+- [0833 · perm_histogram.sh: a histogram of file modes](08_permissions/0833_perm_histogram/README.md)
+- [0834 · check_access.sh: asking the kernel, not computing it yourself](08_permissions/0834_check_access/README.md)
 
 ## 09_redirection
 
@@ -424,6 +466,14 @@
 - [1328 · samelines.sh: do two files have the same lines?](13_script_params/1328_set_compare/README.md)
 - [1329 · mkdirs.sh: numbered directories](13_script_params/1329_mkdirs/README.md)
 - [1330 · runall.sh: a batch runner that collects exit codes](13_script_params/1330_run_all/README.md)
+- [1331 · Counting a repeatable flag among positionals](13_script_params/1331_verbose_flag/README.md)
+- [1332 · Rotating the positional parameters](13_script_params/1332_rotate_args/README.md)
+- [1333 · copy_pairs.sh: consuming SRC/DST pairs with shift](13_script_params/1333_copy_pairs/README.md)
+- [1334 · retry_cmd.sh: retrying a command up to N times](13_script_params/1334_retry_cmd/README.md)
+- [1335 · Counting how many times each argument appears](13_script_params/1335_arg_hist/README.md)
+- [1336 · last_success.sh: tracking the last file that could be read](13_script_params/1336_last_success/README.md)
+- [1337 · Simulating a command chain that stops at the first failure](13_script_params/1337_sum_exit_chain/README.md)
+- [1338 · wrapper_capture.sh: prefixing a command's captured output](13_script_params/1338_wrapper_capture/README.md)
 
 ## 14_test_if_case
 
@@ -460,6 +510,14 @@
 - [1431 · pwcheck.sh: password strength](14_test_if_case/1431_pwcheck/README.md)
 - [1432 · size_classes.sh: small, ok and big files](14_test_if_case/1432_size_classes/README.md)
 - [1433 · cmp_dirs.sh: comparing two directories](14_test_if_case/1433_cmp_dirs/README.md)
+- [1434 · Counting vowels character by character](14_test_if_case/1434_vowel_count/README.md)
+- [1435 · Is this word in the list? (exact match)](14_test_if_case/1435_membership/README.md)
+- [1436 · Classifying the signs of three numbers](14_test_if_case/1436_sign_pattern/README.md)
+- [1437 · balance.sh: checking parentheses balance](14_test_if_case/1437_bracket_balance/README.md)
+- [1438 · dir_chain.sh: validating a chain of nested directories](14_test_if_case/1438_dir_chain/README.md)
+- [1439 · safe_delete.sh: deleting only files older than a reference](14_test_if_case/1439_safe_delete/README.md)
+- [1440 · poll.sh: tallying votes read from stdin](14_test_if_case/1440_poll/README.md)
+- [1441 · numeric_range.sh: validating that every argument is an integer within a range](14_test_if_case/1441_numeric_range/README.md)
 
 ## 15_loops_read
 
@@ -502,6 +560,14 @@
 - [1537 · histograma.sh: counting per hour](15_loops_read/1537_hour_histogram/README.md)
 - [1538 · valida_usuarios.sh: validating records line by line](15_loops_read/1538_validate_users/README.md)
 - [1539 · renumera.sh: renaming to the lowest free number](15_loops_read/1539_renumber/README.md)
+- [1540 · Nested loops: counting duplicates without arrays](15_loops_read/1540_conteo_duplicados/README.md)
+- [1541 · break and continue with a real stop condition](15_loops_read/1541_cadena_tareas/README.md)
+- [1542 · Loop + case: per-item dispatch](15_loops_read/1542_clasifica_lista/README.md)
+- [1543 · Accumulating per-key stats while skipping outliers](15_loops_read/1543_sensores/README.md)
+- [1544 · dup_files.sh: finding byte-identical files with find + cmp](15_loops_read/1544_dup_files/README.md)
+- [1545 · grep_dir.sh: counting matches across a tree](15_loops_read/1545_grep_dir/README.md)
+- [1546 · limpiar_tmp.sh: deleting matched files while tallying bytes freed](15_loops_read/1546_limpiar_tmp/README.md)
+- [1547 · clasifica_arbol.sh: dispatching find results with case](15_loops_read/1547_clasifica_arbol/README.md)
 
 ## 16_functions
 
@@ -530,6 +596,10 @@
 - [1623 · clasificar.sh: classifying numbers via a sourced library](16_functions/1623_clasificar/README.md)
 - [1624 · notas.sh: return for validity, echo for a letter grade](16_functions/1624_notas/README.md)
 - [1625 · agenda.sh: a subcommand dispatcher built from functions](16_functions/1625_agenda/README.md)
+- [1626 · A shared helper called at several validation points](16_functions/1626_avisos/README.md)
+- [1627 · A function called per loop item, its echo used by the caller](16_functions/1627_clasifica_valor/README.md)
+- [1628 · informe_scripts.sh: die plus a per-file function](16_functions/1628_informe_scripts/README.md)
+- [1629 · tamano_rec.sh: a recursive du -s, in miniature](16_functions/1629_tamano_rec/README.md)
 
 ## 17_users_logs_admin
 
