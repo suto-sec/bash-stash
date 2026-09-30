@@ -483,6 +483,11 @@ function setMode(m) {
   $('#tab-code').classList.toggle('hidden', layout !== 'default');
   $('#term').classList.toggle('hidden', !showTerm);
   $('#code').classList.toggle('hidden', !showCode);
+  // in the default (tabbed) layout, #cpanel-term/#cpanel-code overlap at the same position — hiding
+  // only the inner #term/#code left the INACTIVE tab's wrapper (an opaque, non-empty box) painted on
+  // top of the active one, blanking it out. The wrapper itself must hide too.
+  $('#cpanel-term').classList.toggle('hidden', !showTerm);
+  $('#cpanel-code').classList.toggle('hidden', !showCode);
   for (const id of ['#cd-btn', '#restart-btn']) $(id).classList.toggle('hidden', layout === 'default' && m !== 'term');
   $('#new-attempt-btn').classList.toggle('hidden', layout === 'default' && m !== 'code');
   try { localStorage.setItem('mode', m); } catch { /* private mode */ }
