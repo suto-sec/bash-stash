@@ -30,6 +30,14 @@
 }
 
 * { box-sizing: border-box; }
+* { scrollbar-color: var(--muted) transparent; scrollbar-width: thin; }
+*::-webkit-scrollbar { width: 11px; height: 11px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb {
+  background-color: var(--border); border-radius: 7px; border: 3px solid transparent; background-clip: padding-box;
+}
+*::-webkit-scrollbar-thumb:hover { background-color: var(--muted); background-clip: padding-box; }
+*::-webkit-scrollbar-corner { background: transparent; }
 html, body { height: 100%; margin: 0; }
 body {
   background: var(--bg); color: var(--text);
@@ -227,17 +235,19 @@ dialog::backdrop { background: rgba(0,0,0,.5); }
 /* ---------- info dialog ---------- */
 #info-dialog { width: 520px; }
 
-/* ---------- sidebar collapse ---------- */
+/* ---------- sidebar collapse & resize ---------- */
 .sidebar { transition: width .15s, min-width .15s, padding .15s; }
+.sidebar.no-transition { transition: none; }
 .sidebar-toggle {
   flex: none; width: 34px; align-self: stretch; padding: 0; margin: 0; border: none;
   border-right: 1px solid var(--border); border-radius: 0;
   display: flex; align-items: center; justify-content: center;
-  background: var(--panel); color: var(--muted); font-size: 22px; line-height: 1; cursor: pointer;
+  background: var(--panel); color: var(--muted); font-size: 22px; line-height: 1; cursor: col-resize;
 }
 .sidebar-toggle:hover { background: var(--panel-2); color: var(--text); border-color: var(--muted); }
-.layout.sidebar-collapsed .sidebar { width: 0; min-width: 0; padding: 0; border: none; overflow: hidden; }
-.sidebar-toggle .arrow { display: inline-block; transition: transform .15s; }
+.sidebar-toggle.resizing { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.layout.sidebar-collapsed .sidebar { width: 0 !important; min-width: 0; padding: 0; border: none; overflow: hidden; }
+.sidebar-toggle .arrow { display: inline-block; transition: transform .15s; cursor: pointer; }
 .layout.sidebar-collapsed .sidebar-toggle .arrow { transform: rotate(180deg); }
 
 /* ---------- reference & layout buttons (topbar) ---------- */
@@ -361,7 +371,7 @@ dialog::backdrop { background: rgba(0,0,0,.5); }
 .ref-empty { color: var(--muted); padding: 20px 0; }
 
 @media (max-width: 900px) {
-  .sidebar { width: 220px; }
+  .sidebar { width: 220px !important; }
   .main-content { display: flex !important; flex-direction: column !important; position: static !important; }
   #workspace, #ws-body { display: flex !important; }
   .cpanel { position: static !important; }
