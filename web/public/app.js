@@ -374,7 +374,7 @@ function startTerminal() {
     term.open($('#term'));
     term.onData(d => { if (sock && sock.readyState === 1) sock.send(JSON.stringify({ t: 'i', d })); });
     term.onResize(({ cols, rows }) => { if (sock && sock.readyState === 1) sock.send(JSON.stringify({ t: 'r', c: cols, r: rows })); });
-    new ResizeObserver(() => { if (state.mode === 'term') try { fit.fit(); } catch { /* hidden */ } }).observe($('#term'));
+    new ResizeObserver(() => { if (!$('#term').classList.contains('hidden')) try { fit.fit(); } catch { /* hidden */ } }).observe($('#term'));
   }
   fit.fit();
   term.reset();
@@ -433,44 +433,92 @@ function openVSCode() {
 
 function setMode(m) {
   state.mode = m;
+  const layout = $('#main').dataset.layout || 'default';
+  const showTerm = layout !== 'default' || m === 'term';
+  const showCode = layout !== 'default' || m === 'code';
   $('#tab-term').classList.toggle('active', m === 'term');
   $('#tab-code').classList.toggle('active', m === 'code');
   $('#tab-term').setAttribute('aria-selected', m === 'term');
   $('#tab-code').setAttribute('aria-selected', m === 'code');
-  $('#term').classList.toggle('hidden', m !== 'term');
-  $('#code').classList.toggle('hidden', m !== 'code');
-  for (const id of ['#cd-btn', '#edit-btn', '#restart-btn']) $(id).classList.toggle('hidden', m !== 'term');
-  $('#vsc-reload-btn').classList.toggle('hidden', m !== 'code');
+  $('#tab-term').classList.toggle('hidden', layout !== 'default');
+  $('#tab-code').classList.toggle('hidden', layout !== 'default');
+  $('#term').classList.toggle('hidden', !showTerm);
+  $('#code').classList.toggle('hidden', !showCode);
+  for (const id of ['#cd-btn', '#edit-btn', '#restart-btn']) $(id).classList.toggle('hidden', layout === 'default' && m !== 'term');
+  $('#vsc-reload-btn').classList.toggle('hidden', layout === 'default' && m !== 'code');
   try { localStorage.setItem('mode', m); } catch { /* private mode */ }
-  if (m === 'code') openVSCode();
-  else { if (!term) startTerminal(); else { fit.fit(); term.focus(); } }
+  if (showCode) openVSCode();
+  if (showTerm) { if (!term) startTerminal(); else { fit.fit(); if (m === 'term') term.focus(); } }
 }
 $('#tab-term').onclick = () => setMode('term');
 $('#tab-code').onclick = () => setMode('code');
 $('#vsc-reload-btn').onclick = () => { state.codeFor = null; openVSCode(); };
 
-// ------------------------------------------------------------------ splitter
-(() => {
-  const sp = $('#splitter'), left = $('#statement-pane'), main = document.querySelector('.main');
-  const saved = (() => { try { return localStorage.getItem('split'); } catch { return null; } })();
-  if (saved) left.style.width = saved;
-  sp.onpointerdown = ev => {
-    sp.setPointerCapture(ev.pointerId); sp.classList.add('dragging');
+// ------------------------------------------------------------------ splitters & panel layouts
+function makeSplitter(el, varKey) {
+  el.onpointerdown = ev => {
+    el.setPointerCapture(ev.pointerId); el.classList.add('dragging');
     document.querySelectorAll('iframe').forEach(f => f.style.pointerEvents = 'none');
   };
-  sp.onpointermove = ev => {
-    if (!sp.classList.contains('dragging')) return;
-    const r = main.getBoundingClientRect();
-    const pct = Math.min(80, Math.max(20, 100 * (ev.clientX - r.left) / r.width));
-    left.style.width = pct + '%';
+  el.onpointermove = ev => {
+    if (!el.classList.contains('dragging')) return;
+    const layout = $('#main').dataset.layout;
+    const axis = varKey === 'a' ? 'x' : (layout === 'sidebyside' ? 'x' : 'y');
+    const r = $('#main-content').getBoundingClientRect();
+    const pct = axis === 'x'
+      ? Math.min(80, Math.max(15, 100 * (ev.clientX - r.left) / r.width))
+      : Math.min(80, Math.max(15, 100 * (ev.clientY - r.top) / r.height));
+    $('#main-content').style.setProperty(`--split-${varKey}`, pct + '%');
   };
-  sp.onpointerup = () => {
-    sp.classList.remove('dragging');
+  el.onpointerup = () => {
+    el.classList.remove('dragging');
     document.querySelectorAll('iframe').forEach(f => f.style.pointerEvents = '');
-    try { localStorage.setItem('split', left.style.width); } catch { /* private mode */ }
-    if (fit && state.mode === 'term') fit.fit();
+    const layout = $('#main').dataset.layout;
+    try { localStorage.setItem(`split_${layout}_${varKey}`, $('#main-content').style.getPropertyValue(`--split-${varKey}`)); } catch { /* private mode */ }
+    if (fit && !$('#term').classList.contains('hidden')) try { fit.fit(); } catch { /* hidden */ }
   };
-})();
+}
+makeSplitter($('#splitter-a'), 'a');
+makeSplitter($('#splitter-b'), 'b');
+
+const LAYOUT_DEFAULTS = {
+  default:    { a: '44%' },
+  sidebyside: { a: '33%', b: '33%' },
+  leftstack:  { a: '50%', b: '45%' },
+  vscodeleft: { a: '50%', b: '45%' },
+};
+function applyLayout(name, opts = {}) {
+  if (!LAYOUT_DEFAULTS[name]) name = 'default';
+  const main = $('#main'), mc = $('#main-content'), d = LAYOUT_DEFAULTS[name];
+  main.dataset.layout = name;
+  document.querySelectorAll('.layout-menu-item').forEach(b => b.classList.toggle('current', b.dataset.layout === name));
+  $('#splitter-b').classList.toggle('hidden', name === 'default');
+  $('#splitter-b').classList.toggle('splitter-h', name === 'leftstack' || name === 'vscodeleft');
+  let a = d.a, b = d.b;
+  try {
+    a = localStorage.getItem(`split_${name}_a`) || d.a;
+    if (d.b) b = localStorage.getItem(`split_${name}_b`) || d.b;
+  } catch { /* private mode */ }
+  mc.style.setProperty('--split-a', a);
+  if (b) mc.style.setProperty('--split-b', b);
+  setMode(state.mode);
+  if (opts.persist !== false) { try { localStorage.setItem('workLayout', name); } catch { /* private mode */ } }
+  $('#layout-menu').classList.add('hidden');
+  $('#layout-btn').setAttribute('aria-expanded', 'false');
+  requestAnimationFrame(() => { if (fit) try { fit.fit(); } catch { /* hidden */ } });
+}
+document.querySelectorAll('.layout-menu-item').forEach(b => b.onclick = () => applyLayout(b.dataset.layout));
+$('#layout-btn').onclick = ev => {
+  ev.stopPropagation();
+  const hidden = $('#layout-menu').classList.toggle('hidden');
+  $('#layout-btn').setAttribute('aria-expanded', String(!hidden));
+};
+document.addEventListener('click', ev => {
+  if (!$('#layout-picker').contains(ev.target)) {
+    $('#layout-menu').classList.add('hidden');
+    $('#layout-btn').setAttribute('aria-expanded', 'false');
+  }
+});
 
 // ------------------------------------------------------------------ routing & start
 function showReferencePage(show) {
@@ -517,5 +565,8 @@ try {
   await route();
   let mode = 'term';
   try { mode = localStorage.getItem('mode') || 'term'; } catch { /* private mode */ }
-  setMode(mode);
+  state.mode = mode;
+  let layout = 'default';
+  try { layout = localStorage.getItem('workLayout') || 'default'; } catch { /* private mode */ }
+  applyLayout(layout, { persist: false });
 })();
