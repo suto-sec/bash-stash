@@ -2,7 +2,7 @@
   "name": "bash-stash-web",
   "private": true,
   "description": "Web UI for bash stash: exercise browser, checker, terminal and embedded VS Code",
-  "license": "MIT",
+  "license": "SEE LICENSE IN ../LICENSE",
   "dependencies": {
     "@xterm/addon-fit": "^0.10.0",
     "@xterm/xterm": "^5.5.0",
