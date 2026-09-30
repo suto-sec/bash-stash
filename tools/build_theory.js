@@ -38,7 +38,7 @@ function finishQuestion(q, col) {
   curLine = q.line;
   const t = q.type;
   if (t === 'fill') {  // {{a ;; b}} becomes {{0}}, {{1}}... and the answers are stored aside
-    q.text = q.text.replace(/\{\{([\s\S]*?)\}\}/g, (_, a) => {
+    q.text = q.text.replace(/\{\{([\s\S]*?)\}\}(?!\})/g, (_, a) => {
       q.blanks.push({ answers: a.split(';;').map(s => s.trim()) });
       return `{{${q.blanks.length - 1}}}`;
     });
