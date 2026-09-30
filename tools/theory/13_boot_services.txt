@@ -258,7 +258,7 @@ What does `systemctl disable ssh` do?
 (+) It removes the automatic start at boot but leaves the running service running. :: Combine with `stop` to end it now.
 (-) It stops the service immediately. :: That is `stop`.
 (-) It deletes the package. :: No.
-(-) It prevents the service from ever being started again, even manually, which would be the job of `mask` instead. :: That is `mask`.
+(-) It prevents the service from being started again, even manually, until you run `enable` once more. :: That is what `mask` does; `disable` only removes the automatic start at boot.
 
 @@q single | Mask
 What does `systemctl mask ssh` achieve beyond `disable`?

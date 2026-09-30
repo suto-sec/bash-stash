@@ -148,7 +148,7 @@ What does `head -c 10 file` print?
 @@q single | tail -f
 What is `tail -f /var/log/syslog` used for?
 (+) To follow the file, printing new lines as they are appended, until you press `Ctrl+C`. :: A standard way to watch logs live.
-(-) To print the first lines of the file and then stop, like `head` does, and to go on printing them until the end. :: That is `head`.
+(-) To print only the first lines of the file, like `head` does, and then stop, without waiting for anything else. :: That is `head`.
 (-) To find the word "f" in the file and print the lines that contain it. :: That is `grep`.
 (-) To compress the file in the background while it keeps being written. :: Not its job.
 

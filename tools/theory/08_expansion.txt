@@ -411,7 +411,7 @@ You defined `alias rm='rm -i'` in a terminal. When will it be available again af
 @@q single | Bypassing an alias
 `rm` is aliased to `rm -i`. Which way runs the real `rm` without the alias for one command?
 (+) `\rm file` (or `command rm file`) :: A quoted or escaped first word is not alias-expanded.
-(-) `rm -f file`, because `-f` overrides the option that the alias added :: The alias still applies and adds `-i`.
+(-) `rm --no-alias file`, which tells `rm` to ignore any alias :: `rm` has no such option: aliases are expanded by the shell before `rm` even starts.
 (-) `unalias`, which runs the real command for a single line :: Needs a name, and removes the alias for the session.
 (-) `rm! file`, where the exclamation mark bypasses aliases :: Not valid.
 

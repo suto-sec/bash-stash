@@ -297,7 +297,7 @@ Who is the owner of a file created by `touch f` run by user `alumno`?
 (-) `nobody` :: That is a special account for unprivileged services.
 
 @@q single | Find the owner
-Which command shows only the owner and group of a file, along with permissions, links and size, in one line?
+Which command shows the owner and group of a file, together with its permissions, link count and size, in one line?
 (+) `ls -l file` :: The third and fourth columns are the owner and the group.
 (-) `ls -a file` :: Only hides or shows dot-files.
 (-) `cat file` :: It prints the contents.
