@@ -5,17 +5,17 @@ How find walks a tree and evaluates tests and actions: names, types, sizes, time
 @@group How find works
 @@q single | What find searches
 What does `find` look at when it searches?
-(+) The attributes of files and directories (name, type, size, owner, time, permissions), walking a directory tree recursively. :: It does not read file contents; that is `grep`'s job.
-(-) The text inside the files. :: `grep -r` searches contents.
-(-) Only the current directory, without sub-directories. :: It recurses by default (unless `-maxdepth` is used).
-(-) A database of file names updated daily. :: That is `locate`; `find` walks the real file system each time.
+(+) The attributes of files and directories (name, type, size, owner, time, permissions), walking the tree recursively. :: It does not read file contents; that is `grep`'s job.
+(-) The text inside the files, printing every line that contains the word or pattern that you give it, like `grep` does. :: `grep -r` searches contents.
+(-) Only the current directory, without looking into any of its sub-directories at all. :: It recurses by default (unless `-maxdepth` is used).
+(-) A database of file names that is rebuilt once a day by the system, never the real disk. :: That is `locate`; `find` walks the real file system each time.
 
 @@q single | Default starting point
 Which statement about `find` without arguments is true (with GNU find)?
 (+) It starts from the current directory and prints everything below it. :: Equivalent to `find . -print`.
-(-) It searches the whole file system from `/`. :: You must give `/` explicitly.
-(-) It prints an error about the missing path. :: GNU find defaults to `.`.
-(-) It prints only the hidden files. :: Everything is listed.
+(-) It searches the whole file system, starting from the root directory `/`. :: You must give `/` explicitly.
+(-) It prints an error about the missing path and exits without listing anything. :: GNU find defaults to `.`.
+(-) It prints only the hidden files of the current directory and ignores the others. :: Everything is listed.
 
 @@q match | Anatomy of a find command
 Match each part of `find /etc -name '*.conf' -print` with its role.
@@ -27,17 +27,17 @@ Match each part of `find /etc -name '*.conf' -print` with its role.
 
 @@q single | Quote the pattern
 Why is `find . -name "*.txt"` written with quotes?
-(+) So that the shell does not expand `*.txt` into file names of the current directory before `find` runs. :: `find` must receive the pattern itself.
-(-) Because `find` refuses patterns without quotes. :: It is the shell's expansion that causes trouble.
-(-) Quotes make the search case-insensitive. :: That is `-iname`.
-(-) Quotes make the search recursive. :: It is recursive anyway.
+(+) So the shell does not expand `*.txt` into the names in the current directory before `find` runs. :: `find` must receive the pattern itself.
+(-) Because `find` refuses patterns without quotes and reports a syntax error instead. :: It is the shell's expansion that causes trouble.
+(-) Because quotes make the search case-insensitive, so that `.TXT` files are found too. :: That is `-iname`.
+(-) Because quotes make the search recursive, so that all the sub-directories of the current one are entered as well as the directory itself. :: It is recursive anyway.
 
 @@q single | The unquoted pattern trap
 In a directory that contains the single file `one.txt`, you run `find . -name *.txt`. What happens?
-(+) The shell turns `*.txt` into `one.txt`, so `find` looks for files named exactly `one.txt` everywhere, and misses all other `.txt` files. :: The command silently finds less than you wanted.
-(-) `find` lists every `.txt` file of the tree. :: Only with quotes.
-(-) `find` fails with a syntax error. :: It runs normally with the wrong pattern.
-(-) `find` lists only `one.txt` in the current directory. :: It searches the whole tree for that name.
+(+) The shell turns `*.txt` into `one.txt`, so `find` looks only for files named `one.txt` and misses the other `.txt` files. :: The command silently finds less than you wanted.
+(-) `find` lists every `.txt` file of the whole tree, because it expands the star itself. :: Only with quotes.
+(-) `find` fails with a syntax error, because the pattern was given without quotes. :: It runs normally with the wrong pattern.
+(-) `find` lists only `one.txt` in the current directory, and does not go into the sub-directories of the tree at all. :: It searches the whole tree for that name.
 
 @@q fill | Case-insensitive name search
 To match `.txt`, `.TXT` and `.Txt`: `find . {{-iname}} '*.txt'`
@@ -48,10 +48,10 @@ To match `.txt`, `.TXT` and `.Txt`: `find . {{-iname}} '*.txt'`
 
 @@q single | -name and paths
 Why does `find . -name 'a/x.txt'` never find anything?
-(+) `-name` compares the pattern only against the last component (the base name) of each path; use `-path` for patterns that contain slashes. :: For example `find . -path '*/a/x.txt'`.
-(-) Because `x.txt` does not exist. :: The behaviour is independent of that.
-(-) Because `-name` only works in the current directory. :: It works on the whole tree.
-(-) Because slashes must be doubled. :: Not the reason.
+(+) `-name` compares the pattern only with the base name of each path; use `-path` for patterns that contain slashes. :: For example `find . -path '*/a/x.txt'`.
+(-) Because the file `x.txt` does not exist in any directory called `a` below the start. :: The behaviour is independent of that.
+(-) Because `-name` works only in the current directory and never goes into sub-directories, so a path can never match. :: It works on the whole tree.
+(-) Because slashes inside a `-name` pattern must be doubled to be taken literally. :: Not the reason.
 
 @@q multi | Patterns find understands
 Select the true statements about the pattern of `-name`.
@@ -85,9 +85,9 @@ Match each `-type` letter with the kind of file.
 @@q single | Hidden files
 How do you find the files whose names start with a dot, directly in the current directory?
 (+) `find . -maxdepth 1 -name '.*' -type f` :: The pattern `.*` matches names that begin with a dot.
-(-) `find . -hidden` :: There is no `-hidden` test.
-(-) `find . -type h` :: No such type.
-(-) `find . -name '*.'` :: That matches names ending in a dot.
+(-) `find . -hidden`, which lists only the files whose names start with a dot :: There is no `-hidden` test.
+(-) `find . -type h`, which selects the hidden files by their type letter :: No such type.
+(-) `find . -name '*.'`, which matches the names that end with a dot :: That matches names ending in a dot.
 
 @@q match | Depth options
 Match each option with its effect.
@@ -106,10 +106,10 @@ Which command lists only the regular files directly inside `dir` (not in sub-dir
 
 @@q single | Directories are files too
 Why does `find a -size +2k` also print directory names such as `a` or `a/b`?
-(+) Directories are files with their own size (often 4096 bytes), so a test on size matches them; add `-type f` to restrict to regular files. :: Always combine size tests with `-type f` when you mean files.
-(-) Because `-size` counts the files *inside* the directory. :: It uses the size of the directory entry itself.
-(-) Because of a bug in `find`. :: It is documented behaviour.
-(-) Because `-size` ignores the type of file. :: It does look at the size, but directories have one too.
+(+) Directories are files with their own size (often 4096 bytes), so a size test matches them; add `-type f`. :: Always combine size tests with `-type f` when you mean files.
+(-) Because `-size` counts the combined size of the files *inside* each directory, not the size of the directory entry itself. :: It uses the size of the directory entry itself.
+(-) Because of a known bug in `find`, which has never been fixed in any released version. :: It is documented behaviour.
+(-) Because `-size` ignores the type of file and always reports directories as empty. :: It does look at the size, but directories have one too.
 
 @@q single | Whole path tests
 Which test matches the full path and is the right one for `*/src/*.c`?
@@ -122,9 +122,9 @@ Which test matches the full path and is the right one for `*/src/*.c`?
 @@q single | Size suffixes
 What does `find . -size +1M` select?
 (+) Files that use more than 1 mebibyte (rounded up to whole MiB). :: `M` means 1024×1024 bytes.
-(-) Files that use exactly 1 MB. :: A plus sign means "more than".
-(-) Files that are at most 1 MB. :: That is `-1M`.
-(-) Files modified more than a minute ago. :: Time uses `-mmin`.
+(-) Files whose size is exactly 1 MB, neither smaller nor any larger than that. :: A plus sign means "more than".
+(-) Files that are at most 1 MB in size, including the empty files of the tree. :: That is `-1M`.
+(-) Files that were modified more than a minute ago, whatever their size may be. :: Time uses `-mmin`.
 
 @@q match | Size units
 Match each suffix of `-size` with its unit.
@@ -137,10 +137,10 @@ Match each suffix of `-size` with its unit.
 
 @@q single | Sizes are rounded up
 What does `find . -type f -size -1k` match?
-(+) Only empty files (size 0), because sizes are rounded up to whole units and "less than 1" therefore means zero units. :: A 1-byte file counts as 1k.
-(-) All files smaller than 1000 bytes. :: Rounding makes that false.
-(-) All files of exactly 1 KiB. :: That is `-size 1k`.
-(-) All files bigger than 1 KiB. :: That is `+1k`.
+(+) Only empty files, because sizes are rounded up to whole units, so "less than 1" means zero units. :: A 1-byte file counts as 1k.
+(-) All files smaller than 1000 bytes, which is how a kilobyte is counted by `find`. :: Rounding makes that false.
+(-) All files of exactly 1 KiB, which is the size that the minus sign stands for here. :: That is `-size 1k`.
+(-) All files bigger than 1 KiB, since the sign in front of the number means "at least" and not "less than". :: That is `+1k`.
 
 @@q single | Sizes exactly
 Which command finds files of exactly 100 bytes?
@@ -174,10 +174,10 @@ Match each test with the files it selects.
 
 @@q single | Which time
 What does `-mtime` look at compared with `-ctime`?
-(+) `-mtime` is the last change of the file's contents; `-ctime` is the last change of its inode (permissions, owner, links, or contents). :: `ctime` is not "creation time".
-(-) They are the same. :: They differ.
-(-) `-ctime` is the creation time. :: Linux does not keep creation time in that field.
-(-) `-mtime` is the last time it was read. :: That is `-atime`.
+(+) `-mtime` is the last change of the file's contents; `-ctime` the last change of its inode (mode, owner, links or contents). :: `ctime` is not "creation time".
+(-) They are the same test, written with two different names for compatibility reasons. :: They differ.
+(-) `-ctime` is the creation time of the file, which Linux records when the file is made. :: Linux does not keep creation time in that field.
+(-) `-mtime` is the last time the file was read by a program, while `-ctime` is the last time its contents were changed. :: That is `-atime`.
 
 @@q fill | Recently modified
 List regular files changed in the last hour: `find . -type f {{-mmin}} -60`
@@ -241,16 +241,16 @@ You want `.txt` or `.log` **regular files**. Which command is correct?
 @@q single | Precedence surprise
 What does `find a -name '*.txt' -o -name '*.log' -print` print?
 (+) Only the `.log` files: `-print` belongs to the right-hand side, because `-a` binds tighter than `-o`. :: A `.txt` match is true but has no action, so nothing is printed for it.
-(-) Both `.txt` and `.log` files. :: That needs parentheses or no explicit `-print`.
-(-) Only the `.txt` files. :: Reversed.
-(-) Nothing, `-o` disables `-print`. :: The right-hand side prints.
+(-) Both the `.txt` and the `.log` files, since the `-o` operator makes the single `-print` apply to both of the tests. :: That needs parentheses or no explicit `-print`.
+(-) Only the `.txt` files, because the first alternative that matches ends the search. :: Reversed.
+(-) Nothing at all, because `-o` disables `-print` and no other action is given. :: The right-hand side prints.
 
 @@q single | Default print
 Why does `find a -name '*.txt' -o -name '*.log'` (no explicit action) print both kinds?
-(+) When no action is given, `find` adds an implicit `-print` for the **whole** expression. :: The trap appears only when you write one `-print` yourself.
-(-) Because `-o` combines the lists of results. :: It is a boolean operator.
-(-) Because `-name` is an action. :: It is a test.
-(-) Because the default is to print only `.log` files. :: No such default.
+(+) With no action given, `find` adds an implicit `-print` for the **whole** expression. :: The trap appears only when you write one `-print` yourself.
+(-) Because `-o` joins the lists of results of both tests and prints them together. :: It is a boolean operator.
+(-) Because `-name` is an action that prints the path of each file that matches it. :: It is a test.
+(-) Because the default is to print only the `.log` files, whatever the expression is. :: No such default.
 
 @@q fill | Negation
 Find every regular file whose name does **not** end in `.txt`: `find . -type f {{! ;; -not}} -name '*.txt'`
@@ -273,23 +273,23 @@ Expression: `find . -type f \( -name '*.sh' -o -name '*.bin' \) -perm -u+x`. Dec
 @@q single | exec semantics
 What does `find . -name '*.log' -exec rm {} \;` do?
 (+) It runs `rm` once per file found, replacing `{}` by the file name. :: The `\;` ends the command given to `-exec`.
-(-) It removes every file of the directory. :: Only the `.log` files.
-(-) It prints the names without deleting. :: `rm` does delete.
-(-) It runs `rm` once with all names. :: That is the `+` form.
+(-) It removes every file of the directory, because `{}` stands for all the file names. :: Only the `.log` files.
+(-) It prints the names of the `.log` files without deleting them, which `rm` only simulates. :: `rm` does delete.
+(-) It runs `rm` once, passing all the names found on a single command line. :: That is the `+` form.
 
 @@q single | Semicolon versus plus
 What is the difference between `-exec cmd {} \;` and `-exec cmd {} +`?
-(+) With `;` the command runs once per file; with `+` many file names are appended to one command line, which is faster. :: Like `xargs`.
-(-) They are identical. :: The number of invocations differs.
-(-) `+` runs the command on directories only. :: It works on the matches.
-(-) `;` needs root privileges. :: No.
+(+) With `;` the command runs once per file; with `+` many names are appended to one command, which is faster. :: Like `xargs`.
+(-) They are identical, and only differ in how they are written in the shell. :: The number of invocations differs.
+(-) `+` makes the command run on the directories only and never on ordinary files, while `;` is used for regular files. :: It works on the matches.
+(-) `;` needs root privileges, while `+` can be used by any ordinary user. :: No.
 
 @@q single | Escaping the semicolon
 Why must the semicolon after `-exec` be written as `\;` or `';'`?
-(+) An unescaped `;` would be interpreted by the shell as the end of the `find` command. :: `find` needs to receive the `;` literally.
-(-) Because `find` accepts only escaped characters. :: It accepts the plain character when it arrives.
-(-) Because `;` means "or" in find. :: That is `-o`.
-(-) Because `;` is not allowed in file names. :: It is allowed.
+(+) An unescaped `;` would be taken by the shell as the end of the `find` command itself. :: `find` needs to receive the `;` literally.
+(-) Because `find` accepts only characters that have been escaped with a backslash. :: It accepts the plain character when it arrives.
+(-) Because `;` means "or" in `find`, and it has to be escaped to mean the end. :: That is `-o`.
+(-) Because a semicolon is not allowed in file names, so it must be hidden from `find`. :: It is allowed.
 
 @@q single | Ask before
 Which action asks for confirmation before running the command for each file?
@@ -301,9 +301,9 @@ Which action asks for confirmation before running the command for each file?
 @@q single | The -delete trap
 Why is `find /tmp/work -name '*' -delete` dangerous?
 (+) It matches everything, including `/tmp/work` itself, so the directory and all it contains are removed. :: Preview with `-print` first.
-(-) `-delete` needs root. :: Not for your own files.
-(-) `-delete` only removes empty files. :: It removes whatever matches (directories must be empty, which works because it deletes depth-first).
-(-) It removes the parent of `/tmp/work`. :: Only the matches.
+(-) Because `-delete` needs root privileges and will therefore damage the system files. :: Not for your own files.
+(-) Because `-delete` only removes empty files, so the pattern is harmless and leaves the real data behind in the tree. :: It removes whatever matches (directories must be empty, which works because it deletes depth-first).
+(-) Because it also removes the parent of `/tmp/work`, which is where the tree starts. :: Only the matches.
 
 @@q single | Order of delete
 In `find q -name '*.tmp' -delete -print`, what do you see for a file `q/a.tmp`?
@@ -322,28 +322,28 @@ Put these steps in order to delete old log files safely.
 @@q single | find and xargs
 Which command safely removes `.tmp` files whose names may contain spaces?
 (+) `find . -name '*.tmp' -print0 | xargs -0 rm` :: Null-separated names survive spaces and newlines.
-(-) `find . -name '*.tmp' | xargs rm` :: Names with spaces split into several arguments.
+(-) `find . -name '*.tmp' | xargs rm`, which works for names without spaces but splits the ones that have them :: Names with spaces split into several arguments.
 (-) `rm $(find . -name '*.tmp')` :: Word splitting breaks names with spaces.
 (-) `find . -name '*.tmp' > rm` :: That creates a file named `rm`.
 
 @@q single | Command substitution vs exec
 What is a disadvantage of `rm $(find . -name '*.bak')` compared with `find . -name '*.bak' -delete`?
-(+) The shell splits the result on whitespace (and may hit the argument-length limit), so unusual names are mishandled. :: `find` does the job internally without such limits.
-(-) It is always slower for small directories. :: Speed is not the issue.
-(-) It cannot delete files. :: It can.
-(-) It deletes only the first file. :: It passes all names.
+(+) The shell splits the result on whitespace (and may exceed the argument limit), so unusual names go wrong. :: `find` does the job internally without such limits.
+(-) It is always much slower, even for small directories, because the shell has to start `find` twice to get the file names. :: Speed is not the issue.
+(-) It cannot delete files at all; it can only print the names that `find` has found. :: It can.
+(-) It deletes only the first file of the list, since `rm` ignores the other arguments. :: It passes all names.
 
 @@q single | printf
 What does `find . -maxdepth 1 -type f -printf '%f %s\n'` print?
 (+) For each regular file: its base name and its size in bytes. :: `%f` is the name, `%s` the size.
-(-) The permissions of each file. :: That would be `%m`.
-(-) The full path and the owner. :: `%p` and `%u`.
-(-) The list of directories. :: It is restricted to files.
+(-) The permissions of each regular file, in octal, followed by its name. :: That would be `%m`.
+(-) The full path of each file together with the name of its owner. :: `%p` and `%u`.
+(-) The list of the directories, with the number of entries in each of them. :: It is restricted to files.
 
 @@q single | Skipping a directory
 Which expression lists the files of the current tree but does not descend into `./node_modules`?
 (+) `find . -path ./node_modules -prune -o -type f -print` :: `-prune` stops the descent; the `-o` makes the rest apply to other paths.
-(-) `find . -type f -not -name node_modules` :: That excludes a file with that *name*, but still walks into the directory.
+(-) `find . -type f -not -name node_modules`, which skips a *file* of that name but still walks into the directory :: That excludes a file with that *name*, but still walks into the directory.
 (-) `find . -maxdepth 1 -type f` :: That does not look deeper at all.
 (-) `find . -skip node_modules` :: Not a valid option.
 
@@ -372,14 +372,14 @@ Which command lists the files of your home directory that you have permission to
 @@q single | Copy found files
 Which command copies every `.sh` file found below the current directory into `~/backup`?
 (+) `find . -name '*.sh' -exec cp {} ~/backup/ \;` :: `cp` runs once per file.
-(-) `find . -name '*.sh' | cp ~/backup/` :: `cp` does not read file names from its standard input.
+(-) `find . -name '*.sh' | cp ~/backup/`, where `cp` is expected to read the names from its standard input :: `cp` does not read file names from its standard input.
 (-) `cp find . -name '*.sh' ~/backup/` :: That passes `find` as a file name.
 (-) `find . -name '*.sh' > ~/backup/` :: Redirects the list of names into a path that is a directory.
 
 @@q single | Count matches
 Which command prints how many `.conf` files there are below `/etc`?
 (+) `find /etc -name '*.conf' | wc -l` :: One path per line, counted.
-(-) `find /etc -name '*.conf' -c` :: No such option.
+(-) `find /etc -name '*.conf' -c`, where the option `-c` makes find print only the number of matches :: No such option.
 (-) `wc -l /etc/*.conf` :: Counts lines in the files of one directory, not the files themselves.
 (-) `grep -c .conf /etc` :: `/etc` is a directory, and it would look inside the files.
 
@@ -392,7 +392,7 @@ Which command lists the files under `/etc` whose **contents** include the word `
 
 @@q single | find versus locate
 Why can `locate` miss a file that `find` would find?
-(+) `locate` reads a prebuilt database that is refreshed periodically, so very recent files are not in it. :: `find` looks at the real file system each time.
-(-) `locate` only searches the current directory. :: It searches the database of the whole system.
-(-) `locate` refuses names with dots. :: No such limit.
-(-) `find` and `locate` always agree. :: The database can be outdated.
+(+) `locate` reads a prebuilt database that is refreshed only periodically, so recent files are missing. :: `find` looks at the real file system each time.
+(-) `locate` only searches the current directory and does not go into sub-directories. :: It searches the database of the whole system.
+(-) `locate` refuses file names that contain dots, which `find` accepts without any problem, so such files are never listed. :: No such limit.
+(-) `find` and `locate` always agree, so a file one of them misses is not really there. :: The database can be outdated.

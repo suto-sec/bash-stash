@@ -14,17 +14,17 @@ Put the stages of booting a typical Linux PC in order.
 
 @@q single | What firmware does
 What is the job of the firmware (BIOS or UEFI) at power-on?
-(+) To initialise and check the basic hardware and then locate and start a boot loader from a storage device. :: It lives in non-volatile memory on the motherboard.
-(-) To load the kernel modules of the operating system. :: The kernel does that later.
-(-) To start the user's login shell. :: Much later in the boot.
-(-) To schedule processes. :: That is the kernel's scheduler.
+(+) To initialise and check the basic hardware, and then find and start a boot loader from a storage device. :: It lives in non-volatile memory on the motherboard.
+(-) To load the kernel modules of the operating system and to set up the drivers for each of the devices. :: The kernel does that later.
+(-) To start the login shell of the user who owns the machine, once the hardware is ready. :: Much later in the boot.
+(-) To schedule the processes that run on the machine, from the moment that it is powered on. :: That is the kernel's scheduler.
 
 @@q single | Why a boot loader
 Why is a boot loader such as GRUB needed between the firmware and the kernel?
-(+) The firmware can load only a small piece of code, while the loader understands file systems, can offer a menu, and can load a large kernel and its initial RAM disk with options. :: It bridges the gap.
-(-) The kernel cannot run without a graphical menu. :: The menu is optional.
-(-) The firmware cannot read any disk. :: It can read the first blocks or the EFI partition.
-(-) GRUB replaces the kernel after boot. :: The kernel takes over.
+(+) The firmware loads only a small piece of code; the loader understands file systems, offers a menu, loads the kernel. :: It bridges the gap.
+(-) Because the kernel cannot run at all unless a graphical menu has been shown to the user by the boot loader first. :: The menu is optional.
+(-) Because the firmware cannot read any disk, so another program has to read the disks for it. :: It can read the first blocks or the EFI partition.
+(-) Because GRUB replaces the kernel once the system has started, and runs the machine itself. :: The kernel takes over.
 
 @@q match | BIOS and UEFI ideas
 Match each term with its description.
@@ -37,31 +37,31 @@ Match each term with its description.
 
 @@q single | MBR limits
 Which limitation belongs to the classic MBR partitioning scheme?
-(+) At most four primary partitions (or three plus an extended one holding logical partitions), and disks beyond about 2 TB cannot be addressed. :: GPT removes both limits.
-(-) It cannot hold a Linux file system. :: It can.
-(-) It supports only UEFI. :: It belongs to BIOS booting.
-(-) It is limited to a single partition. :: Four primary are allowed.
+(+) At most four primary partitions (or three plus an extended one), and disks above about 2 TB cannot be used. :: GPT removes both limits.
+(-) It cannot hold a Linux file system, so a different scheme is needed for the Linux installations on a machine. :: It can.
+(-) It supports only UEFI firmware, so it cannot be used on machines that boot with a BIOS. :: It belongs to BIOS booting.
+(-) It is limited to a single partition per disk, so the disk cannot be divided in any way. :: Four primary are allowed.
 
 @@q single | GPT advantages
 Which is an advantage of GPT over MBR?
-(+) It supports many more partitions (128 by default) and much larger disks, stores a backup copy of the table, and identifies partitions with unique IDs (GUIDs). :: More robust and scalable.
-(-) It is required for any disk smaller than 1 GB. :: No such rule.
-(-) It makes the boot slower. :: Not a feature.
-(-) It supports only 32-bit systems. :: It is used for 64-bit systems as well.
+(+) It supports many more partitions (128 by default) and larger disks, keeps a backup of the table, and uses unique IDs. :: More robust and scalable.
+(-) It is required for every disk that is smaller than 1 GB, which the old scheme cannot handle at all in practice. :: No such rule.
+(-) It makes the boot slower on purpose, because the table is verified at every start. :: Not a feature.
+(-) It supports only 32-bit systems, which is why it is used on small embedded machines. :: It is used for 64-bit systems as well.
 
 @@q single | The EFI system partition
 Where does a UEFI system normally keep its boot loaders?
-(+) On a small FAT-formatted partition called the EFI System Partition (ESP), often mounted at `/boot/efi`. :: The firmware can read FAT.
-(-) In the first 446 bytes of the disk only. :: That is the BIOS/MBR boot code area.
-(-) In `/etc/grub.d`. :: Configuration fragments, not the boot loader.
-(-) In RAM only. :: It must be stored somewhere.
+(+) On a small FAT-formatted partition, the EFI System Partition (ESP), often mounted at `/boot/efi`. :: The firmware can read FAT.
+(-) In the first 446 bytes of the disk only, which is where the old BIOS boot code also used to live. :: That is the BIOS/MBR boot code area.
+(-) In `/etc/grub.d`, where the scripts of the loader are stored, next to its menu. :: Configuration fragments, not the boot loader.
+(-) In RAM only, because the firmware loads them from the network at every start. :: It must be stored somewhere.
 
 @@q single | Legacy mode
 What does "legacy mode" (CSM) mean on a UEFI machine?
-(+) The firmware behaves like a BIOS and boots from the MBR, so old systems can still start. :: The installation mode must match the partitioning scheme.
-(-) The firmware is disabled. :: It is active.
-(-) The kernel is loaded twice. :: No.
-(-) The disk is formatted. :: No.
+(+) The firmware behaves like a BIOS and boots from the MBR, so that old systems can still start. :: The installation mode must match the partitioning scheme.
+(-) The firmware is disabled, and the machine boots directly from the first disk that it finds, without any checks. :: It is active.
+(-) The kernel is loaded twice, once by the firmware and once by the boot loader. :: No.
+(-) The disk is formatted with an older file system before the boot loader is installed. :: No.
 
 @@group GRUB and the kernel
 @@q match | GRUB files
@@ -75,10 +75,10 @@ Match each file or directory with its role.
 
 @@q single | Editing grub.cfg
 On Ubuntu and Debian, why should you not edit `/boot/grub/grub.cfg` directly?
-(+) It is generated by `update-grub` from `/etc/default/grub` and `/etc/grub.d/`, so manual changes are overwritten. :: Change the sources, then regenerate.
-(-) Because it is a binary file. :: It is text.
-(-) Because only the kernel can write to `/boot`. :: Root can.
-(-) Because it is read-only hardware. :: It is a normal file.
+(+) It is generated by `update-grub` from `/etc/default/grub` and `/etc/grub.d/`, so manual edits get overwritten. :: Change the sources, then regenerate.
+(-) Because it is a binary file that can only be changed with the tools of the loader. :: It is text.
+(-) Because only the kernel itself is allowed to write to the `/boot` directory of the disk, and not even root can. :: Root can.
+(-) Because it is stored in read-only hardware, which cannot be modified by any user. :: It is a normal file.
 
 @@q fill | Regenerate the menu
 After changing `/etc/default/grub`, rebuild the boot menu with: `{{update-grub ;; sudo update-grub ;; grub-mkconfig -o /boot/grub/grub.cfg ;; sudo grub-mkconfig -o /boot/grub/grub.cfg}}`
@@ -89,17 +89,17 @@ Running `grub-mkconfig` is the underlying command.
 
 @@q single | What GRUB can do
 Which of these can GRUB do?
-(+) Show a menu of systems and kernels, edit boot options, offer a command line, and chain-load other boot loaders such as Windows'. :: A flexible tool.
-(-) Start user services after boot. :: That is the job of PID 1.
-(-) Manage user accounts. :: No.
-(-) Replace the file system driver of the kernel. :: No.
+(+) Show a menu of systems and kernels, edit boot options, offer a command line, and chain-load other loaders. :: A flexible tool.
+(-) Start the user services after the boot, and keep them running until the shutdown. :: That is the job of PID 1.
+(-) Manage the user accounts of the machine, and create new ones for the people who use it when the system starts. :: No.
+(-) Replace the file system driver of the kernel with one of its own, at each boot. :: No.
 
 @@q single | Rescue with GRUB
 The system does not boot because of a broken menu entry. What does GRUB's command line let you do?
-(+) Set the root device, load a kernel and an initial RAM disk by hand, and boot, to get the machine started and repair it. :: For example `linux /boot/vmlinuz root=...`, `initrd ...`, `boot`.
-(-) Edit the passwords of users directly. :: Not its purpose.
-(-) Update the BIOS. :: No.
-(-) Nothing, GRUB has no interactive mode. :: It has one.
+(+) Set the root device, load a kernel and an initial RAM disk by hand, and boot, to start the machine and repair it. :: For example `linux /boot/vmlinuz root=...`, `initrd ...`, `boot`.
+(-) Edit the passwords of the users directly, so that nobody is locked out of the system when the machine starts. :: Not its purpose.
+(-) Update the firmware of the machine, which is the usual cause of a broken menu entry. :: No.
+(-) Nothing, because GRUB has no interactive mode, and a broken entry means a reinstall. :: It has one.
 
 @@q order | Manual boot from the GRUB prompt
 Put the GRUB commands in order to start a Linux system by hand.
@@ -110,24 +110,24 @@ Put the GRUB commands in order to start a Linux system by hand.
 
 @@q single | What the kernel does first
 After the boot loader hands over control, what does the kernel do before it starts the first process?
-(+) It detects the CPU and memory, sets up memory management and interrupts, initialises devices and drivers, mounts the root file system and then starts PID 1. :: That is its start-up work.
-(-) It starts all the daemons itself. :: PID 1 does that.
-(-) It asks the user which services to start. :: No interaction.
-(-) It formats the disks. :: Never automatically.
+(+) It detects CPU and memory, sets up memory and devices, mounts the root file system, then starts PID 1. :: That is its start-up work.
+(-) It starts all the daemons itself, one after the other, before any other process exists. :: PID 1 does that.
+(-) It asks the user which services to start, and waits for the answer at the console. :: No interaction.
+(-) It formats the disks that it finds, so that the file systems are ready for the services that start afterwards. :: Never automatically.
 
 @@q single | initrd
 What is the initial RAM disk (initrd / initramfs)?
-(+) A small temporary root file system loaded into memory with the kernel, holding the drivers and tools needed to find and mount the real root file system. :: Discarded after the real root is mounted.
-(-) A backup of the user's home directory. :: No.
-(-) The swap partition. :: No.
-(-) A list of services to start. :: No.
+(+) A small temporary root file system in memory, with the tools needed to find the real root file system. :: Discarded after the real root is mounted.
+(-) A backup of the home directory of the user, which the kernel restores at each boot. :: No.
+(-) The swap partition, which the kernel uses as extra memory while the system is starting and before RAM is ready. :: No.
+(-) A list of the services to start, which the kernel passes on to the first process. :: No.
 
 @@q single | Root mounted read-only
 Why does the kernel often mount the root file system read-only at first?
-(+) So that it can be checked (fsck) safely before anything writes to it; it is remounted read-write later in the boot. :: Protects against corruption.
-(-) Because it cannot write until the first login. :: It can.
-(-) Because the root disk is always a CD. :: Not always.
-(-) Because permissions forbid root to write. :: Not the reason.
+(+) So it can be checked (fsck) safely before anything writes to it; it is remounted read-write later. :: Protects against corruption.
+(-) Because the kernel cannot write to any disk until the first user has logged in. :: It can.
+(-) Because the root disk is always a CD or a DVD, which can only be read. :: Not always.
+(-) Because the permissions of the root file system forbid even the root user to write in it during the whole boot. :: Not the reason.
 
 @@q match | Low PIDs
 Match each process with its role.
@@ -146,18 +146,18 @@ Which command shows the messages the kernel printed during boot (hardware detect
 
 @@q single | Kernel parameters
 What can you pass to the kernel from the boot loader?
-(+) Options such as the root device, `single` or `systemd.unit=rescue.target` to boot into a repair mode, or `init=/bin/bash`. :: They modify how the kernel and PID 1 start.
-(-) New user passwords. :: Not its purpose.
-(-) Shell aliases. :: Those belong to bash.
-(-) The date for the next shutdown. :: That is `shutdown`.
+(+) Options such as the root device, `single` or `systemd.unit=rescue.target` (a repair mode). :: They modify how the kernel and PID 1 start.
+(-) New passwords for the user accounts, which the kernel stores in the shadow file. :: Not its purpose.
+(-) Shell aliases, which the first process loads before it starts the login shells. :: Those belong to bash.
+(-) The date and time of the next shutdown, which the kernel then schedules for the machine and announces to the users. :: That is `shutdown`.
 
 @@group PID 1 and systemd
 @@q single | The first process
 What is the role of the process with PID 1?
-(+) It starts and supervises the system's services, adopts orphaned processes and gives access to the system (logins). :: On modern Linux it is usually systemd.
-(-) It is the same as the kernel. :: It is a user-space process.
-(-) It exists only during shutdown. :: It runs all the time.
-(-) It is the first user's shell. :: It starts before any user logs in.
+(+) It starts and supervises the services, adopts orphaned processes and gives access to the system. :: On modern Linux it is usually systemd.
+(-) It is the same thing as the kernel, only running in user mode and with a lower priority than the other processes. :: It is a user-space process.
+(-) It exists only while the machine shuts down, where it stops all the other processes. :: It runs all the time.
+(-) It is the shell of the first user who logs in, and every other process is its child. :: It starts before any user logs in.
 
 @@q match | Kinds of init system
 Match each system with its family.
@@ -179,9 +179,9 @@ Select the features that systemd offers.
 @@q single | What is a unit
 What is a systemd "unit"?
 (+) A configuration file describing something systemd manages: a service, a mount, a socket, a timer, a target... :: Named with a suffix such as `.service` or `.target`.
-(-) A measure of CPU time. :: No.
-(-) A single running process. :: A unit describes it; the process is separate.
-(-) A user account. :: No.
+(-) A measure of CPU time, which systemd uses to share the processor between all the services that are running. :: No.
+(-) A single running process, started and watched by systemd until it stops. :: A unit describes it; the process is separate.
+(-) A user account of the system, with its home directory and its login shell. :: No.
 
 @@q match | Unit types
 Match each unit type with its purpose.
@@ -194,17 +194,17 @@ Match each unit type with its purpose.
 
 @@q single | Where units live
 Where are the unit files shipped by packages usually stored, and where do administrators put their own changes?
-(+) Packages install them under `/lib/systemd/system` (or `/usr/lib/systemd/system`); local units and overrides go in `/etc/systemd/system`, which takes precedence. :: Do not edit the package files.
-(-) Both in `/bin`. :: That holds programs.
-(-) Packages under `/etc/systemd/system`, local files under `/tmp`. :: Reversed and wrong.
-(-) In the user's home directory only. :: Those are for user units.
+(+) Packages install them in `/lib/systemd/system`; local units and overrides go in `/etc/systemd/system`, which wins. :: Do not edit the package files.
+(-) Both in `/bin`, where the programs of the system are stored, and nowhere else. :: That holds programs.
+(-) Packages in `/etc/systemd/system` and the local files in `/tmp`, which is cleaned up at every boot of the machine. :: Reversed and wrong.
+(-) Only in the home directory of the user who administers the machine, in a hidden folder. :: Those are for user units.
 
 @@q single | What a target is
 What is a target in systemd?
 (+) A named group of units that represents a stage or state of the system, replacing the older runlevels. :: Reaching a target means its units are started.
-(-) A file that stores the partition table. :: No.
-(-) A way to direct output to the printer. :: No.
-(-) The kernel's target CPU. :: No.
+(-) A file that stores the partition table of the disk that the system starts from. :: No.
+(-) A way to direct the output of a program to the printer that is configured as the default printer of the system. :: No.
+(-) The kernel's target CPU, for which the machine code of the programs was compiled. :: No.
 
 @@q match | Runlevels and targets
 Match each classic runlevel with its systemd target.
@@ -224,10 +224,10 @@ Which command shows the target that the system boots into?
 
 @@q single | Change target now
 What does `systemctl isolate rescue.target` do?
-(+) It stops all the services that do not belong to the rescue target and brings the machine into single-user maintenance mode. :: It switches the running system to that target.
-(-) It makes rescue mode the default for all future boots. :: That is `systemctl set-default`.
-(-) It deletes the unit. :: No.
-(-) It isolates the network cable. :: Not literally.
+(+) It stops the services that do not belong to the rescue target and brings the machine into maintenance mode. :: It switches the running system to that target.
+(-) It makes rescue mode the default for all the boots that follow, but does not change the state of the running system. :: That is `systemctl set-default`.
+(-) It deletes the unit file of the target, so that it cannot be used again. :: No.
+(-) It isolates the network cable of the machine, by disabling the network interfaces. :: Not literally.
 
 @@q fill | Set the default
 Make the system boot to text mode (without graphical login) next time: `systemctl {{set-default}} multi-user.target`
@@ -249,23 +249,23 @@ Match each command with its effect.
 @@q single | enable versus start
 What is the difference between `systemctl start ssh` and `systemctl enable ssh`?
 (+) `start` runs the service now; `enable` makes it start automatically at boot but does not start it now. :: Use `enable --now` to do both.
-(-) They are identical. :: They differ.
-(-) `enable` starts it only for root. :: No.
-(-) `start` makes it start at every boot. :: It affects the current session only.
+(-) They are identical, and both start the service and make it start again at each boot. :: They differ.
+(-) `enable` starts the service only for the root user, while `start` does it for everyone who is logged in to the system. :: No.
+(-) `start` makes the service start at every boot, while `enable` runs it once only. :: It affects the current session only.
 
 @@q single | disable versus stop
 What does `systemctl disable ssh` do?
 (+) It removes the automatic start at boot but leaves the running service running. :: Combine with `stop` to end it now.
 (-) It stops the service immediately. :: That is `stop`.
 (-) It deletes the package. :: No.
-(-) It prevents the service from ever being started, even manually. :: That is `mask`.
+(-) It prevents the service from ever being started again, even manually, which would be the job of `mask` instead. :: That is `mask`.
 
 @@q single | Mask
 What does `systemctl mask ssh` achieve beyond `disable`?
-(+) It links the unit to `/dev/null`, so it cannot be started at all, neither at boot nor manually nor as a dependency. :: A strong block.
-(-) It hides the service from `ps`. :: No.
-(-) It makes the log quieter. :: No.
-(-) It is the same as `restart`. :: No.
+(+) It links the unit to `/dev/null`, so it cannot be started at all: not at boot, manually or as a dependency. :: A strong block.
+(-) It hides the service from `ps`, so that its processes no longer appear in the list. :: No.
+(-) It makes the log of the service quieter, by discarding all the messages that have a low priority in the journal. :: No.
+(-) It is the same as `restart`, with a different name that is used for unit files. :: No.
 
 @@q fill | Start and enable together
 Start the service now and also at every boot: `systemctl {{enable --now}} ssh`
@@ -283,10 +283,10 @@ Which command prints `active` or `inactive` for a service so a script can test i
 
 @@q single | Old-style commands
 On many systems `service cups start` and `/etc/init.d/cups start` still exist. What are they?
-(+) The System V ways of controlling a service; with systemd the `service` command simply forwards to `systemctl`, while calling the script in `/etc/init.d` directly bypasses systemd's tracking and is discouraged. :: Prefer `systemctl`.
-(-) The only possible ways on any system. :: systemd is the standard.
-(-) Commands that delete the service. :: They start it.
-(-) Commands available only to root. :: Regular users may need `sudo` for both.
+(+) The System V way of controlling a service; `service` forwards to `systemctl`, but running the script directly bypasses systemd. :: Prefer `systemctl`.
+(-) The only possible ways to control a service, on any system that is in use today, whatever its init system may be. :: systemd is the standard.
+(-) Commands that delete the service and its unit file from the machine for good. :: They start it.
+(-) Commands that are available only to root, and refused for every ordinary user. :: Regular users may need `sudo` for both.
 
 @@q single | Service logs
 Which command shows the log messages of the service `ssh` collected by systemd?
@@ -304,17 +304,17 @@ Which command lists the units that failed to start?
 
 @@q single | Dependencies
 What does it mean when a unit file says `After=network.target` and `Wants=network.target`?
-(+) The service is started after the network target is reached, and systemd tries to bring the network up as well. :: `After` sets ordering; `Wants` sets a soft dependency.
-(-) The service starts before the network target. :: `After` means later.
-(-) The service is deleted when the network goes down. :: No.
-(-) The service controls the network. :: It only depends on it.
+(+) The service starts after the network target is reached, and systemd tries to bring the network up as well. :: `After` sets ordering; `Wants` sets a soft dependency.
+(-) The service starts before the network target is reached, in order to prepare the network for its own needs first. :: `After` means later.
+(-) The service is deleted whenever the network goes down, and installed again afterwards. :: No.
+(-) The service controls the network, and starts and stops it as it is needed. :: It only depends on it.
 
 @@q single | Restart on failure
 Which setting in a service unit makes systemd start the program again when it crashes?
 (+) `Restart=on-failure` (in the `[Service]` section) :: systemd supervises and restarts it.
-(-) `After=crash.target` :: Not a setting.
-(-) `Enabled=yes` :: Not a setting.
-(-) `WantedBy=failure` :: Not meaningful.
+(-) `After=crash.target`, which orders the service after the crash :: Not a setting.
+(-) `Enabled=yes`, which keeps the service alive at every moment :: Not a setting.
+(-) `WantedBy=failure`, which links the service to the failure target :: Not meaningful.
 
 @@group Shutting down
 @@q match | Shutdown commands
@@ -343,50 +343,50 @@ Put the stages of a clean shutdown in order.
 
 @@q single | Why SIGTERM first
 Why does the shutdown sequence send `SIGTERM` before `SIGKILL`?
-(+) Programs can catch `SIGTERM` to save data and exit cleanly; only those that do not finish in time are killed with `SIGKILL`. :: Reduces the risk of corruption.
-(-) `SIGKILL` cannot be sent to services. :: It can.
-(-) `SIGTERM` powers off the hardware. :: It is an ordinary signal.
-(-) Because `SIGKILL` is slower. :: Not the reason.
+(+) Programs can catch `SIGTERM` to save data and exit cleanly; only those that do not finish in time get `SIGKILL`. :: Reduces the risk of corruption.
+(-) Because `SIGKILL` cannot be sent to services, only to the processes of ordinary users that have a terminal. :: It can.
+(-) Because `SIGTERM` powers off the hardware, while `SIGKILL` only ends the processes. :: It is an ordinary signal.
+(-) Because `SIGKILL` is slower than `SIGTERM`, and the shutdown has to be done quickly. :: Not the reason.
 
 @@q single | Why unmount
 Why must file systems be unmounted (or remounted read-only) before power off?
-(+) Data may still be waiting in memory buffers; unmounting writes it to disk and marks the file system clean, preventing corruption. :: A sudden power cut can leave inconsistencies.
-(-) Because unmounted disks use less electricity. :: Not the reason.
-(-) Because the kernel would otherwise refuse to power off. :: It does not refuse.
-(-) To delete temporary files. :: That is done elsewhere.
+(+) Data may still be waiting in memory buffers; unmounting writes it to disk and marks the file system clean. :: A sudden power cut can leave inconsistencies.
+(-) Because unmounted disks use less electricity, which matters when a laptop is running on its battery. :: Not the reason.
+(-) Because the kernel would otherwise refuse to power off, until every disk has been unmounted. :: It does not refuse.
+(-) To delete the temporary files that the programs have left on the disk before the machine stops. :: That is done elsewhere.
 
 @@q single | Custom shutdown message
 Which command warns users with your own message and shuts down in 10 minutes?
 (+) `shutdown -h +10 "Maintenance in 10 minutes"` :: The text is sent to all terminals.
-(-) `shutdown -c "Maintenance"` :: `-c` cancels.
-(-) `echo Maintenance | shutdown` :: The message is not read from stdin.
-(-) `halt +10` :: `halt` stops at once.
+(-) `shutdown -c "Maintenance"`, which announces the message and then goes on :: `-c` cancels.
+(-) `echo Maintenance | shutdown`, which reads the message from its input :: The message is not read from stdin.
+(-) `halt +10`, which stops the machine after a delay of ten minutes :: `halt` stops at once.
 
 @@q single | Reboot shortcut
 What is a normal effect of pressing `Ctrl+Alt+Del` on a Linux text console?
 (+) It triggers a reboot through the init system (systemd maps it to `reboot.target`). :: On many systems it can be disabled.
-(-) It opens a task manager. :: That is a desktop feature.
-(-) It locks the screen. :: Not by default.
-(-) Nothing, the keys are ignored. :: The kernel passes the key combination to the init system.
+(-) It opens a task manager where you can choose which processes to end, as in Windows. :: That is a desktop feature.
+(-) It locks the screen and asks for the password of the user before anything else happens. :: Not by default.
+(-) Nothing at all, because the kernel ignores that key combination on a text console. :: The kernel passes the key combination to the init system.
 
 @@group Files systems at boot
 @@q single | fstab
 What is `/etc/fstab` used for?
 (+) It lists the file systems (device, mount point, type, options) that are mounted at boot. :: Also lists swap areas.
-(-) It stores the passwords. :: That is `/etc/shadow`.
-(-) It holds the boot menu. :: That is GRUB's configuration.
-(-) It records who logged in. :: That is `wtmp`.
+(-) It stores the passwords of the users, in a form that only the administrator can read. :: That is `/etc/shadow`.
+(-) It holds the boot menu of GRUB, with one entry for each kernel that is installed. :: That is GRUB's configuration.
+(-) It records who logged in and when, which `last` later reads to show the history. :: That is `wtmp`.
 
 @@q single | Swap
 What is swap space?
 (+) Disk space that the kernel can use to hold memory pages that are not in use, making more room in RAM. :: Activated during boot.
-(-) A directory for temporary files. :: That is `/tmp`.
-(-) A special user account. :: No.
-(-) A backup of `/home`. :: No.
+(-) A directory for temporary files, which programs fill while they run and the system then cleans. :: That is `/tmp`.
+(-) A special user account that owns the files which the kernel moves between disks. :: No.
+(-) A backup of the `/home` directory, which is made automatically at every shutdown. :: No.
 
 @@q single | Clean /tmp
 Why do many systems clean `/tmp` at boot?
 (+) Temporary files are not meant to survive a reboot, and leftovers could fill the disk or confuse programs. :: Part of the initial clean-up.
-(-) Because `/tmp` is stored in the boot loader. :: No.
-(-) Because the kernel cannot mount it otherwise. :: No.
-(-) To remove user passwords. :: No.
+(-) Because `/tmp` is stored inside the boot loader, which clears it at every start. :: No.
+(-) Because the kernel cannot mount the file system of `/tmp` while that directory still holds files from the last session. :: No.
+(-) To remove the passwords that the users have typed into programs during the last session. :: No.

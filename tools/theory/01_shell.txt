@@ -5,19 +5,19 @@ What a shell is and how it runs a line, builtin vs external commands, PATH, exit
 @@group What a shell is
 @@q single | Role of the shell
 Which statement best describes what a shell such as `bash` does?
-(+) It is a program that reads text commands, interprets them and starts other programs on your behalf, and it also offers a small programming language. :: That is the whole job: a text interface between you and the operating system, plus scripting (variables, `if`, loops) on top.
-(-) It is the part of the kernel that schedules processes and manages memory. :: That is the kernel itself. The shell is an ordinary user-space program; it asks the kernel to do things through system calls.
-(-) It is the graphical desktop that draws windows and menus. :: A desktop environment does that. A terminal emulator window merely *hosts* a shell; the shell has nothing to do with drawing windows.
-(-) It is a compiler that turns a script into a binary executable before running it. :: Shell scripts are interpreted line by line. Nothing is compiled ahead of time.
+(+) It is a program that reads text commands, interprets them and starts other programs for you; it also offers scripting. :: That is the whole job: a text interface between you and the operating system, plus scripting (variables, `if`, loops) on top.
+(-) It is the part of the kernel that schedules processes, manages memory and talks to the hardware on behalf of every program. :: That is the kernel itself. The shell is an ordinary user-space program; it asks the kernel to do things through system calls.
+(-) It is the graphical desktop environment that draws windows and menus and lets you launch programs with the mouse. :: A desktop environment does that. A terminal emulator window merely *hosts* a shell; the shell has nothing to do with drawing windows.
+(-) It is a compiler that translates each script into a binary executable before running it, so scripts are never interpreted. :: Shell scripts are interpreted line by line. Nothing is compiled ahead of time.
 @@note
 The kernel, the shell and the terminal window are three different things: the shell is a normal program that talks to the kernel for you.
 
 @@q single | Shell versus terminal
 What is the relationship between a terminal emulator (e.g. `xterm`, GNOME Terminal) and the shell running inside it?
-(+) The terminal emulator only provides the window, keyboard input and text output; the shell is a separate program started inside it. :: Correct. You can run `zsh` or `dash` inside the same emulator and nothing about the window changes.
-(-) They are the same program, so changing the terminal changes the shell. :: They are separate. Changing the emulator leaves your shell (and its settings) as it was.
-(-) The terminal emulator interprets the commands and the shell only draws the text. :: Reversed. The shell parses and runs commands; the emulator only displays characters and forwards keystrokes.
-(-) The shell runs only in a terminal emulator; over SSH or on a text console there is no shell. :: A shell is what you get on a text console (tty) and over SSH too; no graphical emulator is required.
+(+) The emulator only provides the window, keyboard input and text output; the shell is a separate program started inside it. :: Correct. You can run `zsh` or `dash` inside the same emulator and nothing about the window changes.
+(-) They are the same program, so replacing the terminal window with another one also replaces your shell and its settings. :: They are separate. Changing the emulator leaves your shell (and its settings) as it was.
+(-) The terminal emulator interprets the commands and starts programs, while the shell only draws the text on the screen. :: Reversed. The shell parses and runs commands; the emulator only displays characters and forwards keystrokes.
+(-) The shell runs only inside a graphical terminal emulator; over SSH or on a text console there is no shell at all. :: A shell is what you get on a text console (tty) and over SSH too; no graphical emulator is required.
 
 @@q multi | Shells in the Unix family
 Select every program that is a command interpreter (shell) on Unix-like systems.
@@ -43,10 +43,10 @@ Put the steps of the shell's interactive cycle in order.
 
 @@q single | Several commands on one line
 What does `echo one; echo two` print?
-(+) `one` and `two` on two separate lines, the second command running after the first finishes. :: `;` separates commands, which are run one after the other.
-(-) `one; echo two` on one line, because everything after `echo` is its argument. :: Unquoted `;` is shell syntax, not text, so the line is split into two commands.
-(-) A syntax error, because each line may hold only one command. :: Several commands per line are allowed; `;` is exactly the separator for that.
-(-) `two` only, because the last command overwrites the first output. :: Output is written to the terminal, not stored; nothing is overwritten.
+(+) `one` and `two` on separate lines; the second command runs after the first finishes. :: `;` separates commands, which are run one after the other.
+(-) `one; echo two` on a single line, because everything after the first `echo` is treated as its argument. :: Unquoted `;` is shell syntax, not text, so the line is split into two commands.
+(-) A syntax error, because each line of input may contain only one command in the shell. :: Several commands per line are allowed; `;` is exactly the separator for that.
+(-) `two` only, because the output of the last command overwrites the output of the first on the screen. :: Output is written to the terminal, not stored; nothing is overwritten.
 
 @@q single | Quoting a semicolon
 What is the output of `echo I love bash ";" really`?
@@ -58,10 +58,10 @@ What is the output of `echo I love bash ";" really`?
 @@group Builtin and external commands
 @@q single | Builtin versus external
 What is the defining difference between a builtin and an external command?
-(+) A builtin is implemented inside the shell itself, while an external command is a separate executable file the shell must find and start. :: Correct: a builtin runs as a shell function; an external command needs a new process and a file on disk.
-(-) A builtin is always faster to type, an external one needs a full path. :: Typing has nothing to do with it; external commands are found through `PATH` without a full path.
-(-) A builtin can only be used in scripts, an external one only interactively. :: Both kinds work in either place.
-(-) A builtin runs as root, an external command runs as the current user. :: Privileges come from the user who started the shell, not from the command type.
+(+) A builtin is implemented inside the shell itself; an external command is a separate executable file the shell must find and start. :: Correct: a builtin runs as a shell function; an external command needs a new process and a file on disk.
+(-) A builtin is always faster to type, while an external command always has to be typed with its full path name. :: Typing has nothing to do with it; external commands are found through `PATH` without a full path.
+(-) A builtin can only be used inside scripts, while an external command can only be used interactively at the prompt. :: Both kinds work in either place.
+(-) A builtin always runs with root privileges, while an external command runs with the privileges of the current user only. :: Privileges come from the user who started the shell, not from the command type.
 
 @@q sort | Builtin or external
 @@buckets Builtin | External program
@@ -75,10 +75,10 @@ Classify each command as it is typically found in bash on Linux.
 
 @@q single | Why cd is a builtin
 Why can `cd` not work as a normal external program?
-(+) The working directory belongs to each process, so an external program would change only its own directory and die, leaving the shell where it was. :: A child process cannot alter its parent's working directory, so the command has to run inside the shell.
-(-) Because `cd` needs root privileges to read other directories. :: It needs no extra privilege; access follows normal directory permissions.
-(-) Because there is no disk space for a `cd` binary in `/bin`. :: Size is irrelevant. The reason is process isolation.
-(-) Because `cd` is a keyword of the C language. :: Coincidence of name only; it has no connection to C.
+(+) The working directory belongs to each process, so an external `cd` would change only its own directory and then exit. :: A child process cannot alter its parent's working directory, so the command has to run inside the shell.
+(-) Because `cd` needs root privileges in order to read the contents of directories owned by other users. :: It needs no extra privilege; access follows normal directory permissions.
+(-) Because there is no room left for one more small binary in `/bin`, where every external command of the system must live. :: Size is irrelevant. The reason is process isolation.
+(-) Because `cd` is a reserved keyword of the C language and cannot be used as a program name. :: Coincidence of name only; it has no connection to C.
 
 @@q multi | Identifying a command
 Which commands can tell you whether `ls` is a builtin, an alias or a file, and where that file is?
@@ -91,14 +91,14 @@ Which commands can tell you whether `ls` is a builtin, an alias or a file, and w
 @@q single | What type reveals
 Running `type cd` in bash prints `cd is a shell builtin`. What would `type ls` most likely print on a typical system?
 (+) `ls is /usr/bin/ls` (or an alias description if an alias exists) :: `ls` is an external file found through `PATH`.
-(-) `ls is a shell builtin` :: `ls` is not implemented inside bash.
-(-) `ls: command not found` :: `ls` exists on every Linux system.
-(-) `ls is a shell keyword` :: Keywords are words such as `if`, `for`, `while`; `ls` is a normal command.
+(-) `ls is a shell builtin`, exactly like `cd`, because both are basic commands :: `ls` is not implemented inside bash.
+(-) `ls: command not found`, since `ls` is not guaranteed to be installed :: `ls` exists on every Linux system.
+(-) `ls is a shell keyword`, like `if` or `while`, which are also reserved :: Keywords are words such as `if`, `for`, `while`; `ls` is a normal command.
 
 @@q single | Builtin also on disk
 `type -a echo` on a typical Linux system lists both `echo is a shell builtin` and `echo is /usr/bin/echo`. What happens when you type `echo hi`?
 (+) The builtin runs, because bash looks for builtins before searching `PATH`. :: Builtins take precedence over same-named files.
-(-) The file `/usr/bin/echo` runs, because files are always preferred. :: The opposite is true.
+(-) The file `/usr/bin/echo` runs, because files on disk are always preferred over the builtins of the shell. :: The opposite is true.
 (-) Bash asks you which one you mean. :: Bash never asks; the lookup order is fixed.
 (-) Both run and the text is printed twice. :: Only the first match in the lookup order is used.
 
@@ -119,9 +119,9 @@ You wrote a script `tool.sh` in your current directory, and `.` is not in `PATH`
 @@q single | Command not found
 You type `mytool` and get `command not found`, yet `ls -l ./mytool` shows an executable file. What is the most likely cause?
 (+) The directory that contains it is not in `PATH`, so the bare name is never searched there. :: Exactly. Use `./mytool` or add the directory to `PATH`.
-(-) The file needs `sudo` to be seen by the shell. :: Missing permissions produce `Permission denied`, not `command not found`.
-(-) `ls` has a different `PATH` from the shell. :: `ls` does not search anything; you gave it a path.
-(-) Executable files only run after a reboot. :: There is no such rule.
+(-) The file needs `sudo` before the shell is able to see it, even though `ls` can list it. :: Missing permissions produce `Permission denied`, not `command not found`.
+(-) `ls` uses a different `PATH` from the shell, so it finds files the shell cannot. :: `ls` does not search anything; you gave it a path.
+(-) Executable files only become available to the shell after the next reboot or logout. :: There is no such rule.
 
 @@q order | Looking up a command word
 Order these steps of how bash resolves the first word of a simple command, from first to last.
@@ -155,10 +155,10 @@ Match each situation with the exit status bash reports.
 
 @@q single | Status after echo
 After `false; echo $?` you see `1`. In the line `echo hello; echo $?`, what does the second `echo` print?
-(+) `0`, the status of the first `echo`, which succeeded. :: `$?` always refers to the previous command, here the first `echo`.
-(-) `1`, left over from before. :: Every command that finishes overwrites the stored status.
-(-) `hello` :: `$?` is a number, not the command's output.
-(-) Nothing, `$?` is empty until a script ends. :: It is set after every command, including at the prompt.
+(+) `0`, the status of the first `echo` :: `$?` always refers to the previous command, here the first `echo`.
+(-) `1`, the value left over from the earlier `false` command :: Every command that finishes overwrites the stored status.
+(-) `hello`, the text printed by the first command :: `$?` is a number, not the command's output.
+(-) Nothing, because `$?` stays empty until a script ends :: It is set after every command, including at the prompt.
 
 @@q multi | Status-based separators
 Select the statements that are true about `&&` and `||`.
@@ -230,9 +230,9 @@ Select the commands that search manual-page descriptions for a keyword.
 @@q single | What whatis prints
 What does `whatis ls` print?
 (+) The one-line description of each manual page named `ls`. :: `whatis` is a quick lookup of short descriptions by exact name.
-(-) The full manual of `ls`. :: That is `man ls`.
-(-) The path of the `ls` executable. :: That is `which ls`.
-(-) Every page that mentions the word `ls`. :: That would be `apropos ls`.
+(-) The full text of the `ls` manual page, like `man ls` does :: That is `man ls`.
+(-) The path of the `ls` executable, like `which ls` does :: That is `which ls`.
+(-) Every page whose description mentions the word `ls` :: That would be `apropos ls`.
 
 @@q fill | Open a manual page
 To read the manual page of the command `sort`, type: `{{man}} sort`
@@ -250,10 +250,10 @@ Which key quits a manual page displayed by `man`?
 
 @@q single | What info adds
 How do GNU `info` documents differ from manual pages?
-(+) They are organised as a tree of linked nodes with menus and cross-references, instead of one long linear page. :: That hypertext structure is the main difference.
-(-) They are shorter summaries of man pages. :: They are often longer and more detailed.
-(-) They can be edited by users and saved. :: They are read-only documentation.
-(-) They can only be read in a graphical environment. :: The standard `info` reader runs in a terminal.
+(+) They are a tree of linked nodes with menus and cross-references, not one long linear page. :: That hypertext structure is the main difference.
+(-) They are shorter summaries of the man pages, meant for a quick look at the options. :: They are often longer and more detailed.
+(-) They can be edited by users and saved, so each person keeps a personal copy of the docs. :: They are read-only documentation.
+(-) They can only be read in a graphical environment, because the reader needs a mouse for the links. :: The standard `info` reader runs in a terminal.
 
 @@q match | Navigating info
 Match each key in the `info` reader with its action.
@@ -274,10 +274,10 @@ In an `info` page, how do you follow a link shown as `* Common options::`?
 @@group Reading long text with less
 @@q single | Why less
 Why does `man` show pages through `less` instead of just printing them?
-(+) `less` shows one screen at a time and lets you scroll and search, without loading the whole file first. :: A pager makes long text readable.
-(-) `less` translates the page into your language. :: It only displays text.
-(-) `less` protects pages from being modified. :: Protection comes from file permissions, not the pager.
-(-) Because the terminal cannot print more than 24 lines. :: Terminals can scroll; the pager is for convenience.
+(+) `less` shows one screen at a time and lets you scroll and search backwards and forwards. :: A pager makes long text readable.
+(-) `less` translates the page into your language and formats it to fit the terminal width. :: It only displays text.
+(-) `less` protects the pages from being modified, which plain printing to the screen would not do. :: Protection comes from file permissions, not the pager.
+(-) Because a terminal cannot print more than 24 lines without losing the rest of the output. :: Terminals can scroll; the pager is for convenience.
 
 @@q match | Keys in less
 Match each key in `less` with what it does.
@@ -298,9 +298,9 @@ Inside a man page, typing `{{/}}error` starts a forward search for the word erro
 @@q single | less versus more
 Compared with the older `more`, what is an advantage of `less`?
 (+) You can scroll backwards as well as forwards, and search in both directions. :: That flexibility gave `less` its name, as a joke on "less is more".
-(-) It can edit the file while viewing it. :: Neither is an editor.
-(-) It is the only pager that works with pipes. :: Both can read from a pipe.
-(-) It automatically sorts the lines. :: Sorting is `sort`'s job.
+(-) It can edit the file while you are viewing it, saving changes with a single key. :: Neither is an editor.
+(-) It is the only pager that works in a pipeline, because `more` needs a file name. :: Both can read from a pipe.
+(-) It automatically sorts the lines of the text before showing them page by page. :: Sorting is `sort`'s job.
 
 @@group Line editing and shell keys
 @@q multi | Bash line-editing keys
@@ -309,14 +309,14 @@ Select the keys that work at the bash prompt as described.
 (+) `↑` recalls the previous command from history. :: Repeated presses walk further back.
 (+) `Ctrl+A` moves the cursor to the start of the line. :: Emacs-style editing keys are the default in bash.
 (+) `Ctrl+E` moves the cursor to the end of the line. :: The counterpart of `Ctrl+A`.
-(-) `Ctrl+Z` deletes the whole line. :: `Ctrl+Z` suspends the running command; it edits nothing.
+(-) `Ctrl+Z` deletes the whole line you are typing :: `Ctrl+Z` suspends the running command; it edits nothing.
 
 @@q single | Reverse search
 What does `Ctrl+R` do at the bash prompt?
 (+) It starts an incremental search backwards through your command history. :: Type a few letters and the most recent matching command appears; press it again for older ones.
-(-) It repeats the last command immediately. :: Repeating the last command is `!!`.
-(-) It reloads the shell configuration. :: Reloading is `source ~/.bashrc`.
-(-) It removes the last command from history. :: `Ctrl+R` only searches.
+(-) It runs the previous command again at once, without showing it for editing. :: Repeating the last command is `!!`.
+(-) It reloads the shell configuration, such as `~/.bashrc`, in the current shell. :: Reloading is `source ~/.bashrc`.
+(-) It removes the last command from the history so that it cannot be recalled again. :: `Ctrl+R` only searches.
 
 @@q match | Keys that talk to the running program
 Match each key with its effect.
@@ -336,24 +336,24 @@ After running `ls /etc`, what does typing `!!` and Enter do?
 @@group Reading a command line
 @@q single | Anatomy of a command
 In `ls -l /etc`, what are `-l` and `/etc`?
-(+) Two arguments passed to the command `ls`: an option and an operand. :: The shell splits the line into words; the first is the command, the rest are its arguments.
-(-) Two separate commands. :: Only the first word is the command.
-(-) Two environment variables. :: Variables are set with `NAME=value`.
-(-) Comments ignored by the shell. :: Comments start with `#`.
+(+) Two arguments passed to `ls`: an option and an operand. :: The shell splits the line into words; the first is the command, the rest are its arguments.
+(-) Two separate commands, the second one being `/etc`, which is run after `ls`. :: Only the first word is the command.
+(-) Two environment variables that `ls` reads to decide what to list and where. :: Variables are set with `NAME=value`.
+(-) Comments that the shell ignores and that `ls` never sees in its argument list. :: Comments start with `#`.
 
 @@q single | Whitespace splitting
 How many arguments does `echo a    b` (four spaces between) pass to `echo`, and what does it print?
 (+) Two arguments, `a` and `b`; it prints `a b` with a single space. :: The shell splits on runs of blanks, and `echo` joins arguments with one space.
-(-) One argument, printed as `a    b`. :: That needs quoting: `echo "a    b"`.
-(-) Three arguments, because spaces count. :: Blanks are separators, not arguments.
-(-) It fails because of the extra spaces. :: Extra blanks are simply ignored.
+(-) One argument, which it prints as `a    b` with all four spaces. :: That needs quoting: `echo "a    b"`.
+(-) Three arguments, because the run of spaces counts as an argument itself. :: Blanks are separators, not arguments.
+(-) It fails, because `echo` rejects extra spaces between arguments. :: Extra blanks are simply ignored.
 
 @@q single | Double quotes keep spacing
 What does `echo "a    b"` print?
-(+) `a    b` with the four spaces intact. :: Quotes stop word splitting, so `echo` receives a single argument.
-(-) `a b` :: That is the unquoted result.
-(-) `"a    b"` with the quotes. :: The shell removes the quotes before `echo` sees the argument.
-(-) Nothing, quotes are an error. :: Quoting is perfectly valid.
+(+) `a    b`, with the four spaces kept exactly as typed. :: Quotes stop word splitting, so `echo` receives a single argument.
+(-) `a b`, with the spaces collapsed into one :: That is the unquoted result.
+(-) `"a    b"` including the quotes themselves :: The shell removes the quotes before `echo` sees the argument.
+(-) Nothing, because quotes inside `echo` are an error :: Quoting is perfectly valid.
 
 @@q fill | Comments
 Everything after a `{{#}}` character that starts a word is a comment and is ignored by bash.
@@ -365,24 +365,24 @@ In scripts a `#` at the start of a word begins a comment; a `#` inside a word, s
 @@q single | First word of a command
 In `FOO=bar env | grep FOO`, how does the shell treat `FOO=bar`?
 (+) As a variable assignment placed in the environment of the `env` command only. :: Assignments before a command name are temporary and apply just to that command.
-(-) As the name of the command to run. :: A leading `NAME=value` is recognised as an assignment, not as a command.
-(-) As an error because assignments must be on their own line. :: Prefix assignments are legal.
-(-) As a permanent change of your shell's environment. :: The setting disappears after the command ends.
+(-) As the name of the command to run, with `env` and `grep` as its arguments. :: A leading `NAME=value` is recognised as an assignment, not as a command.
+(-) As an error, because an assignment must be alone on its own line. :: Prefix assignments are legal.
+(-) As a permanent change of the environment of your current shell. :: The setting disappears after the command ends.
 
 @@group Sessions and the prompt in practice
 @@q single | Exiting the shell
 Which way ends an interactive bash session?
 (+) Typing `exit`, or pressing `Ctrl+D` at an empty prompt. :: Both end the shell; `Ctrl+D` sends end-of-input.
-(-) Pressing `Ctrl+C` at an empty prompt. :: That just gives a new prompt.
-(-) Pressing `Ctrl+Z`. :: That suspends the foreground job; at an empty prompt it does nothing useful.
-(-) Typing `quit`. :: Bash has no `quit` command.
+(-) Pressing `Ctrl+C` at an empty prompt, which interrupts the shell itself. :: That just gives a new prompt.
+(-) Pressing `Ctrl+Z`, which suspends the shell and closes the terminal. :: That suspends the foreground job; at an empty prompt it does nothing useful.
+(-) Typing `quit`, which is the counterpart of `exit` in bash. :: Bash has no `quit` command.
 
 @@q single | Long commands over several lines
 What does a backslash at the very end of a line do in bash?
 (+) It escapes the newline, so the command continues on the next line. :: Handy for splitting long commands for readability.
-(-) It ends the command with an error. :: A trailing backslash is valid.
-(-) It prints a literal backslash. :: The backslash-newline pair is removed before execution.
-(-) It runs the command in the background. :: That is the job of `&`.
+(-) It ends the command at that point and reports a syntax error to the user. :: A trailing backslash is valid.
+(-) It prints a literal backslash and then starts a new, separate command. :: The backslash-newline pair is removed before execution.
+(-) It runs the command in the background so the prompt returns immediately. :: That is the job of `&`.
 
 @@q single | Which shell am I in
 Which command shows the name of the shell program you are currently running (in a typical bash session)?
@@ -393,18 +393,18 @@ Which command shows the name of the shell program you are currently running (in 
 
 @@q single | Exit status in prompts
 Why do many people show the last exit status in their prompt?
-(+) To notice immediately when the previous command failed, without typing `echo $?`. :: Useful feedback when you chain many commands.
-(-) Because bash refuses to run a command after a failed one. :: Bash does not block anything; every command runs regardless.
-(-) Because the status decides who owns the next file. :: Ownership is unrelated to exit status.
-(-) Because it is required by POSIX. :: No standard requires it; it is a convenience.
+(+) To notice at once that the previous command failed, without typing `echo $?`. :: Useful feedback when you chain many commands.
+(-) Because bash refuses to run another command after a failed one until you acknowledge it. :: Bash does not block anything; every command runs regardless.
+(-) Because the exit status decides which user will own the next file you create. :: Ownership is unrelated to exit status.
+(-) Because POSIX requires every interactive prompt to display the last status. :: No standard requires it; it is a convenience.
 
 @@group Predict the result
 @@q single | Unquoted semicolon surprise
 What happens when you run `echo a;b` (no spaces, nothing quoted)?
 (+) `a` is printed, then bash reports that `b` is not found as a command. :: The `;` splits the line into `echo a` and `b`; `b` is then searched as a command name.
-(-) `a;b` is printed on one line. :: That would need quotes: `echo "a;b"`.
-(-) `a` and `b` are printed on separate lines. :: `b` is a command, not text to print, so it is looked up in `PATH`.
-(-) Bash reports a syntax error and runs nothing. :: The line is syntactically valid; the failure happens at run time for `b`.
+(-) `a;b` is printed on one line, as the two letters are one argument. :: That would need quotes: `echo "a;b"`.
+(-) `a` and `b` are printed on separate lines, one per command. :: `b` is a command, not text to print, so it is looked up in `PATH`.
+(-) Bash reports a syntax error near `;` and runs nothing at all. :: The line is syntactically valid; the failure happens at run time for `b`.
 
 @@q single | Status after a failed cd
 In a directory where `cd /nonexistent` fails, what does `echo $?` print right after it?
@@ -451,10 +451,10 @@ You typed part of a command and change your mind. Which key combination abandons
 
 @@q single | If tests the status
 What does `if grep -q root /etc/passwd; then echo yes; fi` check?
-(+) Whether `grep` exits with status 0, meaning that it found a match. :: `if` runs the command and branches on its exit status.
-(-) Whether the text `root` is printed on the screen. :: With `-q` grep prints nothing; only the status matters.
-(-) Whether `/etc/passwd` is a readable file. :: Only indirectly: if it cannot be read, grep fails.
-(-) Whether the variable `root` is set. :: No variable is involved.
+(+) Whether `grep` exits with status 0, i.e. found a match. :: `if` runs the command and branches on its exit status.
+(-) Whether the text `root` is printed on the screen by `grep`. :: With `-q` grep prints nothing; only the status matters.
+(-) Whether `/etc/passwd` exists and is a readable regular file. :: Only indirectly: if it cannot be read, grep fails.
+(-) Whether a shell variable called `root` has been set. :: No variable is involved.
 
 @@q single | Order of evaluation
 Which lines does `true || echo X; false || echo Y; true && echo Z` print?
@@ -465,7 +465,7 @@ Which lines does `true || echo X; false || echo Y; true && echo Z` print?
 
 @@q single | Path versus name
 `/bin/ls` and `ls` run the same program on most systems. What is the difference in how bash finds it?
-(+) With a slash in the word bash uses that path directly; without one it searches `PATH` (after aliases, functions and builtins). :: A word containing `/` bypasses the lookup order entirely.
-(-) `/bin/ls` is slower because it needs root. :: No privilege is needed to run it by its path.
-(-) There is no difference at all, bash always searches `PATH`. :: A word with a slash is never searched in `PATH`.
-(-) `ls` runs the builtin version and `/bin/ls` the external one. :: `ls` is not a builtin in bash.
+(+) A word with a slash is used directly as a path; a bare name is searched for in `PATH`. :: A word containing `/` bypasses the lookup order entirely.
+(-) `/bin/ls` is slower because running a program by its full path needs root privileges. :: No privilege is needed to run it by its path.
+(-) There is no difference at all: bash always searches `PATH`, even for a word containing a slash. :: A word with a slash is never searched in `PATH`.
+(-) `ls` runs the builtin version of the command and `/bin/ls` runs the external program. :: `ls` is not a builtin in bash.
