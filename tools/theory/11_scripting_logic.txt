@@ -1,0 +1,506 @@
+@@collection 11_scripting_logic | Scripts: tests, branching, loops & functions
+@@about
+The test command and conditions, if and case, for, while and until loops, functions and variable scope, reading and tracing small scripts, and spotting typical bugs.
+
+@@group test and conditions
+@@q single | What [ is
+What is `[` in `if [ -f "$1" ]; then`?
+(+) A command (a synonym of `test`) that evaluates the expression up to the closing `]` and returns 0 or 1. :: `if` only looks at its exit status.
+(-) Special syntax of the `if` keyword. :: It is an ordinary command, which is why it needs spaces around it.
+(-) An array index. :: Not here.
+(-) A regular expression delimiter. :: It has no such role.
+
+@@q single | Spaces matter
+Which of these is a correct test?
+(+) `[ "$a" = "$b" ]` :: Spaces after `[` and before `]`, and around `=`.
+(-) `["$a" = "$b"]` :: Without spaces, bash looks for a command called `["$a"`.
+(-) `[ "$a"="$b" ]` :: A single word, which is always true (non-empty string).
+(-) `[ "$a" = "$b"]` :: The final `]` must be a separate word: "missing `]`".
+
+@@q sort | Numeric or string operator
+@@buckets For numbers | For strings | For files
+Classify each test operator.
+(For numbers) `-eq` :: Equal as integers.
+(For numbers) `-lt` :: Less than as integers.
+(For numbers) `-ge` :: Greater than or equal, as integers.
+(For strings) `=` :: Equal as text.
+(For strings) `-z` :: The string is empty.
+(For strings) `-n` :: The string is not empty.
+(For files) `-d` :: The path is a directory.
+(For files) `-s` :: The file exists and has a size above zero.
+(For files) `-e` :: The path exists.
+
+@@q match | File tests
+Match each test with what it checks.
+(=) `-e path` => The path exists, of any type :: File, directory, link...
+(=) `-f path` => It exists and is a regular file :: Not a directory.
+(=) `-d path` => It exists and is a directory :: Not a file.
+(=) `-s path` => It exists and is not empty :: Size greater than zero.
+(=) `-x path` => It exists and you may execute it :: Checks the permission for the current user.
+(-) It was modified today :: No `test` operator checks that; `find -mtime` does.
+
+@@q match | String and number tests
+Match each expression with its meaning.
+(=) `[ -z "$s" ]` => `s` is empty :: Zero length.
+(=) `[ -n "$s" ]` => `s` is not empty :: Non-zero length.
+(=) `[ "$a" != "$b" ]` => The two strings differ :: Text comparison.
+(=) `[ "$n" -ge 10 ]` => `n` is at least 10 as a number :: Integer comparison.
+(=) `[ ! -e "$f" ]` => `f` does not exist :: The `!` negates.
+(-) `n` is a prime number :: No such test.
+
+@@q single | Numbers as text
+What does `[ 10 \> 9 ]` (comparing with `\>`) return?
+(+) False: it compares the strings `10` and `9` alphabetically, and `1` sorts before `9`. :: Use `-gt` for numbers.
+(-) True, because 10 is greater than 9. :: That is what `-gt` would say.
+(-) An error because `>` is not allowed. :: It is a valid string comparison.
+(-) True only in `[[ ]]`. :: There it is also a string comparison.
+
+@@q single | Empty variable surprise
+`x=""` and then `[ $x = y ]` (no quotes). What happens?
+(+) The test becomes `[ = y ]`, which is a syntax error: "unary operator expected". :: Always quote variables inside `[ ]`.
+(-) It is false, without any message. :: The expression is malformed.
+(-) It is true. :: The empty word disappears.
+(-) `x` is assigned the value `y`. :: `=` is a comparison here.
+
+@@q single | Unquoted -n
+With `v=""`, what does `[ -n $v ]` (unquoted) return?
+(+) True (status 0), because the test sees only `[ -n ]`, a single non-empty word. :: The classic reason for writing `[ -n "$v" ]`.
+(-) False, because `v` is empty. :: Only with quotes is the empty string preserved.
+(-) A syntax error. :: A single word is a valid test.
+(-) It depends on the locale. :: No.
+
+@@q single | Integer expected
+What does `[ 10 -eq 10.0 ]` do?
+(+) It fails with "integer expression expected", because `test` only compares integers with `-eq`. :: The shell has no floating point.
+(-) It returns true, since both numbers are equal. :: `10.0` is not an integer.
+(-) It returns false without a message. :: A message is printed and the status is 2.
+(-) It converts both to text. :: `-eq` never does.
+
+@@q single | Combining conditions
+Which of these is the clearest way to require two conditions?
+(+) `[ -f "$f" ] && [ -s "$f" ]` :: Two tests joined with the shell's `&&`.
+(-) `[ -f "$f" && -s "$f" ]` :: `&&` is not allowed inside a single `[ ]`; use `-a` or two tests.
+(-) `[ -f "$f" ; -s "$f" ]` :: A semicolon ends the command.
+(-) `[ -f "$f" or -s "$f" ]` :: Not valid syntax.
+
+@@q single | Double brackets
+Which feature does `[[ ]]` have that `[ ]` lacks?
+(+) Pattern matching with `==` and regular expressions with `=~`, and no word splitting of unquoted variables. :: It is a bash keyword, not a portable `sh` feature.
+(-) It can compare floating-point numbers. :: Bash has no floating point.
+(-) It works in every POSIX shell. :: It is an extension of bash, ksh and zsh.
+(-) It is faster because it is a separate program. :: It is part of the shell.
+
+@@q single | Arithmetic condition
+Which condition compares integers with familiar operators such as `>`?
+(+) `(( x > 3 ))` :: Double parentheses evaluate an arithmetic expression; status 0 when it is non-zero.
+(-) `[ x > 3 ]` :: That redirects output into a file named `3`.
+(-) `[[ x > 3 ]]` :: String comparison of the text `x` and `3`.
+(-) `$(x > 3)` :: Command substitution.
+
+@@q single | Dangerous redirection
+What does `[ $a > $b ]` do by mistake?
+(+) It runs `[ $a ]` and writes its output (nothing) into a new file whose name is the value of `b`, creating a stray file. :: Use `-gt` or `(( ))`.
+(-) It compares two numbers correctly. :: `>` is a redirection here.
+(-) It compares two strings. :: Only with `\>`.
+(-) It produces a syntax error only. :: It silently creates the file.
+
+@@q fill | Is it a directory
+Check that `$1` is a directory: `if [ {{-d}} "$1" ]; then`
+(x) -f :: That is true only for regular files.
+(x) -e :: True for anything that exists, including files.
+@@note
+`-d` tests for a directory, `-f` for a regular file, `-e` for any path.
+
+@@q fill | Not empty
+Check that a variable `name` holds some text: `if [ {{-n}} "$name" ]; then`
+(x) -z :: True when the string is empty: the opposite.
+(x) -e :: That tests a file path.
+@@note
+`[ "$name" ]` is a shorter spelling.
+
+@@q single | Exit status as a condition
+Which `if` uses the exit status of `grep` directly, with no output?
+(+) `if grep -q alumno /etc/passwd; then` :: `-q` silences the output; only the status matters.
+(-) `if [ grep -q alumno /etc/passwd ]; then` :: `[` would try to interpret `grep` as an operand.
+(-) `if $(grep alumno /etc/passwd); then` :: That would try to *run* the output.
+(-) `if grep alumno /etc/passwd == 0; then` :: Not valid.
+
+@@q single | Status when no branch runs
+What is `$?` after `if false; then echo hi; fi`?
+(+) 0 :: When no branch is executed, the `if` statement itself succeeds.
+(-) 1 :: That was the status of the condition.
+(-) Empty. :: A number is always set.
+(-) 127 :: That is "command not found".
+
+@@group if, elif and case
+@@q order | Anatomy of an if
+Put the keywords of a complete two-way `if` in order.
+(>) `if [ condition ]` :: The condition comes first.
+(>) `then` :: Introduces the commands run when the condition is true.
+(>) `else` :: Introduces the commands for the other case.
+(>) `fi` :: Closes the block: `if` spelled backwards.
+
+@@q single | Missing separator
+What is wrong with `if [ -f "$f" ] then echo yes; fi` on one line?
+(+) A `;` (or newline) is needed before `then`. :: Write `if [ -f "$f" ]; then ...`.
+(-) `then` cannot be used on one line. :: It can, after a separator.
+(-) `echo` needs quotes. :: Not required.
+(-) `fi` must be uppercase. :: Keywords are lower case.
+
+@@q single | elif
+What does `elif` do?
+(+) It gives another condition to test when the previous `if` condition was false, without nesting a new block. :: Only the first true branch runs.
+(-) It runs when the `if` condition is true. :: That is the `then` part.
+(-) It means "else if not". :: It is "else if".
+(-) It ends the block. :: That is `fi`.
+
+@@q single | Trace: elif
+What does `n=5; if [ $n -lt 3 ]; then echo A; elif [ $n -lt 10 ]; then echo B; else echo C; fi` print?
+(+) `B` :: The first condition is false; the second is true, so its branch runs and the rest is skipped.
+(-) `A` :: 5 is not less than 3.
+(-) `C` :: A true `elif` prevents the `else`.
+(-) `B` and `C` :: Only one branch runs.
+
+@@q single | Chain of and/or
+What does `true || echo A && echo B` print?
+(+) `B` :: `||` and `&&` have equal precedence and run left to right: `true` succeeds so `echo A` is skipped, then the status 0 lets `&& echo B` run.
+(-) `A` :: `||` skips its right side when the left succeeds.
+(-) `A` and `B` :: `A` is skipped.
+(-) Nothing. :: `B` is printed.
+
+@@q single | Ternary style
+Which one-liner prints `yes` when `x` is empty, and `no` otherwise?
+(+) `[ -z "$x" ] && echo yes || echo no` :: Fine here, because `echo yes` succeeds; if the middle command could fail, `||` would run too.
+(-) `[ -z "$x" ] || echo yes && echo no` :: Runs `echo no` whenever the chain reaches it: different logic.
+(-) `if [ -z $x ] echo yes else echo no` :: Missing keywords and separators.
+(-) `echo [ -z "$x" ] yes no` :: Just prints the words.
+
+@@q single | case purpose
+When is `case` a better choice than a chain of `if`/`elif`?
+(+) When one value (a variable) is compared with several patterns, such as commands, options or file-name shapes. :: It reads more clearly and supports glob patterns.
+(-) When you need to compare numbers with `<` and `>`. :: `case` matches patterns, not numeric ranges.
+(-) When you need loops. :: `case` does not loop.
+(-) When the script has no variables. :: It needs a value to match.
+
+@@q match | case patterns
+Match each pattern with what it matches.
+(=) `a*` => Any word that starts with `a` :: A glob pattern.
+(=) `[0-9]` => A single digit :: A bracket expression.
+(=) `y|yes` => The word `y` or the word `yes` :: Alternatives with a bar.
+(=) `*` => Anything (used as the default) :: Put it last.
+(=) `*.txt|*.md` => A name ending in `.txt` or `.md` :: Alternatives of globs.
+(-) A regular expression such as `a+` :: `case` uses glob patterns, not regex.
+
+@@q single | Trace: case
+What does `for x in apple 42 ""; do case "$x" in [0-9]*) echo -n "num ";; "") echo -n "empty ";; *) echo -n "word ";; esac; done` print?
+(+) `word num empty ` :: `apple` fits only `*`, `42` starts with a digit, and the empty string matches `""`.
+(-) `word word word ` :: The other patterns match.
+(-) `num word empty ` :: The order follows the loop: apple first.
+(-) `word num word ` :: The empty string matches the `""` pattern.
+
+@@q single | Double semicolon
+What does `;;` do in a `case`?
+(+) It ends the commands of a branch; after it, the `case` finishes. :: Without it the next pattern would be parsed as a command.
+(-) It repeats the branch. :: Nothing repeats.
+(-) It separates two patterns. :: That is `|`.
+(-) It is a comment marker. :: Comments start with `#`.
+
+@@q fill | Menu with case
+Complete the default branch that catches every other value: `case "$1" in start) echo go;; stop) echo halt;; {{*}}) echo usage;; esac`
+(x) else :: `case` has no `else`.
+(x) default :: That is the word "default" itself as a pattern, matching only the text `default`.
+@@note
+`*` matches anything, so it must be the last pattern.
+
+@@q single | Quoting in case
+Why is `case "$answer" in` written with the variable in quotes?
+(+) So that an empty value or one with spaces still forms a single word instead of breaking the syntax. :: A safe habit everywhere.
+(-) Because `case` requires quotes. :: It works without them in many cases.
+(-) To make the match case-insensitive. :: Quotes do not change case handling.
+(-) To stop the script at errors. :: Not its purpose.
+
+@@group Loops
+@@q match | The loop forms
+Match each loop with how it decides to continue.
+(=) `for x in a b c` => Runs once for each word in the list :: The list is expanded first.
+(=) `while cond` => Repeats while the condition succeeds (status 0) :: Checked before each pass.
+(=) `until cond` => Repeats while the condition fails (status non-zero) :: The mirror of `while`.
+(=) `for x` (no `in`) => Runs once for each positional parameter :: Shortcut for `in "$@"`.
+(-) Runs forever by design :: Only with a condition that never changes.
+
+@@q single | for with a glob
+`for f in *.txt; do ...; done` in a directory with no `.txt` files. What value does `f` take?
+(+) The literal text `*.txt`, once, because an unmatched glob stays as it is. :: Test with `[ -e "$f" ]` or set `nullglob`.
+(-) The loop does not run. :: With default options it runs once.
+(-) An empty string. :: The pattern is kept.
+(-) The first file of the directory. :: No.
+
+@@q single | seq and ranges
+Which loop header visits the numbers 1 to 10?
+(+) `for i in $(seq 1 10)` or `for i in {1..10}` :: Both give the list; brace expansion works with literals only.
+(-) `for i in 1..10` :: The text `1..10` is one word.
+(-) `for i in (1,10)` :: Not bash syntax.
+(-) `for i = 1 to 10` :: Not bash syntax.
+
+@@q single | Variable limit in braces
+Why does `n=5; for i in {1..$n}` not loop five times?
+(+) Brace expansion happens before variable expansion, so `{1..$n}` is not a valid range and stays literal; use `$(seq 1 $n)` or a C-style `for`. :: Order of expansion again.
+(-) Because `n` is not exported. :: Exporting is irrelevant.
+(-) Because `{}` is for arrays. :: Not here.
+(-) Because `seq` is required in all loops. :: Not required.
+
+@@q single | C-style loop
+Which form is the arithmetic `for` of bash?
+(+) `for ((i=0; i<3; i++)); do ...; done` :: Initialisation, condition and step, like in C.
+(-) `for (i=0; i<3; i++); do ...; done` :: Single parentheses start a subshell.
+(-) `for i=0 to 3; do ...; done` :: Not bash.
+(-) `for i in (0..3); do ...; done` :: Not bash.
+
+@@q single | break and continue
+What is the difference between `break` and `continue`?
+(+) `break` leaves the loop completely; `continue` skips the rest of the current pass and starts the next one. :: Both accept a number for nested loops.
+(-) They are identical. :: They differ.
+(-) `continue` ends the script. :: That is `exit`.
+(-) `break` only works in `while`. :: It works in all loops.
+
+@@q single | Trace: continue and break
+What does `for i in 1 2 3 4 5; do [ $i -eq 2 ] && continue; [ $i -eq 4 ] && break; echo -n "$i "; done` print?
+(+) `1 3 ` :: 2 is skipped by `continue`; at 4 the loop ends, so 5 is never reached.
+(-) `1 3 5 ` :: `break` stops the loop at 4.
+(-) `1 2 3 ` :: 2 is skipped.
+(-) `1 3 4 ` :: At 4 the loop ends before printing.
+
+@@q single | Trace: nested break
+What does `for i in 1 2 3; do for j in 1 2 3; do [ $j -eq 2 ] && break; echo -n "$i$j "; done; done` print?
+(+) `11 21 31 ` :: `break` leaves only the inner loop at `j=2`, then the outer loop goes on.
+(-) `11 ` :: That would be `break 2`.
+(-) `11 12 13 21 22 23 31 32 33 ` :: `break` stops each inner loop at 2.
+(-) `11 21 ` :: The outer loop runs three times.
+
+@@q single | Trace: counter
+What does `n=0; for f in a b c; do n=$((n+1)); done; echo $n` print?
+(+) `3` :: The body runs three times.
+(-) `0` :: The loop changes `n`.
+(-) `1` :: Not the last iteration only.
+(-) `abc` :: `n` counts, it does not collect.
+
+@@q single | Trace: sum of evens
+What does `s=0; for i in 1 2 3 4; do if [ $((i%2)) -eq 0 ]; then s=$((s+i)); fi; done; echo $s` print?
+(+) `6` :: Only 2 and 4 are even: 2 + 4.
+(-) `10` :: That sums all four numbers.
+(-) `4` :: 2 is also added.
+(-) `0` :: Even numbers do pass the test.
+
+@@q single | Trace: until
+What does `i=0; until [ $i -ge 3 ]; do i=$((i+1)); done; echo $i` print?
+(+) `3` :: The loop repeats while the condition is false and stops when `i` reaches 3.
+(-) `0` :: The body runs.
+(-) `2` :: One more step happens when `i` is 2.
+(-) `4` :: It stops as soon as the condition becomes true.
+
+@@q single | Trace: decreasing
+What does `k=5; while [ $k -gt 0 ]; do k=$((k-2)); done; echo $k` print?
+(+) `-1` :: 5, 3, 1 pass the test; then 1 becomes -1 and the loop ends.
+(-) `0` :: The steps skip over 0.
+(-) `1` :: One more subtraction happens.
+(-) `-2` :: The last value is -1.
+
+@@q single | Reading pairs
+What does `t=0; while read -r a b; do t=$((t+b)); done <<< $'x 1\ny 2\nz 3'; echo $t` print?
+(+) `6` :: Each line gives a label and a number; the numbers are added.
+(-) `3` :: That is the number of lines.
+(-) `0` :: The loop reads three lines.
+(-) `123` :: Numbers are added, not joined.
+
+@@q single | Loop in a pipe
+`c=0; printf 'a\nb\n' | while read l; do c=$((c+1)); done; echo $c` prints `0`. Why?
+(+) The loop after the pipe runs in a subshell, so its changes to `c` are lost when it ends. :: Redirect the file into the loop, or use process substitution.
+(-) `read` does not read from pipes. :: It does.
+(-) `printf` prints nothing. :: It prints two lines.
+(-) `c` is a read-only variable. :: It is an ordinary variable.
+
+@@q order | Count lines of each file
+Put the steps of a script that prints, for each argument, the number of lines in that file in order.
+(>) Check that at least one argument was given :: Otherwise print usage and exit.
+(>) Loop over the arguments with `for f in "$@"` :: One pass per file.
+(>) Inside the loop, test that `$f` is a readable file :: Skip or report bad names.
+(>) Print the count with `wc -l < "$f"` :: Only after the checks pass.
+
+@@group Functions and scope
+@@q single | Defining and calling
+What does this script print? `hello() { echo "Hi $1"; }; hello Ana; hello`
+(+) `Hi Ana` and then `Hi ` :: The second call has no argument, so `$1` is empty.
+(-) `Hi Ana` and an error for the second call. :: A missing argument is simply empty.
+(-) `Hi Ana` twice. :: Each call has its own parameters.
+(-) Nothing, functions must be declared with `function`. :: Both forms are valid.
+
+@@q single | Function parameters
+Inside a function, what do `$1` and `$#` refer to?
+(+) To the arguments of the function call, not to those of the script. :: Functions have their own positional parameters while they run.
+(-) To the arguments of the script. :: They are hidden while the function runs.
+(-) To the function's name. :: That is `$FUNCNAME`.
+(-) Nothing, functions take no arguments in bash. :: They do.
+
+@@q single | Return values
+How does a bash function give a result to its caller?
+(+) Through its exit status with `return n` (0 to 255), or by printing text that the caller captures with `$(...)`. :: There is no return of arbitrary values.
+(-) With `return "text"` which stores a string. :: `return` takes a number.
+(-) By assigning to the function's name. :: Not bash.
+(-) By exporting it. :: Exporting is for the environment.
+
+@@q single | Trace: return
+What do `f() { return 3; echo never; }; f; echo $?` print?
+(+) `3` :: `return` leaves the function immediately, and its number becomes `$?`.
+(-) `never` and `0` :: `return` stops the function.
+(-) `0` :: The status is 3.
+(-) Nothing. :: `echo $?` prints.
+
+@@q single | Capturing output
+What does `add() { echo $(( $1 + $2 )); }; r=$(add 2 3); echo "r=$r"` print?
+(+) `r=5` :: The function prints `5`, and the substitution captures it.
+(-) `r=` :: The output was captured, not lost.
+(-) `r=0` :: `$?` was not used.
+(-) `r=2 3` :: The arguments are added.
+
+@@q single | Global by default
+What does `x=1; f() { x=2; }; f; echo $x` print?
+(+) `2` :: Variables are global in bash unless declared `local`.
+(-) `1` :: That needs `local x=2`.
+(-) An error. :: Assigning inside a function is fine.
+(-) Nothing. :: `echo` prints the value.
+
+@@q single | Local
+What does `x=1; f() { local x=2; }; f; echo $x` print?
+(+) `1` :: `local` limits the variable to the function and its callees.
+(-) `2` :: That is the global behaviour.
+(-) An error. :: `local` is valid inside functions.
+(-) Nothing. :: A value is printed.
+
+@@q single | Exit in a function
+A function contains `exit 1` and is called normally. What happens?
+(+) The whole script ends with status 1. :: Use `return 1` to leave only the function.
+(-) Only the function ends. :: That is `return`.
+(-) Nothing, `exit` is ignored in functions. :: It is honoured.
+(-) The shell prints a warning and continues. :: No such warning.
+
+@@q single | Functions and scripts
+Why is a function often a better tool than an alias inside a script?
+(+) A function can take parameters, contain several commands and logic, and works in non-interactive shells where aliases are not expanded. :: Aliases are simple text replacements.
+(-) Functions are always faster. :: Not the point.
+(-) Aliases cannot be used at all in bash. :: They work interactively.
+(-) Functions need no definition. :: They must be defined before use.
+
+@@q single | Define before use
+A script calls `greet` on line 3 but defines `greet()` on line 10. What happens?
+(+) The call fails with "command not found", because the function is defined only when bash executes the definition. :: Put function definitions before the code that calls them.
+(-) It works, since bash reads the whole file first. :: Bash executes line by line.
+(-) It prints the function body. :: No.
+(-) It defines the function automatically. :: No.
+
+@@q single | Pass all arguments
+A function should process every argument it is given, even ones with spaces. Which loop is right?
+(+) `for a in "$@"; do ...; done` :: Preserves each argument as a single word.
+(-) `for a in $*; do ...; done` :: Splits arguments with spaces.
+(-) `for a in "$#"; do ...; done` :: Iterates once over the count.
+(-) `for a in $@; do ...; done` :: Also splits arguments.
+
+@@q single | Recursion
+Which is true about recursive functions in bash?
+(+) A function can call itself, and each call has its own `local` variables; use `local` or results come out wrong. :: The factorial example works with `local`.
+(-) Recursion is not allowed in bash. :: It is.
+(-) All variables are automatically local. :: They are global by default.
+(-) Recursion works only with `return`. :: Output capture also works.
+
+@@group Debugging and spot the bug
+@@q single | Trace the execution
+Which command runs a script printing each command before it executes?
+(+) `bash -x script.sh` :: Each line is shown with a `+` prefix.
+(-) `bash -n script.sh` :: That only checks the syntax without running.
+(-) `bash -v script.sh` :: That prints the lines as they are read, without expansions.
+(-) `bash -e script.sh` :: That stops at the first failing command.
+
+@@q match | Bash debugging options
+Match each option with its effect.
+(=) `bash -n script.sh` => Check the syntax without running the commands :: A dry parse.
+(=) `bash -x script.sh` => Print each command with its expanded values as it runs :: Prefixed with `+`.
+(=) `bash -v script.sh` => Print each line as read, before expansion :: Verbose.
+(=) `set -u` => Treat unset variables as errors :: Catches typos in names.
+(=) `set -e` => Exit when a command fails :: A crude safety net.
+(-) Run the script in the background :: That is `&`.
+
+@@q single | Bug: loop over files with spaces
+A script has `for f in $(ls); do rm "$f"; done`. What is the main problem?
+(+) `$(ls)` is split on spaces, so a file called `my notes.txt` becomes two words (`my` and `notes.txt`), and the wrong files are addressed. :: Use `for f in *; do` which keeps names intact.
+(-) `ls` cannot be used in a loop. :: It can, but it is fragile.
+(-) `rm` needs `-f`. :: That is not the problem.
+(-) The quotes around `$f` are wrong. :: They are the good part.
+
+@@q single | Bug: assignment with spaces
+What is wrong with `COUNT = 0` at the top of a script?
+(+) Spaces around `=` make bash run a command named `COUNT`; the assignment must be `COUNT=0`. :: Result: "COUNT: command not found".
+(-) Variables must be upper case. :: Case is a convention.
+(-) `0` must be quoted. :: Not required.
+(-) Nothing, it is correct. :: It fails.
+
+@@q single | Bug: comparing numbers with =
+A script says `if [ $a = 10 ]` to compare numbers. When can that give a surprising result?
+(+) `=` compares strings, so `10` and `010` or `10 ` with spaces are different although numerically equal; use `-eq` for numbers. :: Also, an empty `a` breaks the syntax unless quoted.
+(-) `=` is invalid in `[ ]`. :: It is the string comparison.
+(-) It always returns true. :: It compares text.
+(-) It can only compare letters. :: Digits are characters too.
+
+@@q single | Bug: rm with an empty variable
+What is the danger in `rm -rf $DIR/*` when `DIR` is empty or unset?
+(+) It expands to `rm -rf /*`, which tries to delete everything the user is allowed to. :: Check the variable first and quote it: `[ -n "$DIR" ] && rm -rf "$DIR"/*`.
+(-) Nothing, it deletes nothing because `DIR` is empty. :: The path collapses to `/*`.
+(-) It prints an error and stops. :: Nothing stops it.
+(-) It only removes hidden files. :: `/*` does not match hidden files, but includes all other top-level entries.
+
+@@q single | Bug: missing shebang target
+A script starts with `#!/bin/bsh` (typo). What happens when it is run with `./script.sh`?
+(+) "bad interpreter: No such file or directory", because the kernel cannot find the interpreter. :: Also seen when the file has Windows line endings (`/bin/bash\r`).
+(-) Bash runs it anyway and ignores the typo. :: The kernel fails first.
+(-) It runs with `sh`. :: No fallback.
+(-) It asks which interpreter to use. :: It never asks.
+
+@@q single | Bug: pipe in a loop and variable
+A script counts matches with `grep x file | while read l; do n=$((n+1)); done; echo $n` and prints nothing useful. Why?
+(+) The loop runs in a subshell because of the pipe, so `n` in the parent is unchanged. :: Use `n=$(grep -c x file)` or redirect the file into the loop.
+(-) `grep` does not output lines. :: It does.
+(-) `read` is not allowed in loops. :: It is.
+(-) `echo` cannot print numbers. :: It can.
+
+@@q single | Bug: test on the wrong thing
+A script wants to check that `$1` is a non-empty regular file but writes `if [ -f $1 ]`. What is the flaw beyond the missing size check?
+(+) Unquoted `$1` breaks with names containing spaces or with an empty value (becoming `[ -f ]`, which is true); and `-f` does not check the size (`-s` does). :: Quote, and use `-s` if emptiness matters.
+(-) `-f` tests directories. :: That is `-d`.
+(-) `[ -f ]` needs three arguments. :: It accepts any number.
+(-) `$1` is the script name. :: That is `$0`.
+
+@@q single | Bug: return value misuse
+A function ends with `return $result` where `result` holds the text `done`. What happens?
+(+) `return` complains: "numeric argument required"; it accepts only numbers, so print the text and capture it instead. :: Status values are integers.
+(-) It returns the text `done`. :: Statuses are numbers only.
+(-) It returns 0 silently. :: An error is reported.
+(-) It exits the script. :: `return` does not exit the script.
+
+@@q single | Bug: wrong redirection in a check
+What is wrong with `if [ -f file.txt ] > /dev/null; then`?
+(+) Nothing harmful, but useless: `[` prints nothing, so there is no output to discard; errors would go to stderr anyway. :: Redirecting output of a test is noise.
+(-) It makes the test always false. :: The status is unaffected.
+(-) It deletes `file.txt`. :: Not related.
+(-) It changes the file mode. :: No.
+
+@@q single | Order of checks
+Which order makes a robust script start?
+(+) Check arguments, then check that files or directories exist, then do the work, reporting errors to stderr and using distinct exit codes. :: Fail early with clear messages.
+(-) Do the work first and check afterwards. :: Damage may already be done.
+(-) Ignore errors to keep the script short. :: Silent failures are hard to debug.
+(-) Always ask the user with `read` instead of using arguments. :: Scripts should also run unattended.
+
+@@q single | Tracing a pipeline
+What do `x=3; y=4; echo $((x**2 + y**2))` and `echo "$x + $y = $((x+y))"` print?
+(+) `25` and `3 + 4 = 7` :: `**` is exponentiation; the text is printed and the last part is arithmetic.
+(-) `7` and `3 + 4 = 7` :: `**` is the power operator, not multiplication.
+(-) `25` and `7` :: The second command prints the whole string.
+(-) `3 + 4` twice. :: Arithmetic is evaluated inside `$(( ))`.
