@@ -2,7 +2,11 @@
 
 **Topic:** tar, gzip & compression · **Difficulty:** ★☆☆☆☆ · **Commands:** gzip
 
-Compress the file `informe.txt` with `gzip` (the original disappears, you get `informe.txt.gz`).
+`gzip` compresses a file. It **replaces** the original with a compressed one that ends in `.gz`.
+
+Compress `informe.txt` with `gzip`. Afterwards `informe.txt.gz` must exist and `informe.txt` must not. Nothing is printed.
+
+Hint: `gzip file`
 
 ---
 Write your solution in `answer.sh`, then run `check 0429`.  

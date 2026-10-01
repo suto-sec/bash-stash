@@ -1,4 +1,5 @@
 #!/bin/bash
-ls -A d
-ls -l d | tail -n +2 | cut -d' ' -f1
+ls -a d
+echo ---
+ls -l d
 

@@ -2,9 +2,21 @@
 
 **Topic:** Functions · **Difficulty:** ★☆☆☆☆ · **Commands:** local
 
-Set `X=fuera` and print it. Define a function `f` that sets a **local** `X=dentro` and prints it,
-then call `f`. Finally print `X` once more: it must still be `fuera`, since `f`'s `X` was local and
-never touched the outer one.
+A variable declared `local` inside a function exists only while the function runs; it does not change a variable with the same name outside.
+
+1. Set `X=fuera` and print it.
+2. Define a function `f` that declares `local X=dentro` and prints `$X`. Call `f`.
+3. Print `$X` again: it must still be `fuera`.
+
+Expected output:
+
+```
+fuera
+dentro
+fuera
+```
+
+Hint: `f() { local X=dentro; echo "$X"; }`
 
 ---
 Write your solution in `answer.sh`, then run `check 1632`.  

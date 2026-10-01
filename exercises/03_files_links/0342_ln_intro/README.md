@@ -2,7 +2,11 @@
 
 **Topic:** Files, copies & links · **Difficulty:** ★☆☆☆☆ · **Commands:** ln
 
-The current directory contains `original`. Create a hard link named `duro` pointing to it.
+A hard link is a second name for the same file: both names point to the same data.
+
+The current directory contains the file `original`. Create a hard link called `duro` that points to it. Both names must exist afterwards. Nothing is printed.
+
+Hint: `ln EXISTING NEWNAME`
 
 ---
 Write your solution in `answer.sh`, then run `check 0342`.  

@@ -3,8 +3,13 @@
 @@level 1
 @@cmds chmod u+x
 @@readme
-Give the **user** execute permission on `script.sh`, using **symbolic** `chmod` (`u+x`).
-Nothing to print.
+Permissions come in three groups: the **u**ser (owner), the **g**roup and **o**thers. `chmod u+x file` **adds** (`+`) the **x** (execute) permission to the user's group; `-` removes one.
+
+The file `script.sh` currently has the permissions `rw-r--r--`. Add execute permission for the user with **symbolic** `chmod` (`u+x`, not numbers). Nothing is printed.
+
+Afterwards `ls -l script.sh` shows `-rwxr--r--`.
+
+Hint: `chmod u+x file`
 @@check
 COMPARE="stdout exit files"
 SEEDS=1
@@ -18,8 +23,13 @@ chmod u+x script.sh
 @@level 1
 @@cmds chmod 644
 @@readme
-Using an **octal** mode, set the permissions of `datos.txt` to `rw-r--r--` (`644`).
-Nothing to print.
+In octal, each digit is a group of permissions: read = 4, write = 2, execute = 1, added up. So `6` = `rw-`, `4` = `r--`, and `644` means `rw-r--r--` (user, group, others).
+
+The file `datos.txt` currently has the permissions `rwxrwxrwx`. Set them to `rw-r--r--` with an **octal** mode (`644`). Nothing is printed.
+
+Afterwards `ls -l datos.txt` shows `-rw-r--r--`.
+
+Hint: `chmod 644 file`
 @@check
 COMPARE="stdout exit files"
 SEEDS=1
@@ -33,8 +43,13 @@ chmod 644 datos.txt
 @@level 1
 @@cmds chown
 @@readme
-This script is run **as root** by the checker (in real life, use `sudo`). In the current
-directory, make `luke` the owner of `informe.txt`. Nothing to print.
+`chown NEWOWNER file` changes the owner of a file. Only root may do it, so the checker runs your script **as root** (in real life you would write `sudo chown ...`).
+
+The file `informe.txt` exists in the current directory. Make `luke` its owner. Nothing is printed.
+
+Afterwards `ls -l informe.txt` shows `luke` as the owner.
+
+Hint: `chown luke file`
 @@check
 COMPARE="stdout exit files owner"
 RUN_AS_ROOT=1
@@ -49,11 +64,18 @@ chown luke informe.txt
 @@level 1
 @@cmds umask
 @@readme
-Set the `umask` to `077` and then create a file `secreto.txt` (e.g. with `touch`) so that only
-the owner can read or write it. Print nothing besides what `touch` prints (nothing).
+The `umask` removes permissions from the files you create from then on. With `umask 077` the group and the others get no permissions at all, so new files are `rw-------`.
+
+1. Set the umask to `077`.
+2. Create the empty file `secreto.txt` with `touch`.
+
+Nothing is printed. Afterwards `ls -l secreto.txt` shows `-rw-------` (only the owner can read or write it).
+
+Hint: the umask must be set **before** creating the file.
 @@check
 COMPARE="stdout exit files"
 SEEDS=1
+extra_check() { must_use umask touch; }
 @@solution
 #!/bin/bash
 umask 077

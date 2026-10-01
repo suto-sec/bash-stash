@@ -3,7 +3,13 @@
 @@level 1
 @@cmds pwd
 @@readme
-Quick refresher. Print the current directory with `pwd`.
+`pwd` ("print working directory") prints the directory you are in.
+
+Print the current directory with `pwd`.
+
+The checker runs your script in its own work folder, so the path will not be the same as the one on your screen when you test: it is compared with the reference automatically.
+
+Hint: just `pwd`, nothing else.
 @@check
 SEEDS=1
 extra_check() { must_use pwd; }
@@ -15,17 +21,21 @@ pwd
 @@level 1
 @@cmds cd
 @@readme
-The current directory contains `a/b`.
+The current directory contains a directory `a`, and inside it another one called `b`.
 
-1. Enter `a/b` with a **relative** path and print the current directory.
-2. Go to `/usr` with an **absolute** path and print the current directory.
-3. Go back to the previous directory with `cd -` (it prints the directory itself).
+1. Use `cd` with a **relative** path (it does not start with `/`) to enter `a/b`, then print where you are with `pwd`.
+2. Use `cd` with an **absolute** path (it starts with `/`) to go to `/usr`, then print `pwd`.
+3. Go back to the previous directory with `cd -`. This command prints the directory itself, so you do not need `pwd`.
+
+Expected output (the first and the third line depend on where the exercise runs):
 
 ```
 /.../work/a/b
 /usr
 /.../work/a/b
 ```
+
+Hint: `cd -` returns to the directory you were in before the last `cd`.
 @@check
 SEEDS=1
 setup() { mkdir -p a/b; }
@@ -42,9 +52,14 @@ cd -
 @@level 1
 @@cmds mkdir, mkdir -p
 @@readme
-1. Create the directory `datos` (already-existing parent).
-2. Create the nested path `proyecto/src/lib` in **one** `mkdir -p` command (no intermediate
-   directories exist yet).
+`mkdir` creates a directory. With `-p` it also creates the parent directories that are missing.
+
+1. Create the directory `datos`.
+2. Create the nested path `proyecto/src/lib` with **one** `mkdir -p` command (`proyecto` and `src` do not exist yet).
+
+Nothing is printed. Afterwards `ls -R proyecto` should show `src` and `lib`.
+
+Hint: `mkdir -p one/two/three`
 @@check
 SEEDS=1
 COMPARE="stdout exit files"
@@ -58,10 +73,12 @@ mkdir -p proyecto/src/lib
 @@level 1
 @@cmds rmdir
 @@readme
-The current directory contains two empty directories, `vacio` and `otro`. Remove only `vacio`
-using `rmdir`.
+The current directory contains two empty directories, `vacio` and `otro`.
+
+Remove **only** `vacio`, using `rmdir` (it removes empty directories only). Nothing is printed, and `otro` must still be there afterwards.
+
+Hint: `rmdir name`
 @@check
-SEEDS=1
 COMPARE="stdout exit files"
 setup() { mkdir vacio otro; }
 extra_check() { must_use rmdir; must_not_use rm; }
@@ -73,24 +90,56 @@ rmdir vacio
 @@level 1
 @@cmds ls -a, ls -l
 @@readme
-The directory `d` contains a normal file and a hidden file (name starting with `.`).
+The directory `d` contains a normal file and a hidden file (a name that starts with a dot).
 
-1. List **all** entries of `d` including hidden ones, except `.` and `..` (`ls -A`).
-2. Print the **permissions field** only (first column) of `ls -l d`, one per line, in the
-   order `ls -l` lists them.
+Print, separated by a line `---`:
+
+1. the content of `d` with `ls -a`, which shows **all** entries, hidden ones included, and also `.` (this directory) and `..` (the parent directory)
+2. the content of `d` in long format with `ls -l`: one line per entry with permissions, owner, size and date (the checker ignores the date)
+
+Expected output (the names and sizes change on every run):
+
+```
+.
+..
+.ayuda
+notas
+---
+total 0
+-rw-r--r-- 1 alumno alumno 0 Oct  1 10:00 notas
+```
+
+Hint: `ls -a dir` and `ls -l dir`. Hidden files are not shown by `ls -l` unless you add `-a`.
 @@check
 setup() { mkdir d; touch "d/$(word)" "d/.$(word)rc"; }
+filter() { sed -E 's/ [A-Z][a-z]{2} +[0-9]+ +([0-9]{2}:[0-9]{2}|[0-9]{4}) / DATE /'; }
 extra_check() { must_use ls; }
 @@solution
 #!/bin/bash
-ls -A d
-ls -l d | tail -n +2 | cut -d' ' -f1
+ls -a d
+echo ---
+ls -l d
 
 @@ex 0231 ls_R_intro | ls -R: recursive listing
 @@level 1
 @@cmds ls -R
 @@readme
-Print the recursive listing of the directory `arbol` (it contains subdirectories) using `ls -R`.
+The directory `arbol` contains some files and a subdirectory `sub`, which has a file of its own.
+
+Print the recursive listing of `arbol` with `ls -R`: it lists the directory, and then every subdirectory under a header line with its path.
+
+Expected output (the file names change on every run):
+
+```
+arbol:
+sub
+tomate.txt
+
+arbol/sub:
+mesa.txt
+```
+
+Hint: `-R` means recursive.
 @@check
 setup() { mkdir -p arbol/sub; touch "arbol/$(word).txt" "arbol/sub/$(word).txt"; }
 extra_check() { must_use ls; }
@@ -102,8 +151,17 @@ ls -R arbol
 @@level 1
 @@cmds du -sh
 @@readme
-Print the total size of the directory `datos` in human readable form with a single
-`du -sh` (exactly what it prints).
+The directory `datos` contains files of different sizes, and a subdirectory with more files.
+
+Print the **total** size of `datos` in a human readable form (`K`, `M`...) with a single `du -sh` command: `-s` prints only the total, `-h` means human readable.
+
+Expected output (the size changes on every run):
+
+```
+24K	datos
+```
+
+Hint: `du -sh dir`
 @@check
 setup() { mkdir -p datos/sub; bigfile "datos/$(word)" $(( $(randr 1 20) * 1024 )); bigfile "datos/sub/$(word)" $(( $(randr 1 20) * 1024 )); }
 extra_check() { must_use du; }

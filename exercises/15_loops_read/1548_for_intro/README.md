@@ -2,7 +2,19 @@
 
 **Topic:** Loops: for, while, until, read · **Difficulty:** ★☆☆☆☆ · **Commands:** for in, seq
 
-The script receives N. Using a `for` loop, print the numbers 1 to N, one per line.
+A `for` loop repeats some commands once for every value of a list or a counter.
+
+The script receives a number N. Print the numbers from 1 to N, one per line, using a `for` loop.
+
+Example: run as `./script.sh 3` it prints:
+
+```
+1
+2
+3
+```
+
+Hint: `for ((i = 1; i <= $1; i++)); do echo "$i"; done` (or `for i in $(seq 1 $1)`).
 
 ---
 Write your solution in `answer.sh`, then run `check 1548`.  

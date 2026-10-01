@@ -2,8 +2,11 @@
 
 **Topic:** Directories & navigation · **Difficulty:** ★☆☆☆☆ · **Commands:** rmdir
 
-The current directory contains two empty directories, `vacio` and `otro`. Remove only `vacio`
-using `rmdir`.
+The current directory contains two empty directories, `vacio` and `otro`.
+
+Remove **only** `vacio`, using `rmdir` (it removes empty directories only). Nothing is printed, and `otro` must still be there afterwards.
+
+Hint: `rmdir name`
 
 ---
 Write your solution in `answer.sh`, then run `check 0229`.  

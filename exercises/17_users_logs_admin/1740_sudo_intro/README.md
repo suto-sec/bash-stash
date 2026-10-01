@@ -2,7 +2,17 @@
 
 **Topic:** Users, groups, sessions, logs & cron · **Difficulty:** ★☆☆☆☆ · **Commands:** sudo -u
 
-Print the result of running `whoami` **as user luke**, using `sudo -u luke whoami`.
+`sudo -u USER command` runs a command as another user.
+
+Run `whoami` **as the user `luke`** and print what it says (`whoami` prints the name of the user that runs it).
+
+Expected output:
+
+```
+luke
+```
+
+Hint: `sudo -u luke whoami`
 
 ---
 Write your solution in `answer.sh`, then run `check 1740`.  

@@ -2,8 +2,13 @@
 
 **Topic:** Users, groups, sessions, logs & cron · **Difficulty:** ★☆☆☆☆ · **Commands:** who
 
-Print the number of currently open sessions, using `who | wc -l` (`w` shows the same list plus
-what each user is doing, but only `who` is used in this course).
+`who` lists the users who are logged in right now, one per line.
+
+Print how many sessions are open: pipe `who` into `wc -l` and print only the number.
+
+Example: with two people logged in, it prints `2`. The number depends on who is logged in at that moment, so it is not the same on every machine: the checker compares your answer with the reference in the same environment.
+
+Hint: `who | wc -l`
 
 ---
 Write your solution in `answer.sh`, then run `check 1737`.  

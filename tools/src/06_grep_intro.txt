@@ -3,7 +3,26 @@
 @@level 1
 @@cmds grep
 @@readme
-Print the lines of `colores.txt` that contain the string `rojo`.
+`grep text file` prints the lines of the file that contain `text`.
+
+Print the lines of `colores.txt` that contain `rojo`.
+
+Example: if `colores.txt` contains
+
+```
+rojo manzana
+azul mar
+rojo tomate
+```
+
+the output is
+
+```
+rojo manzana
+rojo tomate
+```
+
+Hint: `grep rojo file`
 @@check
 SEEDS=1
 setup() { local i; for i in $(seq "$(randr 6 10)"); do echo "$(pick rojo azul verde amarillo) $(word)"; done > colores.txt; }
@@ -16,13 +35,37 @@ grep rojo colores.txt
 @@level 1
 @@cmds grep -i -n -v -c
 @@readme
-For the file `log.txt`, print separated by a line `---`:
+Four useful `grep` options: `-i` ignores upper/lower case, `-n` puts the line number in front of every line, `-v` inverts the search (lines that do **not** match) and `-c` prints only how many lines there are.
 
-1. the lines containing `error` in any case, with their **line numbers**
-2. only the **number** of lines that do **not** contain `error` (any case)
+For the file `log.txt`, print, with a line `---` in between:
+
+1. the lines that contain `error` in any case (`error`, `ERROR`, `Error`...), each one with its line number
+2. only the **number** of lines that do **not** contain `error` (in any case)
+
+Example: if `log.txt` contains
+
+```
+INFO inicio
+warn disco
+Error red
+debug x
+ERROR fin
+```
+
+the output is
+
+```
+3:Error red
+5:ERROR fin
+---
+3
+```
+
+Hint: combine options, for example `grep -in word file` and `grep -vic word file`.
 @@check
 SEEDS=1
 setup() { local i; for i in $(seq "$(randr 8 14)"); do echo "$(pick INFO warn error ERROR Error debug) $(word)"; done > log.txt; }
+extra_check() { must_use grep; }
 @@solution
 #!/bin/bash
 grep -in error log.txt
@@ -33,7 +76,13 @@ grep -vic error log.txt
 @@level 1
 @@cmds grep -E, |
 @@readme
-Print the lines of `mascotas.txt` that contain `gato` **or** `perro` (one `grep -E` with `|`).
+With `grep -E` (extended regular expressions) the `|` symbol means "or".
+
+Print the lines of `mascotas.txt` that contain `gato` **or** `perro`, with a single `grep -E`.
+
+Example: if `mascotas.txt` contains `gato negro`, `pez rojo`, `perro blanco`, the output is `gato negro` and `perro blanco`.
+
+Hint: `grep -E 'one|two' file`
 @@check
 SEEDS=1
 setup() { local i; for i in $(seq "$(randr 6 10)"); do echo "$(pick gato perro pajaro pez) $(word)"; done > mascotas.txt; }
@@ -46,13 +95,27 @@ grep -E 'gato|perro' mascotas.txt
 @@level 1
 @@cmds grep ^, $
 @@readme
-For the file `nombres.txt`, print separated by a line `---`:
+In a pattern, `^` means "at the start of the line" and `$` means "at the end of the line". Put the pattern in single quotes so the shell does not touch the `$`.
+
+For the file `nombres.txt`, print, with a line `---` in between:
 
 1. the lines that **start** with `a`
 2. the lines that **end** with `z`
+
+Example: if `nombres.txt` contains `adan`, `beatriz`, `luz`, `raul`, the output is:
+
+```
+adan
+---
+beatriz
+luz
+```
+
+Hint: `grep '^a' file` and `grep 'z$' file`.
 @@check
 SEEDS=1
 setup() { local i; for i in $(seq "$(randr 5 8)"); do echo "$(pick b c d e i o)$(word)"; done > nombres.txt; echo ana >> nombres.txt; echo luz >> nombres.txt; }
+extra_check() { must_use grep; }
 @@solution
 #!/bin/bash
 grep '^a' nombres.txt

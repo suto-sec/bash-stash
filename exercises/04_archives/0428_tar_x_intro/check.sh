@@ -2,3 +2,4 @@
 SEEDS=1
 COMPARE="stdout exit files"
 setup() { randtext 3 > dato.txt; tar -cf paquete.tar dato.txt; rm dato.txt; }
+extra_check() { must_use tar; }

@@ -2,8 +2,18 @@
 
 **Topic:** Variables, arithmetic & environment · **Difficulty:** ★☆☆☆☆ · **Commands:** read
 
-The file `dato.txt` contains a single line of text. Read it into a variable `X` with
-`read X < dato.txt` and print `Leido: ` followed by the value.
+`read VAR` reads one line and stores it in the variable `VAR`.
+
+The file `dato.txt` contains a single line of text.
+
+1. Read that line into a variable called `X`, taking it from the file with `<`: `read X < dato.txt`
+2. Print `Leido: ` followed by the value of `X`.
+
+Example: if `dato.txt` contains `manzana`, the output is:
+
+```
+Leido: manzana
+```
 
 ---
 Write your solution in `answer.sh`, then run `check 1129`.  

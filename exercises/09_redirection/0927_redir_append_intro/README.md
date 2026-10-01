@@ -2,8 +2,11 @@
 
 **Topic:** Redirection: > >> 2> < << <<< · **Difficulty:** ★☆☆☆☆ · **Commands:** >>
 
-`nota.txt` already contains one line. **Append** the line `fin` to it with `>>` (don't overwrite
-what is already there). Nothing printed on screen.
+`>>` also sends output into a file, but it **adds** to the end of the file instead of overwriting it.
+
+`nota.txt` already contains one line. Add the line `fin` after it with `echo` and `>>`. Afterwards the file has two lines: `primera linea` and `fin`. Nothing is printed on the screen.
+
+Hint: `command >> file`
 
 ---
 Write your solution in `answer.sh`, then run `check 0927`.  

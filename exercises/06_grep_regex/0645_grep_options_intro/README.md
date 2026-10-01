@@ -2,10 +2,33 @@
 
 **Topic:** grep & regular expressions · **Difficulty:** ★☆☆☆☆ · **Commands:** grep -i -n -v -c
 
-For the file `log.txt`, print separated by a line `---`:
+Four useful `grep` options: `-i` ignores upper/lower case, `-n` puts the line number in front of every line, `-v` inverts the search (lines that do **not** match) and `-c` prints only how many lines there are.
 
-1. the lines containing `error` in any case, with their **line numbers**
-2. only the **number** of lines that do **not** contain `error` (any case)
+For the file `log.txt`, print, with a line `---` in between:
+
+1. the lines that contain `error` in any case (`error`, `ERROR`, `Error`...), each one with its line number
+2. only the **number** of lines that do **not** contain `error` (in any case)
+
+Example: if `log.txt` contains
+
+```
+INFO inicio
+warn disco
+Error red
+debug x
+ERROR fin
+```
+
+the output is
+
+```
+3:Error red
+5:ERROR fin
+---
+3
+```
+
+Hint: combine options, for example `grep -in word file` and `grep -vic word file`.
 
 ---
 Write your solution in `answer.sh`, then run `check 0645`.  

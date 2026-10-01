@@ -1,3 +1,5 @@
 #!/bin/bash
-printf '%s tiene %s anios\n' Ana 23
+nombre=Ana
+edad=23
+printf '%s tiene %s anios\n' "$nombre" "$edad"
 

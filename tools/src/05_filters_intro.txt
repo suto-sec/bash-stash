@@ -3,7 +3,20 @@
 @@level 1
 @@cmds cat
 @@readme
-Print the content of the file `nota.txt`.
+`cat` prints the content of a file.
+
+Print the content of `nota.txt`, exactly as it is.
+
+Example: if `nota.txt` contains
+
+```
+hola mundo
+adios mundo
+```
+
+the output is the same two lines.
+
+Hint: `cat file`
 @@check
 SEEDS=1
 setup() { randtext 3 > nota.txt; }
@@ -16,13 +29,29 @@ cat nota.txt
 @@level 1
 @@cmds head -n, tail -n
 @@readme
-For the file `datos.txt`, print separated by a line `---`:
+`head` prints the first lines of a file and `tail` the last ones. `-n N` chooses how many.
+
+For the file `datos.txt` (it has between 8 and 12 lines), print, with a line `---` in between:
 
 1. its first 3 lines
 2. its last 2 lines
+
+Example: if `datos.txt` contains the lines `1 pera`, `2 uva`, `3 kiwi`, `4 fresa`, `5 limon`, `6 mora`, the output is:
+
+```
+1 pera
+2 uva
+3 kiwi
+---
+5 limon
+6 mora
+```
+
+Hint: `head -n 3 file`, `tail -n 2 file`, and `echo ---` prints the separator.
 @@check
 SEEDS=1
 setup() { local i; for i in $(seq "$(randr 8 12)"); do echo "$i $(word)"; done > datos.txt; }
+extra_check() { must_use head tail; }
 @@solution
 #!/bin/bash
 head -n 3 datos.txt
@@ -33,9 +62,13 @@ tail -n 2 datos.txt
 @@level 1
 @@cmds wc -l
 @@readme
-Print **only the number** of lines of `texto.txt` (no file name).
+`wc -l` counts the lines of a file.
 
-Hint: `wc -l < texto.txt` doesn't print the name; `wc -l texto.txt` does.
+Print **only the number** of lines of `texto.txt`, without the file name.
+
+Example: for a file with 7 lines, print just `7`.
+
+Hint: `wc -l texto.txt` prints the number **and** the name (`7 texto.txt`). If the file arrives through input redirection, `wc -l < texto.txt`, `wc` does not know its name and prints only the number.
 @@check
 SEEDS=1
 setup() { randtext "$(randr 5 20)" > texto.txt; }
@@ -48,8 +81,25 @@ wc -l < texto.txt
 @@level 1
 @@cmds cut -d -f
 @@readme
-The file `datos.txt` has lines `name:age:city` (fields separated by `:`). Print only the second
-field (the age) of every line.
+`cut` extracts columns from every line. `-d` sets the character that separates the fields and `-f N` chooses field number N (the first one is 1).
+
+The file `datos.txt` has lines like `name:age:city`: three fields separated by `:`. Print only the **second** field (the age) of every line.
+
+Example: if `datos.txt` contains
+
+```
+ana:31:madrid
+luis:25:leon
+```
+
+the output is
+
+```
+31
+25
+```
+
+Hint: `cut -d: -f2 file`
 @@check
 SEEDS=1
 setup() { local i; for i in $(seq "$(randr 5 10)"); do echo "$(word):$(randr 1 99):$(word)"; done > datos.txt; }
@@ -62,7 +112,13 @@ cut -d: -f2 datos.txt
 @@level 1
 @@cmds sort
 @@readme
+`sort` prints the lines of a file in alphabetical order.
+
 Print the lines of `nombres.txt` in alphabetical order.
+
+Example: if `nombres.txt` contains `pera`, `kiwi`, `manzana` (one per line), the output is `kiwi`, `manzana`, `pera`.
+
+Hint: `sort file`
 @@check
 SEEDS=1
 setup() { local i; for i in $(seq "$(randr 6 12)"); do word; done > nombres.txt; }
@@ -75,8 +131,13 @@ sort nombres.txt
 @@level 1
 @@cmds uniq
 @@readme
-`lista.txt` is already sorted and has some repeated adjacent lines. Print it with every
-repetition collapsed into a single line (like `uniq` does).
+`uniq` collapses lines that are repeated **one right after another** into a single line.
+
+`lista.txt` is already sorted, so equal lines are next to each other. Print it with every repetition collapsed.
+
+Example: if `lista.txt` contains `cafe`, `cafe`, `pan`, `pan`, `sal`, the output is `cafe`, `pan`, `sal`.
+
+Hint: `uniq file`
 @@check
 SEEDS=1
 setup() { local n w; n=$(randr 3 5); { for i in $(seq "$n"); do w=$(word); echo "$w"; echo "$w"; done; } | sort > lista.txt; }
@@ -89,7 +150,13 @@ uniq lista.txt
 @@level 1
 @@cmds tr
 @@readme
-The script reads text from **standard input**. Convert every lowercase letter to uppercase.
+`tr A B` replaces, character by character, the characters of `A` by those of `B`. It reads **standard input** (the text that arrives into your script), not files.
+
+The checker sends some words into your script on standard input. Print them with every lowercase letter converted to uppercase.
+
+Example: if the input is `hola mundo`, the output is `HOLA MUNDO`.
+
+Hint: `tr 'a-z' 'A-Z'` (a range of letters on each side).
 @@check
 SEEDS=1
 input() { words "$(randr 3 6)"; }
@@ -102,8 +169,13 @@ tr 'a-z' 'A-Z'
 @@level 1
 @@cmds sed s///
 @@readme
-For the file `frase.txt`, print its content replacing the **first** occurrence of `hola` on each
-line with `adios`.
+`sed 's/old/new/'` replaces the **first** `old` of every line by `new`.
+
+For the file `frase.txt`, print its content replacing the first `hola` of each line by `adios` (the file is not modified, `sed` just prints).
+
+Example: the line `hola luis hola ana` becomes `adios luis hola ana`.
+
+Hint: `sed 's/hola/adios/' file`
 @@check
 SEEDS=1
 setup() { echo "hola $(word) hola $(word)" > frase.txt; }

@@ -2,9 +2,18 @@
 
 **Topic:** Processes, jobs & signals · **Difficulty:** ★☆☆☆☆ · **Commands:** kill, wait
 
-Start `sleep 300` in the background and save its PID. Terminate it with `kill` (default signal,
-SIGTERM), then `wait` for it and print the exit status returned by `wait` (a process killed by
-SIGTERM exits with `143`).
+`kill PID` asks a process to end (it sends the signal SIGTERM). `wait PID` waits for a background process to finish; afterwards `$?` holds the exit status of that process. A process ended by SIGTERM has the exit status `143`.
+
+1. Start `sleep 300` in the background and save its PID (`PID=$!`).
+2. End it with `kill "$PID"`.
+3. Wait for it with `wait "$PID"`.
+4. Print the exit status with `echo $?`.
+
+Expected output:
+
+```
+143
+```
 
 ---
 Write your solution in `answer.sh`, then run `check 1224`.  

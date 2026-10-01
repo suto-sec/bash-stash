@@ -2,10 +2,19 @@
 
 **Topic:** find · **Difficulty:** ★☆☆☆☆ · **Commands:** find -name
 
-Under `data`, print (one per line, **sorted**) the paths of every file named `notes.txt`
-(there may be several, in different subdirectories).
+`find DIR -name PATTERN` looks inside `DIR` (and all its subdirectories) for files with that name.
 
-Remember to **quote** the pattern.
+Under the directory `data`, print the path of every file called `notes.txt` (there are several, in different subdirectories). Put the paths in alphabetical order, one per line, by piping the result of `find` into `sort`.
+
+Expected output:
+
+```
+data/a/notes.txt
+data/b/c/notes.txt
+data/notes.txt
+```
+
+Hint: `find data -name 'notes.txt' | sort`. Always put the name pattern in quotes, so the shell does not expand it.
 
 ---
 Write your solution in `answer.sh`, then run `check 0752`.  

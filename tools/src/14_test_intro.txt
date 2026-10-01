@@ -3,8 +3,26 @@
 @@level 1
 @@cmds test, [ ]
 @@readme
-The script receives a path as its only argument. Using `[ -e "$1" ]` (or `test -e "$1"`), print
-`exists` if the path exists, or `missing` otherwise.
+`[ -e PATH ]` is true if the path exists (a file or a directory).
+
+The script receives one argument: a path. Print `exists` if that path exists, and `missing` if it does not.
+
+Examples: the checker runs it with `fichero` (a file that exists) and with `noexiste` (nothing with that name).
+
+```
+exists
+missing
+```
+
+Hint:
+
+```
+if [ -e "$1" ]; then
+  echo ...
+else
+  echo ...
+fi
+```
 @@check
 SEEDS=1
 setup() { touch fichero; }
@@ -17,8 +35,23 @@ if [ -e "$1" ]; then echo exists; else echo missing; fi
 @@level 1
 @@cmds if, elif, else
 @@readme
-The script receives one integer. Print `positive`, `negative` or `zero`, using an `if` / `elif` /
-`else` chain.
+`if` / `elif` / `else` runs the first block whose condition is true. To compare numbers use `-gt` (greater than), `-lt` (less than) and `-eq` (equal), for example `[ "$1" -gt 0 ]`.
+
+The script receives one whole number. Print `positive` if it is greater than 0, `negative` if it is less than 0 and `zero` otherwise, using an `if` / `elif` / `else` chain.
+
+Examples: `5` prints `positive`, `-3` prints `negative`, `0` prints `zero`.
+
+Hint:
+
+```
+if [ "$1" -gt 0 ]; then
+  echo ...
+elif [ ... ]; then
+  echo ...
+else
+  echo ...
+fi
+```
 @@check
 SEEDS=1
 ARGS=('5' '-3' '0')
@@ -34,8 +67,20 @@ fi
 @@level 1
 @@cmds case
 @@readme
-The script receives a day abbreviation (`mon` `tue` `wed` `thu` `fri` `sat` `sun`). Print
-`weekday` for Monday-Friday and `weekend` for Saturday/Sunday, using a `case` statement.
+`case` compares a value with several patterns and runs the commands of the first pattern that matches. `|` inside a pattern means "or" and `*` matches anything (use it as the last, default one).
+
+The script receives a day abbreviation: `mon`, `tue`, `wed`, `thu`, `fri`, `sat` or `sun`. Print `weekend` for `sat` and `sun`, and `weekday` for the others, using a `case` statement.
+
+Examples: `mon` prints `weekday`, `sat` prints `weekend`.
+
+Hint:
+
+```
+case $1 in
+  sat|sun) echo ... ;;
+  *) echo ... ;;
+esac
+```
 @@check
 SEEDS=1
 ARGS=('mon' 'wed' 'fri' 'sat' 'sun')
