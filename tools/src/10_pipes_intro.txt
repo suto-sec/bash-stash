@@ -3,8 +3,13 @@
 @@level 1
 @@cmds |, wc
 @@readme
-In the current directory, print how many entries there are, piping `ls` into `wc -l`
-(`ls | wc -l`).
+A pipe `|` sends the output of the command on its left into the command on its right. `ls` prints one name per line, and `wc -l` counts lines, so together they count the entries of a directory.
+
+Print how many entries (files and directories) the current directory has: `ls` on the left of the pipe and `wc -l` on the right. Print only the number.
+
+Example: if the directory contains 5 entries, print `5`.
+
+Hint: `ls | wc -l`
 @@check
 SEEDS=1
 setup() { local i; for i in $(seq "$(randr 2 9)"); do touch "$(word)$i"; done; }
@@ -17,8 +22,17 @@ ls | wc -l
 @@level 1
 @@cmds xargs
 @@readme
-The file `nombres.txt` has one word per line. Print them all on a single line, separated by
-spaces, piping the file through `xargs` (`cat nombres.txt | xargs`).
+`xargs` takes the words that arrive on its input and passes them as arguments to a command. Without a command it uses `echo`, so it joins all the words on a single line.
+
+The file `nombres.txt` has one word per line. Print them all on one line, separated by spaces, by piping the file into `xargs`.
+
+Example: if `nombres.txt` contains `ana`, `luis`, `eva` (one per line), the output is:
+
+```
+ana luis eva
+```
+
+Hint: `cat file | xargs`
 @@check
 SEEDS=1
 setup() { mkfl nombres.txt "$(word)" "$(word)" "$(word)"; }
@@ -31,8 +45,13 @@ cat nombres.txt | xargs
 @@level 1
 @@cmds tee
 @@readme
-The file `entrada.txt` contains one line of text. Pipe it through `cat` and `tee salida.txt`, so
-the line is printed to stdout **and** saved into `salida.txt`.
+`tee file` copies what it receives to the file **and** to the screen, so you save a result and also see it.
+
+The file `entrada.txt` contains one line of text. Send it through `cat` and then `tee salida.txt`, so the line is printed on the screen and also saved in `salida.txt`.
+
+Example: if `entrada.txt` contains `hola mundo`, the screen shows `hola mundo` and `salida.txt` also contains `hola mundo`.
+
+Hint: `cat file | tee other_file`
 @@check
 SEEDS=1
 COMPARE="stdout exit files"

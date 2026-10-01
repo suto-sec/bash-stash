@@ -2,8 +2,17 @@
 
 **Topic:** Directories & navigation · **Difficulty:** ★☆☆☆☆ · **Commands:** du -sh
 
-Print the total size of the directory `datos` in human readable form with a single
-`du -sh` (exactly what it prints).
+The directory `datos` contains files of different sizes, and a subdirectory with more files.
+
+Print the **total** size of `datos` in a human readable form (`K`, `M`...) with a single `du -sh` command: `-s` prints only the total, `-h` means human readable.
+
+Expected output (the size changes on every run):
+
+```
+24K	datos
+```
+
+Hint: `du -sh dir`
 
 ---
 Write your solution in `answer.sh`, then run `check 0232`.  

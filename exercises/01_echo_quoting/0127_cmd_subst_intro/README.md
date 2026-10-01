@@ -2,13 +2,18 @@
 
 **Topic:** Echo, quoting & substitution · **Difficulty:** ★☆☆☆☆ · **Commands:** $(...)
 
-Store the output of `whoami` in a variable using `$( )`, then print:
+`$(command)` is replaced by whatever the command prints (its output).
+
+1. Run `whoami` inside `$( )` and store what it prints in a variable called `WHO`: `WHO=$(whoami)`
+2. Print `Soy ` followed by the value of `WHO`.
+
+When the checker runs your script, the user is called `alumno`:
 
 ```
 Soy alumno
 ```
 
-(`alumno` is whatever `whoami` prints for your user.)
+Hint: `VAR=$(command)` stores the output of the command in `VAR`.
 
 ---
 Write your solution in `answer.sh`, then run `check 0127`.  

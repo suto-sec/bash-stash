@@ -2,8 +2,26 @@
 
 **Topic:** test, if & case · **Difficulty:** ★☆☆☆☆ · **Commands:** test, [ ]
 
-The script receives a path as its only argument. Using `[ -e "$1" ]` (or `test -e "$1"`), print
-`exists` if the path exists, or `missing` otherwise.
+`[ -e PATH ]` is true if the path exists (a file or a directory).
+
+The script receives one argument: a path. Print `exists` if that path exists, and `missing` if it does not.
+
+Examples: the checker runs it with `fichero` (a file that exists) and with `noexiste` (nothing with that name).
+
+```
+exists
+missing
+```
+
+Hint:
+
+```
+if [ -e "$1" ]; then
+  echo ...
+else
+  echo ...
+fi
+```
 
 ---
 Write your solution in `answer.sh`, then run `check 1442`.  

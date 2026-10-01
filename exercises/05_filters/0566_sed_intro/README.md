@@ -2,8 +2,13 @@
 
 **Topic:** Filters: wc, head, tail, cut, sort, uniq, tr, sed, tee... · **Difficulty:** ★☆☆☆☆ · **Commands:** sed s///
 
-For the file `frase.txt`, print its content replacing the **first** occurrence of `hola` on each
-line with `adios`.
+`sed 's/old/new/'` replaces the **first** `old` of every line by `new`.
+
+For the file `frase.txt`, print its content replacing the first `hola` of each line by `adios` (the file is not modified, `sed` just prints).
+
+Example: the line `hola luis hola ana` becomes `adios luis hola ana`.
+
+Hint: `sed 's/hola/adios/' file`
 
 ---
 Write your solution in `answer.sh`, then run `check 0566`.  

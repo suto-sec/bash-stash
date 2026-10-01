@@ -2,8 +2,11 @@
 
 **Topic:** tar, gzip & compression · **Difficulty:** ★☆☆☆☆ · **Commands:** tar -cf
 
-Create an (uncompressed) archive `archivo.tar` in the current directory that contains the file
-`datos.txt`.
+`tar` packs several files into one archive file. `-c` creates an archive and `-f NAME` gives the archive's name.
+
+The current directory contains `datos.txt`. Create an (uncompressed) archive called `archivo.tar` that contains it. Nothing is printed.
+
+Hint: `tar -cf ARCHIVE.tar FILE...`
 
 ---
 Write your solution in `answer.sh`, then run `check 0426`.  

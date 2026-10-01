@@ -2,9 +2,13 @@
 
 **Topic:** Filters: wc, head, tail, cut, sort, uniq, tr, sed, tee... · **Difficulty:** ★☆☆☆☆ · **Commands:** wc -l
 
-Print **only the number** of lines of `texto.txt` (no file name).
+`wc -l` counts the lines of a file.
 
-Hint: `wc -l < texto.txt` doesn't print the name; `wc -l texto.txt` does.
+Print **only the number** of lines of `texto.txt`, without the file name.
+
+Example: for a file with 7 lines, print just `7`.
+
+Hint: `wc -l texto.txt` prints the number **and** the name (`7 texto.txt`). If the file arrives through input redirection, `wc -l < texto.txt`, `wc` does not know its name and prints only the number.
 
 ---
 Write your solution in `answer.sh`, then run `check 0561`.  

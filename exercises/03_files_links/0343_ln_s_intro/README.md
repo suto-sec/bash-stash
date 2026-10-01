@@ -2,14 +2,20 @@
 
 **Topic:** Files, copies & links · **Difficulty:** ★☆☆☆☆ · **Commands:** ln -s, readlink
 
-The current directory contains `original`.
+A symbolic link is a small file that stores the path of another file (like a shortcut).
 
-1. Create a symbolic link `blando` pointing to `original`.
-2. Print the target stored in `blando` with `readlink`.
+The current directory contains the file `original`.
+
+1. Create a symbolic link called `blando` that points to `original`.
+2. Print the path stored inside `blando` with `readlink`.
+
+Expected output:
 
 ```
 original
 ```
+
+Hint: `ln -s TARGET LINKNAME`, then `readlink LINKNAME`.
 
 ---
 Write your solution in `answer.sh`, then run `check 0343`.  

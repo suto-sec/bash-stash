@@ -3,8 +3,11 @@
 @@level 1
 @@cmds tar -cf
 @@readme
-Create an (uncompressed) archive `archivo.tar` in the current directory that contains the file
-`datos.txt`.
+`tar` packs several files into one archive file. `-c` creates an archive and `-f NAME` gives the archive's name.
+
+The current directory contains `datos.txt`. Create an (uncompressed) archive called `archivo.tar` that contains it. Nothing is printed.
+
+Hint: `tar -cf ARCHIVE.tar FILE...`
 @@check
 SEEDS=1
 setup() { randtext 3 > datos.txt; }
@@ -20,11 +23,23 @@ tar -cf archivo.tar datos.txt
 @@level 1
 @@cmds tar -tf
 @@readme
-The file `paquete.tar` exists in the current directory. Without extracting it, print the list of
-paths it contains.
+`tar -t` lists the content of an archive without extracting anything.
+
+The file `paquete.tar` exists in the current directory. Print the paths of the files stored inside it, one per line.
+
+Expected output:
+
+```
+f1.txt
+f2.txt
+f3.txt
+```
+
+Hint: `tar -tf ARCHIVE.tar` (`t` = list, `f` = the archive's name follows).
 @@check
 SEEDS=1
 setup() { local i; for i in 1 2 3; do randtext 2 > "f$i.txt"; done; tar --sort=name -cf paquete.tar f1.txt f2.txt f3.txt; rm f1.txt f2.txt f3.txt; }
+extra_check() { must_use tar; }
 @@solution
 #!/bin/bash
 tar -tf paquete.tar
@@ -33,12 +48,16 @@ tar -tf paquete.tar
 @@level 1
 @@cmds tar -xf
 @@readme
-The file `paquete.tar` exists in the current directory. Extract its contents into the current
-directory.
+`tar -x` extracts the files stored in an archive, into the current directory.
+
+The file `paquete.tar` exists in the current directory (it contains one file, `dato.txt`). Extract it. Afterwards `dato.txt` must exist. Nothing is printed.
+
+Hint: `tar -xf ARCHIVE.tar` (`x` = extract, `f` = the archive's name follows).
 @@check
 SEEDS=1
 COMPARE="stdout exit files"
 setup() { randtext 3 > dato.txt; tar -cf paquete.tar dato.txt; rm dato.txt; }
+extra_check() { must_use tar; }
 @@solution
 #!/bin/bash
 tar -xf paquete.tar
@@ -47,11 +66,16 @@ tar -xf paquete.tar
 @@level 1
 @@cmds gzip
 @@readme
-Compress the file `informe.txt` with `gzip` (the original disappears, you get `informe.txt.gz`).
+`gzip` compresses a file. It **replaces** the original with a compressed one that ends in `.gz`.
+
+Compress `informe.txt` with `gzip`. Afterwards `informe.txt.gz` must exist and `informe.txt` must not. Nothing is printed.
+
+Hint: `gzip file`
 @@check
 SEEDS=1
 COMPARE="stdout exit files"
 setup() { randtext 4 > informe.txt; }
+extra_check() { must_use gzip; }
 @@solution
 #!/bin/bash
 gzip informe.txt
@@ -60,11 +84,16 @@ gzip informe.txt
 @@level 1
 @@cmds gunzip
 @@readme
-The file `datos.csv.gz` exists in the current directory. Decompress it back into `datos.csv`.
+`gunzip` decompresses a `.gz` file and gives back the original (without the `.gz`).
+
+The file `datos.csv.gz` exists in the current directory. Decompress it. Afterwards `datos.csv` must exist and `datos.csv.gz` must not. Nothing is printed.
+
+Hint: `gunzip file.gz`
 @@check
 SEEDS=1
 COMPARE="stdout exit files"
 setup() { randtext 4 > datos.csv; gzip datos.csv; }
+extra_check() { must_use gunzip; }
 @@solution
 #!/bin/bash
 gunzip datos.csv.gz

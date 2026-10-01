@@ -2,13 +2,16 @@
 
 **Topic:** Echo, quoting & substitution · **Difficulty:** ★☆☆☆☆ · **Commands:** echo -e
 
-Using `echo -e`, print two lines separated by a `\n` escape and a tab between the two words
-of the second line:
+`echo -e` makes `echo` interpret escape sequences: `\n` is a new line and `\t` is a tab.
+
+With **one single** `echo -e` command (one line of code), print these two lines. The second line has a TAB between `uno` and `dos` (shown here as a real tab character):
 
 ```
 primera linea
 uno	dos
 ```
+
+Hint: `echo -e "first\nsecond\tthird"`
 
 ---
 Write your solution in `answer.sh`, then run `check 0123`.  

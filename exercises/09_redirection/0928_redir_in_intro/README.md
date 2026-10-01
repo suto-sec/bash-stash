@@ -2,8 +2,13 @@
 
 **Topic:** Redirection: > >> 2> < << <<< · **Difficulty:** ★☆☆☆☆ · **Commands:** <
 
-Print the number of lines of `datos.txt` using `wc -l`, feeding the file with **input
-redirection** (`<`), not as an argument.
+`< file` makes a command read its input from a file, as if you typed the file's content on the keyboard.
+
+Print the number of lines of `datos.txt` using `wc -l` and `<`. Do **not** pass the file name as an argument: `wc` should read it from the input redirection.
+
+Example: for a file with 4 lines, print `4`.
+
+Hint: `wc -l < file`
 
 ---
 Write your solution in `answer.sh`, then run `check 0928`.  

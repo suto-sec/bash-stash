@@ -3,18 +3,22 @@
 @@level 1
 @@cmds echo, echo -n
 @@readme
-Quick refresher.
+Practise `echo` and its `-n` option, which leaves out the final newline.
 
-1. Print the line `Listo` with `echo`.
-2. Print `Sin salto` with `echo -n` (no trailing newline), then print `!` with a normal `echo`.
+1. Print the line `Listo`.
+2. Print `Sin salto` **without** a newline (`echo -n`), then print `!` with a normal `echo`, so both end up on the same line.
+
+Expected output:
 
 ```
 Listo
 Sin salto!
 ```
+
+Hint: `echo text` prints the text and a newline; `echo -n text` prints it without the newline.
 @@check
 SEEDS=1
-extra_check() { must_use echo; }
+extra_check() { must_use echo 'echo -n'; }
 @@solution
 #!/bin/bash
 echo "Listo"
@@ -25,16 +29,19 @@ echo "!"
 @@level 1
 @@cmds echo -e
 @@readme
-Using `echo -e`, print two lines separated by a `\n` escape and a tab between the two words
-of the second line:
+`echo -e` makes `echo` interpret escape sequences: `\n` is a new line and `\t` is a tab.
+
+With **one single** `echo -e` command (one line of code), print these two lines. The second line has a TAB between `uno` and `dos` (shown here as a real tab character):
 
 ```
 primera linea
 uno	dos
 ```
+
+Hint: `echo -e "first\nsecond\tthird"`
 @@check
 SEEDS=1
-extra_check() { must_use 'echo -e'; }
+extra_check() { must_use 'echo -e'; max_lines 1; }
 @@solution
 #!/bin/bash
 echo -e "primera linea\nuno\tdos"
@@ -43,33 +50,51 @@ echo -e "primera linea\nuno\tdos"
 @@level 1
 @@cmds printf
 @@readme
-The variable-like values `nombre=Ana` and `edad=23` are fixed. Using **one** `printf` with a
-format string (no `echo`), print:
+`printf` prints exactly what its format string says. Unlike `echo` it does **not** add a newline: you write `\n` yourself. Each `%s` in the format is replaced by the next argument.
+
+1. Write these two lines at the top of your script:
+   ```
+   nombre=Ana
+   edad=23
+   ```
+2. Use **one** `printf` (no `echo`) to print the line below. It must end with a newline.
 
 ```
 Ana tiene 23 anios
 ```
+
+Hint: `printf '%s is %s\n' "$first" "$second"`
 @@check
 SEEDS=1
 extra_check() { must_use printf; must_not_use echo; }
 @@solution
 #!/bin/bash
-printf '%s tiene %s anios\n' Ana 23
+nombre=Ana
+edad=23
+printf '%s tiene %s anios\n' "$nombre" "$edad"
 
 @@ex 0125 quotes_intro | Single vs double quotes
 @@level 1
 @@cmds ', ", $VAR
 @@readme
-`NOMBRE=Kernel` is set at the top of your script. Print these two lines: the first with
-**single** quotes (so `$NOMBRE` is shown literally), the second with **double** quotes
-(so it expands):
+Single quotes print text exactly as written; inside double quotes the shell replaces `$NOMBRE` by the value of the variable.
+
+1. Write this line at the top of your script: `NOMBRE=Kernel`
+2. Print the first line below with **single** quotes, so `$NOMBRE` appears literally, and the second line with **double** quotes, so `$NOMBRE` is replaced by `Kernel`. Use the variable in both lines, do not type `Kernel` in the second one.
 
 ```
 Hola $NOMBRE
 Hola Kernel
 ```
+
+Hint: `echo 'text $VAR'` prints `$VAR` as it is; `echo "text $VAR"` prints its value.
 @@check
 SEEDS=1
+extra_check() {
+  must_use 'NOMBRE=Kernel'
+  ans_code | grep -qF "'Hola \$NOMBRE'" || fail "print the first line with single quotes: 'Hola \$NOMBRE'"
+  ans_code | grep -qE '"Hola \$\{?NOMBRE\}?"' || fail "print the second line with double quotes and the variable: \"Hola \$NOMBRE\""
+}
 @@solution
 #!/bin/bash
 NOMBRE=Kernel
@@ -80,14 +105,22 @@ echo "Hola $NOMBRE"
 @@level 1
 @@cmds $VAR, ${VAR}
 @@readme
-Set `CURSO=so`, then print `so2026` by concatenating `$CURSO` with the literal `2026`,
-using `${CURSO}` so the shell doesn't look for a variable named `CURSO2026`:
+Written as `$CURSO2026`, the shell would look for a variable called `CURSO2026`, which does not exist. Braces mark where the name ends: `${CURSO}2026`.
+
+1. Write this line at the top of your script: `CURSO=so`
+2. Print the value of `CURSO` immediately followed by the text `2026`, using `${CURSO}`:
 
 ```
 so2026
 ```
+
+Hint: `echo "${NAME}text"`
 @@check
 SEEDS=1
+extra_check() {
+  must_use 'CURSO=so'
+  ans_code | grep -qF '${CURSO}' || fail "use the braces: \${CURSO}"
+}
 @@solution
 #!/bin/bash
 CURSO=so
@@ -97,16 +130,24 @@ echo "${CURSO}2026"
 @@level 1
 @@cmds $(...)
 @@readme
-Store the output of `whoami` in a variable using `$( )`, then print:
+`$(command)` is replaced by whatever the command prints (its output).
+
+1. Run `whoami` inside `$( )` and store what it prints in a variable called `WHO`: `WHO=$(whoami)`
+2. Print `Soy ` followed by the value of `WHO`.
+
+When the checker runs your script, the user is called `alumno`:
 
 ```
 Soy alumno
 ```
 
-(`alumno` is whatever `whoami` prints for your user.)
+Hint: `VAR=$(command)` stores the output of the command in `VAR`.
 @@check
 SEEDS=1
-extra_check() { must_use whoami; }
+extra_check() {
+  must_use whoami
+  ans_code | grep -qF '$(' || fail "use \$( ) command substitution"
+}
 @@solution
 #!/bin/bash
 WHO=$(whoami)
@@ -116,12 +157,15 @@ echo "Soy $WHO"
 @@level 1
 @@cmds {1..N}
 @@readme
-Using brace expansion (no loop, no seq), print on one line the numbers 1 to 5 separated by
-spaces:
+Brace expansion writes a list of words for you: `{1..5}` becomes `1 2 3 4 5`.
+
+Print the numbers 1 to 5 on one line, separated by spaces, with **one** `echo` and a brace expansion (no loop, no `seq`):
 
 ```
 1 2 3 4 5
 ```
+
+Hint: `echo {1..3}` prints `1 2 3`.
 @@check
 SEEDS=1
 extra_check() { must_not_use for while seq; }

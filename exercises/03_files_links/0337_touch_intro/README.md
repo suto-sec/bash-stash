@@ -2,7 +2,11 @@
 
 **Topic:** Files, copies & links · **Difficulty:** ★☆☆☆☆ · **Commands:** touch
 
-Create an empty file named `nuevo.txt` in the current directory with `touch`.
+`touch name` creates an empty file called `name` if it does not exist yet.
+
+Create an empty file named `nuevo.txt` in the current directory. Nothing is printed.
+
+Hint: `touch file`
 
 ---
 Write your solution in `answer.sh`, then run `check 0337`.  

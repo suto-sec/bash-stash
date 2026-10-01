@@ -3,7 +3,11 @@
 @@level 1
 @@cmds touch
 @@readme
-Create an empty file named `nuevo.txt` in the current directory with `touch`.
+`touch name` creates an empty file called `name` if it does not exist yet.
+
+Create an empty file named `nuevo.txt` in the current directory. Nothing is printed.
+
+Hint: `touch file`
 @@check
 SEEDS=1
 COMPARE="stdout exit files"
@@ -16,7 +20,11 @@ touch nuevo.txt
 @@level 1
 @@cmds cp
 @@readme
-The current directory contains `original.txt`. Copy it to `copia.txt` (same directory).
+The current directory contains `original.txt`.
+
+Copy it to a new file called `copia.txt` (in the same directory). Both files must exist afterwards. Nothing is printed.
+
+Hint: `cp SOURCE DESTINATION`
 @@check
 COMPARE="stdout exit files"
 setup() { randtext 2 > original.txt; }
@@ -29,8 +37,11 @@ cp original.txt copia.txt
 @@level 1
 @@cmds cp -r
 @@readme
-Copy the whole directory `datos` (with its content) to `respaldo` (which does not exist yet)
-with a single `cp -r`.
+`cp` refuses to copy a directory unless you add `-r` (recursive), which also copies everything inside it.
+
+The current directory contains the directory `datos`, with a file inside. Copy the whole directory to a new one called `respaldo` (it does not exist yet) with a single `cp -r`. Nothing is printed.
+
+Hint: `cp -r SOURCE DESTINATION`
 @@check
 COMPARE="stdout exit files"
 setup() { mkdir -p datos; randtext 2 > "datos/$(word).txt"; }
@@ -43,7 +54,11 @@ cp -r datos respaldo
 @@level 1
 @@cmds mv
 @@readme
-The current directory contains `viejo.txt`. Rename it to `nuevo.txt` with `mv`.
+`mv` moves files, and renaming a file is just moving it to a new name.
+
+The current directory contains `viejo.txt`. Rename it to `nuevo.txt` with `mv`. Afterwards `viejo.txt` must not exist any more. Nothing is printed.
+
+Hint: `mv OLD NEW`
 @@check
 COMPARE="stdout exit files"
 setup() { randtext 2 > viejo.txt; }
@@ -60,6 +75,10 @@ The current directory contains a file `borrar.txt` and a non-empty directory `ca
 
 1. Delete `borrar.txt` with `rm`.
 2. Delete `carpeta` and everything inside it with `rm -r`.
+
+Nothing is printed. There is no recycle bin: deleted files are gone for good.
+
+Hint: `rm file`, and `rm -r directory` for a directory.
 @@check
 COMPARE="stdout exit files"
 setup() { randtext 1 > borrar.txt; mkdir carpeta; randtext 1 > "carpeta/$(word).txt"; }
@@ -73,7 +92,11 @@ rm -r carpeta
 @@level 1
 @@cmds ln
 @@readme
-The current directory contains `original`. Create a hard link named `duro` pointing to it.
+A hard link is a second name for the same file: both names point to the same data.
+
+The current directory contains the file `original`. Create a hard link called `duro` that points to it. Both names must exist afterwards. Nothing is printed.
+
+Hint: `ln EXISTING NEWNAME`
 @@check
 COMPARE="stdout exit files"
 setup() { randtext 2 > original; }
@@ -86,14 +109,20 @@ ln original duro
 @@level 1
 @@cmds ln -s, readlink
 @@readme
-The current directory contains `original`.
+A symbolic link is a small file that stores the path of another file (like a shortcut).
 
-1. Create a symbolic link `blando` pointing to `original`.
-2. Print the target stored in `blando` with `readlink`.
+The current directory contains the file `original`.
+
+1. Create a symbolic link called `blando` that points to `original`.
+2. Print the path stored inside `blando` with `readlink`.
+
+Expected output:
 
 ```
 original
 ```
+
+Hint: `ln -s TARGET LINKNAME`, then `readlink LINKNAME`.
 @@check
 COMPARE="stdout exit files"
 setup() { randtext 2 > original; }
@@ -107,7 +136,17 @@ readlink blando
 @@level 1
 @@cmds stat -c
 @@readme
-The current directory contains a file `f`. Print its size in bytes using `stat -c %s`.
+`stat` shows the information of a file. With `-c FORMAT` you choose what to print: `%s` is the size in bytes.
+
+The current directory contains a file `f`. Print its size in bytes, and nothing else, with `stat -c %s`.
+
+Expected output (the size changes on every run):
+
+```
+1234
+```
+
+Hint: `stat -c %s file`
 @@check
 setup() { bigfile f $(randr 1 5000); }
 extra_check() { must_use stat; }
@@ -119,13 +158,17 @@ stat -c %s f
 @@level 1
 @@cmds basename, dirname
 @@readme
-The path `/home/alumno/datos/informe.txt` is fixed in your script (write it literally).
-Print:
+`basename` prints the last part of a path (the file name); `dirname` prints everything before it (the folder).
+
+1. Write this line at the top of your script: `P=/home/alumno/datos/informe.txt`
+2. Print the file name of `$P` with `basename`, and then its folder with `dirname`:
 
 ```
 informe.txt
 /home/alumno/datos
 ```
+
+Hint: `basename "$P"` and `dirname "$P"`
 @@check
 SEEDS=1
 extra_check() { must_use basename dirname; }

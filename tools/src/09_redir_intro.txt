@@ -3,8 +3,11 @@
 @@level 1
 @@cmds >
 @@readme
-Save the output of `echo hola` into a file called `saludo.txt` (overwrite it). Nothing printed
-on screen.
+`>` sends the output of a command into a file instead of the screen. If the file already exists, it is **overwritten**.
+
+Save the output of `echo hola` into the file `saludo.txt`. The file already exists with some old content: it must end up containing only `hola`. Nothing is printed on the screen.
+
+Hint: `command > file`
 @@check
 COMPARE="stdout exit files"
 SEEDS=1
@@ -17,8 +20,11 @@ echo hola > saludo.txt
 @@level 1
 @@cmds >>
 @@readme
-`nota.txt` already contains one line. **Append** the line `fin` to it with `>>` (don't overwrite
-what is already there). Nothing printed on screen.
+`>>` also sends output into a file, but it **adds** to the end of the file instead of overwriting it.
+
+`nota.txt` already contains one line. Add the line `fin` after it with `echo` and `>>`. Afterwards the file has two lines: `primera linea` and `fin`. Nothing is printed on the screen.
+
+Hint: `command >> file`
 @@check
 COMPARE="stdout exit files"
 SEEDS=1
@@ -31,8 +37,13 @@ echo fin >> nota.txt
 @@level 1
 @@cmds <
 @@readme
-Print the number of lines of `datos.txt` using `wc -l`, feeding the file with **input
-redirection** (`<`), not as an argument.
+`< file` makes a command read its input from a file, as if you typed the file's content on the keyboard.
+
+Print the number of lines of `datos.txt` using `wc -l` and `<`. Do **not** pass the file name as an argument: `wc` should read it from the input redirection.
+
+Example: for a file with 4 lines, print `4`.
+
+Hint: `wc -l < file`
 @@check
 SEEDS=1
 setup() { local i; for i in $(seq "$(randr 2 6)"); do word; done > datos.txt; }
@@ -45,8 +56,11 @@ wc -l < datos.txt
 @@level 1
 @@cmds 2>
 @@readme
-Run `ls no_existe.txt` (a file that doesn't exist) so its error message goes to `error.txt`
-instead of the screen. Nothing printed on screen.
+Programs have two outputs: the normal one (stdout) and the one for errors (stderr). `2>` sends **only the errors** into a file.
+
+Run `ls no_existe.txt` (that file does not exist, so `ls` complains) and send its error message into the file `error.txt`. Nothing is printed on the screen, and `error.txt` contains the message.
+
+Hint: `command 2> file`
 @@check
 COMPARE="stdout exit files"
 SEEDS=1
@@ -59,8 +73,13 @@ ls no_existe.txt 2> error.txt
 @@level 1
 @@cmds |
 @@readme
-Print how many lines `/etc/passwd` has, by piping `cat /etc/passwd` into `wc -l`
-(just the number).
+A pipe `|` sends the output of the command on its left into the command on its right.
+
+Print the number of lines of `/etc/passwd` using a pipe: `cat /etc/passwd` on the left and `wc -l` on the right. Print only the number.
+
+Example: for a file with 25 lines, print `25`.
+
+Hint: `command1 | command2`
 @@check
 SEEDS=1
 extra_check() { must_use '\|'; }
@@ -72,12 +91,24 @@ cat /etc/passwd | wc -l
 @@level 1
 @@cmds << EOF
 @@readme
-Create `saludo.txt` with a **here document** (`cat > saludo.txt << EOF`) containing exactly
-these two lines:
+A here document gives a command several lines of text typed right in the script. It starts with `<< WORD` and ends at a line that contains only `WORD`.
+
+Create the file `saludo.txt` with exactly these two lines:
 
 ```
 hola
 adios
+```
+
+Use a here document with `cat`: `cat > saludo.txt << EOF`, then the two lines, then a line with only `EOF`. Nothing is printed on the screen.
+
+Hint:
+
+```
+cat > file << EOF
+first line
+second line
+EOF
 ```
 @@check
 COMPARE="stdout exit files"

@@ -2,12 +2,16 @@
 
 **Topic:** Echo, quoting & substitution · **Difficulty:** ★☆☆☆☆ · **Commands:** $VAR, ${VAR}
 
-Set `CURSO=so`, then print `so2026` by concatenating `$CURSO` with the literal `2026`,
-using `${CURSO}` so the shell doesn't look for a variable named `CURSO2026`:
+Written as `$CURSO2026`, the shell would look for a variable called `CURSO2026`, which does not exist. Braces mark where the name ends: `${CURSO}2026`.
+
+1. Write this line at the top of your script: `CURSO=so`
+2. Print the value of `CURSO` immediately followed by the text `2026`, using `${CURSO}`:
 
 ```
 so2026
 ```
+
+Hint: `echo "${NAME}text"`
 
 ---
 Write your solution in `answer.sh`, then run `check 0126`.  

@@ -3,10 +3,22 @@
 @@level 1
 @@cmds ps -p
 @@readme
-Start `sleep 300` in the **background** and save its PID (`$!`). Print `found` if `ps -p PID`
-succeeds (exit code 0, redirect its output to `/dev/null`), or `not found` otherwise.
+`ps -p PID` succeeds (exit status 0) if a process with that PID exists, and fails if it does not.
+
+1. Start `sleep 300` in the background (add `&` at the end of the line) and save its PID with `PID=$!` (`$!` is the PID of the last background command).
+2. If `ps -p "$PID" > /dev/null` succeeds print `found`, otherwise print `not found` (`> /dev/null` hides the table that `ps` prints).
+3. Kill the process with `kill "$PID"` so it does not keep running.
+
+Expected output:
+
+```
+found
+```
+
+Hint: `if COMMAND; then echo one; else echo two; fi`
 @@check
 SEEDS=1
+extra_check() { must_use ps kill; }
 @@solution
 #!/bin/bash
 sleep 300 &
@@ -18,11 +30,21 @@ kill "$P" 2>/dev/null
 @@level 1
 @@cmds kill, wait
 @@readme
-Start `sleep 300` in the background and save its PID. Terminate it with `kill` (default signal,
-SIGTERM), then `wait` for it and print the exit status returned by `wait` (a process killed by
-SIGTERM exits with `143`).
+`kill PID` asks a process to end (it sends the signal SIGTERM). `wait PID` waits for a background process to finish; afterwards `$?` holds the exit status of that process. A process ended by SIGTERM has the exit status `143`.
+
+1. Start `sleep 300` in the background and save its PID (`PID=$!`).
+2. End it with `kill "$PID"`.
+3. Wait for it with `wait "$PID"`.
+4. Print the exit status with `echo $?`.
+
+Expected output:
+
+```
+143
+```
 @@check
 SEEDS=1
+extra_check() { must_use kill wait; }
 @@solution
 #!/bin/bash
 sleep 300 &
@@ -35,11 +57,24 @@ echo $?
 @@level 1
 @@cmds jobs
 @@readme
-Start `sleep 0.3` and `sleep 0.4` in the background (in that order) and immediately print the job
-table with `jobs`.
+`jobs` lists the background jobs of the current shell, one per line, with their number and state.
+
+1. Start `sleep 0.3` in the background (`&`).
+2. Start `sleep 0.4` in the background.
+3. Immediately run `jobs` to print the list.
+
+Expected output (the amount of spaces does not matter):
+
+```
+[1]-  Running                 sleep 0.3 &
+[2]+  Running                 sleep 0.4 &
+```
+
+Run `jobs` right after starting the two commands, before they finish.
 @@check
 SEEDS=1
 filter() { sed 's/  */ /g'; }
+extra_check() { must_use jobs; }
 @@solution
 #!/bin/bash
 sleep 0.3 &
@@ -50,9 +85,19 @@ jobs
 @@level 1
 @@cmds &, $!, wait
 @@readme
-Run `sleep 0.2` in the **background** (`&`) and save its PID with `$!`. Print `launched`
-right away (before waiting: `&` returns immediately). Then `wait` for the process and print
-`done`.
+Ending a command with `&` runs it in the background: the shell does not wait and goes on with the next line. `$!` holds the PID of the last background command and `wait PID` waits for it to finish.
+
+1. Start `sleep 0.2` in the background (`&`) and save its PID (`PID=$!`).
+2. Print `launched` right away.
+3. Wait for the process with `wait "$PID"`.
+4. Print `done`.
+
+Expected output:
+
+```
+launched
+done
+```
 @@check
 SEEDS=1
 extra_check() { must_use wait; }

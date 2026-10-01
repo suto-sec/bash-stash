@@ -3,9 +3,20 @@
 @@level 1
 @@cmds name() { }
 @@readme
-Define a function `saluda` that prints `hola`, then call it.
+A function groups commands under a name. You define it with `name() { commands; }` and you run it by writing its name. It must be defined **before** the line that calls it.
+
+Define a function called `saluda` that prints `hola`, and then call it.
+
+Expected output:
+
+```
+hola
+```
+
+Hint: `saluda() { echo hola; }` on one line, and `saluda` on the next.
 @@check
 SEEDS=1
+extra_check() { ans_code | grep -qE 'saluda *\(\)|function +saluda' || fail "define the function saluda() { ...; }"; }
 @@solution
 #!/bin/bash
 saluda() { echo hola; }
@@ -15,11 +26,21 @@ saluda
 @@level 1
 @@cmds $1
 @@readme
-Define a function `saluda` that prints `Hola, <first argument>!`, using `$1` **inside** the
-function. Call it once with the script's first argument.
+Inside a function, `$1` is the **first argument of the function call** (not of the script).
+
+Define a function `saluda` that prints `Hola, ` followed by its first argument and an exclamation mark, using `$1` inside it. Then call it once, passing the first argument of the script.
+
+Example: run as `./script.sh Ana` it prints:
+
+```
+Hola, Ana!
+```
+
+Hint: `saluda() { echo "Hola, $1!"; }` and then `saluda "$1"`.
 @@check
 SEEDS=1
 ARGS=('Ana' 'Luis')
+extra_check() { ans_code | grep -qE 'saluda *\(\)|function +saluda' || fail "define the function saluda() { ...; }"; }
 @@solution
 #!/bin/bash
 saluda() { echo "Hola, $1!"; }
@@ -29,9 +50,21 @@ saluda "$1"
 @@level 1
 @@cmds local
 @@readme
-Set `X=fuera` and print it. Define a function `f` that sets a **local** `X=dentro` and prints it,
-then call `f`. Finally print `X` once more: it must still be `fuera`, since `f`'s `X` was local and
-never touched the outer one.
+A variable declared `local` inside a function exists only while the function runs; it does not change a variable with the same name outside.
+
+1. Set `X=fuera` and print it.
+2. Define a function `f` that declares `local X=dentro` and prints `$X`. Call `f`.
+3. Print `$X` again: it must still be `fuera`.
+
+Expected output:
+
+```
+fuera
+dentro
+fuera
+```
+
+Hint: `f() { local X=dentro; echo "$X"; }`
 @@check
 SEEDS=1
 extra_check() { must_use local; }

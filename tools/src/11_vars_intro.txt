@@ -3,10 +3,22 @@
 @@level 1
 @@cmds =, $
 @@readme
-Create a variable `NOMBRE` with the value `Ada` (no spaces around `=`) and print `Hola, Ada`,
-substituting the variable's value.
+A variable stores a value. You create it with `NAME=value` (**no spaces** around the `=`) and read it with `$NAME`.
+
+1. Write this line at the top of your script: `NOMBRE=Ada`
+2. Print `Hola, ` followed by the value of the variable. Use `$NOMBRE`, do not type `Ada` again.
+
+```
+Hola, Ada
+```
+
+Hint: `echo "Hola, $NOMBRE"`
 @@check
 SEEDS=1
+extra_check() {
+  must_use 'NOMBRE=Ada'
+  ans_code | grep -qE '\$\{?NOMBRE' || fail "print the value with \$NOMBRE"
+}
 @@solution
 #!/bin/bash
 NOMBRE=Ada
@@ -16,10 +28,22 @@ echo "Hola, $NOMBRE"
 @@level 1
 @@cmds $(( ))
 @@readme
-Create `A=6` and `B=7`, and print the value of `A * B` using `$(( ))`.
+`$(( ))` calculates with whole numbers: `$((3 + 4))` is replaced by `7`. Inside it you can write variable names without the `$`.
+
+1. Write these two lines at the top of your script: `A=6` and `B=7`
+2. Print the result of `A * B` using `$(( ))`:
+
+```
+42
+```
+
+Hint: `echo $((A * B))`
 @@check
 SEEDS=1
-extra_check() { ans_code | grep -q '\$((' || fail "use \$(( ))"; }
+extra_check() {
+  must_use 'A=6' 'B=7'
+  ans_code | grep -q '\$((' || fail "use \$(( ))"
+}
 @@solution
 #!/bin/bash
 A=6
@@ -30,11 +54,21 @@ echo $((A * B))
 @@level 1
 @@cmds export
 @@readme
-Create a variable `MSG=hola`, export it, and then run a child shell that prints it:
-`bash -c 'echo "$MSG"'`.
+A variable belongs to your shell only. `export` also hands it over to the programs your shell starts (child processes), such as another `bash`.
+
+1. Create the variable `MSG` with the value `hola` and export it: `export MSG=hola`
+2. Run a child shell that prints it: `bash -c 'echo "$MSG"'`
+
+Expected output:
+
+```
+hola
+```
+
+Without `export` the child shell would print an empty line.
 @@check
 SEEDS=1
-extra_check() { must_use export; }
+extra_check() { must_use export 'MSG=hola'; }
 @@solution
 #!/bin/bash
 export MSG=hola
@@ -44,8 +78,18 @@ bash -c 'echo "$MSG"'
 @@level 1
 @@cmds read
 @@readme
-The file `dato.txt` contains a single line of text. Read it into a variable `X` with
-`read X < dato.txt` and print `Leido: ` followed by the value.
+`read VAR` reads one line and stores it in the variable `VAR`.
+
+The file `dato.txt` contains a single line of text.
+
+1. Read that line into a variable called `X`, taking it from the file with `<`: `read X < dato.txt`
+2. Print `Leido: ` followed by the value of `X`.
+
+Example: if `dato.txt` contains `manzana`, the output is:
+
+```
+Leido: manzana
+```
 @@check
 SEEDS=1
 setup() { mkfl dato.txt "$(word)"; }

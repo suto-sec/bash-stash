@@ -2,8 +2,17 @@
 
 **Topic:** Pipes, xargs & command substitution · **Difficulty:** ★☆☆☆☆ · **Commands:** xargs
 
-The file `nombres.txt` has one word per line. Print them all on a single line, separated by
-spaces, piping the file through `xargs` (`cat nombres.txt | xargs`).
+`xargs` takes the words that arrive on its input and passes them as arguments to a command. Without a command it uses `echo`, so it joins all the words on a single line.
+
+The file `nombres.txt` has one word per line. Print them all on one line, separated by spaces, by piping the file into `xargs`.
+
+Example: if `nombres.txt` contains `ana`, `luis`, `eva` (one per line), the output is:
+
+```
+ana luis eva
+```
+
+Hint: `cat file | xargs`
 
 ---
 Write your solution in `answer.sh`, then run `check 1035`.  
