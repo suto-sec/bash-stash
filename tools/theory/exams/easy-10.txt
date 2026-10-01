@@ -1,0 +1,84 @@
+@@exam easy-10 | Easy exam 10
+@@tier easy
+@@about
+Ten single-choice questions on the basics: find by group, xargs, comparing files, case, df and du, line editing, root's powers, echo escapes, passwd and pstree.
+
+@@q single | find by group
+@@topic find
+In `/srv` there are regular files and directories that belong to the group `devs`, and files of other groups. What does `find /srv -group devs -type f` print?
+(+) The paths of the regular files whose group is `devs`. :: `-group` selects by group and `-type f` keeps only regular files; both tests must be true.
+(-) The paths of every entry of the group `devs`, directories included. :: `-type f` removes the directories from the result.
+(-) The paths of the files that are owned by the user `devs`. :: `-group` looks at the group; the owner is tested with `-user`.
+(-) The paths of the files that members of `devs` are allowed to write. :: `find` does not test what the group may do, only who the owner group is (that would be `-perm`).
+
+@@q single | Names that arrive on stdin
+@@topic redirection-pipes
+`trash.txt` contains the names of two files, one per line. Which command deletes those two files?
+(+) `xargs rm < trash.txt` :: `xargs` reads the names from its input and runs `rm` with them as arguments.
+(-) `rm < trash.txt` :: `rm` does not read its standard input: it complains "missing operand".
+(-) `cat trash.txt | rm` :: Through the pipe the names arrive on stdin, which `rm` ignores: "missing operand".
+(-) `rm -f < trash.txt` :: `-f` only silences errors about missing files; the input is still ignored.
+
+@@q single | Comparing byte by byte
+@@topic filters
+Which command compares two files byte by byte and reports the position of the first difference?
+(+) `cmp` :: For example `cmp f1 f2` prints `f1 f2 differ: byte 3, line 1`.
+(-) `diff` :: It compares line by line and lists the lines that changed, not byte positions.
+(-) `od` :: It dumps the content of one file in octal, hexadecimal or characters; it compares nothing.
+(-) `wc -c` :: It counts the bytes of a file; it cannot tell where two files differ.
+
+@@q single | case patterns
+@@topic scripts
+Which statement about the `case` command is FALSE?
+(-) A `case` ends with `esac`. :: True: it is `case` written backwards, as `fi` closes an `if`.
+(-) Each branch ends with `;;`. :: True: the double semicolon closes the commands of the branch.
+(-) The pattern `*)` matches anything, so it is used as the default branch. :: True: patterns are tried in order and the first match wins.
+(+) The patterns are regular expressions, so `a.c)` matches `abc`. :: False: the patterns are shell globs. There `.` is an ordinary character, so `a.c` matches only the text `a.c`.
+
+@@q single | df and du
+@@topic files-fs
+Which statement is TRUE?
+(+) `df` reports the space of each mounted file system; `du` adds up the space used by a directory tree. :: Typical uses: `df -h` to see how full the disks are and `du -sh dir` to see how big a directory is.
+(-) `df` adds up the space used by a directory tree and `du` reports the free space of each mounted file system. :: It is the other way round.
+(-) Both print the free space of the disk; `du` is just the old name of `df`. :: They are different commands that answer different questions.
+(-) `df -h` shows the size of every file in the current directory. :: `df` works with file systems, not with individual files.
+
+@@q single | Editing the command line
+@@topic shell-help
+Which statement about editing and recalling commands in the shell is FALSE?
+(-) `Tab` completes the name of a command or file as far as it is unambiguous. :: True: pressed twice it lists the possibilities.
+(-) `Ctrl+A` moves the cursor to the beginning of the line and `Ctrl+E` to the end. :: True: they are the Emacs-style keys of the line editor.
+(-) The command `history` prints the numbered list of the commands typed before. :: True: `!N` repeats the one with number N.
+(+) The up arrow recalls the previous command and runs it at once, without waiting for Enter. :: False: it only puts the command on the line so that you can edit it; it runs when you press Enter.
+
+@@q single | root and permissions
+@@topic permissions
+The file `secret` belongs to `ana` and has mode `000`. Logged in as `root`, you run `cat secret`. What happens?
+(+) The content is printed. :: root bypasses the read and write permission checks; only execute needs at least one `x` bit.
+(-) "Permission denied", because nobody has read permission. :: The permission checks do not apply to root.
+(-) "Permission denied", because root is not the owner. :: Being the owner is not required for root.
+(-) It prints the content only after `chmod +r secret`, since even root needs read permission. :: root does not need to change the mode first.
+
+@@q single | The -e option of echo
+@@topic expansion-vars
+Which option makes `echo` interpret escape sequences such as `\n` and `\t`?
+(+) `-e` :: `echo -e "a\tb"` prints `a`, a tab and `b`.
+(-) `-n` :: It only suppresses the final newline.
+(-) `-E` :: It disables the interpretation of escapes, which is already the default in bash.
+(-) `-s` :: `echo` has no such option: it just prints `-s` as text.
+
+@@q single | Locking an account
+@@topic users-sessions
+Which command locks the password of the user `ana`, so that she cannot log in with it?
+(+) `passwd -l ana` :: `-l` (lock) disables the password; `-u` undoes it.
+(-) `passwd -u ana` :: `-u` unlocks the password.
+(-) `passwd -e ana` :: `-e` expires the password: it stays valid, but she must change it at the next login.
+(-) `passwd -d ana` :: `-d` deletes the password, leaving the account with no password at all: the opposite of what is wanted.
+
+@@q single | The process tree
+@@topic jobs-procs
+Which statement about `pstree` is TRUE?
+(+) It shows the processes as a tree: each child under its parent, PID 1 at the root. :: With `pstree -p` the PIDs are shown next to the names.
+(-) It shows only the processes of the current user, as a flat table with one column per attribute. :: A flat table of columns is what `ps` prints.
+(-) It draws the tree of directories of the file system. :: That is what `tree` does.
+(-) It orders the processes by memory usage. :: Sorting by memory is done inside `top` or with `ps --sort`.
