@@ -107,14 +107,13 @@ const Exams = (() => {
   }
   function syncSettingsUI() {
     const s = getSettings();
-    $('#exam-feedback-value').textContent = s.feedback === 'each' ? 'After each question' : 'At the end';
+    Seg.set('feedback', s.feedback);
     $('#exam-back').checked = s.back;
   }
-  $('#exam-feedback-row').onclick = () => {
-    const next = getSettings().feedback === 'each' ? 'end' : 'each';
-    try { localStorage.setItem('examFeedback', next); } catch { /* private mode */ }
+  Seg.on('feedback', v => {
+    try { localStorage.setItem('examFeedback', v === 'end' ? 'end' : 'each'); } catch { /* private mode */ }
     afterSettings();
-  };
+  });
   $('#exam-back').onchange = ev => {
     try { localStorage.setItem('examBack', ev.target.checked ? '1' : '0'); } catch { /* private mode */ }
     afterSettings();

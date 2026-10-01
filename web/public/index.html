@@ -21,6 +21,7 @@
       <span id="overall-text">0/0</span>
     </div>
     <div class="spacer"></div>
+    <button id="palette-btn" class="top-btn" title="Search every exercise, script, exam, quiz and manual entry (Ctrl+K)">🔍 Search <kbd>Ctrl K</kbd></button>
     <a href="#/reference" id="reference-btn" title="Every command and concept used, grouped by topic">📖 Reference</a>
     <div class="layout-picker" id="layout-picker">
       <button id="layout-btn" title="Choose how the instructions, terminal and VS Code panels are arranged" aria-haspopup="true" aria-expanded="false">⬚ Layout</button>
@@ -58,49 +59,31 @@
     <div class="layout-picker" id="settings-picker">
       <button id="settings-btn" class="icon-btn" title="Settings" aria-label="Settings" aria-haspopup="true" aria-expanded="false">⚙</button>
       <div class="layout-menu settings-menu hidden" id="settings-menu" role="menu">
-        <div class="layout-menu-label">Global theme</div>
-        <button class="settings-row" id="theme-row" role="menuitemradio">
-          <span class="settings-row-label">Light / dark</span>
-          <span class="settings-row-value" id="theme-row-value">Dark</span>
-        </button>
-        <div class="layout-menu-sep"></div>
-        <div class="layout-menu-label">Exercise sidebar</div>
-        <label class="settings-row settings-row-check">
-          <span class="settings-row-label">Hide passed exercises</span>
-          <input type="checkbox" id="hide-passed">
-        </label>
-        <div class="layout-menu-sep"></div>
-        <div class="layout-menu-label">Home sidebar</div>
-        <label class="settings-row settings-row-check">
-          <span class="settings-row-label">Hide passed exercises and questions</span>
-          <input type="checkbox" id="home-hide-passed">
-        </label>
-        <div class="layout-menu-sep"></div>
-        <div class="layout-menu-label">Theory language</div>
-        <button class="settings-row" id="theory-lang-row" role="menuitemradio">
-          <span class="settings-row-label">English / Español</span>
-          <span class="settings-row-value" id="theory-lang-value">English</span>
-        </button>
-        <p class="settings-note">Only affects the <strong>Theory</strong> quizzes and practice exams: their home-page sections and cards, categories, questions and explanations. Exercises, scripts and the rest of the app stay in English.</p>
-        <div class="layout-menu-sep"></div>
-        <div class="layout-menu-label">Practice exams</div>
-        <button class="settings-row" id="exam-feedback-row" role="menuitemradio">
-          <span class="settings-row-label">Validation</span>
-          <span class="settings-row-value" id="exam-feedback-value">After each question</span>
-        </button>
-        <label class="settings-row settings-row-check" id="exam-back-row">
-          <span class="settings-row-label">Allow going back</span>
-          <input type="checkbox" id="exam-back">
-        </label>
-        <div class="layout-menu-sep"></div>
-        <div class="layout-menu-label">Script practice exams</div>
-        <button class="settings-row" id="sx-check-row" role="menuitemradio">
-          <span class="settings-row-label">Checker during an attempt</span>
-          <span class="settings-row-value" id="sx-check-value">Only on submit</span>
-        </button>
-        <p class="settings-note"><strong>Only on submit</strong> resembles the exam: you only get the statement, VS Code and the terminal, and the script is graded once, when you submit. <strong>Any time</strong> lets you run the checker while you work. An attempt in progress keeps the setting it started with.</p>
-        <div class="layout-menu-sep"></div>
-        <p class="settings-note"><strong>After each question</strong> is for practice: each answer is explained and locked. <strong>At the end</strong> resembles the exam: nothing is revealed until you finish. <strong>Allow going back</strong> is independent: off means strictly sequential (a question is final once you move on). An attempt in progress is kept, and keeps the settings it started with.</p>
+        <div class="set-group">Appearance</div>
+        <div class="set-row"><span class="set-label">Theme</span>
+          <div class="seg" role="radiogroup" data-key="theme"><button role="radio" data-v="dark">Dark</button><button role="radio" data-v="light">Light</button></div></div>
+        <div class="set-group">Sidebars</div>
+        <label class="set-row set-switch"><span class="set-label">Hide passed items<small class="set-hint">In the exercise sidebar and in the home page sidebar.</small></span><input type="checkbox" class="switch" id="hide-passed"></label>
+        <div class="set-group">Theory quizzes and exams</div>
+        <div class="set-row"><span class="set-label">Language</span>
+          <div class="seg" role="radiogroup" data-key="lang"><button role="radio" data-v="en">English</button><button role="radio" data-v="es">Español</button></div>
+          <small class="set-hint">Only quizzes and theory exams. Coding exercises and scripts always stay in English.</small></div>
+        <div class="set-row"><span class="set-label">Show answers</span>
+          <div class="seg" role="radiogroup" data-key="feedback"><button role="radio" data-v="each">After each question</button><button role="radio" data-v="end">At the end</button></div>
+          <small class="set-hint">Theory practice exams only. After each question: explained and locked at once. At the end: nothing is revealed until you finish.</small></div>
+        <label class="set-row set-switch"><span class="set-label">Allow going back<small class="set-hint">Theory practice exams only. Off: a question is final once you move on.</small></span><input type="checkbox" class="switch" id="exam-back"></label>
+        <div class="set-group">Script practice exams</div>
+        <div class="set-row"><span class="set-label">Checker</span>
+          <div class="seg" role="radiogroup" data-key="sxcheck"><button role="radio" data-v="submit">Only on submit</button><button role="radio" data-v="any">Any time</button></div>
+          <small class="set-hint">Only on submit: graded once, like the real exam. Any time: run the checker while you work. A running attempt keeps its setting.</small></div>
+        <div class="set-group">Keyboard</div>
+        <div class="set-row"><span class="set-label">Ctrl+K search opens in</span>
+          <div class="seg" role="radiogroup" data-key="palettetab"><button role="radio" data-v="new">New tab</button><button role="radio" data-v="same">This tab</button></div>
+          <small class="set-hint">Shift+Enter does the opposite.</small></div>
+        <div class="set-row"><span class="set-label">Alt+G go to opens in</span>
+          <div class="seg" role="radiogroup" data-key="modetab"><button role="radio" data-v="new">New tab</button><button role="radio" data-v="same">This tab</button></div>
+          <small class="set-hint">After Alt+G: home, reference, tracks, scripts… Next/previous stay in this tab.</small></div>
+        <button class="set-btn" id="shortcuts-row">Show all shortcuts</button>
       </div>
     </div>
   </header>
@@ -216,6 +199,7 @@
       <a href="#/ex/" id="home-back" title="Back to exercises">← Exercises</a>
       <strong>Choose what to browse</strong>
       <div class="spacer"></div>
+      <button id="home-palette-btn" class="top-btn" title="Search every exercise, script, exam, quiz and manual entry (Ctrl+K)">🔍 Search <kbd>Ctrl K</kbd></button>
       <a href="#/reference" id="home-reference-btn" class="ref-link" title="Every command and concept used, grouped by topic">📖 Reference</a>
       <div id="home-head-slot"></div>
     </div>
@@ -353,5 +337,6 @@
   <script src="/exams.js"></script>
   <script src="/scripts.js"></script>
   <script src="/sexams.js"></script>
+  <script src="/keys.js"></script>
 </body>
 </html>

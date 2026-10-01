@@ -42,6 +42,15 @@ window.addEventListener('message', ev => {
   if (ev.data && ev.data.source === 'bash-stash-vscode') state.activeVSCodeFile = ev.data.activeFile;
 });
 
+// ------------------------------------------------------------------ segmented settings (the ⚙ menu): every choice is a visible button
+const Seg = {
+  set(key, v) {
+    for (const b of document.querySelectorAll(`.seg[data-key="${key}"] button`)) { const on = b.dataset.v === v; b.classList.toggle('on', on); b.setAttribute('aria-checked', String(on)); }
+  },
+  on(key, fn) {
+    document.querySelector(`.seg[data-key="${key}"]`).addEventListener('click', ev => { const b = ev.target.closest('button[data-v]'); if (b) fn(b.dataset.v); });
+  },
+};
 // ------------------------------------------------------------------ theme
 function currentTheme() { return document.documentElement.dataset.theme || 'dark'; }
 const XTERM_THEMES = {
@@ -53,7 +62,7 @@ const XTERM_THEMES = {
 function applyTheme(t, sync = true) {
   document.documentElement.dataset.theme = t;
   try { localStorage.setItem('theme', t); } catch { /* private mode */ }
-  $('#theme-row-value').textContent = t === 'dark' ? 'Dark' : 'Light';
+  Seg.set('theme', t);
   if (term) term.options.theme = XTERM_THEMES[t];
   if (sync) fetch('/api/theme', { method: 'POST', headers: { 'Content-Type': 'application/json' },
                                   body: JSON.stringify({ theme: t }) })
@@ -61,7 +70,8 @@ function applyTheme(t, sync = true) {
       if (state.codeFor) { state.codeFor = null; if (state.mode === 'code') openVSCode(); }
     }).catch(() => {});
 }
-$('#theme-row').onclick = () => applyTheme(currentTheme() === 'dark' ? 'light' : 'dark');
+Seg.set('theme', currentTheme());
+Seg.on('theme', v => applyTheme(v));
 
 // ------------------------------------------------------------------ settings popup
 $('#settings-btn').onclick = ev => {
@@ -914,7 +924,7 @@ function renderHomeNav() {
   const nav = $('#home-topics');
   if (!nav || !state.index) return;
   const q = $('#home-search').value.trim().toLowerCase();
-  const hidePassed = $('#home-hide-passed').checked;
+  const hidePassed = $('#hide-passed').checked;
   const closed = new Set(lsGet('homeNavClosed', [])), openKeys = new Set(lsGet('homeNavOpen', []));
   const tree = homeTree();
   // a node is shown when it matches, or when one of its descendants does (an ancestor match shows all its contents)
@@ -1004,7 +1014,7 @@ function homeGo(go) {
 }
 $('#home-body').addEventListener('scroll', syncHomeNav);
 $('#home-search').oninput = renderHomeNav;
-$('#home-hide-passed').onchange = renderHomeNav;
+$('#hide-passed').addEventListener('change', renderHomeNav);   // one switch for both sidebars
 $('#home-expand-btn').onclick = () => { document.querySelectorAll('#home-topics details').forEach(d => { d.open = true; }); saveHomeNavState(); };
 $('#home-collapse-btn').onclick = () => { document.querySelectorAll('#home-topics details').forEach(d => { d.open = false; }); saveHomeNavState(); };
 $('#home-topics').addEventListener('click', ev => {
