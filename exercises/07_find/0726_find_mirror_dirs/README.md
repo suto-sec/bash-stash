@@ -10,7 +10,3 @@ Finally print `Created N directories`, where N is the number of directories unde
 **not counting** `src` itself. Names may contain spaces.
 
 Example: `src/a/b c` must produce `dst/a/b c`.
-
----
-Write your solution in `answer.sh`, then run `check 0726`.  
-To experiment with the same test files the checker uses: `play 0726`.

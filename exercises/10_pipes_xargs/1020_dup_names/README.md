@@ -15,7 +15,3 @@ NAME: N copies
 and finally a line `D repeated names`. Names may contain spaces.
 
 Hint: `find ... | sed 's#.*/##' | sort | uniq -c` does most of the work.
-
----
-Write your solution in `answer.sh`, then run `check 1020`.  
-To experiment with the same test files the checker uses: `play 1020`.

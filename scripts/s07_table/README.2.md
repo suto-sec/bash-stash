@@ -1,1 +1,1 @@
-Exactly one argument is required (otherwise: error message **and the correct usage** on standard error, exit **1**), and it must be a non-negative integer (digits only; otherwise an error message that includes it, exit **2**).
+Exactly one argument is required (otherwise: error message **and the correct usage** (e.g. `Usage: table.sh N`) on standard error, exit **1**), and it must be a non-negative integer (digits only; otherwise an error message that includes it, exit **2**).

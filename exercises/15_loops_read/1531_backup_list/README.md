@@ -18,7 +18,3 @@ path was missing, 0 otherwise.
 
 Errors (stderr, wording free): not exactly 2 arguments → **1** (show the usage); LIST not a readable
 regular file → **2** (name it); DEST exists but is not a directory → **3** (name it).
-
----
-Write your solution in `answer.sh`, then run `check 1531`.  
-To experiment with the same test files the checker uses: `play 1531`.

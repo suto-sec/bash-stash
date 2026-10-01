@@ -13,6 +13,4 @@ more** names, print one line with the names **space-separated**, in the order th
 not hard-linked to anything else (a group of one) are not printed at all. Finally print `Groups: N`
 (`N` = number of printed groups).
 
----
-Write your solution in `answer.sh`, then run `check 0333`.  
-To experiment with the same test files the checker uses: `play 0333`.
+Hint: `[ A -ef B ]` is true when `A` and `B` are the same file (same inode), i.e. hard links of each other; your script must use `-ef`.

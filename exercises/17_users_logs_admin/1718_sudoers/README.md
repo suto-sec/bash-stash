@@ -11,7 +11,3 @@ Write (into the file `lab_sudoers` in the current directory) sudoers rules so th
 
 Then validate it with `visudo -c -f lab_sudoers` (it prints `lab_sudoers: parsed OK`).
 The checker validates the syntax with `visudo` and then checks each of the three rules.
-
----
-Write your solution in `answer.sh`, then run `check 1718`.  
-To experiment with the same test files the checker uses: `play 1718`.

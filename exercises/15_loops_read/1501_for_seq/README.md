@@ -9,7 +9,3 @@ The script receives N. Print:
 3. `Iteracion numero K` for K = 1..N (like `script_for.sh` in `~/scripts.tgz`)
 
 Note: `{1..$N}` does **not** work with variables; use `seq` or `for ((...))`.
-
----
-Write your solution in `answer.sh`, then run `check 1501`.  
-To experiment with the same test files the checker uses: `play 1501`.

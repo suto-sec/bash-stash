@@ -23,7 +23,7 @@ COMPARE="stdout exit"
 find "$1" -type f -empty
 @@step 2 | And empty directories
 @@readme
-Empty **directories** count too. Print each path preceded by its kind: `file: PATH` or `dir: PATH`.
+Empty **directories** count too (`find DIR -type d -empty`; `DIR` itself is listed if it is empty). Print each path preceded by its kind: `file: PATH` or `dir: PATH`, for example `file: tree/zero.txt` or `dir: tree/b/sub`.
 @@check
 SORT_OUTPUT=1
 ARGS=('tree' '"my tree"' 'none')
@@ -34,7 +34,7 @@ find "$1" -type f -empty | sed 's/^/file: /'
 find "$1" -type d -empty | sed 's/^/dir: /'
 @@step 3 | Check the directory
 @@readme
-Checks, in this order: not exactly one argument → error message **and the correct usage**, exit **1**; `DIR` does not exist → error with its name, exit **2**; not a directory → error with its name, exit **3**. Nothing on standard output in those cases.
+Checks, in this order: not exactly one argument → error message **and the correct usage** (e.g. `Usage: emptyfinder.sh dir`), exit **1**; `DIR` does not exist → error with its name, exit **2**; not a directory → error with its name, exit **3**. Nothing on standard output in those cases.
 @@check
 SORT_OUTPUT=1
 ARGS=('tree' '"my tree"' '' 'tree none' 'nothing' 'notadir.txt')

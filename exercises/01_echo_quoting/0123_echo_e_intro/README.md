@@ -12,7 +12,3 @@ uno	dos
 ```
 
 Hint: `echo -e "first\nsecond\tthird"`
-
----
-Write your solution in `answer.sh`, then run `check 0123`.  
-To experiment with the same test files the checker uses: `play 0123`.

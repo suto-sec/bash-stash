@@ -9,7 +9,3 @@ The script receives a path as its only argument and prints exactly one of:
 - `<path> is a regular file`
 - `<path> is something else` (exists, but none of the above, e.g. `/dev/null`)
 - `<path> does not exist`
-
----
-Write your solution in `answer.sh`, then run `check 1401`.  
-To experiment with the same test files the checker uses: `play 1401`.

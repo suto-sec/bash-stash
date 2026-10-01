@@ -9,7 +9,3 @@ Run it three times:
 2. discarding only its **normal output** (you see its errors: they go to your stderr, the checker
    compares both streams)
 3. discarding **everything**, and then print `exit code: N` with its exit code
-
----
-Write your solution in `answer.sh`, then run `check 0903`.  
-To experiment with the same test files the checker uses: `play 0903`.

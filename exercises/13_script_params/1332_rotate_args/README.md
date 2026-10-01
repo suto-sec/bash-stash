@@ -10,7 +10,3 @@ front) and `set --` (to re-append them at the end) — do not use arrays.
 If there are no items after the first argument, print `Error: no hay elementos` on stderr and exit 1.
 If K is not a non-negative integer, print `Error: K invalido` on stderr and exit 2 (checked only once
 there is at least one item).
-
----
-Write your solution in `answer.sh`, then run `check 1332`.  
-To experiment with the same test files the checker uses: `play 1332`.

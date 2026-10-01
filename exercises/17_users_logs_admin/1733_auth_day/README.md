@@ -27,7 +27,3 @@ Errors (message on **stderr**):
 - `DAY` is not a number from 1 to 31 written without leading zeros: exit **2**
 - `LOG` cannot be read: exit **3**
 - no line of that day: message `no entries for day <DAY>`, exit **4**
-
----
-Write your solution in `answer.sh`, then run `check 1733`.  
-To experiment with the same test files the checker uses: `play 1733`.

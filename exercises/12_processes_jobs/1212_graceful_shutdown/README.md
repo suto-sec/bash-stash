@@ -11,7 +11,3 @@ exits cleanly. It does **not** react specially to `SIGKILL` (a signal that can n
 3. Start `./cleanup.sh b.flag` in the background, `sleep 0.2`, send it `SIGKILL` (`kill -9`), `wait`
    for it (hide messages) and print its exit status.
 4. Print `exists` or `missing` depending on whether `b.flag` was created.
-
----
-Write your solution in `answer.sh`, then run `check 1212`.  
-To experiment with the same test files the checker uses: `play 1212`.

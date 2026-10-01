@@ -13,7 +13,3 @@ Print, in this order:
 3. after `cd ..` (from there): `pwd` (logical `..` goes back to the directory that contains `atajo`)
 4. after going **physically** into the link with `cd -P atajo` and then `cd ..`: `pwd`
    (now `..` is `real/X`)
-
----
-Write your solution in `answer.sh`, then run `check 0220`.  
-To experiment with the same test files the checker uses: `play 0220`.

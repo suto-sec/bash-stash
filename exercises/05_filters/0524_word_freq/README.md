@@ -9,7 +9,3 @@ most frequent first. For equal counts, alphabetical order of the word.
 - anything that is not a letter separates words
 
 Hint: `tr -cs 'A-Za-z' '\n'` puts every word on its own line.
-
----
-Write your solution in `answer.sh`, then run `check 0524`.  
-To experiment with the same test files the checker uses: `play 0524`.

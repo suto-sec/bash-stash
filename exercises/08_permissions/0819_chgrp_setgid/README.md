@@ -10,7 +10,3 @@ You don't need root to change the group of **your** files to a group **you belon
 3. Set the **setgid** bit on `equipo` and on every directory below it (only directories).
 4. Create the files `equipo/nuevo.txt` and `equipo/sub/otro.txt`.
 5. Print `stat -c '%G %n'` of those two new files. Thanks to setgid they belong to `secops`.
-
----
-Write your solution in `answer.sh`, then run `check 0819`.  
-To experiment with the same test files the checker uses: `play 0819`.

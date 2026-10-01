@@ -12,7 +12,3 @@ Checks, in this order:
 - `DIR` is not a directory: message on stderr (naming `DIR`), exit **2**.
 
 Directories are never listed (their own link count is unrelated to hard links between files).
-
----
-Write your solution in `answer.sh`, then run `check 1825`.  
-To experiment with the same test files the checker uses: `play 1825`.

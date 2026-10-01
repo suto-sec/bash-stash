@@ -21,6 +21,3 @@ Answer in `answer.txt` as `N: answer`.
 14. In `find`, which one means "**all** of these bits set": `-perm -111` or `-perm /111`? (write it)
 15. What does the capital `X` in `chmod a+X` do? a) sets execute on everything b) sets execute only
     on directories and on files that already have some execute bit c) removes execute (a/b/c)
-
----
-Write your answers in `answer.txt` (one `N: answer` line per question), then run `check 1903`.

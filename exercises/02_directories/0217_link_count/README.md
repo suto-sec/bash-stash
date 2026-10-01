@@ -16,6 +16,4 @@ listed), print:
 and finally one line `proj: links=<L> subdirs=<L-2>` for `proj` itself.
 Use the link count: **don't** count the subdirectories by listing them.
 
----
-Write your solution in `answer.sh`, then run `check 0217`.  
-To experiment with the same test files the checker uses: `play 0217`.
+(So no `find`, no `tree`, no counting with `ls`: read the link count.)

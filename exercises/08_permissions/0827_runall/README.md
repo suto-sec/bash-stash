@@ -20,7 +20,3 @@ regular file are ignored silently):
 
 Exit codes: **1** no arguments (usage on stderr); **2** `DIR` is not a directory (stderr, including its
 name); **3** if at least one script failed; **0** otherwise. Names and arguments may contain spaces.
-
----
-Write your solution in `answer.sh`, then run `check 0827`.  
-To experiment with the same test files the checker uses: `play 0827`.

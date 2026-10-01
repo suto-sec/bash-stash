@@ -23,7 +23,3 @@ Exit code: 0 if `M > 0`, **4** if no pattern was found (after printing everythin
 
 Errors (message on **stderr**): not exactly 2 arguments → usage, exit **1**; `PATTERNS` not
 readable → exit **2**; `FILE` not readable → exit **3** (mention the file in both cases).
-
----
-Write your solution in `answer.sh`, then run `check 0637`.  
-To experiment with the same test files the checker uses: `play 0637`.

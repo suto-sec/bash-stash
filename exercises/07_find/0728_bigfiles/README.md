@@ -29,7 +29,3 @@ Checks, **in this order** (messages on **stderr**, wording free):
 
 If no file is big enough, print just `0 files, 0 bytes` and exit **4**. Otherwise exit 0.
 File names may contain spaces.
-
----
-Write your solution in `answer.sh`, then run `check 0728`.  
-To experiment with the same test files the checker uses: `play 0728`.

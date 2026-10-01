@@ -10,7 +10,3 @@ exit **1**.
 - more than 2 arguments: usage on stderr, exit 4
 - LOG not readable: stderr, exit 2
 - THRESHOLD not a positive integer: stderr, exit 3
-
----
-Write your solution in `answer.sh`, then run `check 1814`.  
-To experiment with the same test files the checker uses: `play 1814`.

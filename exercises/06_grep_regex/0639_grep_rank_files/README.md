@@ -19,7 +19,3 @@ Total: N
 
 where `N` is the number of matching lines summed over **every** file in `logs/` (including the ones
 with zero, which contribute nothing).
-
----
-Write your solution in `answer.sh`, then run `check 0639`.  
-To experiment with the same test files the checker uses: `play 0639`.

@@ -12,7 +12,3 @@ The script receives `key value` pairs: `pairs.sh key1 value1 key2 value2 ...`. F
    argument (1-based) among all arguments; report the first one. Values may be empty.
 
 Process the pairs with a `while [ $# -gt 0 ]` loop and `shift 2`.
-
----
-Write your solution in `answer.sh`, then run `check 1316`.  
-To experiment with the same test files the checker uses: `play 1316`.

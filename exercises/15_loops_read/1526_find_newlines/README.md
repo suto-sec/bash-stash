@@ -14,7 +14,3 @@ where every newline in PATH is shown as `?`. Finally print `N files, S bytes` (t
 
 A `for f in $(find ...)` breaks on these names: use `find ... -print0` and
 `while IFS= read -r -d '' f`, and make sure the counters survive the loop.
-
----
-Write your solution in `answer.sh`, then run `check 1526`.  
-To experiment with the same test files the checker uses: `play 1526`.

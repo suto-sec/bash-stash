@@ -2,8 +2,6 @@
 
 **Topic:** Directories & navigation · **Difficulty:** ★★☆☆☆ · **Commands:** ls -R
 
-Print the recursive listing (all subdirectories) of the directory `proyecto` using `ls`.
+The current directory contains `proyecto`, which has subdirectories and files.
 
----
-Write your solution in `answer.sh`, then run `check 0211`.  
-To experiment with the same test files the checker uses: `play 0211`.
+Print the **recursive listing** of `proyecto` using `ls`: its entries, and then the entries of every subdirectory under a header line with the subdirectory's path.

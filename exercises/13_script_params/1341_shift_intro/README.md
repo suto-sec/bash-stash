@@ -17,7 +17,3 @@ Ahora: dos               none                 none
 ```
 
 Hint: `if [ $# -eq 0 ]; then ...; else ...; fi`
-
----
-Write your solution in `answer.sh`, then run `check 1341`.  
-To experiment with the same test files the checker uses: `play 1341`.

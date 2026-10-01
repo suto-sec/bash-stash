@@ -8,7 +8,3 @@
 4. Print the number of running background jobs again.
 5. Kill the remaining job (`%2`), `wait` for it, and print the number of running background jobs
    a third time.
-
----
-Write your solution in `answer.sh`, then run `check 1211`.  
-To experiment with the same test files the checker uses: `play 1211`.

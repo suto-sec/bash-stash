@@ -10,6 +10,4 @@ Print:
 3. the file name without the `.tar.gz` suffix (`datos`)
 4. the name of the directory that contains the file (`2026`)
 
----
-Write your solution in `answer.sh`, then run `check 0311`.  
-To experiment with the same test files the checker uses: `play 0311`.
+Use `dirname` and `basename`.

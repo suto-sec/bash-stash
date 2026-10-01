@@ -13,7 +13,3 @@ Write a script that:
 5. prints on the screen `logged <N> lines`, where N is the number of lines of `script.log`
 
 Nothing but `starting` and `logged <N> lines` may appear on your stdout, and nothing on your stderr.
-
----
-Write your solution in `answer.sh`, then run `check 0918`.  
-To experiment with the same test files the checker uses: `play 0918`.

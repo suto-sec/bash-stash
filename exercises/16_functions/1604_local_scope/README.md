@@ -9,7 +9,3 @@ Write the script below step by step, **predicting** each output line before runn
 3. print `before: X=$X Y=$Y`, call `f`, print `after: X=$X Y=$Y`
 4. set `Y=reset`, then run `R=$(f)` and print `$R`
 5. print `subshell: Y=$Y` — the change made inside `$( )` is lost, because it ran in a subshell
-
----
-Write your solution in `answer.sh`, then run `check 1604`.  
-To experiment with the same test files the checker uses: `play 1604`.

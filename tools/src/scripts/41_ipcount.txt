@@ -46,7 +46,7 @@ for ip in "${!n[@]}"; do echo "$ip ${n[$ip]}"; done | sort -k2,2nr -k1,1 | head 
 exit 0
 @@step 3 | Check the arguments
 @@readme
-Checks, in this order: not one or two arguments → error message **and the correct usage**, exit **1**; the log is not a readable regular file → error with its name, exit **2**; `N` is not a positive integer → error that includes it, exit **3**.
+Checks, in this order: not one or two arguments → error message **and the correct usage** (e.g. `Usage: ipcount.sh log [N]`), exit **1**; the log is not a readable regular file → error with its name, exit **2**; `N` is not a positive integer → error that includes it, exit **3**.
 @@check
 ARGS=('access.log' 'access.log 2' '' 'a b c' 'nothing.log' 'adir' 'locked.log' 'access.log 0' 'access.log x' 'nothing.log x')
 COMPARE="stdout exit errmsg"

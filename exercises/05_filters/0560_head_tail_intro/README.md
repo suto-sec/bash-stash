@@ -21,7 +21,3 @@ Example: if `datos.txt` contains the lines `1 pera`, `2 uva`, `3 kiwi`, `4 fresa
 ```
 
 Hint: `head -n 3 file`, `tail -n 2 file`, and `echo ---` prints the separator.
-
----
-Write your solution in `answer.sh`, then run `check 0560`.  
-To experiment with the same test files the checker uses: `play 0560`.

@@ -13,7 +13,3 @@ Checks, in this order:
 - `DIR` does not exist: message on stderr (naming `DIR`), exit **2**.
 - `DIR` exists but is not a directory: message on stderr (naming `DIR`), exit **3**.
 - `MODE` is not 3-4 octal digits: message on stderr, exit **4**.
-
----
-Write your solution in `answer.sh`, then run `check 1833`.  
-To experiment with the same test files the checker uses: `play 1833`.

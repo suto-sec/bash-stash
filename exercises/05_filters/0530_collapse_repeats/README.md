@@ -18,7 +18,3 @@ lines whose **message** is identical (the timestamp, i.e. the first field, is ig
 
 Equal messages that are **not** consecutive are not merged. Comparisons are case-sensitive.
 Hint: `uniq -c -f 1`.
-
----
-Write your solution in `answer.sh`, then run `check 0530`.  
-To experiment with the same test files the checker uses: `play 0530`.

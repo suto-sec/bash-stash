@@ -14,7 +14,3 @@ signal, `wait` for it and print `SIGNAL: exit CODE`. Finally print `signals: <co
 - Fewer than 1 or more than 4 signals in the list: error, exit **2**.
 - A name in the list that is not one of the five allowed signals (including an empty name, e.g. from
   `TERM,,KILL`): error naming it, exit **3**.
-
----
-Write your solution in `answer.sh`, then run `check 1222`.  
-To experiment with the same test files the checker uses: `play 1222`.

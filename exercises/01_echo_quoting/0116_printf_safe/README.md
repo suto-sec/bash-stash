@@ -16,7 +16,3 @@ Backslashes: <number of \ characters in the text>
 
 Hint: the safe way is `printf '%s\n' "$TEXT"`. To count characters, remember `${#VAR}` and that
 `${VAR//pattern/}` deletes every match of a pattern.
-
----
-Write your solution in `answer.sh`, then run `check 0116`.  
-To experiment with the same test files the checker uses: `play 0116`.

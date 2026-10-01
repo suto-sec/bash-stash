@@ -10,7 +10,3 @@ Print, separated by `---` (paths as `grep -r ... proyecto` prints them, each lis
 3. the **number** of files of any type that contain `done` in **any case**
 
 Hint: `-L`, `--include='*.txt'`.
-
----
-Write your solution in `answer.sh`, then run `check 0622`.  
-To experiment with the same test files the checker uses: `play 0622`.

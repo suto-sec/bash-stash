@@ -11,7 +11,3 @@ the file names:
 
 Finally print `verbosidad: V, archivos: M` (V = number of times `-v` appeared, M = number of file
 names). With no arguments at all, print only `verbosidad: 0, archivos: 0`.
-
----
-Write your solution in `answer.sh`, then run `check 1331`.  
-To experiment with the same test files the checker uses: `play 1331`.

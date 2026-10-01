@@ -42,7 +42,7 @@ done
 exit 0
 @@step 3 | Check the directories
 @@readme
-Not exactly two arguments → error message **and the correct usage**, exit **1**; `DIR` does not exist → error with its name, exit **2**; `DIR` is not a directory → error with its name, exit **3**; `LINKDIR` exists but is not a directory → error with its name, exit **3**. Nothing is created in those cases.
+Not exactly two arguments → error message **and the correct usage** (e.g. `Usage: linkfarm.sh dir linkdir`), exit **1**; `DIR` does not exist → error with its name, exit **2**; `DIR` is not a directory → error with its name, exit **3**; `LINKDIR` exists but is not a directory → error with its name, exit **3**. Nothing is created in those cases.
 @@check
 SORT_OUTPUT=1
 ARGS=('data empty' 'data newlinks' '' 'data' 'data empty extra' 'nothing empty' 'notadir.txt empty' 'data notadir.txt')

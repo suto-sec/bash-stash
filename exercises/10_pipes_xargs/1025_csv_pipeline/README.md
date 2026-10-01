@@ -11,7 +11,3 @@ pipelines (no loops), print:
 3. every region with its number of sales (lines), sorted by region name, as `<region>: <count>`
 4. a line `---`
 5. the number of **distinct** products
-
----
-Write your solution in `answer.sh`, then run `check 1025`.  
-To experiment with the same test files the checker uses: `play 1025`.

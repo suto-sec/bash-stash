@@ -27,7 +27,3 @@ Errors (message on **stderr**, nothing is changed):
 - `LOG` cannot be read: message including its name, exit **2**
 - `WHITELIST` cannot be read: message including its name, exit **3**
 - `THRESHOLD` is not a positive integer: exit **4**
-
----
-Write your solution in `answer.sh`, then run `check 1728`.  
-To experiment with the same test files the checker uses: `play 1728`.

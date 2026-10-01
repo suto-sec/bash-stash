@@ -46,7 +46,7 @@ while IFS= read -r p; do
 done < <(find "$1" -mindepth 1 | sort)
 @@step 3 | Check the directory
 @@readme
-Not exactly one argument → error message **and the correct usage**, exit **1**; `DIR` does not exist → error with its name, exit **2**; not a directory → error with its name, exit **3**.
+Not exactly one argument → error message **and the correct usage** (e.g. `Usage: treeview.sh dir`), exit **1**; `DIR` does not exist → error with its name, exit **2**; not a directory → error with its name, exit **3**.
 @@check
 ARGS=('proj' 'empty' '' 'proj empty' 'nothing' 'notadir.txt')
 COMPARE="stdout exit errmsg"

@@ -28,7 +28,3 @@ Validation, in this order (message on **stderr**):
 - `TAG` is not made only of lowercase letters, digits and `-`: exit **3**
 
 Names may contain spaces.
-
----
-Write your solution in `answer.sh`, then run `check 1031`.  
-To experiment with the same test files the checker uses: `play 1031`.

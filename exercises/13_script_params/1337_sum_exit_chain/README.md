@@ -10,7 +10,3 @@ status of commands run one after another. Process them **in order**: for each on
 If it never stopped early, print `todo ok`; otherwise print `detenido en paso K`. Finally, always
 print `pasos_ejecutados: K` (the number of steps actually printed). With no arguments, print
 `todo ok` and `pasos_ejecutados: 0`.
-
----
-Write your solution in `answer.sh`, then run `check 1337`.  
-To experiment with the same test files the checker uses: `play 1337`.

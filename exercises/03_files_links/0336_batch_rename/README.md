@@ -27,7 +27,3 @@ Errors (message on stderr):
 
 Exit code (when arguments are valid): **4** if at least one match was skipped due to a collision,
 **0** otherwise. Names may contain spaces.
-
----
-Write your solution in `answer.sh`, then run `check 0336`.  
-To experiment with the same test files the checker uses: `play 0336`.

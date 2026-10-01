@@ -10,7 +10,3 @@ Run `./job.sh` once for each task name in `tareas.txt` (one per line, in order),
 
 `run.log` and `err.log` may already exist with older content: keep it. Finally print
 `errors: <N>`, where N is the number of lines **added** to `err.log` by this execution.
-
----
-Write your solution in `answer.sh`, then run `check 0916`.  
-To experiment with the same test files the checker uses: `play 0916`.

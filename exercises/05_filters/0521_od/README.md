@@ -7,7 +7,3 @@
 1. its content as characters with `od -c`
 2. `---`
 3. its first 8 bytes in hexadecimal, one byte per unit, **without** the offset column (`-An -tx1 -N8`)
-
----
-Write your solution in `answer.sh`, then run `check 0521`.  
-To experiment with the same test files the checker uses: `play 0521`.

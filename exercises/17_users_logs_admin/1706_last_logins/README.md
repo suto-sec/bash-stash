@@ -8,7 +8,3 @@ Using `last` (it reads `/var/log/wtmp`), print:
    (ignore the empty line and the `wtmp begins` line)
 2. `---`
 3. the lines of sessions that have an **end time and duration** (they contain `(hh:mm)`)
-
----
-Write your solution in `answer.sh`, then run `check 1706`.  
-To experiment with the same test files the checker uses: `play 1706`.

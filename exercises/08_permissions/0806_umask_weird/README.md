@@ -18,7 +18,3 @@ Then:
    the line `hola` into it
 
 Nothing is printed.
-
----
-Write your solution in `answer.sh`, then run `check 0806`.  
-To experiment with the same test files the checker uses: `play 0806`.

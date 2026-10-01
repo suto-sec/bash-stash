@@ -13,7 +13,3 @@ max: <largest number of occurrences in a single line>
 ```
 
 If it never appears, all three numbers are `0`.
-
----
-Write your solution in `answer.sh`, then run `check 0620`.  
-To experiment with the same test files the checker uses: `play 0620`.

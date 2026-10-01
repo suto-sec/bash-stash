@@ -14,7 +14,3 @@ category:
 Print `NAME -> CATEGORIA` for every line, in file order. After the loop, print every category that
 got at least one entry, **sorted alphabetically**, as `CATEGORIA: N`. Finally print `TOTAL: T`
 (T = number of lines processed).
-
----
-Write your solution in `answer.sh`, then run `check 1542`.  
-To experiment with the same test files the checker uses: `play 1542`.

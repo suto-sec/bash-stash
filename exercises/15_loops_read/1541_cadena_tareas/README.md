@@ -13,7 +13,3 @@ lines **in order** with a `while read` loop and a `case`:
 If the loop reaches the end of the file without ever meeting a `fallo` line, print `todo ok` instead
 of the stop message. In both cases, finally print `procesadas: N` (N = the count of `pendiente`
 lines actually printed).
-
----
-Write your solution in `answer.sh`, then run `check 1541`.  
-To experiment with the same test files the checker uses: `play 1541`.

@@ -12,7 +12,3 @@ c 0 755 1
 ```
 
 Use `stat -c` with the right format sequences (`man stat`).
-
----
-Write your solution in `answer.sh`, then run `check 0310`.  
-To experiment with the same test files the checker uses: `play 0310`.

@@ -17,7 +17,3 @@ telnet connections: N
 - accepted logins: lines with `Accepted `
 - sudo commands: lines with `COMMAND=`
 - telnet connections: lines from `in.telnetd`
-
----
-Write your solution in `answer.sh`, then run `check 1707`.  
-To experiment with the same test files the checker uses: `play 1707`.

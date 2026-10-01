@@ -11,7 +11,3 @@ Under `sistema`, print sorted, separated by `---`:
 3. regular files that have the **setuid bit** set **and** are **executable by the owner**
    (`-perm -4100`). Beware: a file can have the setuid bit without being owner-executable —
    that must **not** match.
-
----
-Write your solution in `answer.sh`, then run `check 0741`.  
-To experiment with the same test files the checker uses: `play 0741`.

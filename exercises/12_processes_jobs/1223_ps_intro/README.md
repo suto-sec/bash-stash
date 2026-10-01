@@ -15,7 +15,3 @@ found
 ```
 
 Hint: `if COMMAND; then echo one; else echo two; fi`
-
----
-Write your solution in `answer.sh`, then run `check 1223`.  
-To experiment with the same test files the checker uses: `play 1223`.

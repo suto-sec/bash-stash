@@ -14,7 +14,3 @@ Print:
    canonical relative path.
 
 Hint: for 3 you may count the `/` in the canonical path relative to the start directory.
-
----
-Write your solution in `answer.sh`, then run `check 0214`.  
-To experiment with the same test files the checker uses: `play 0214`.

@@ -22,7 +22,3 @@ Total     :    37.50 EUR
 
 Hint: `read NAME QTY PRICE < order.txt`; euros and cents are `$((P / 100))` and `$((P % 100))`,
 and `%02d` pads with zeros.
-
----
-Write your solution in `answer.sh`, then run `check 0113`.  
-To experiment with the same test files the checker uses: `play 0113`.

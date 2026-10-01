@@ -10,7 +10,3 @@ Print, separated by a line `---`:
    `Name Surname (phone)`
 
 Use `sed` with groups and back-references (`-E` and `\1`, `\2`...).
-
----
-Write your solution in `answer.sh`, then run `check 0532`.  
-To experiment with the same test files the checker uses: `play 0532`.

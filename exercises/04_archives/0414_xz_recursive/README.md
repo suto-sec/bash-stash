@@ -10,7 +10,3 @@ touch anything outside `datos` (there is a decoy file `afuera.txt` at the top le
 `find datos -type f`).
 
 Finally print `Compressed N files.` where `N` is the number of `.xz` files now under `datos`.
-
----
-Write your solution in `answer.sh`, then run `check 0414`.  
-To experiment with the same test files the checker uses: `play 0414`.

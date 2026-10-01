@@ -13,7 +13,3 @@ hola
 ```
 
 Hint: `saluda() { echo hola; }` on one line, and `saluda` on the next.
-
----
-Write your solution in `answer.sh`, then run `check 1630`.  
-To experiment with the same test files the checker uses: `play 1630`.

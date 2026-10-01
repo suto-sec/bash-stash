@@ -26,7 +26,3 @@ Errors (message on **stderr**, nothing on stdout):
 - `FILE` is not a readable regular file: message including the name, exit code **2**
 - no column is named `COLUMN` (exact, whole name: `nam` does not match `name`): message including
   `COLUMN`, exit code **3**
-
----
-Write your solution in `answer.sh`, then run `check 0539`.  
-To experiment with the same test files the checker uses: `play 0539`.

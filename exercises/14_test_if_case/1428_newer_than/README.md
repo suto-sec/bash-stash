@@ -31,7 +31,3 @@ Errors (message on **stderr**, wording free), checked in this order:
 | not exactly 2 arguments (show the usage) | 1 |
 | `ref` does not exist (name it) | 2 |
 | `directory` is not a directory (name it) | 3 |
-
----
-Write your solution in `answer.sh`, then run `check 1428`.  
-To experiment with the same test files the checker uses: `play 1428`.

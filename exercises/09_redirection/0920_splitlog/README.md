@@ -31,9 +31,7 @@ other: <n>
 Total: <T> lines
 ```
 
+(`T` = the sum of the five counts, i.e. the non-empty lines of `LOG`.)
+
 Errors (message on **stderr**): not exactly 2 arguments → usage, exit **1**; `LOG` is not a
 readable regular file → exit **2**; `OUTDIR` exists and is not a directory → exit **3**.
-
----
-Write your solution in `answer.sh`, then run `check 0920`.  
-To experiment with the same test files the checker uses: `play 0920`.

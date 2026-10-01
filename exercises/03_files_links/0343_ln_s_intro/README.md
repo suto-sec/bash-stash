@@ -16,7 +16,3 @@ original
 ```
 
 Hint: `ln -s TARGET LINKNAME`, then `readlink LINKNAME`.
-
----
-Write your solution in `answer.sh`, then run `check 0343`.  
-To experiment with the same test files the checker uses: `play 0343`.

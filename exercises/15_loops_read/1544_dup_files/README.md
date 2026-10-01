@@ -16,7 +16,3 @@ D = duplicates found).
 
 Errors (stderr, wording free, checked in this order): not exactly 1 argument -> usage, exit **1**;
 DIR does not exist -> exit **2** (name it); DIR exists but is not a directory -> exit **3** (name it).
-
----
-Write your solution in `answer.sh`, then run `check 1544`.  
-To experiment with the same test files the checker uses: `play 1544`.

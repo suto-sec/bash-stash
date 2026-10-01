@@ -8,7 +8,3 @@ The current directory contains `Datos/Stocks` and `Textos/Cartas/Avisos`.
 2. From there, using **one** `cd` with a **relative** path (with `..`), go to `Textos/Cartas/Avisos`
    and print the current directory.
 3. Go back to the previous directory with `cd -` (it prints the directory itself).
-
----
-Write your solution in `answer.sh`, then run `check 0207`.  
-To experiment with the same test files the checker uses: `play 0207`.

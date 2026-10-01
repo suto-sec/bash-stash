@@ -12,7 +12,3 @@ destination directory and all the others are files to copy into it.
 - Finally print `N copied, M skipped`, and exit **0** if nothing was skipped or **3** otherwise.
 
 Use `${!#}` (or `${@: -1}`) for the last argument and `${@:1:$#-1}` for the rest.
-
----
-Write your solution in `answer.sh`, then run `check 1321`.  
-To experiment with the same test files the checker uses: `play 1321`.

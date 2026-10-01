@@ -14,7 +14,3 @@ each pair
 ```
 
 and finally `passed: <P>/<T>`.
-
----
-Write your solution in `answer.sh`, then run `check 0915`.  
-To experiment with the same test files the checker uses: `play 0915`.

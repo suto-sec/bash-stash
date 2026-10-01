@@ -26,7 +26,3 @@ max: ID (AMOUNT)
 - `max` is the order with the biggest amount (the first one in the file if tied)
 
 Keep a `while read` loop.
-
----
-Write your solution in `answer.sh`, then run `check 1519`.  
-To experiment with the same test files the checker uses: `play 1519`.

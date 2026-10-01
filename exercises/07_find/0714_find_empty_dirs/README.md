@@ -2,8 +2,7 @@
 
 **Topic:** find · **Difficulty:** ★★☆☆☆ · **Commands:** find -empty, -type d
 
-Print sorted the **empty directories** under `proyecto`, then delete them (only them).
+`proyecto` contains directories (some empty, some not) and files.
 
----
-Write your solution in `answer.sh`, then run `check 0714`.  
-To experiment with the same test files the checker uses: `play 0714`.
+1. Print the paths of the **empty directories** under `proyecto`, sorted.
+2. Then delete those empty directories (only them: everything else must stay).

@@ -28,7 +28,3 @@ Errors (message on **stderr**, nothing on stdout):
 | `ABSENT` is given but is not 1+ lowercase letters (also if it is empty) | 4 |
 
 Checks are done in that order.
-
----
-Write your solution in `answer.sh`, then run `check 0628`.  
-To experiment with the same test files the checker uses: `play 0628`.

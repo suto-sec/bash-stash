@@ -19,7 +19,3 @@ entries of the directory `datos` (`ls datos | wc -l`), all computed **when gener
 
 Then make it executable with `chmod +x` and run it as `./saluda.sh "<name>" extra`, where `<name>`
 is the content of `nombre.txt` (one line, may contain spaces).
-
----
-Write your solution in `answer.sh`, then run `check 0917`.  
-To experiment with the same test files the checker uses: `play 0917`.

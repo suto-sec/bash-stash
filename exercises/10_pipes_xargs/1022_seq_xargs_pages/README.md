@@ -10,7 +10,3 @@
    path: `seq -f 'pages/page_%02g.txt' 2 2 N`.
 3. Print how many files are left in `pages`, and then, on one line separated by spaces, their names
    in `ls` order (`ls pages | xargs`).
-
----
-Write your solution in `answer.sh`, then run `check 1022`.  
-To experiment with the same test files the checker uses: `play 1022`.

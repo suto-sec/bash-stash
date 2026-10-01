@@ -10,7 +10,3 @@ The `umask` removes permissions from the files you create from then on. With `um
 Nothing is printed. Afterwards `ls -l secreto.txt` shows `-rw-------` (only the owner can read or write it).
 
 Hint: the umask must be set **before** creating the file.
-
----
-Write your solution in `answer.sh`, then run `check 0838`.  
-To experiment with the same test files the checker uses: `play 0838`.

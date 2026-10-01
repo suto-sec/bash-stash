@@ -15,7 +15,3 @@ that must remain untouched.
    ```
 
    where `N` is the **uncompressed** size, obtained with `zcat ... | wc -c` (do not use `gzip -l`).
-
----
-Write your solution in `answer.sh`, then run `check 0413`.  
-To experiment with the same test files the checker uses: `play 0413`.

@@ -20,7 +20,3 @@ Errors (message on **stderr**, nothing on stdout):
 - `K` is not a positive integer: message with it, exit **3**
 - the number of lines of `FILE` is not a multiple of `K`: message naming `FILE` and its line count,
   exit **4**
-
----
-Write your solution in `answer.sh`, then run `check 0558`.  
-To experiment with the same test files the checker uses: `play 0558`.

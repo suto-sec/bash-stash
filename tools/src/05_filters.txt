@@ -91,6 +91,8 @@ head -n "$B" libro.txt | tail -n $((B - A + 1))
 @@readme
 From the `/etc/passwd`-like file `passwd` (fields separated by `:`), print for every user:
 the **UID** (field 3), the **home directory** (6) and the **shell** (7), separated by `:`.
+
+Use `cut`.
 @@check
 setup() { local i; for i in $(seq "$(randr 8 15)"); do echo "$(word)$i:x:$((999+i)):$((999+i)):$(word):/home/$(word)$i:$(pick /bin/bash /bin/sh /usr/sbin/nologin)"; done > passwd; }
 extra_check() { must_use cut; }
@@ -205,6 +207,8 @@ sort accesos.txt | uniq -d
 @@readme
 The script reads text from **standard input**. Convert all lowercase letters to uppercase,
 and additionally every `:` into a TAB.
+
+Use `tr`.
 @@check
 input() { local i; for i in $(seq 4); do echo "$(word):$(word) $(word):$(randr 1 99)"; done; }
 extra_check() { must_use tr; }
@@ -240,6 +244,8 @@ For the file `passwd`, print (separated by `---`):
 1. its content replacing **every** `a` with `AAA`
 2. its content replacing only the **first** `sys` of each line with `SYSTEM`
 3. its content replacing `/bin/bash` with `/bin/zsh` (tip: use another delimiter, `s#...#...#`)
+
+Use `sed`.
 @@check
 setup() { local i; for i in $(seq 8); do echo "$(pick sys sysadm $(word))$i:x:$((i+100)):100:$(word) sys:/home/$(word):$(pick /bin/bash /bin/sh)"; done > passwd; }
 extra_check() { must_use sed; }
@@ -280,6 +286,8 @@ Modify the file `app.conf` **in place** (no output):
 - change the line `debug=false` into `debug=true`
 - change every occurrence of `localhost` into `127.0.0.1`
 - delete every line containing `deprecated`
+
+Use `sed` (with its in-place option).
 @@check
 COMPARE="stdout exit files"
 setup() { { echo "debug=false"; local i; for i in $(seq 6); do echo "$(pick host db cache)$i=$(pick localhost localhost:5432 10.0.0.$i)"; [[ $(rand 3) == 0 ]] && echo "old$i=deprecated"; done; } > app.conf; }

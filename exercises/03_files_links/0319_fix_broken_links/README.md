@@ -14,7 +14,3 @@ last component (basename) of its stored target:
 
 (`NAME` is the link's name without the directory.) Working links and regular files are left alone.
 Finish with the line `N fixed, M removed`.
-
----
-Write your solution in `answer.sh`, then run `check 0319`.  
-To experiment with the same test files the checker uses: `play 0319`.

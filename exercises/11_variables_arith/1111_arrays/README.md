@@ -9,7 +9,3 @@ The file `frutas.txt` contains one fruit per line. Load it into an array with
 2. the first and the last element, separated by a space (`${FRUTAS[-1]}`)
 3. all elements in one line
 4. each element with its index: `0: apple`, `1: pear`, ...
-
----
-Write your solution in `answer.sh`, then run `check 1111`.  
-To experiment with the same test files the checker uses: `play 1111`.

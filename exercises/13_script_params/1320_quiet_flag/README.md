@@ -12,7 +12,3 @@ Write `count.sh [-q] word file...`, a tiny `grep -c`:
 - Exit code: **0** if `word` appears in at least one file, **1** if it appears in none.
 - Fewer than two arguments (not counting `-q`): print `Usage: count.sh [-q] word file...` on stderr
   (use `$(basename "$0")`) and exit **2**.
-
----
-Write your solution in `answer.sh`, then run `check 1320`.  
-To experiment with the same test files the checker uses: `play 1320`.

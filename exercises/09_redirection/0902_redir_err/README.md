@@ -9,7 +9,3 @@ whose arguments are `$(cat nombres.txt)`:
 - error messages must go to `errores.txt`
 
 Then print the number of lines of each file: `ok: N` and `errores: M`.
-
----
-Write your solution in `answer.sh`, then run `check 0902`.  
-To experiment with the same test files the checker uses: `play 0902`.

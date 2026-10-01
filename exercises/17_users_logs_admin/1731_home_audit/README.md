@@ -15,7 +15,3 @@ Homes without problems print nothing. Finally print `Checked N users, P problems
 
 Exit codes: **0** if there were no problems, **1** if there was some; more than one argument → usage on
 stderr, **2**; the file cannot be read → message on stderr, **3**. Paths may contain spaces.
-
----
-Write your solution in `answer.sh`, then run `check 1731`.  
-To experiment with the same test files the checker uses: `play 1731`.

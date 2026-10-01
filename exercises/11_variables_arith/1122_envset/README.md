@@ -17,7 +17,3 @@ Finally print, sorted by key, `KEY=VALUE` for every exported variable, then `Exp
 - `CONFIGFILE` not readable: stderr, exit **2**
 - `PREFIX` given but not matching `^[A-Za-z_][A-Za-z0-9_]*$`: stderr, exit **3**
 - if at least one invalid line was found, exit **4** at the end (only when there was no other error)
-
----
-Write your solution in `answer.sh`, then run `check 1122`.  
-To experiment with the same test files the checker uses: `play 1122`.

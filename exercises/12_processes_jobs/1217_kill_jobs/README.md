@@ -20,7 +20,3 @@ then a final `targeted: <count> of 3`.
 
 - No `SPEC` given: usage message on stderr, exit **1**.
 - A `SPEC` that is not `%1`, `%2`, `%3` or `all`: error naming the offending token, exit **2**.
-
----
-Write your solution in `answer.sh`, then run `check 1217`.  
-To experiment with the same test files the checker uses: `play 1217`.

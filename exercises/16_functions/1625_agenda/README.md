@@ -8,9 +8,9 @@ function per subcommand, each validating its own argument count with `die`:
 
 - `listar` (0 args): print every contact as `NOMBRE: TELEFONO`, sorted (`sort agenda.txt`), or
   `agenda vacia` if the file is missing/empty.
-- `buscar NOMBRE` (1 arg): print `NOMBRE: TELEFONO` for every matching line, or `no encontrado` if
-  none.
-- `borrar NOMBRE` (1 arg): delete every matching line (`sed -i`) and print `borrados: K` (K = how
+- `buscar NOMBRE` (1 arg): print `NOMBRE: TELEFONO` for every matching line (a line whose name is
+  exactly NOMBRE, i.e. it starts with `NOMBRE:`), or `no encontrado` if none.
+- `borrar NOMBRE` (1 arg): delete every matching line (same rule) (`sed -i`) and print `borrados: K` (K = how
   many).
 - `add NOMBRE TELEFONO` (2 args): TELEFONO must be digits only (die otherwise, naming it); append
   the line and print `agregado: NOMBRE`.
@@ -20,7 +20,3 @@ with a `case` that forwards the rest with `"$@"`.
 
 Exit codes: 1 no COMANDO at all; 2 unknown COMANDO (name it); 3 wrong number of arguments for the
 given COMANDO; 4 `add` with a non-numeric TELEFONO (name it).
-
----
-Write your solution in `answer.sh`, then run `check 1625`.  
-To experiment with the same test files the checker uses: `play 1625`.

@@ -27,7 +27,3 @@ Errors (message on stderr, nothing on stdout), checked in this order:
 - not exactly 2 arguments: usage, exit **1**
 - `DIR` is not a directory: exit **2** (mention it)
 - `LIMIT` is not valid (`0`, `0M`, `-5`, `5G`, `2.5M`, `abc`, `M`...): exit **3** (mention it)
-
----
-Write your solution in `answer.sh`, then run `check 0225`.  
-To experiment with the same test files the checker uses: `play 0225`.

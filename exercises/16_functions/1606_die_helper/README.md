@@ -9,7 +9,3 @@ Write a helper `die CODE MESSAGE...` that prints `ERROR: MESSAGE` on **stderr** 
 - file doesn't exist: `die 2 "FILE not found"` (with the real name)
 - not readable: `die 3 "FILE not readable"`
 - otherwise print the number of words of the file (just the number)
-
----
-Write your solution in `answer.sh`, then run `check 1606`.  
-To experiment with the same test files the checker uses: `play 1606`.

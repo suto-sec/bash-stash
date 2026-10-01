@@ -10,7 +10,3 @@ Using the real `/var/log/auth.log`, consider only the substrings `Invalid user <
 2. the number of **distinct** names tried
 3. the IP that tried the largest number of **distinct** user names, as `<count> <ip>`
    (ties: IP ascending as text, as `sort` orders them)
-
----
-Write your solution in `answer.sh`, then run `check 0621`.  
-To experiment with the same test files the checker uses: `play 0621`.

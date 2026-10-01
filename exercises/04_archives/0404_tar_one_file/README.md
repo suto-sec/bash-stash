@@ -8,7 +8,3 @@
 2. Extract **only** that file (keeping its path) into the current directory.
 
 Hint: first find its exact path with `tar -tzf backup.tgz | grep config.ini`.
-
----
-Write your solution in `answer.sh`, then run `check 0404`.  
-To experiment with the same test files the checker uses: `play 0404`.

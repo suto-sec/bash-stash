@@ -27,7 +27,3 @@ Above THRESHOLD: C
   keep going; if this happened at least once, exit **4** at the end (unless one of the errors below
   applies)
 - if there is not a single valid reading in `FILE`: stderr, exit **5**
-
----
-Write your solution in `answer.sh`, then run `check 1124`.  
-To experiment with the same test files the checker uses: `play 1124`.

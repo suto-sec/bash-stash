@@ -23,6 +23,3 @@ Don't run them until you have answered!
 16. `[ 10 -gt 9 ] && echo ok || echo ko`
 17. `V=; echo "[${V:-vacio}]"`
 18. `echo "$(echo uno; echo dos)" | wc -l`
-
----
-Write your answers in `answer.txt` (one `N: answer` line per question), then run `check 1909`.

@@ -11,7 +11,3 @@ Using **octal** modes, set:
 | `c` | `rw-------` |
 | `d` (a directory) | `rwxr-x--x` |
 | `e` | `r--r--r--` |
-
----
-Write your solution in `answer.sh`, then run `check 0802`.  
-To experiment with the same test files the checker uses: `play 0802`.

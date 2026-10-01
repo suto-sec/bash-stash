@@ -11,7 +11,3 @@ Print the file `programa.bas` numbered in two ways, separated by a line `---`:
    numbered (they may come out as spaces: the checker ignores trailing whitespace).
 
 `nl` can do both (look at `-b`, `-v`, `-i`, `-w`, `-s`, `-n` in `man nl`).
-
----
-Write your solution in `answer.sh`, then run `check 0535`.  
-To experiment with the same test files the checker uses: `play 0535`.

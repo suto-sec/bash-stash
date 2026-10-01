@@ -12,7 +12,3 @@ Using the `-m` option of `mkdir` (no `chmod`), create in the current directory:
 
 Finally print, for `privado`, `web`, `web/html`, `web/html/img` and `buzon` (in this order), one line
 with the permissions in `ls -l` style and the name: `stat -c '%A %n'`.
-
----
-Write your solution in `answer.sh`, then run `check 0219`.  
-To experiment with the same test files the checker uses: `play 0219`.

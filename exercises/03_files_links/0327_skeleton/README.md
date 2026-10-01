@@ -22,7 +22,3 @@ Errors (message on stderr):
 
 (`SRC` is given without a trailing `/`.) The checker compares contents, permissions and the modification
 times of the files created.
-
----
-Write your solution in `answer.sh`, then run `check 0327`.  
-To experiment with the same test files the checker uses: `play 0327`.

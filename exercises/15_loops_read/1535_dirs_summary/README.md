@@ -18,7 +18,3 @@ Write `resumen_dirs.sh DIR...`. For each argument, in order:
 Finally print `TOTAL: N dirs, F files, S bytes` (N = valid arguments, F and S added up over them).
 Exit codes: no arguments → **1** (usage on stderr); **2** if some argument was not a directory
 (after processing all); 0 otherwise.
-
----
-Write your solution in `answer.sh`, then run `check 1535`.  
-To experiment with the same test files the checker uses: `play 1535`.

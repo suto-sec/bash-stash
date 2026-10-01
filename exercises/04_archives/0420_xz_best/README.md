@@ -41,7 +41,3 @@ regular files directly inside it, print `Total: 0 files, 0 bytes saved` (not an 
 - `DIR` exists but is not a directory: error naming it on stderr, exit **3**.
 
 Names may contain spaces.
-
----
-Write your solution in `answer.sh`, then run `check 0420`.  
-To experiment with the same test files the checker uses: `play 0420`.

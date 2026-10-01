@@ -17,7 +17,3 @@ For every category that got at least one file, **sorted alphabetically**, print
 
 Errors (stderr, wording free): not exactly 1 argument -> usage, exit **1**; DIR is not a directory
 -> exit **2** (name it).
-
----
-Write your solution in `answer.sh`, then run `check 1547`.  
-To experiment with the same test files the checker uses: `play 1547`.

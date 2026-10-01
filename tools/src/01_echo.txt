@@ -66,8 +66,8 @@ Print exactly:
 No sé multiplicar 4*2
 ```
 
-Run `play 0104`, go to the work directory and try `echo No sé multiplicar 4*2` without quotes
-to see why the checker's files break the naive version.
+Open the terminal on this exercise (it is in a folder with the same kind of files as the checker's) and try
+`echo No sé multiplicar 4*2` without quotes to see why the naive version breaks.
 @@check
 SEEDS=2
 setup() { touch 4-por-2 "4_$(word)_2" "$(word).txt"; }

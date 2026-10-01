@@ -13,7 +13,3 @@ written with digits only). Print exactly one line:
 
 If there are not exactly 3 arguments or one of them is not made of digits only, print
 `Usage: triangle.sh a b c` on **stderr** (use `$(basename "$0")`) and exit **1**.
-
----
-Write your solution in `answer.sh`, then run `check 1415`.  
-To experiment with the same test files the checker uses: `play 1415`.

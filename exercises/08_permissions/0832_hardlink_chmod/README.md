@@ -12,7 +12,3 @@ file that merely has identical content. Predict, then verify:
 
 Because a permission mode belongs to the **inode**, changing it through any one of its hard-linked
 names changes it for all of them — `c`, being a different inode, is never affected.
-
----
-Write your solution in `answer.sh`, then run `check 0832`.  
-To experiment with the same test files the checker uses: `play 0832`.

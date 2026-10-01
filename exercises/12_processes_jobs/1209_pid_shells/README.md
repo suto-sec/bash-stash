@@ -9,7 +9,3 @@ The provided `pid.sh` prints `$$`. Print (only these words):
 3. `same` or `different`: inside `( ... )`, is `$BASHPID` equal to your `$$`?
 
 Think about why: which one creates a new process?
-
----
-Write your solution in `answer.sh`, then run `check 1209`.  
-To experiment with the same test files the checker uses: `play 1209`.

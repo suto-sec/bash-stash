@@ -12,7 +12,3 @@
 ```
 
 Hint: `echo $((A * B))`
-
----
-Write your solution in `answer.sh`, then run `check 1127`.  
-To experiment with the same test files the checker uses: `play 1127`.

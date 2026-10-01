@@ -18,7 +18,3 @@ mesa.txt
 ```
 
 Hint: `-R` means recursive.
-
----
-Write your solution in `answer.sh`, then run `check 0231`.  
-To experiment with the same test files the checker uses: `play 0231`.

@@ -9,7 +9,3 @@ The checker sends some words into your script on standard input. Print them with
 Example: if the input is `hola mundo`, the output is `HOLA MUNDO`.
 
 Hint: `tr 'a-z' 'A-Z'` (a range of letters on each side).
-
----
-Write your solution in `answer.sh`, then run `check 0565`.  
-To experiment with the same test files the checker uses: `play 0565`.

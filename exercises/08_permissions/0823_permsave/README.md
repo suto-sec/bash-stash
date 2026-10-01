@@ -24,7 +24,3 @@ Then print `Restored N entries, M missing` (`N` = entries whose mode was changed
 Errors (message on stderr), checked in this order: not exactly 3 arguments → exit **1**; first argument
 neither `save` nor `restore` → exit **2**; `DIR` is not a directory → exit **3**; for `restore`, `FILE`
 is not a readable regular file → exit **4**. Names may contain spaces (not newlines).
-
----
-Write your solution in `answer.sh`, then run `check 0823`.  
-To experiment with the same test files the checker uses: `play 0823`.

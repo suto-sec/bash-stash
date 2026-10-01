@@ -16,7 +16,7 @@ docs: directory
 nothing: not found
 ```
 
-`file` is for a regular file (`[[ -f path ]]`), `directory` for a directory (`[[ -d path ]]`); anything that does not exist prints `not found`. Paths may contain spaces. Use `play s02` to get the files the checker uses.
+`file` is for a regular file (`[[ -f path ]]`), `directory` for a directory (`[[ -d path ]]`); anything that does not exist prints `not found`. Paths may contain spaces. The files used by the checker are in the terminal folder (use **Reset exercise instance** to rebuild them).
 @@check
 ARGS=('notes.txt' 'docs' 'nothing' '"my notes.txt"')
 COMPARE="stdout exit"
@@ -50,7 +50,7 @@ else
 fi
 @@step 3 | Exactly one argument
 @@readme
-The script needs **exactly one** argument. With none, or with more than one, print an error message **and the correct usage** on standard error and exit with code **1** (before looking at any path).
+The script needs **exactly one** argument. With none, or with more than one, print an error message **and the correct usage** (e.g. `Usage: kind.sh path`) on standard error and exit with code **1** (before looking at any path).
 @@check
 ARGS=('notes.txt' 'docs' 'nothing' '' 'notes.txt docs' '"my notes.txt"')
 COMPARE="stdout exit errmsg"
@@ -74,9 +74,9 @@ else
   echo "Error: $p not found" >&2
   exit 2
 fi
-@@step 4 | Something else
+@@step 4 | Neither file nor directory
 @@readme
-A path can exist and be neither a regular file nor a directory (for example a named pipe). Then print `PATH: other` on standard output and exit with code **3**.
+A path can exist and still be neither a regular file nor a directory (for example a named pipe: `pipe1` in the checker). For such a path print `PATH: other` on **standard output** and exit with code **3**.
 
 `[[ -e path ]]` is true for anything that exists.
 @@check

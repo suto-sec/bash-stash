@@ -15,7 +15,3 @@ Checks, in this order:
 - `DIR` exists but is not a directory: message on stderr (naming `DIR`), exit **3**.
 - `DAYS` is not a non-negative integer: message on stderr, exit **4**.
 - no file matches: message on stderr, exit **5**, and **no** archive is created (nor is `DEST`).
-
----
-Write your solution in `answer.sh`, then run `check 1834`.  
-To experiment with the same test files the checker uses: `play 1834`.

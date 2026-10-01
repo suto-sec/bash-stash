@@ -11,7 +11,3 @@ line kept is the **first** one of the run, timestamp included).
 The same message reappearing **later, without being part of that consecutive run**, must **not**
 be merged with the earlier one — that is exactly what makes `uniq -f1 -c` different from grouping
 by message globally.
-
----
-Write your solution in `answer.sh`, then run `check 0554`.  
-To experiment with the same test files the checker uses: `play 0554`.

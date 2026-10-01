@@ -10,7 +10,3 @@ Reproduce (and fix) this classic textbook script, installed as `copia.sh`:
 - `doit SRC DST`: copy SRC to DST and print `copied`.
 - the script needs exactly 2 arguments (else print `usage: copia.sh SRC DST` on stderr, exit 3);
   calls `check` then `doit`, and exits 0. Quote everything: names may have spaces.
-
----
-Write your solution in `answer.sh`, then run `check 1609`.  
-To experiment with the same test files the checker uses: `play 1609`.

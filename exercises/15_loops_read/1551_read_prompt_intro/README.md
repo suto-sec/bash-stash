@@ -11,7 +11,3 @@ Example: if the name read is `Ana`, the output is:
 ```
 Hello, Ana!
 ```
-
----
-Write your solution in `answer.sh`, then run `check 1551`.  
-To experiment with the same test files the checker uses: `play 1551`.

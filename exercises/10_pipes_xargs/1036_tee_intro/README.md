@@ -9,7 +9,3 @@ The file `entrada.txt` contains one line of text. Send it through `cat` and then
 Example: if `entrada.txt` contains `hola mundo`, the screen shows `hola mundo` and `salida.txt` also contains `hola mundo`.
 
 Hint: `cat file | tee other_file`
-
----
-Write your solution in `answer.sh`, then run `check 1036`.  
-To experiment with the same test files the checker uses: `play 1036`.

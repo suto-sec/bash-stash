@@ -14,7 +14,3 @@ if nothing goes into them. Lines are written unchanged, in input order. Finally 
 `<a> numbers, <b> names, <c> skipped`.
 
 Tip: open both files once, before the loop (`exec 3> numbers.txt 4> names.txt`), and write with `>&3`.
-
----
-Write your solution in `answer.sh`, then run `check 0919`.  
-To experiment with the same test files the checker uses: `play 0919`.

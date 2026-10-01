@@ -23,7 +23,3 @@ Errors (message on **stderr**, nothing created), checked in this order:
 - fewer than 3 arguments: error and usage, exit **1**
 - an input is not a readable regular file: message with its name, exit **2**
 - `OUTPUT` already exists: message with its name, exit **3**
-
----
-Write your solution in `answer.sh`, then run `check 0545`.  
-To experiment with the same test files the checker uses: `play 0545`.

@@ -9,7 +9,3 @@
 3. both side by side separated by `,`
 4. `---`
 5. all the names in **one line** separated by `+` (`paste -s -d`)
-
----
-Write your solution in `answer.sh`, then run `check 0519`.  
-To experiment with the same test files the checker uses: `play 0519`.

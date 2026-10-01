@@ -13,7 +13,3 @@ for every bucket used. Finally print `Total: N files organized`.
 Checks, in this order:
 - not exactly 1 argument: usage on stderr, exit **1**.
 - `DIR` is not a directory: message on stderr (naming `DIR`), exit **2**.
-
----
-Write your solution in `answer.sh`, then run `check 1839`.  
-To experiment with the same test files the checker uses: `play 1839`.

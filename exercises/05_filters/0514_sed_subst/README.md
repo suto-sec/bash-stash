@@ -8,6 +8,4 @@ For the file `passwd`, print (separated by `---`):
 2. its content replacing only the **first** `sys` of each line with `SYSTEM`
 3. its content replacing `/bin/bash` with `/bin/zsh` (tip: use another delimiter, `s#...#...#`)
 
----
-Write your solution in `answer.sh`, then run `check 0514`.  
-To experiment with the same test files the checker uses: `play 0514`.
+Use `sed`.

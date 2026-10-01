@@ -11,7 +11,3 @@ Print the numbers 1 to 5 on one line, separated by spaces, with **one** `echo` a
 ```
 
 Hint: `echo {1..3}` prints `1 2 3`.
-
----
-Write your solution in `answer.sh`, then run `check 0128`.  
-To experiment with the same test files the checker uses: `play 0128`.

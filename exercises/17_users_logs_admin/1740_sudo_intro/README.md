@@ -13,7 +13,3 @@ luke
 ```
 
 Hint: `sudo -u luke whoami`
-
----
-Write your solution in `answer.sh`, then run `check 1740`.  
-To experiment with the same test files the checker uses: `play 1740`.

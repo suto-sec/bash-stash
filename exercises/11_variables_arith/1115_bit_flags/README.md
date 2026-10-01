@@ -12,7 +12,3 @@ The file `n.txt` contains an integer N between 0 and 15 (four bit flags: 1, 2, 4
 5. N shifted left by 1 (`N << 1`)
 6. N shifted right by 1 (`N >> 1`)
 7. N XORed with 15 (`N ^ 15`)
-
----
-Write your solution in `answer.sh`, then run `check 1115`.  
-To experiment with the same test files the checker uses: `play 1115`.

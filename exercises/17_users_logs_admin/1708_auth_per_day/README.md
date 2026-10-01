@@ -13,7 +13,3 @@ Jun 20: 70
 ```
 
 Careful: syslog pads single-digit days with a space (`Jun  8`), so a naive `cut -d' ' -f1,2` breaks.
-
----
-Write your solution in `answer.sh`, then run `check 1708`.  
-To experiment with the same test files the checker uses: `play 1708`.

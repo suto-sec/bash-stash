@@ -13,7 +13,3 @@ For every entry directly inside `enlaces`, in the order of the `enlaces/*` glob:
 - if it is a symbolic link to something that exists, print `NAME -> TARGET: MODE`, where `TARGET` is
   its stored target (`readlink`) and `MODE` is the octal mode of what it resolves to (`stat -c %a`)
 - otherwise (a regular file, not a link), print `NAME: MODE`
-
----
-Write your solution in `answer.sh`, then run `check 0829`.  
-To experiment with the same test files the checker uses: `play 0829`.

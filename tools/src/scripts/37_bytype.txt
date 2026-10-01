@@ -40,7 +40,7 @@ echo "image: $image"
 echo "other: $other"
 @@step 2 | Check the directory
 @@readme
-Checks, in this order: not exactly one argument → error message **and the correct usage**, exit **1**; `DIR` does not exist → error with its name, exit **2**; not a directory → error with its name, exit **3**.
+Checks, in this order: not exactly one argument → error message **and the correct usage** (e.g. `Usage: bytype.sh dir`), exit **1**; `DIR` does not exist → error with its name, exit **2**; not a directory → error with its name, exit **3**.
 @@check
 ARGS=('mixed' 'empty' '' 'mixed empty' 'nothing' 'notadir.txt')
 COMPARE="stdout exit errmsg"

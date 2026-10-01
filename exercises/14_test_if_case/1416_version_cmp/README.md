@@ -10,7 +10,3 @@ as given).
 Errors (stderr, exact text): not exactly 2 arguments → `Usage: vercmp.sh v1 v2` (use
 `$(basename "$0")`), exit **1**; a version with the wrong format → `Invalid version: <v>` (the first
 invalid one), exit **2**.
-
----
-Write your solution in `answer.sh`, then run `check 1416`.  
-To experiment with the same test files the checker uses: `play 1416`.

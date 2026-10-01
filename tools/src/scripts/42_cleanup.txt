@@ -89,7 +89,7 @@ done < <(find "$1" -type f \( -name "*.tmp" -o -name "*~" \) -mtime +"$days" -pr
 if [[ -n $dry ]]; then echo "Would remove $n files"; else echo "Removed $n files"; fi
 @@step 5 | Checks and a final exit code
 @@readme
-After the options, exactly **one** argument (`DIR`) must remain: otherwise error message **and the correct usage**, exit **1**. Then `DIR` must exist (error with its name, exit **2**) and be a directory (error with its name, exit **3**). The option errors (4 and 5) still come first. Finally, if at least one file could not be removed, exit with code **6** after the summary (a dry run never fails).
+After the options, exactly **one** argument (`DIR`) must remain: otherwise error message **and the correct usage** (e.g. `Usage: cleanup.sh [-n] [-d DAYS] dir`), exit **1**. Then `DIR` must exist (error with its name, exit **2**) and be a directory (error with its name, exit **3**). The option errors (4 and 5) still come first. Finally, if at least one file could not be removed, exit with code **6** after the summary (a dry run never fails).
 @@check
 SORT_OUTPUT=1
 ARGS=('tmp' '-n tmp' '"my tmp"' '-d 20 empty' '' '-n' 'tmp empty' 'nothing' 'notadir.txt' '-d x nothing' '-x' '-d' '-d 5 -n tmp' '-n nothing')

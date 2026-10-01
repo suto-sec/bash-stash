@@ -27,7 +27,3 @@ Exit codes:
 - `SPECFILE` is not a readable regular file: stderr (mention it), exit **2**
 - `DEST` exists but is not a directory: stderr (mention it), exit **3**
 - otherwise: **0** if every line was skipped-free and error-free, **4** if S + X > 0
-
----
-Write your solution in `answer.sh`, then run `check 0221`.  
-To experiment with the same test files the checker uses: `play 0221`.

@@ -9,7 +9,3 @@ Write a script that receives a file name as its only argument and prints the **m
 - if it is empty, print nothing
 
 Use `wc -l`, `head` and `tail`. The file name may contain spaces. Exit code 0.
-
----
-Write your solution in `answer.sh`, then run `check 0526`.  
-To experiment with the same test files the checker uses: `play 0526`.

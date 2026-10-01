@@ -34,7 +34,3 @@ Checks, **in this order** (stderr, wording free):
 - `MAX` is not a positive integer (≥ 1): exit **3**
 
 Names may contain spaces.
-
----
-Write your solution in `answer.sh`, then run `check 0735`.  
-To experiment with the same test files the checker uses: `play 0735`.

@@ -16,7 +16,3 @@ tree/b/c
 ```
 
 Hint: `find dir -type d | sort`
-
----
-Write your solution in `answer.sh`, then run `check 0753`.  
-To experiment with the same test files the checker uses: `play 0753`.

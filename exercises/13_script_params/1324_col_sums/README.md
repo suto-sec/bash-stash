@@ -30,7 +30,3 @@ The option `-d C` is only recognised as the **first** argument. Errors, checked 
 
 The number of columns is the number of fields of the header line with that separator (a file
 separated with `;` read with the default `,` has only 1 column).
-
----
-Write your solution in `answer.sh`, then run `check 1324`.  
-To experiment with the same test files the checker uses: `play 1324`.

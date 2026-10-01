@@ -4,7 +4,3 @@
 
 Split `grande.txt` into pieces of **10 lines** each named `parte_00`, `parte_01`, ... (numeric
 suffixes, see `-d`), in the current directory. Then print how many pieces were created.
-
----
-Write your solution in `answer.sh`, then run `check 0522`.  
-To experiment with the same test files the checker uses: `play 0522`.

@@ -2,9 +2,5 @@
 
 **Topic:** Pipes, xargs & command substitution · **Difficulty:** ★★☆☆☆ · **Commands:** $( ), `...`
 
-Same as before (delete every `*~` file under the current directory), but now using
-**command substitution**: `rm $(find ...)`.
-
----
-Write your solution in `answer.sh`, then run `check 1007`.  
-To experiment with the same test files the checker uses: `play 1007`.
+Delete every file whose name ends in `~` under the current directory (at any depth), but this time using
+**command substitution** instead of `xargs`: `rm $(find ...)`. (Like the previous exercise, the names have no spaces.)

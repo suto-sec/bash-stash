@@ -84,7 +84,7 @@ done
 exit 0
 @@step 5 | Checks, failures and a summary
 @@readme
-Checks, before touching anything: not exactly one argument → error message **and the correct usage**, exit **1**; `DIR` does not exist → error with its name, exit **2**; not a directory → error with its name, exit **3**. When a directory cannot be created or a file cannot be moved (the read-only `org3`), print `could not move NAME` on standard error and do not count it. Finish with `Moved N files` and, if at least one file failed, with exit code **4**.
+Checks, before touching anything: not exactly one argument → error message **and the correct usage** (e.g. `Usage: organize.sh dir`), exit **1**; `DIR` does not exist → error with its name, exit **2**; not a directory → error with its name, exit **3**. When a directory cannot be created or a file cannot be moved (the read-only `org3`), print `could not move NAME` on standard error and do not count it. Finish with `Moved N files` and, if at least one file failed, with exit code **4**.
 @@check
 ARGS=('org' 'org2' 'empty' 'org3' '' 'org empty' 'nothing' 'notadir.txt')
 COMPARE="stdout exit errmsg files"

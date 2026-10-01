@@ -11,7 +11,3 @@ The file `original` exists in the current directory.
 5. Print the link count of `duro` (`stat -c %h`).
 
 Think about **why** the hard link survives and the symbolic one does not.
-
----
-Write your solution in `answer.sh`, then run `check 0309`.  
-To experiment with the same test files the checker uses: `play 0309`.

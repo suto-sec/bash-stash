@@ -10,7 +10,3 @@ The current directory is a mess. Organise it:
 4. Move every file that starts with `informe` (any extension) into `docs`.
 
 (No file matches more than one rule.)
-
----
-Write your solution in `answer.sh`, then run `check 0312`.  
-To experiment with the same test files the checker uses: `play 0312`.

@@ -14,7 +14,3 @@ then `Kept N files, removed M files`.
 - `KB` not a positive integer: stderr, exit 3
 
 Use a temporary directory (`mktemp -d`) and delete it at the end.
-
----
-Write your solution in `answer.sh`, then run `check 1808`.  
-To experiment with the same test files the checker uses: `play 1808`.

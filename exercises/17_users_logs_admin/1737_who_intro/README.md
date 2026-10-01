@@ -9,7 +9,3 @@ Print how many sessions are open: pipe `who` into `wc -l` and print only the num
 Example: with two people logged in, it prints `2`. The number depends on who is logged in at that moment, so it is not the same on every machine: the checker compares your answer with the reference in the same environment.
 
 Hint: `who | wc -l`
-
----
-Write your solution in `answer.sh`, then run `check 1737`.  
-To experiment with the same test files the checker uses: `play 1737`.

@@ -44,7 +44,7 @@ done
 echo "Common: $n"
 @@step 3 | Check both directories
 @@readme
-Checks, in this order: not exactly two arguments → error message **and the correct usage**, exit **1**; the **first** argument is checked fully (does not exist → error with its name, exit **2**; not a directory → error with its name, exit **3**) and then the second one in the same way.
+Checks, in this order: not exactly two arguments → error message **and the correct usage** (e.g. `Usage: samenames.sh dir1 dir2`), exit **1**; the **first** argument is checked fully (does not exist → error with its name, exit **2**; not a directory → error with its name, exit **3**) and then the second one in the same way.
 @@check
 SORT_OUTPUT=1
 ARGS=('left right' 'right left' '' 'left' 'left right empty' 'nothing right' 'notadir.txt right' 'left nothing' 'left notadir.txt' 'nothing notadir.txt')

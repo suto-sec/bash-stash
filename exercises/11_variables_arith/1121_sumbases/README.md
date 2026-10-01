@@ -21,7 +21,3 @@ invalid lines).
 - a line that isn't `BASE VALUE` (unknown `BASE`, wrong digits for that base, or extra/missing fields)
   is skipped (counted in `Skipped`, reported as `Error: line L: <line>` on stderr, blank lines don't
   count); if at least one line was skipped, exit **4** at the end (only when there was no other error).
-
----
-Write your solution in `answer.sh`, then run `check 1121`.  
-To experiment with the same test files the checker uses: `play 1121`.

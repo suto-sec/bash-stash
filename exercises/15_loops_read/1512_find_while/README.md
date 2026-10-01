@@ -5,7 +5,3 @@
 Under `docs` there are files with **spaces** (and even newlines are possible in real life).
 For each regular file (sorted by path), print `path (N bytes)`. Use
 `find docs -type f -print0 | sort -z | while IFS= read -r -d '' f; do ... done`.
-
----
-Write your solution in `answer.sh`, then run `check 1512`.  
-To experiment with the same test files the checker uses: `play 1512`.

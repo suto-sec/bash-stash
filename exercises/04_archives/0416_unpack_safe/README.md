@@ -26,7 +26,3 @@ Other errors:
 - `ARCHIVE` exists but `tar -tzf` fails on it: error naming it on stderr, exit **3**.
 
 Names may contain spaces.
-
----
-Write your solution in `answer.sh`, then run `check 0416`.  
-To experiment with the same test files the checker uses: `play 0416`.

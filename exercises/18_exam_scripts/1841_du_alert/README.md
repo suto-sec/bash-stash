@@ -14,7 +14,3 @@ Checks, in this order:
 - `DIR` does not exist: message on stderr (naming `DIR`), exit **2**.
 - `DIR` exists but is not a directory: message on stderr (naming `DIR`), exit **3**.
 - `LIMIT_KB` is not a positive integer: message on stderr, exit **4**.
-
----
-Write your solution in `answer.sh`, then run `check 1841`.  
-To experiment with the same test files the checker uses: `play 1841`.

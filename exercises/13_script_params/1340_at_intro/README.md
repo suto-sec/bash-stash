@@ -16,7 +16,3 @@ Example: run as `./script.sh uno "dos tres"` it prints:
 With no arguments nothing is printed.
 
 Hint: `for a in "$@"; do ...; done`
-
----
-Write your solution in `answer.sh`, then run `check 1340`.  
-To experiment with the same test files the checker uses: `play 1340`.

@@ -24,7 +24,3 @@ and blank lines (empty or only spaces).
 - If there is no `[SECTION]` line: print nothing, exit code 1.
 
 Section names contain only letters, digits and `_`. The file name may contain spaces.
-
----
-Write your solution in `answer.sh`, then run `check 0533`.  
-To experiment with the same test files the checker uses: `play 0533`.

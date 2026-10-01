@@ -199,7 +199,9 @@ ls -d */
 @@level 2
 @@cmds ls -R
 @@readme
-Print the recursive listing (all subdirectories) of the directory `proyecto` using `ls`.
+The current directory contains `proyecto`, which has subdirectories and files.
+
+Print the **recursive listing** of `proyecto` using `ls`: its entries, and then the entries of every subdirectory under a header line with the subdirectory's path.
 @@check
 setup() { mkdir -p proyecto/{src/lib,docs,tests}; local d; for d in proyecto proyecto/src proyecto/src/lib proyecto/docs; do touch "$d/$(word).c" "$d/$(word).h"; done; }
 extra_check() { must_use ls; }
@@ -237,7 +239,7 @@ Print:
 2. the size of every directory **under** `Datos` with **max depth 1**, in KiB (`-k`)
 3. the size of every directory **and file** under `Datos`, max depth 2, human readable
 
-(Exactly what `du` prints; the checker runs your command and the reference on identical files.)
+(Exactly what `du` prints; the order of the lines does not matter. The checker runs your command and the reference on identical files.)
 @@check
 setup() { mkdir -p Datos/{a,b/c,d}; local f; for f in Datos/a/x Datos/b/y Datos/b/c/z Datos/d/w Datos/top; do bigfile "$f" $(( $(randr 1 40) * 1024 )); done; }
 SORT_OUTPUT=1

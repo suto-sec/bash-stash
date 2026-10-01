@@ -15,7 +15,3 @@ it's positive.
 
 Errors (stderr, wording free): not exactly 1 argument -> usage, exit **1**. Success or a detected
 imbalance always exits **0** — only argument errors give a non-zero exit code.
-
----
-Write your solution in `answer.sh`, then run `check 1437`.  
-To experiment with the same test files the checker uses: `play 1437`.

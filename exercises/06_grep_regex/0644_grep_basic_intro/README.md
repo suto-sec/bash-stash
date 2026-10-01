@@ -22,7 +22,3 @@ rojo tomate
 ```
 
 Hint: `grep rojo file`
-
----
-Write your solution in `answer.sh`, then run `check 0644`.  
-To experiment with the same test files the checker uses: `play 0644`.

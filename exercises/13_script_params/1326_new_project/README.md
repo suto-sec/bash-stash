@@ -35,7 +35,3 @@ Errors, checked in this order (message on **stderr**, wording free, nothing crea
 | `name` does not match: a letter followed by letters, digits, `_` or `-` (name it) | 2 |
 | `lang` is not exactly `sh`, `py` or `c` (name it) | 3 |
 | something called `name` already exists in the current directory (file, directory...) (name it) | 4 |
-
----
-Write your solution in `answer.sh`, then run `check 1326`.  
-To experiment with the same test files the checker uses: `play 1326`.

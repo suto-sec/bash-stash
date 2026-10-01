@@ -28,7 +28,3 @@ sorted (as `sort` sorts those lines), and then the summary
 
 Errors (message on **stderr**): no arguments or more than 2 → usage, exit **1**; `LOG` not
 readable → exit **2**; invalid `METHOD` (exact lowercase names only) → exit **3**. Checked in that order.
-
----
-Write your solution in `answer.sh`, then run `check 0634`.  
-To experiment with the same test files the checker uses: `play 0634`.

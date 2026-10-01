@@ -9,7 +9,3 @@ The script receives numbers as arguments. Go through them in order and:
 - print every other number
 
 At the end print `processed: N` with how many numbers were printed.
-
----
-Write your solution in `answer.sh`, then run `check 1506`.  
-To experiment with the same test files the checker uses: `play 1506`.

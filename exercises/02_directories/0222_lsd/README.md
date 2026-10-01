@@ -36,7 +36,3 @@ empty:
   (0 dirs, 0 other)
 Listed 2 directories, 1 errors
 ```
-
----
-Write your solution in `answer.sh`, then run `check 0222`.  
-To experiment with the same test files the checker uses: `play 0222`.

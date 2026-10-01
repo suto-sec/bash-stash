@@ -20,7 +20,3 @@ where `<ip>` is the address of the **last** accepted login of that user in the f
 
 - more than one argument: usage on stderr, exit **2**
 - the log cannot be read: error message on stderr, exit **1**
-
----
-Write your solution in `answer.sh`, then run `check 1723`.  
-To experiment with the same test files the checker uses: `play 1723`.

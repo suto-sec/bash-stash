@@ -11,7 +11,3 @@ Print, on separate lines, only the word `same` or `different`:
 
 Think about why: `$$` always names the **original** shell, even inside subshells; only `$BASHPID` (and
 a real new process) changes.
-
----
-Write your solution in `answer.sh`, then run `check 1215`.  
-To experiment with the same test files the checker uses: `play 1215`.

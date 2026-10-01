@@ -18,7 +18,7 @@ COMPARE="stdout exit"
 echo "$1" | tr -cd 'aeiouAEIOU' | wc -c
 @@step 2 | Exactly one text
 @@readme
-With no argument, or with more than one, print an error message **and the correct usage** on standard error and exit with code **1**.
+With no argument, or with more than one, print an error message **and the correct usage** (e.g. `Usage: vowels.sh text`) on standard error and exit with code **1**.
 @@check
 ARGS=('Banana' '"hello big world"' '' 'one two' 'a b c')
 COMPARE="stdout exit errmsg"

@@ -90,6 +90,8 @@ chmod -R u=rwX,go=rX web
 2. Change the umask so that new **files** are created `rw-r-----` and new **directories** `rwxr-x---`.
 3. Create the file `nuevo.txt` and the directory `nuevodir`.
 4. Print the new umask.
+
+Do not use `chmod` in this exercise.
 @@check
 COMPARE="stdout exit files"
 extra_check() { must_use umask; must_not_use chmod; }

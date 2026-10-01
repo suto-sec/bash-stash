@@ -41,7 +41,7 @@ tar czf "$out" -C "$(dirname "$1")" "$name"
 echo "Created $out"
 @@step 3 | Check the argument
 @@readme
-Checks, in this order (before anything is created): not exactly one argument → error message **and the correct usage**, exit **1**; `DIR` does not exist → error with its name, exit **2**; not a directory → error with its name, exit **3**.
+Checks, in this order (before anything is created): not exactly one argument → error message **and the correct usage** (e.g. `Usage: archiver.sh dir`), exit **1**; `DIR` does not exist → error with its name, exit **2**; not a directory → error with its name, exit **3**.
 @@check
 ARGS=('proj' '"my docs"' '' 'proj empty' 'nothing' 'notadir.txt' 'proj $(pre_arch)')
 COMPARE="stdout exit errmsg files"

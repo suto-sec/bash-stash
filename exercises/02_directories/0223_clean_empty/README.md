@@ -25,7 +25,3 @@ Errors (message on stderr, mentioning `DIR` when there is one):
 
 Hint: process the directories **deepest first** (`find -depth`, or the order `du` prints them) and try
 `rmdir` on each one: it fails harmlessly on non-empty directories.
-
----
-Write your solution in `answer.sh`, then run `check 0223`.  
-To experiment with the same test files the checker uses: `play 0223`.

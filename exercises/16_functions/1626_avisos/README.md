@@ -14,7 +14,3 @@ for every argument (stop checking that argument at the first failure and move to
 
 When an argument passes all three checks, print `NOMBRE: EDAD anios`. Finally print
 `validos: V, avisos: ERRORES`. Exit 0 if `ERRORES` is 0, 1 otherwise.
-
----
-Write your solution in `answer.sh`, then run `check 1626`.  
-To experiment with the same test files the checker uses: `play 1626`.

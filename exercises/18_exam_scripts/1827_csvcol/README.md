@@ -9,7 +9,3 @@ with fewer fields than `COL` behaves exactly as `cut` defines it), then a final 
 Checks, in this order:
 - not exactly 2 arguments, or `COL` not a positive integer: usage on stderr, exit **1**.
 - `FILE` is not a readable regular file: message on stderr (naming `FILE`), exit **2**.
-
----
-Write your solution in `answer.sh`, then run `check 1827`.  
-To experiment with the same test files the checker uses: `play 1827`.

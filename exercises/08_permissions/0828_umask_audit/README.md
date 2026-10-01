@@ -25,7 +25,3 @@ stderr), checked in this order:
 - wrong arguments (not `[-f] UMASK DIR`, e.g. an unknown option or a wrong count) → usage, exit **1**
 - `DIR` is not a directory → exit **2**
 - `UMASK` is not valid → exit **3**, message including it
-
----
-Write your solution in `answer.sh`, then run `check 0828`.  
-To experiment with the same test files the checker uses: `play 0828`.

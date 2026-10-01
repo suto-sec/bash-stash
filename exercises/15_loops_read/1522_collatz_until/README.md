@@ -13,7 +13,3 @@ steps: S, max: M
 The first line is the whole sequence (N included, separated by single spaces), S is the number of
 steps applied and M the biggest value reached. For N = 1 the sequence is just `1` (0 steps).
 Use an `until` loop.
-
----
-Write your solution in `answer.sh`, then run `check 1522`.  
-To experiment with the same test files the checker uses: `play 1522`.

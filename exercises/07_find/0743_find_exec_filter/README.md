@@ -10,7 +10,3 @@ Use `find` with `-exec grep -qx ERROR {} \; -print`: `-exec` here works as a per
 (true/false, like `-name` or `-size`) rather than an action, so `-print` only runs for the files
 where the `grep` succeeded. It must be `{} \;` (one `grep` call per file, one exit status per file) —
 `{} +` would batch several files into a single `grep` call and you would lose the per-file result.
-
----
-Write your solution in `answer.sh`, then run `check 0743`.  
-To experiment with the same test files the checker uses: `play 0743`.

@@ -27,7 +27,7 @@ for a in "$@"; do
 done
 @@step 2 | At least one argument
 @@readme
-With **no arguments** print an error message **and the correct usage** on standard error and exit with code **1** (nothing on standard output).
+With **no arguments** print an error message **and the correct usage** (e.g. `Usage: echoargs.sh arg...`) on standard error and exit with code **1** (nothing on standard output).
 @@check
 ARGS=('red' 'red green blue' '"dark blue" x' '')
 COMPARE="stdout exit errmsg"

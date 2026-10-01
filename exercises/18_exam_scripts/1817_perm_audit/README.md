@@ -18,7 +18,3 @@ or `(none)`):
 - scripts without execute: regular `*.sh` files with **no** execute bit at all
 
 Exit code: 0 if all sections are empty, 1 otherwise. Not a directory: stderr, exit 2.
-
----
-Write your solution in `answer.sh`, then run `check 1817`.  
-To experiment with the same test files the checker uses: `play 1817`.

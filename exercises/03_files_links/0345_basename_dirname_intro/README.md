@@ -13,7 +13,3 @@ informe.txt
 ```
 
 Hint: `basename "$P"` and `dirname "$P"`
-
----
-Write your solution in `answer.sh`, then run `check 0345`.  
-To experiment with the same test files the checker uses: `play 0345`.

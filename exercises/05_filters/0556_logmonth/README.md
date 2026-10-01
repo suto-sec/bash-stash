@@ -19,7 +19,3 @@ Errors (message on **stderr**, nothing on stdout):
 - not 1 or 2 arguments: error and usage, exit **1**
 - `FILE` is not a readable regular file: message with its name, exit **2**
 - `N` is not a positive integer: message with it, exit **3**
-
----
-Write your solution in `answer.sh`, then run `check 0556`.  
-To experiment with the same test files the checker uses: `play 0556`.

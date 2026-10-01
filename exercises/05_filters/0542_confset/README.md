@@ -28,7 +28,3 @@ Errors (message on **stderr**, file unchanged), checked in this order:
 - not 2 or 3 arguments: error and usage, exit **1**
 - `FILE` is not an existing regular file: message with its name, exit **2**
 - `KEY` is not a valid name (a letter or `_`, then letters, digits or `_`): message with the key, exit **4**
-
----
-Write your solution in `answer.sh`, then run `check 0542`.  
-To experiment with the same test files the checker uses: `play 0542`.

@@ -19,7 +19,3 @@ Errors (stderr, exit code, checked in this order):
 |-----------|------|
 | fewer than 2 arguments (show the usage) | 1 |
 | PATTERN is the empty string | 2 |
-
----
-Write your solution in `answer.sh`, then run `check 1620`.  
-To experiment with the same test files the checker uses: `play 1620`.

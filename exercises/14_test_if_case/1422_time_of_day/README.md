@@ -17,7 +17,3 @@ Exit code: **0** if all were valid, **1** if some was invalid. With no arguments
 `Usage: when.sh HH:MM...` on stderr (use `$(basename "$0")`) and exit **2**.
 
 Careful: `08` and `09` are invalid numbers in `$(( ))` (octal); use `$((10#$h))`.
-
----
-Write your solution in `answer.sh`, then run `check 1422`.  
-To experiment with the same test files the checker uses: `play 1422`.

@@ -11,7 +11,3 @@ Print `Deleted <path>` for each deleted file (sorted), then `Deleted N files`.
 - more than 2 arguments: usage on stderr, exit 1
 - `DIR` not a directory: stderr, exit 2
 - `DAYS` not a non-negative integer: stderr, exit 3
-
----
-Write your solution in `answer.sh`, then run `check 1811`.  
-To experiment with the same test files the checker uses: `play 1811`.

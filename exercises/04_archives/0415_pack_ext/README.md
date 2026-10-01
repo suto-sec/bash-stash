@@ -28,7 +28,3 @@ where `N` is the number of files packed and `B` is the sum of their sizes in byt
   created.
 
 Error messages go to stderr (wording is free). Names may contain spaces.
-
----
-Write your solution in `answer.sh`, then run `check 0415`.  
-To experiment with the same test files the checker uses: `play 0415`.

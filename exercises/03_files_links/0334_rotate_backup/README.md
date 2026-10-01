@@ -28,7 +28,3 @@ Errors (message on stderr):
 - not exactly 2 arguments → usage, exit **1**
 - `FILE` is not a regular file → exit **2** (message includes `FILE`)
 - `N` is not a positive integer → exit **3** (message includes `N`)
-
----
-Write your solution in `answer.sh`, then run `check 0334`.  
-To experiment with the same test files the checker uses: `play 0334`.

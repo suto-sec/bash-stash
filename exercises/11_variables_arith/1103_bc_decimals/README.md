@@ -10,7 +10,3 @@ Print:
 3. `sqrt(2)` with 5 decimals
 
 Hint: `paste -sd+ notas.txt | bc` sums a column.
-
----
-Write your solution in `answer.sh`, then run `check 1103`.  
-To experiment with the same test files the checker uses: `play 1103`.

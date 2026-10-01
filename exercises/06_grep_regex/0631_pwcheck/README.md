@@ -24,7 +24,3 @@ Any other line is **well-formed** when it has exactly 7 fields separated by `:`,
 Exit code: 0 if there are no malformed lines, **4** otherwise.
 Errors: not exactly one argument → usage on stderr, exit **1**; `FILE` not a readable regular
 file → stderr, exit **2**.
-
----
-Write your solution in `answer.sh`, then run `check 0631`.  
-To experiment with the same test files the checker uses: `play 0631`.

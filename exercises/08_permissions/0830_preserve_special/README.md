@@ -20,7 +20,3 @@ digits when there are no special bits, 4 when there are).
 Errors (message on stderr): not exactly 2 arguments → usage, exit **1**; `FILE` is not a regular file
 → exit **2** (message includes `FILE`); `MODE` is not exactly 3 octal digits → exit **3** (message
 includes `MODE`).
-
----
-Write your solution in `answer.sh`, then run `check 0830`.  
-To experiment with the same test files the checker uses: `play 0830`.

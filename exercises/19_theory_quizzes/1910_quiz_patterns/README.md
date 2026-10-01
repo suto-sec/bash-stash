@@ -19,6 +19,3 @@ Answer in `answer.txt` as `N: answer` (yes/no unless stated).
 13. Which `grep` option is needed for `[0-9]{1,3}` to be a repetition? (option)
 14. Does `ls *` show hidden files?
 15. In the regex `.*`, what does `.` mean? a) a literal dot b) any single character (a/b)
-
----
-Write your answers in `answer.txt` (one `N: answer` line per question), then run `check 1910`.

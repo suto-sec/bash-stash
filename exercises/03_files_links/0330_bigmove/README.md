@@ -26,7 +26,3 @@ Errors (message on stderr):
 - `DEST` exists but is not a directory → exit **4**
 
 Names may contain spaces (but not tabs or newlines).
-
----
-Write your solution in `answer.sh`, then run `check 0330`.  
-To experiment with the same test files the checker uses: `play 0330`.

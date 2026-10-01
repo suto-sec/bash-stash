@@ -24,7 +24,3 @@ Errors (message on **stderr**, nothing on stdout):
 - no arguments: error and usage, exit **1**
 - any argument is not a readable regular file: message naming it, exit **2** (check the arguments
   left to right; report the first bad one)
-
----
-Write your solution in `answer.sh`, then run `check 0641`.  
-To experiment with the same test files the checker uses: `play 0641`.

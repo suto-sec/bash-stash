@@ -13,6 +13,4 @@ Print:
 
 Hint: `paste - - -` reads three lines of its input for every output line.
 
----
-Write your solution in `answer.sh`, then run `check 0536`.  
-To experiment with the same test files the checker uses: `play 0536`.
+Use `tac` and `paste`.

@@ -19,7 +19,3 @@ line; empty lines are ignored):
 Only these lines may appear on stdout (`gpasswd` talks: silence it).
 Exit codes: not exactly 2 arguments → usage on stderr, **1**; `FILE` not readable → **2**;
 **3** if there were unknown users, **0** otherwise. Other groups of the users must not change.
-
----
-Write your solution in `answer.sh`, then run `check 1730`.  
-To experiment with the same test files the checker uses: `play 1730`.

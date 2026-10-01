@@ -20,6 +20,3 @@ Answer in `answer.txt` as `N: answer`.
 13. When the shell evaluates a line, what is done first: alias expansion or wildcard (filename)
     expansion? (alias/wildcard)
 14. Key combination that searches backwards in the command history. (e.g. `ctrl+x`)
-
----
-Write your answers in `answer.txt` (one `N: answer` line per question), then run `check 1902`.

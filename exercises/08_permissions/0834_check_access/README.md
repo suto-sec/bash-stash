@@ -22,7 +22,3 @@ read:yes|no write:yes|no exec:yes|no
 
 Errors (message on stderr): not exactly 2 arguments → usage, exit **1**; `USER` does not exist →
 exit **2** (message includes `USER`); `FILE` does not exist → exit **3** (message includes `FILE`).
-
----
-Write your solution in `answer.sh`, then run `check 0834`.  
-To experiment with the same test files the checker uses: `play 0834`.

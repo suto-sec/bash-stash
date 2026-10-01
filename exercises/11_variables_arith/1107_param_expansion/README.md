@@ -11,7 +11,3 @@ The file `fichero.txt` contains a path like `/home/alumno/docs/informe.final.pdf
 4. only the **last** extension (`pdf`)
 5. the path with every `/` replaced by `:` — `${P//\//:}`
 6. the first 5 characters of the path
-
----
-Write your solution in `answer.sh`, then run `check 1107`.  
-To experiment with the same test files the checker uses: `play 1107`.

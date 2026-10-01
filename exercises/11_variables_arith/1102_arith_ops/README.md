@@ -14,7 +14,3 @@ A ** 2 = ...
 ```
 
 (with the real numbers instead of `A` and `B`).
-
----
-Write your solution in `answer.sh`, then run `check 1102`.  
-To experiment with the same test files the checker uses: `play 1102`.

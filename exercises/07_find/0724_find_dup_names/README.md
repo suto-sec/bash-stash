@@ -11,7 +11,3 @@ Under `music` there are files with the same **name** in different directories. P
 
 Directories don't count, even if they have the same name as a file. Some names have spaces.
 Hint: remove everything up to the last `/` with `sed`.
-
----
-Write your solution in `answer.sh`, then run `check 0724`.  
-To experiment with the same test files the checker uses: `play 0724`.

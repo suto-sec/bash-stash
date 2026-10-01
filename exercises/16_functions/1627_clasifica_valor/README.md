@@ -11,7 +11,3 @@ Read `medidas.txt` line by line. For each line, call `clasifica` and capture its
 
 After the loop, print every category that occurred **at least once**, sorted alphabetically, as
 `CATEGORIA: N`. Finally print `total: T` (T = number of lines processed).
-
----
-Write your solution in `answer.sh`, then run `check 1627`.  
-To experiment with the same test files the checker uses: `play 1627`.

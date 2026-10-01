@@ -15,7 +15,3 @@ longest: N chars (line K)
   (the same as `wc -c`)
 - `longest` is the line with the most characters (newline not counted), the first one if tied
 - leading spaces are part of a line
-
----
-Write your solution in `answer.sh`, then run `check 1525`.  
-To experiment with the same test files the checker uses: `play 1525`.

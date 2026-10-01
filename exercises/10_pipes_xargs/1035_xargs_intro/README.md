@@ -13,7 +13,3 @@ ana luis eva
 ```
 
 Hint: `cat file | xargs`
-
----
-Write your solution in `answer.sh`, then run `check 1035`.  
-To experiment with the same test files the checker uses: `play 1035`.

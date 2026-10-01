@@ -24,7 +24,3 @@ Errors (message on **stderr**, nothing on stdout):
 - `FILE` is not a readable regular file: message with its name, exit **2**
 - `PREFIX` doesn't look like the start of an IPv4 address (only digits and dots, 1 to 3 groups,
   optionally ending in a dot): message with it, exit **3**
-
----
-Write your solution in `answer.sh`, then run `check 0642`.  
-To experiment with the same test files the checker uses: `play 0642`.

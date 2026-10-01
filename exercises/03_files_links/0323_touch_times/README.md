@@ -12,7 +12,3 @@ date like `2021-03-14 09:26`.
    time are printed in alphabetical order (`ls -t` does exactly this).
 
 The checker compares the modification times of every file.
-
----
-Write your solution in `answer.sh`, then run `check 0323`.  
-To experiment with the same test files the checker uses: `play 0323`.

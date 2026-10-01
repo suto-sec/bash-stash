@@ -11,7 +11,3 @@
 
 Remember which characters are special in a regex (`$ . ( ) [ ] *`) and how to escape them
 (or when `grep -F` is enough).
-
----
-Write your solution in `answer.sh`, then run `check 0625`.  
-To experiment with the same test files the checker uses: `play 0625`.

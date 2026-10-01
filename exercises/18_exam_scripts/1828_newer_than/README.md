@@ -10,7 +10,3 @@ Checks, in this order:
 - not exactly 2 arguments: usage on stderr, exit **1**.
 - `DIR` is not a directory: message on stderr (naming `DIR`), exit **2**.
 - `REFFILE` does not exist: message on stderr (naming `REFFILE`), exit **3**.
-
----
-Write your solution in `answer.sh`, then run `check 1828`.  
-To experiment with the same test files the checker uses: `play 1828`.

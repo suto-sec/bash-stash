@@ -12,7 +12,3 @@ Process the rows in order, adding up the values of each row from left to right:
 
 For each processed row print `row R: S`, and at the end `rows: N, total: T` (N = rows printed,
 T = sum of all the printed sums).
-
----
-Write your solution in `answer.sh`, then run `check 1523`.  
-To experiment with the same test files the checker uses: `play 1523`.

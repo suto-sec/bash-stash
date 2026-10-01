@@ -21,7 +21,3 @@ total number of entries `tar -tzf` lists (directories included) and `B` is the t
 Other errors (message on stderr): not exactly 3 arguments → usage, exit **1**; `ARCHIVE` does not
 exist or `tar -tzf` fails on it → exit **2** (message includes `ARCHIVE`); `MAXBYTES` is not a
 non-negative integer → exit **3** (message includes `MAXBYTES`).
-
----
-Write your solution in `answer.sh`, then run `check 0425`.  
-To experiment with the same test files the checker uses: `play 0425`.

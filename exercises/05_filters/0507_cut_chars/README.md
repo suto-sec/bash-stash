@@ -8,7 +8,3 @@
 2. a line `---`
 3. the fields 1 and 3 of the file `notas.csv` (separated by `;`), but printed separated by ` | `
    (see `--output-delimiter`)
-
----
-Write your solution in `answer.sh`, then run `check 0507`.  
-To experiment with the same test files the checker uses: `play 0507`.

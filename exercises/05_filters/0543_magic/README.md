@@ -29,7 +29,3 @@ regular files) and K = those whose type is not `unknown`.
 
 Exit code: **1** (with usage on stderr) if there are no arguments; **2** if some argument was
 skipped; **0** otherwise.
-
----
-Write your solution in `answer.sh`, then run `check 0543`.  
-To experiment with the same test files the checker uses: `play 0543`.

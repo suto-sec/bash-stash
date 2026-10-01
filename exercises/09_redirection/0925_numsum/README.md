@@ -23,7 +23,3 @@ Errors (message on **stderr**): more than one argument → usage, exit **1**; `F
 readable regular file → exit **2**.
 
 Hint: `exec < "$FILE"` makes the rest of the script read from the file.
-
----
-Write your solution in `answer.sh`, then run `check 0925`.  
-To experiment with the same test files the checker uses: `play 0925`.

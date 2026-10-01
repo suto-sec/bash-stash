@@ -9,7 +9,3 @@ Print the words of `/usr/share/dict/words` that:
 3. are 5-letter palindromes in lowercase (like `level`, `radar`)
 
 Use basic regex groups `\(.\)` and back-references `\1`.
-
----
-Write your solution in `answer.sh`, then run `check 0615`.  
-To experiment with the same test files the checker uses: `play 0615`.

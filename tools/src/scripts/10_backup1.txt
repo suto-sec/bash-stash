@@ -60,7 +60,7 @@ done
 echo "Copied $n files"
 @@step 4 | No files, wrong usage
 @@readme
-With **no arguments**, print an error message **and the correct usage** on standard error and exit with code **1**, before creating anything.
+With **no arguments**, print an error message **and the correct usage** (e.g. `Usage: backup1.sh file...`) on standard error and exit with code **1**, before creating anything.
 @@check
 ARGS=('' 'a.txt $(pre_b)' 'a.txt b.txt' '"my file.txt" nothing.txt' 'locked.txt a.txt $(pre_b)')
 COMPARE="stdout exit errmsg files"

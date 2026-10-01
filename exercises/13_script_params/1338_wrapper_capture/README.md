@@ -18,7 +18,3 @@ exit: CODE
 
 With no arguments, print a usage message on stderr and exit 1 (without running anything). Otherwise
 the script's own exit code is always 0, regardless of CODE.
-
----
-Write your solution in `answer.sh`, then run `check 1338`.  
-To experiment with the same test files the checker uses: `play 1338`.

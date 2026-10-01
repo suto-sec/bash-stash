@@ -14,7 +14,3 @@ here).
 - `SIGNAL` not one of the five listed above: error naming it, exit **2**.
 - `COUNT` not an integer: error, exit **3**.
 - `COUNT` outside `1..5`: error, exit **4**.
-
----
-Write your solution in `answer.sh`, then run `check 1218`.  
-To experiment with the same test files the checker uses: `play 1218`.

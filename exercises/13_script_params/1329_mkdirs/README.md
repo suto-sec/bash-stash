@@ -26,7 +26,3 @@ Errors, checked in this order (message on **stderr**, wording free, nothing crea
 | `base` is not a directory (name it) | 3 |
 | `count` is not an integer from 1 to 99 written without leading zeros (name it) | 4 |
 | `prefix` is empty or has characters other than letters and `_` (name it) | 5 |
-
----
-Write your solution in `answer.sh`, then run `check 1329`.  
-To experiment with the same test files the checker uses: `play 1329`.

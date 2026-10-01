@@ -9,7 +9,3 @@ arguments).
 
 With no arguments, print a usage message on stderr and exit 1 (without printing anything else).
 Otherwise always exit 0, even if every file failed.
-
----
-Write your solution in `answer.sh`, then run `check 1336`.  
-To experiment with the same test files the checker uses: `play 1336`.

@@ -7,7 +7,3 @@ Run `./ruidoso.sh` so that its **stdout goes to your stderr** and its **stderr g
 must still appear (on stderr) unchanged.
 
 Hint: `./ruidoso.sh 3>&1 1>&2 2>&3 | tr a-z A-Z`
-
----
-Write your solution in `answer.sh`, then run `check 0912`.  
-To experiment with the same test files the checker uses: `play 0912`.

@@ -19,7 +19,3 @@ Errors (message on **stderr**):
 - the passwd file cannot be read: exit **3**
 
 Home paths may contain spaces.
-
----
-Write your solution in `answer.sh`, then run `check 1736`.  
-To experiment with the same test files the checker uses: `play 1736`.

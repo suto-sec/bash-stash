@@ -22,7 +22,3 @@ Exit codes:
 | some password weak or rejected | 1 |
 | more than one argument (usage on stderr) | 2 |
 | `minlen` is not an integer from 4 to 64 (digits, not starting with 0) (stderr, name it) | 3 |
-
----
-Write your solution in `answer.sh`, then run `check 1431`.  
-To experiment with the same test files the checker uses: `play 1431`.

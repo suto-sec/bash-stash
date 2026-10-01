@@ -21,7 +21,7 @@ COMPARE="stdout exit"
 if cmp -s "$1" "$2"; then echo same; else echo different; fi
 @@step 2 | Check the arguments
 @@readme
-Checks, in this order (errors on standard error, nothing on standard output): not exactly two arguments → error message **and the correct usage**, exit **1**; the first argument is not a regular file → error with its name, exit **2**; the same for the second argument.
+Checks, in this order (errors on standard error, nothing on standard output): not exactly two arguments → error message **and the correct usage** (e.g. `Usage: cmpfiles.sh file1 file2`), exit **1**; the first argument is not a regular file → error with its name, exit **2**; the same for the second argument.
 @@check
 ARGS=('a.txt same.txt' 'a.txt diff.txt' '' 'a.txt' 'a.txt same.txt diff.txt' 'nothing.txt a.txt' 'a.txt nothing.txt' 'adir a.txt' 'a.txt adir')
 COMPARE="stdout exit errmsg"
@@ -55,7 +55,7 @@ done
 if cmp -s "$1" "$2"; then echo same; else echo "different: $(wc -l < "$1") lines, $(wc -l < "$2") lines"; fi
 @@step 4 | An exit code that tells
 @@readme
-Finish with exit code **0** when the files are the same and **4** when they differ (after printing the line), like `cmp` itself does for scripts that test it.
+Make the exit code tell the result too: **0** when the files are the same and **4** when they differ (the `same` / `different...` line is printed first in both cases).
 @@check
 ARGS=('a.txt same.txt' 'a.txt diff.txt' 'a.txt short.txt' 'empty.txt empty.txt' '' 'a.txt nothing.txt')
 COMPARE="stdout exit errmsg"

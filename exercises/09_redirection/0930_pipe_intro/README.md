@@ -9,7 +9,3 @@ Print the number of lines of `/etc/passwd` using a pipe: `cat /etc/passwd` on th
 Example: for a file with 25 lines, print `25`.
 
 Hint: `command1 | command2`
-
----
-Write your solution in `answer.sh`, then run `check 0930`.  
-To experiment with the same test files the checker uses: `play 0930`.

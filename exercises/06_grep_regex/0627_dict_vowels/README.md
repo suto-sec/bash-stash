@@ -12,7 +12,3 @@ Print, separated by `---`:
    in the same order (e.g. `alphabetical`: `al...al`)
 
 Each part is a single `grep -E` (back-references work in `grep -E` too).
-
----
-Write your solution in `answer.sh`, then run `check 0627`.  
-To experiment with the same test files the checker uses: `play 0627`.

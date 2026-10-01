@@ -47,7 +47,7 @@ done
 echo "Renamed $n files"
 @@step 3 | Check the directory
 @@readme
-Checks, in this order: not exactly one argument → error message **and the correct usage**, exit **1**; `DIR` does not exist → error with its name, exit **2**; it is not a directory → error with its name, exit **3**. Nothing is renamed or printed on standard output in those cases.
+Checks, in this order: not exactly one argument → error message **and the correct usage** (e.g. `Usage: lowernames.sh dir`), exit **1**; `DIR` does not exist → error with its name, exit **2**; it is not a directory → error with its name, exit **3**. Nothing is renamed or printed on standard output in those cases.
 @@check
 ARGS=('pics' 'mixed' '' 'pics mixed' 'nothing' 'notadir.txt')
 COMPARE="stdout exit errmsg files"

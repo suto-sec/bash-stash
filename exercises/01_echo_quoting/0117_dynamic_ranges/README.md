@@ -19,7 +19,3 @@ img_001.png img_002.png img_003.png img_004.png img_005.png
 4. the numbers from 1 to N joined with `+`, then `=` and their sum
 
 No loops (`for`, `while`) allowed.
-
----
-Write your solution in `answer.sh`, then run `check 0117`.  
-To experiment with the same test files the checker uses: `play 0117`.

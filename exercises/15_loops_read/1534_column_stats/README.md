@@ -24,7 +24,3 @@ If no value was usable, print only the `column`, `count: 0` and `skipped` lines 
 Errors (stderr, wording free): not exactly 2 arguments → **1** (usage); FILE not a readable regular
 file → **2** (name it); COL is a number out of range or a name that is not in the header → **3**
 (name it).
-
----
-Write your solution in `answer.sh`, then run `check 1534`.  
-To experiment with the same test files the checker uses: `play 1534`.

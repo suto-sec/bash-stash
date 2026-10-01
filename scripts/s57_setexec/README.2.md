@@ -1,1 +1,1 @@
-No arguments → error message **and the correct usage**, exit **1**. An argument that is not a regular file prints `skipped NAME` on standard error (and is not changed); the others are processed and the exit code at the end is **2** if anything was skipped.
+No arguments → error message **and the correct usage** (e.g. `Usage: setexec.sh file...`), exit **1**. An argument that is not a regular file prints `skipped NAME` on standard error (and is not changed); the others are processed and the exit code at the end is **2** if anything was skipped.

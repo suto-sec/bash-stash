@@ -29,7 +29,3 @@ Errors, checked in this order (message on **stderr**, wording free, nothing rena
 | `old` and `new` are the same | 3 |
 | `directory` does not exist (name it) | 4 |
 | `directory` is not a directory (name it) | 5 |
-
----
-Write your solution in `answer.sh`, then run `check 1327`.  
-To experiment with the same test files the checker uses: `play 1327`.

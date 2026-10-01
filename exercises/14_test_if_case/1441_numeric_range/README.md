@@ -12,7 +12,3 @@ a valid integer counts as `fuera de rango` too, and is never compared numericall
 Errors (stderr, wording free; check in this order): fewer than 3 arguments -> usage, exit **1**; MIN
 or MAX is not a valid integer -> a message **naming the bad one**, exit **2**; MIN greater than MAX ->
 exit **3**. On success (even if some values are out of range) exit 0.
-
----
-Write your solution in `answer.sh`, then run `check 1441`.  
-To experiment with the same test files the checker uses: `play 1441`.

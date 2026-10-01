@@ -25,7 +25,3 @@ Errors (message on **stderr**): not exactly one argument → usage, exit **1**;
 `FILE` is not a readable regular file → exit **2** (mention it).
 
 Hint: build the regex of one number (`25[0-5]|2[0-4][0-9]|...`) in a variable and reuse it.
-
----
-Write your solution in `answer.sh`, then run `check 0630`.  
-To experiment with the same test files the checker uses: `play 0630`.

@@ -11,7 +11,3 @@ last one).
 Watch the decoys: a line that merely contains the word `BEGIN` or `END` as part of a longer line
 (like `BEGINNING` or `ENDED`) is **not** a marker and must be ignored — matching the marker lines
 requires anchoring the whole line (`^BEGIN$`, `^END$`), not just searching for the word.
-
----
-Write your solution in `answer.sh`, then run `check 0551`.  
-To experiment with the same test files the checker uses: `play 0551`.

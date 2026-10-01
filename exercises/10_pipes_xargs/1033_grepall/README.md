@@ -27,7 +27,3 @@ Validation, in this order (message on **stderr**):
 
 Hint: filter successively, keeping the result in a variable: `R=$(grep -in -w "$w" <<< "$R")`...
 or chain `grep`s in a pipeline.
-
----
-Write your solution in `answer.sh`, then run `check 1033`.  
-To experiment with the same test files the checker uses: `play 1033`.

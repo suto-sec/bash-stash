@@ -14,7 +14,3 @@ sorted by N **descending**, ties by group name ascending. Finally print
 
 - more than one argument: usage on stderr, exit **2**
 - the file is not readable: error message on stderr, exit **1**
-
----
-Write your solution in `answer.sh`, then run `check 1721`.  
-To experiment with the same test files the checker uses: `play 1721`.

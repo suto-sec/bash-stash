@@ -9,7 +9,3 @@ directly in the current directory:
 2. copy `X.conf` to `X.conf.bak` **preserving** its permissions and modification time (`man cp`)
 
 Nothing is printed. The checker compares permissions, contents and modification times of every file.
-
----
-Write your solution in `answer.sh`, then run `check 0317`.  
-To experiment with the same test files the checker uses: `play 0317`.

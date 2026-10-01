@@ -25,7 +25,3 @@ For each file with problems print `<path>: <problems>` (path as `find` prints it
 
 Errors (stderr, wording free): missing `DIR`, too many arguments or an unknown option → usage,
 exit **2**; `DIR` is not a directory → exit **3**. Names may contain spaces. No script is empty.
-
----
-Write your solution in `answer.sh`, then run `check 0738`.  
-To experiment with the same test files the checker uses: `play 0738`.

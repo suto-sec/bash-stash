@@ -12,7 +12,3 @@ applies to the second branch of the `-o`. You must group the OR explicitly:
 
 Watch the decoys: a directory literally called `keeper` is **not** `keep` (its files must stay), and
 a top-level file called `keep.tmp` is not *inside* a directory called `keep` (it must stay too).
-
----
-Write your solution in `answer.sh`, then run `check 0742`.  
-To experiment with the same test files the checker uses: `play 0742`.

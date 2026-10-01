@@ -20,7 +20,3 @@ Errors (message on **stderr**, crontab untouched):
 - not exactly 2 arguments: usage, exit **1**
 - `SCHEDULE` does not have that shape: message including the schedule, exit **2**
 - a number out of range (or `*/0`): exit **3**
-
----
-Write your solution in `answer.sh`, then run `check 1732`.  
-To experiment with the same test files the checker uses: `play 1732`.

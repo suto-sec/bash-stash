@@ -7,7 +7,3 @@ found in the directories of `$PATH` (in `$PATH` order, one per line). Directorie
 must not produce errors.
 
 Hint: `echo "$PATH" | tr : '\n'` gives one directory per line.
-
----
-Write your solution in `answer.sh`, then run `check 1016`.  
-To experiment with the same test files the checker uses: `play 1016`.

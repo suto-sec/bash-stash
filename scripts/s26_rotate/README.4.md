@@ -1,1 +1,1 @@
-Checks, in this order, before touching anything: not one or two arguments → error message **and the correct usage**, exit **1**; `FILE` is not a regular file → error with its name, exit **2**; `KEEP` is not a positive integer → error that includes it, exit **3**.
+Checks, in this order, before touching anything: not one or two arguments → error message **and the correct usage** (e.g. `Usage: rotate.sh file [keep]`), exit **1**; `FILE` is not a regular file → error with its name, exit **2**; `KEEP` is not a positive integer → error that includes it, exit **3**.

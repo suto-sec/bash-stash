@@ -29,7 +29,3 @@ Errors (message on stderr), checked in this order:
 - `DIRMODE` does not start with `7` (the owner must keep `rwx` on directories) → exit **4**
 
 Names may contain spaces.
-
----
-Write your solution in `answer.sh`, then run `check 0821`.  
-To experiment with the same test files the checker uses: `play 0821`.

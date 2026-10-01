@@ -8,7 +8,3 @@ start with `proyecto/`), **excluding** the subdirectory `proyecto/tmp` and every
 
 Then, without extracting, print the number of entries the archive contains
 (`tar -tzf codigo.tgz | wc -l`).
-
----
-Write your solution in `answer.sh`, then run `check 0412`.  
-To experiment with the same test files the checker uses: `play 0412`.

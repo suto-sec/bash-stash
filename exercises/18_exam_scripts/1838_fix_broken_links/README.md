@@ -13,7 +13,3 @@ Checks, in this order:
 - `DIR` exists but is not a directory: message on stderr (naming `DIR`), exit **3**.
 
 Valid (non-broken) symbolic links are left untouched and never printed.
-
----
-Write your solution in `answer.sh`, then run `check 1838`.  
-To experiment with the same test files the checker uses: `play 1838`.

@@ -11,7 +11,3 @@ A backslash: \ and a double quote: "
 ```
 
 Notice that the first line contains the characters `'$HOME'` including the single quotes.
-
----
-Write your solution in `answer.sh`, then run `check 0106`.  
-To experiment with the same test files the checker uses: `play 0106`.

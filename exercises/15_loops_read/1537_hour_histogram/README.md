@@ -21,7 +21,3 @@ Careful: `$((08 + 1))` is an error in bash (leading 0 = octal): use `$((10#08))`
 
 Errors (stderr): no arguments or more than 2 → **1** (usage); LOG not a readable regular file →
 **2** (name it); LEVEL not one of info/warn/error in any case → **3** (name it).
-
----
-Write your solution in `answer.sh`, then run `check 1537`.  
-To experiment with the same test files the checker uses: `play 1537`.

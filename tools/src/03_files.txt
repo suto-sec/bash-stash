@@ -57,6 +57,8 @@ In `Datos/Stocks` there is a file `borrador.txt`.
 1. Rename it to `borrador` (without extension).
 2. Move it to the parent directory of `Stocks` (i.e. `Datos`).
 3. Rename the directory `Datos/Inversiones` to `Datos/Inversion`.
+
+Use `mv` for the three steps (not `cp`).
 @@check
 COMPARE="stdout exit files"
 setup() { mkdir -p Datos/Stocks Datos/Inversiones; randtext 4 > Datos/Stocks/borrador.txt; touch "Datos/Inversiones/$(word)"; }
@@ -77,7 +79,7 @@ The current directory contains many `Trimestre.*` files. Using **wildcards** (no
 2. Delete the files named `Trimestre.18.` followed by a `1` or a `2` and ending in `.txt`.
 3. Delete every file whose name has exactly **one character** before `.log` (e.g. `a.log`, not `ab.log`).
 
-Leave everything else untouched.
+Leave everything else untouched. Use at most three `rm` commands (one per item).
 @@check
 COMPARE="stdout exit files"
 setup() {
@@ -117,6 +119,8 @@ The directory `Datos` contains a file `borrador` and a directory `Stocks`.
 3. Print the number of links of `Datos/borrador` using `stat -c %h`.
 
 The checker also compares link counts of every file.
+
+Use `ln` (not `cp`).
 @@check
 COMPARE="stdout exit files"
 setup() { mkdir -p Datos/Stocks; randtext 5 > Datos/borrador; }
@@ -207,6 +211,8 @@ Print:
 2. the file name (`datos.tar.gz`)
 3. the file name without the `.tar.gz` suffix (`datos`)
 4. the name of the directory that contains the file (`2026`)
+
+Use `dirname` and `basename`.
 @@check
 setup() { echo "/home/$(word)/$(word)/$(randr 2020 2026)/$(word).tar.gz" > path.txt; }
 extra_check() { must_use basename dirname; }

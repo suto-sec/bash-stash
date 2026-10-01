@@ -11,7 +11,3 @@ Precio: 5$ & 10% de descuento (IVA incl.)
 ```
 
 Hint: `;`, `&`, `(`, `)` and `$` are special for the shell. Use quotes or `\`.
-
----
-Write your solution in `answer.sh`, then run `check 0103`.  
-To experiment with the same test files the checker uses: `play 0103`.

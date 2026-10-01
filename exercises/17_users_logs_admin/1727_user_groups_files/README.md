@@ -23,7 +23,3 @@ Errors (message on stderr):
 - no arguments or more than 3: usage, exit **2**
 - a file cannot be read: exit **3**
 - `USER` has no line in the passwd file: message naming the user, exit **1**
-
----
-Write your solution in `answer.sh`, then run `check 1727`.  
-To experiment with the same test files the checker uses: `play 1727`.

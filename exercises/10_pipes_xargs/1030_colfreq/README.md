@@ -28,7 +28,3 @@ Validation, in this order (message on **stderr**):
 - `FILE` is not a readable regular file: exit **2**
 - `COLUMN` is not a column of the header: exit **3** (the message must include the column name)
 - `N` is not a positive integer (1, 2, ...): exit **4**
-
----
-Write your solution in `answer.sh`, then run `check 1030`.  
-To experiment with the same test files the checker uses: `play 1030`.

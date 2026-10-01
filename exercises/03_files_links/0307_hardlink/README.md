@@ -10,6 +10,4 @@ The directory `Datos` contains a file `borrador` and a directory `Stocks`.
 
 The checker also compares link counts of every file.
 
----
-Write your solution in `answer.sh`, then run `check 0307`.  
-To experiment with the same test files the checker uses: `play 0307`.
+Use `ln` (not `cp`).

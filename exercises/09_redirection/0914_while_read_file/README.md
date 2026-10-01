@@ -13,7 +13,3 @@ copied **unchanged**. The last line of `entrada.txt` has **no** final newline an
 
 Redirect the whole loop (`while ...; do ...; done < entrada.txt > salida.txt`), and finally print
 on the screen `<N> lines processed`.
-
----
-Write your solution in `answer.sh`, then run `check 0914`.  
-To experiment with the same test files the checker uses: `play 0914`.

@@ -3,7 +3,7 @@
 @@level 1
 @@cmds $#, $*
 @@readme
-Print:
+The script receives any number of arguments (possibly none). Print:
 
 ```
 Se han recibido N argumentos

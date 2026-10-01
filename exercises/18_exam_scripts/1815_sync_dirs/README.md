@@ -12,7 +12,3 @@ copied file (sorted), then `N files copied`.
 
 - not exactly 2 arguments: usage on stderr, exit 1
 - `SRC` not a directory: stderr, exit 2
-
----
-Write your solution in `answer.sh`, then run `check 1815`.  
-To experiment with the same test files the checker uses: `play 1815`.

@@ -8,7 +8,3 @@ Write a function `info` that prints `func got N args: ...` (its `$#` and `$*`). 
 2. call `info` with **no** arguments
 3. call `info` with the script's arguments **reversed** (build the reversed list in a loop)
 4. call `info "$@"` and `info "$*"` (see the difference in N)
-
----
-Write your solution in `answer.sh`, then run `check 1605`.  
-To experiment with the same test files the checker uses: `play 1605`.

@@ -34,7 +34,7 @@ COMPARE="stdout exit"
 find "${2:-.}" -type f -name "*.$1"
 @@step 3 | Errors
 @@readme
-Checks, in this order: not one or two arguments → error message **and the correct usage**, exit **1**; the directory does not exist → error with its name, exit **2**; it exists but is not a directory → error with its name, exit **3**.
+Checks, in this order: not one or two arguments → error message **and the correct usage** (e.g. `Usage: findext.sh ext [dir]`), exit **1**; the directory does not exist → error with its name, exit **2**; it exists but is not a directory → error with its name, exit **3**.
 @@check
 SORT_OUTPUT=1
 ARGS=('txt' 'txt proj' '' 'txt proj extra' 'txt nothing' 'txt notadir.txt')

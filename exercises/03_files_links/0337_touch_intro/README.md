@@ -7,7 +7,3 @@
 Create an empty file named `nuevo.txt` in the current directory. Nothing is printed.
 
 Hint: `touch file`
-
----
-Write your solution in `answer.sh`, then run `check 0337`.  
-To experiment with the same test files the checker uses: `play 0337`.

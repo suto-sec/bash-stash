@@ -21,6 +21,3 @@ Answer in `answer.txt` as `N: answer`.
 14. Signal sent by Ctrl+C (name without `SIG`). (name)
 15. `kill -0 PID` sends no signal: what is it used for? a) to kill quietly b) to check whether the
     process exists (and we may signal it) c) to pause it (a/b/c)
-
----
-Write your answers in `answer.txt` (one `N: answer` line per question), then run `check 1906`.

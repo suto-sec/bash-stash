@@ -12,7 +12,3 @@ satisfy **all** these rules, in the order of the file:
 Then print `---` and the **number** of rejected candidates.
 
 Hint: one `grep` per rule, chained with pipes, using the POSIX classes.
-
----
-Write your solution in `answer.sh`, then run `check 0619`.  
-To experiment with the same test files the checker uses: `play 0619`.

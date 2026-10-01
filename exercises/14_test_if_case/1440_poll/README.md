@@ -14,7 +14,3 @@ invalido: I
 
 and finally `ganador: si`, `ganador: no` or `empate` (comparing S vs N only; invalid votes never
 decide the winner — a tie between S and N, even 0-0, is `empate`).
-
----
-Write your solution in `answer.sh`, then run `check 1440`.  
-To experiment with the same test files the checker uses: `play 1440`.

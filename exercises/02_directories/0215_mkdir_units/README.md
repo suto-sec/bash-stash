@@ -17,7 +17,3 @@ Create, inside the current directory, the directory named after the course with:
 - `notes`
 
 Then print the listing of the course directory (`ls` of it, one entry per line).
-
----
-Write your solution in `answer.sh`, then run `check 0215`.  
-To experiment with the same test files the checker uses: `play 0215`.

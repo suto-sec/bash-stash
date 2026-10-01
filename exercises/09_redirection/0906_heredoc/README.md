@@ -19,7 +19,3 @@ exactly these lines:
 # $HOME is not expanded here
 precio=5$
 ```
-
----
-Write your solution in `answer.sh`, then run `check 0906`.  
-To experiment with the same test files the checker uses: `play 0906`.

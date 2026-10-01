@@ -40,7 +40,7 @@ Under `fotos`, print sorted:
 
 1. files ending in `.jpg` in **any case** (`.JPG`, `.Jpg`...)
 2. `---`
-3. files whose path contains a directory called `2025` (`-path '*/2025/*'`)
+3. all entries (files **and** directories, no `-type`) whose path contains a directory called `2025` (`-path '*/2025/*'`)
 @@check
 setup() { mkdir -p fotos/{2024,2025/verano,otras}; local i; for i in $(seq 9); do touch "fotos/$(pick 2024 2025 2025/verano otras)/$(word)$i.$(pick jpg JPG Jpg png jpeg)"; done; }
 @@solution
@@ -194,8 +194,8 @@ find . -type f -name '*~' -delete
 Under `docs` there are `.txt` files, some with **spaces** in their names. Print the **total number
 of lines** of all of them (just the number).
 
-Use `find -print0 | xargs -0 cat | wc -l`. Try a naive `cat $(find ...)` in `play 0712` to see
-why it breaks.
+Use `find -print0 | xargs -0 cat | wc -l`. Try a naive `cat $(find ...)` in the terminal (the exercise folder
+has files with spaces too) to see why it breaks.
 @@check
 setup() { mkdir -p "docs/mis cosas"; local i; for i in $(seq 5); do randtext "$(randr 1 9)" > "docs/$(pick . 'mis cosas')/$(word) $(pick '' 'copia ' '')$i.txt"; done; }
 @@solution
@@ -222,7 +222,10 @@ find enlaces -xtype l | sort
 @@level 2
 @@cmds find -empty, -type d
 @@readme
-Print sorted the **empty directories** under `proyecto`, then delete them (only them).
+`proyecto` contains directories (some empty, some not) and files.
+
+1. Print the paths of the **empty directories** under `proyecto`, sorted.
+2. Then delete those empty directories (only them: everything else must stay).
 @@check
 COMPARE="stdout exit files"
 setup() { mkdir -p proyecto/{a/b,c,d/e,f}; touch proyecto/a/x proyecto/d/y; [[ $(rand 2) == 1 ]] && touch proyecto/c/z; mkdir -p "proyecto/$(word)"; }

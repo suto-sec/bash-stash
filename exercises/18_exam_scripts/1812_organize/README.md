@@ -9,7 +9,3 @@ The extension is the text after the **last** dot; a name like `README` has none.
 
 Finally print one line per extension used, sorted: `<ext>: N files`.
 If `DIR` is not a directory: stderr, exit 1.
-
----
-Write your solution in `answer.sh`, then run `check 1812`.  
-To experiment with the same test files the checker uses: `play 1812`.

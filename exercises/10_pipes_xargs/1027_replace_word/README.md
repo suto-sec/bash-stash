@@ -30,7 +30,3 @@ Validation, in this order (message on **stderr**):
 - `DIR` is not a directory: exit **3**
 
 Names may contain spaces. Hint: `grep -lZ WORD ... | xargs -0 sed -i "s/WORD/REPLACEMENT/g"`.
-
----
-Write your solution in `answer.sh`, then run `check 1027`.  
-To experiment with the same test files the checker uses: `play 1027`.

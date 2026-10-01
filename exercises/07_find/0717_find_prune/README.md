@@ -12,7 +12,3 @@ Under `proj` there is a JavaScript project. Print, separated by a line `---`:
 
 Careful with the decoys: a directory like `node_modules_old` or a file called `node_modules.js`
 is **not** `node_modules`. Remember that with `-o` you need an explicit `-print` on the side you want.
-
----
-Write your solution in `answer.sh`, then run `check 0717`.  
-To experiment with the same test files the checker uses: `play 0717`.

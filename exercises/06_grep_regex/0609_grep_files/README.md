@@ -8,6 +8,4 @@ The directory `src` contains source files in several subdirectories. Print separ
 2. for each `.c` file directly in `src`, `file:count` of lines with `TODO` (`-c`)
 3. all lines with `TODO` in any file, **without** the file name prefix (`-rh`), sorted
 
----
-Write your solution in `answer.sh`, then run `check 0609`.  
-To experiment with the same test files the checker uses: `play 0609`.
+Paths are shown as `grep` prints them when run on `src` (e.g. `src/lib/x.h`, `src/a.c:3`).

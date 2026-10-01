@@ -12,7 +12,3 @@ Checks, in this order:
 - `DIR` is not a directory: message on stderr (naming `DIR`), exit **2**.
 
 File names may contain spaces.
-
----
-Write your solution in `answer.sh`, then run `check 1823`.  
-To experiment with the same test files the checker uses: `play 1823`.

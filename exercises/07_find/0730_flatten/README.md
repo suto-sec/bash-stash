@@ -27,7 +27,3 @@ Checks, **in this order** (messages on stderr, wording free):
 - `EXT` is empty or contains anything other than letters and digits: exit **4**
 
 `DEST` is never inside `SRC`. Names may contain spaces.
-
----
-Write your solution in `answer.sh`, then run `check 0730`.  
-To experiment with the same test files the checker uses: `play 0730`.

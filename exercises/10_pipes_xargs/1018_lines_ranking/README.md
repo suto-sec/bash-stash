@@ -17,7 +17,3 @@ that must be ignored. There are always at least 3 `.txt` files. Print:
 
 Hint: `find ... -print0 | xargs -0 wc -l` prints one line per file (plus a `total` line);
 `sed 's/^ *//'` removes the padding.
-
----
-Write your solution in `answer.sh`, then run `check 1018`.  
-To experiment with the same test files the checker uses: `play 1018`.

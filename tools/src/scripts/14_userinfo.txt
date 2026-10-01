@@ -19,9 +19,13 @@ COMPARE="stdout exit"
 @@solution
 #!/bin/bash
 grep "^$2:" "$1" | cut -d: -f6
-@@step 2 | More fields
+@@step 2 | UID and shell
 @@readme
-Print a single line `USER: uid=UID shell=SHELL` instead (the user name, the 3rd field and the 7th).
+Print a single line instead of the home directory: `USER: uid=UID shell=SHELL`, with the user name, the 3rd field (the numeric user id) and the 7th (the login shell).
+
+```
+userinfo.sh users.txt ana   ->   ana: uid=1001 shell=/bin/zsh
+```
 @@check
 ARGS=('users.txt ana' 'users.txt root' 'users.txt anaelle' 'users.txt daemon')
 COMPARE="stdout exit"
@@ -33,7 +37,7 @@ shell=$(echo "$line" | cut -d: -f7)
 echo "$2: uid=$uid shell=$shell"
 @@step 3 | Check the arguments and the file
 @@readme
-Checks, in this order: not exactly two arguments → error message **and the correct usage**, exit **1**; `FILE` is not a readable regular file → error with its name, exit **2**.
+Checks, in this order: not exactly two arguments → error message **and the correct usage** (e.g. `Usage: userinfo.sh file user`), exit **1**; `FILE` is not a readable regular file → error with its name, exit **2**.
 @@check
 ARGS=('users.txt ana' 'users.txt root' '' 'users.txt' 'users.txt ana x' 'nothing.txt ana' 'adir ana')
 COMPARE="stdout exit errmsg"

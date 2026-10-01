@@ -1,1 +1,1 @@
-Empty **directories** count too. Print each path preceded by its kind: `file: PATH` or `dir: PATH`.
+Empty **directories** count too (`find DIR -type d -empty`; `DIR` itself is listed if it is empty). Print each path preceded by its kind: `file: PATH` or `dir: PATH`, for example `file: tree/zero.txt` or `dir: tree/b/sub`.

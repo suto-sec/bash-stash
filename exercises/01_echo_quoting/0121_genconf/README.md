@@ -38,7 +38,3 @@ Errors (message on **stderr**, nothing on stdout, nothing created), checked in t
 - `NAME` does not match: a lowercase letter followed by lowercase letters, digits, `_` or `-`: exit **2**
 - `PORT` is not an integer between 1024 and 64535 (both included): exit **3**
 - `DIR/NAME.conf` already exists: exit **4** (do not modify it)
-
----
-Write your solution in `answer.sh`, then run `check 0121`.  
-To experiment with the same test files the checker uses: `play 0121`.

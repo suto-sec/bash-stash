@@ -15,7 +15,3 @@ f3.txt
 ```
 
 Hint: `tar -tf ARCHIVE.tar` (`t` = list, `f` = the archive's name follows).
-
----
-Write your solution in `answer.sh`, then run `check 0427`.  
-To experiment with the same test files the checker uses: `play 0427`.

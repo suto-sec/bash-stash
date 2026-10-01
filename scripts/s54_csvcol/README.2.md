@@ -1,1 +1,1 @@
-Checks, in this order: not exactly two arguments → error message **and the correct usage**, exit **1**; `FILE` is not a readable regular file → error with its name, exit **2**; `N` is not a positive integer → error that includes it, exit **3**.
+Checks, in this order: not exactly two arguments → error message **and the correct usage** (e.g. `Usage: csvcol.sh file N`), exit **1**; `FILE` is not a readable regular file → error with its name, exit **2**; `N` is not a positive integer → error that includes it, exit **3**.

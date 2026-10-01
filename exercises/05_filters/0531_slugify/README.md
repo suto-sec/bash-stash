@@ -12,6 +12,4 @@ Read titles from **standard input** (one per line, ASCII only) and print, for ea
 
 Example: `  Hello, World!! 2026 -- v1.2 ` → `hello-world-2026-v1-2`.
 
----
-Write your solution in `answer.sh`, then run `check 0531`.  
-To experiment with the same test files the checker uses: `play 0531`.
+Use `tr`.

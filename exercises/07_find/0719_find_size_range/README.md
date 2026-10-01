@@ -10,7 +10,3 @@ Under `data`, print, separated by `---`:
 2. the regular files whose size is **from 1 to 1024 bytes** (both included), sorted.
    (Fun fact: that is exactly what `-size 1k` matches, because find rounds sizes **up** to whole
    units; and it is why `-size -1k` only matches empty files.)
-
----
-Write your solution in `answer.sh`, then run `check 0719`.  
-To experiment with the same test files the checker uses: `play 0719`.

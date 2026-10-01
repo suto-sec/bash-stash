@@ -26,7 +26,3 @@ Exit codes:
 | different | 1 |
 | wrong number of arguments (show the usage on stderr) | 2 |
 | a file is not a readable regular file (message on stderr naming it) | 3 |
-
----
-Write your solution in `answer.sh`, then run `check 1328`.  
-To experiment with the same test files the checker uses: `play 1328`.

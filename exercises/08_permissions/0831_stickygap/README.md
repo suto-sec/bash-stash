@@ -22,7 +22,3 @@ Finally print `N directories found` (or, with `-f`, `N directories fixed`).
 Exit codes: **0** if none were found (or `-f` fixed them all); **1** if some were found and `-f` was
 not given; **2** wrong usage — anything other than an optional `-f` followed by exactly one directory
 argument (usage on stderr); **3** if `DIR` is not a directory (message includes `DIR`).
-
----
-Write your solution in `answer.sh`, then run `check 0831`.  
-To experiment with the same test files the checker uses: `play 0831`.

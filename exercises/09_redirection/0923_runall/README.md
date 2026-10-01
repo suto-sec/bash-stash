@@ -27,7 +27,3 @@ ends in `.sh` and that is **executable** (others are skipped silently), with no 
 
 Errors (message on **stderr**): no arguments or more than 2 → usage, exit **1**; `DIR` is not a
 directory → exit **2**; `LOGDIR` exists and is not a directory → exit **3**.
-
----
-Write your solution in `answer.sh`, then run `check 0923`.  
-To experiment with the same test files the checker uses: `play 0923`.

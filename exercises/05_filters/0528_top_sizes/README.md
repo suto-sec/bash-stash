@@ -10,7 +10,3 @@ unchanged, biggest first. Lines with the same size are ordered by PATH (as `sort
 If there are fewer than `N` lines, print them all.
 
 Hint: `sort -h` understands the suffixes; use a TAB as the field separator.
-
----
-Write your solution in `answer.sh`, then run `check 0528`.  
-To experiment with the same test files the checker uses: `play 0528`.

@@ -27,7 +27,3 @@ Errors, checked in this order (message on **stderr**, wording free, nothing on s
 | `file` is not a readable regular file (name it) | 2 |
 | `start` or `end` (if given) is not a positive integer (digits, not starting with 0) (name it) | 3 |
 | `end` is given and `start` > `end` | 4 |
-
----
-Write your solution in `answer.sh`, then run `check 1323`.  
-To experiment with the same test files the checker uses: `play 1323`.

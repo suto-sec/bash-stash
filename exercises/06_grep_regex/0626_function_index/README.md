@@ -14,7 +14,3 @@ For every definition in the `.sh` files directly inside `scripts`, print
 ```
 
 (`path` as `scripts/<file>`), sorted as `sort` sorts those lines. Function names are unique.
-
----
-Write your solution in `answer.sh`, then run `check 0626`.  
-To experiment with the same test files the checker uses: `play 0626`.

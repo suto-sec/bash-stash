@@ -31,7 +31,7 @@ case $1 in
 esac
 @@step 3 | Unknown commands
 @@readme
-A command that is none of the three prints an error message that includes it on standard error and exits with code **2**. With no argument at all: error message **and the correct usage**, exit **1**.
+A command that is none of the three prints an error message that includes it on standard error and exits with code **2**. With no argument at all: error message **and the correct usage** (e.g. `Usage: menu.sh upper|lower|len text`), exit **1**.
 @@check
 ARGS=('upper hello' 'lower HELLO' 'len abc' 'reverse abc' 'UPPER abc' '' 'x')
 COMPARE="stdout exit errmsg"

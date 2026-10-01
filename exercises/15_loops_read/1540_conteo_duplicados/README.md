@@ -12,7 +12,3 @@ Finally print `distintas repetidas: D` (D = number of distinct words that appear
 Suggested approach: load every line into an array `w`. Keep a second array `seen` of the words
 already reported on. For each word of `w` not yet in `seen` (checked with an inner loop), count its
 occurrences with another inner loop over `w`.
-
----
-Write your solution in `answer.sh`, then run `check 1540`.  
-To experiment with the same test files the checker uses: `play 1540`.

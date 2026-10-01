@@ -11,7 +11,3 @@ For each argument print exactly one line, the first that applies:
 - `<name>: N entries` (number of entries, **hidden ones included**, not counting `.` and `..`)
 
 (A symbolic link to a directory is treated as the directory.)
-
----
-Write your solution in `answer.sh`, then run `check 1423`.  
-To experiment with the same test files the checker uses: `play 1423`.

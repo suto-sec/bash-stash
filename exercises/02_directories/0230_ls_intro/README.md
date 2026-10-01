@@ -22,7 +22,3 @@ total 0
 ```
 
 Hint: `ls -a dir` and `ls -l dir`. Hidden files are not shown by `ls -l` unless you add `-a`.
-
----
-Write your solution in `answer.sh`, then run `check 0230`.  
-To experiment with the same test files the checker uses: `play 0230`.

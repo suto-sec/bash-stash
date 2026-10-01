@@ -8,7 +8,3 @@
 2. Now load it with `source config.sh` and print `[$SERVER:$PORT]` and `pwd` again.
 
 Understand why the first time the variables are empty and the directory doesn't change.
-
----
-Write your solution in `answer.sh`, then run `check 1312`.  
-To experiment with the same test files the checker uses: `play 1312`.
