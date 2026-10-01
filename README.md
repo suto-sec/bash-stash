@@ -42,7 +42,7 @@ the lab terminal inside it is a normal bash with the full manual pages installed
 
 1. Open an exercise.
 2. Write your solution in its `answer.sh` (quizzes: `answer.txt`) with the terminal or VS Code.
-3. Press **Check**. On failure you see what differed, the failing arguments and the fixture seed; **Try with the test files** opens the terminal on exactly those files.
+3. Press **Check**. On failure each failing case shows what was run (arguments, stdin), plain-language hints (wrong order, missing final newline, stderr instead of stdout, exit code...), and *expected* vs *yours* side by side with a character-level diff (**show whitespace** makes spaces and tabs visible). **Try with these test files** builds that exact case in `~/play/<id>-failing/` (your practice folder is untouched) and types the command in the terminal.
 4. Only after passing (or being truly stuck), compare with the solution
    (`solutions/<topic>/<id>_<name>.sh`): they are written to be the clean/idiomatic version.
 

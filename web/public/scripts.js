@@ -129,23 +129,12 @@ const Scripts = (() => {
     box.classList.remove('hidden', 'pass', 'fail');
     $('#result-title').textContent = `Checking step ${step}…`;
     body.innerHTML = '';
-    let text = '';
-    try {
-      const r = await fetch(`/api/scripts/${cur.id}/check?step=${step}`, { method: 'POST' });
-      const reader = r.body.getReader(), dec = new TextDecoder();
-      for (;;) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        text += dec.decode(value, { stream: true });
-        body.innerHTML = ansiToHtml(text);
-      }
-    } catch (e) { text += `\n${e}`; body.textContent = text; }
-    const code = ([...text.matchAll(/\[exit (\d+)\]/g)].pop() || [])[1];
-    const ok = code === '0';
+    const res = await CheckView.run(`/api/scripts/${cur.id}/check?step=${step}`, body);
+    const code = res.code, ok = code === '0';
     box.classList.add(ok ? 'pass' : 'fail');
-    const last = cur.d.steps.length;
+    const last = cur.d.steps.length, sid = cur.id;
     $('#result-title').textContent = ok ? (step === last ? '✔ Script complete!' : `✔ Step ${step} passed — on to step ${step + 1}`) : code === '3' ? 'Not attempted yet' : '✘ Not yet';
-    body.innerHTML = ansiToHtml(text.replace(/\n?\x1b\[2m\[exit \d+\]\x1b\[0m\s*$/, ''));
+    CheckView.show(body, res, { play: c => tryCase(`/api/scripts/${sid}/play?step=${step}&seed=${c.seed}`, c) });
     try { const keep = box.className, t = $('#result-title').textContent, h = body.innerHTML; await reload(); box.className = keep; $('#result-title').textContent = t; body.innerHTML = h; }
     finally { btn.disabled = false; btn.textContent = '▶ Check'; checking = false; }
   }

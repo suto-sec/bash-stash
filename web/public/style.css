@@ -220,7 +220,7 @@ button:disabled { opacity: .5; cursor: default; }
 .result.pass { border-color: var(--accent); }
 .result.fail { border-color: var(--err); }
 .result-head { display: flex; justify-content: space-between; align-items: center; padding: 4px 4px 4px 12px; border-bottom: 1px solid var(--border); font-weight: 600; }
-.result pre { margin: 0; padding: 10px 12px; max-height: 45vh; overflow: auto; font: 12.5px/1.45 ui-monospace, "Cascadia Code", Menlo, monospace; white-space: pre-wrap; }
+.result pre, .result .result-body { margin: 0; padding: 10px 12px; max-height: 60vh; overflow: auto; font: 12.5px/1.45 ui-monospace, "Cascadia Code", Menlo, monospace; white-space: pre-wrap; }
 .ansi-red { color: var(--err); } .ansi-green { color: var(--accent); } .ansi-yellow { color: var(--warn); }
 .ansi-bold { font-weight: 700; } .ansi-dim { opacity: .65; }
 
@@ -708,3 +708,39 @@ body.script-run #new-attempt-btn { display: none; }
 .man-table th { background: var(--panel-2); }
 .man-see a { text-decoration: none; }
 .gl-syn { display: block; margin-top: 6px; font-family: ui-monospace, monospace; font-size: 11.5px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* check result: what failed, why, expected vs yours */
+.cv { white-space: normal; }
+.cv-top { margin-bottom: 8px; white-space: pre-wrap; }
+.cv-case { border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; margin-bottom: 10px; background: var(--panel); }
+.cv-head { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.cv-sp { flex: 1; }
+.cv-bad { color: var(--err); font-weight: 700; }
+.cv-ws { font-size: 12px; color: var(--muted); display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
+.cv-try { padding: 2px 8px; font-size: 12px; }
+.cv-ran { margin: 6px 0; color: var(--muted); }
+.cv-ran code { color: var(--text); background: var(--panel-2); padding: 1px 6px; border-radius: 4px; }
+.cv-in { margin: 4px 0; color: var(--muted); }
+.cv-in summary { cursor: pointer; }
+.cv-pre { margin: 4px 0 0; padding: 6px 8px; background: var(--panel-2); border-radius: 6px; white-space: pre-wrap; max-height: 160px; overflow: auto; }
+.cv-hints { margin: 6px 0 8px; padding-left: 20px; }
+.cv-hints li { margin: 2px 0; }
+.cv-hints code { background: var(--panel-2); padding: 0 4px; border-radius: 3px; }
+.cv-blk { margin-top: 8px; }
+.cv-lbl { font-weight: 600; margin-bottom: 3px; }
+.cv-diff { border-collapse: collapse; width: 100%; table-layout: fixed; font: inherit; }
+.cv-diff th { text-align: left; font-weight: 600; color: var(--muted); padding: 1px 6px; font-size: 11.5px; }
+.cv-diff td { padding: 0 6px; vertical-align: top; }
+.cv-diff .cv-ln { padding: 0 4px; color: var(--muted); text-align: right; user-select: none; opacity: .7; }
+.cv-diff .cv-t { white-space: pre-wrap; overflow-wrap: anywhere; border-left: 1px solid var(--border); }
+.cv-diff .cv-c1 { width: 2.2em; }
+.cv-diff .cv-del { background: color-mix(in srgb, var(--err) 14%, transparent); }
+.cv-diff .cv-add { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+.cv-diff .cv-empty { background: var(--panel-2); }
+.cv-diff mark { color: inherit; border-radius: 2px; }
+.cv-diff .cv-del mark { background: color-mix(in srgb, var(--err) 45%, transparent); }
+.cv-diff .cv-add mark { background: color-mix(in srgb, var(--accent) 45%, transparent); }
+.cv-diff .cv-gap td { text-align: center; color: var(--muted); font-size: 11.5px; padding: 2px; }
+.cv-w { color: var(--muted); opacity: .8; }
+.cv-nonl { margin-left: 6px; font-size: 11px; color: var(--warn); font-style: italic; }
+.cv-more { margin: 4px 2px 0; }

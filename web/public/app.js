@@ -223,24 +223,15 @@ async function runCheck() {
   const file = state.activeVSCodeFile && state.activeVSCodeFile !== canonical ? state.activeVSCodeFile : null;
   $('#result-title').textContent = file ? `Checking ${file}…` : `Checking ${state.current.id}…`;
   body.innerHTML = '';
-  let text = '';
-  try {
-    const url = `/api/check/${state.current.id}` + (file ? `?file=${encodeURIComponent(file)}` : '');
-    const r = await fetch(url, { method: 'POST' });
-    const reader = r.body.getReader(), dec = new TextDecoder();
-    for (;;) {
-      const { value, done } = await reader.read();
-      if (done) break;
-      text += dec.decode(value, { stream: true });
-      body.innerHTML = ansiToHtml(text);
-    }
-  } catch (e) { text += `\n${e}`; body.textContent = text; }
-  const code = ([...text.matchAll(/\[exit (\d+)\]/g)].pop() || [])[1];
+  const url = `/api/check/${state.current.id}` + (file ? `?file=${encodeURIComponent(file)}` : '');
+  const res = await CheckView.run(url, body);
+  const code = res.code;
   const ok = code === '0', notAttempted = code === '3';
   box.classList.add(ok ? 'pass' : 'fail');
   const suffix = file ? ` (${file}, not saved as the exercise's official result)` : '';
   $('#result-title').textContent = (ok ? '✔ Passed' : notAttempted ? 'Not attempted yet' : '✘ Not yet') + suffix;
-  body.innerHTML = ansiToHtml(text.replace(/\n?\x1b\[2m\[exit \d+\]\x1b\[0m\s*$/, ''));
+  const exId = state.current.id;
+  CheckView.show(body, res, { play: c => tryCase(`/api/play/${exId}?seed=${c.seed}`, c, file) });
   try {
     await loadIndex();
     const e = state.flat.find(x => x.id === state.current.id);
@@ -459,11 +450,23 @@ function startTerminal() {
   sock.onclose = () => term.write('\r\n\x1b[2m[session ended — click "new session" to start another]\x1b[0m\r\n');
   term.focus();
 }
-function typeInTerminal(cmd) {
+function typeInTerminal(cmd, enter = true) {
   if (state.mode !== 'term') setMode('term');
-  if (!sock || sock.readyState !== 1) { startTerminal(); setTimeout(() => typeInTerminal(cmd), 400); return; }
-  sock.send(JSON.stringify({ t: 'i', d: cmd + '\r' }));
+  if (!sock || sock.readyState !== 1) { startTerminal(); setTimeout(() => typeInTerminal(cmd, enter), 400); return; }
+  sock.send(JSON.stringify({ t: 'i', d: cmd + (enter ? '\r' : '') }));
   term.focus();
+}
+// "Try with these test files" on a failed case: build that case's fixture (apart from the practice folder),
+// go there in the terminal and type the exact command the checker ran, for the learner to run or change
+async function tryCase(url, c, file) {
+  const rep = $('#result-body')._cv && $('#result-body')._cv.rep;
+  const r = await fetch(url, { method: 'POST' });
+  const j = await r.json();
+  if (!r.ok) { alert(j.error || 'error'); return; }
+  // the checker runs the script under its SCRIPT_NAME; play() links the answer under that name too
+  const script = file ? `${state.current.dir}/${file}` : rep.script !== 'script.sh' ? rep.script : j.script;
+  const run = CheckView.playCommand(c, rep, { work: j.work, home: j.home, stdin: j.stdin, script });
+  typeInTerminal(`cd ${shq(j.work)} && clear && ls\r${run}`, false);   // typed, not run: one write, so it cannot race a starting terminal
 }
 const shq = s => `'${s.replace(/'/g, `'\\''`)}'`;
 $('#restart-btn').onclick = startTerminal;
