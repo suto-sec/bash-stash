@@ -892,7 +892,9 @@ function route() {
   showHomePage(false);
   const th = location.hash.match(/^#\/theory\/([\w-]+)(?:\/([\w-]*))?$/);
   if (th) return Theory.open(th[1], th[2]);
-  if (state.theory) { // leaving the quiz view: back to the exercise panels
+  // leaving the quiz view: back to the exercise panels. Checked on the panel itself, since picking a
+  // track or intro category on the home page clears state.theory without hiding the quiz.
+  if (state.theory || !$('#theory-main').classList.contains('hidden')) {
     state.theory = null;
     Theory.hide();
     updateTrackBadge();
