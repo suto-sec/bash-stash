@@ -2,7 +2,7 @@
 MANUAL.add('files', [
   {
     name: 'paths', kind: 'concept',
-    aliases: ['relative/absolute paths', 'relativepaths', 'relative paths', 'absolute paths', 'absolute vs relative paths', '..', '.', '~', '*/', 'path', 'directory tree', 'working directory'],
+    aliases: ['relative/absolute paths', 'relativepaths', 'relative paths', 'absolute paths', 'absolute vs relative paths', '..', '.', '~', '*/', 'directory tree', 'working directory'],
     summary: 'Absolute and relative paths, the single directory tree, `.`, `..` and `~`.',
     synopsis: ['/absolute/path/to/file', 'relative/path/to/file', './here  ../parent  ~/home-relative  ~user/their-home'],
     desc: [
