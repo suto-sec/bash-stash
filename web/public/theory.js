@@ -157,12 +157,15 @@ const Theory = (() => {
   $('#theory-grid').addEventListener('click', ev => {
     const card = ev.target.closest('[data-theory]');
     if (!card) return;
-    const cid = card.dataset.theory;
+    openCollection(card.dataset.theory);
+  });
+  // open a collection (at the first question not passed yet, unless a question is given)
+  function openCollection(cid, qid) {
     state.introCategory = null;
     try { localStorage.removeItem('introCategory'); } catch { /* private mode */ }
-    const next = flat(cid).find(x => x.q.status !== 'pass') || flat(cid)[0];
+    const next = qid ? { q: { id: qid } } : (flat(cid).find(x => x.q.status !== 'pass') || flat(cid)[0]);
     location.hash = next ? `#/theory/${cid}/${next.q.id}` : '#/home';
-  });
+  }
 
   // ---------------------------------------------------------------- show / hide the quiz panel
   function showMain() {
@@ -657,5 +660,6 @@ const Theory = (() => {
   const BUILDERS = { single: buildChoice, multi: buildChoice, fill: buildFill, order: buildOrder, match: buildPlacer, sort: buildPlacer };
 
   applyStatic();
-  return { load, collection, renderHomeGrid, renderSidebar, open, hide, t: T };
+  return { load, collection, renderHomeGrid, renderSidebar, open, hide, go: openCollection, t: T,
+    list: () => index, current: () => (state.theory && view ? { cid: view.cid, qid: view.item.q.id } : null) };
 })();

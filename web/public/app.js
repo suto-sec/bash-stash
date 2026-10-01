@@ -817,104 +817,149 @@ function renderHomePage() {
   renderHomeNav();
 }
 
-// Left navigation of the home page. It is the exercise sidebar (same markup, same classes): sections are
-// `details.topic`, entries are `a.ex-item`. Clicking an entry clicks the matching card (so it does exactly what the
-// card does); clicking a section title or a group label also scrolls the page to that part.
-const HOME_PARTS = [  // [group heading id, section id, key, section heading id, card selector]
-  ['home-grp-exercises', 'tracks', 'home-sec-tracks', '#track-grid .track-card'],
-  ['home-grp-exercises', 'intro', 'home-sec-intro', '#intro-all-card, #intro-grid .track-card'],
-  ['theory-home-title', 'quizzes', 'theory-quizzes-title', '#theory-grid .track-card'],
-];
-function homeNavClosed() {
-  try { return new Set(JSON.parse(localStorage.getItem('homeNavClosed') || '[]')); } catch { return new Set(); }
-}
-function saveHomeNavClosed() {   // called after a user action; ignored while a search forces sections open
+// Left navigation of the home page. It is the exercise sidebar (same markup and classes) as a tree:
+//   Tracks     -> track -> category -> exercise
+//   Introduction -> category -> exercise
+//   Quizzes    -> collection -> group -> question
+// Every entry that has contents shows an arrow (click it to open/close) and its name (click it to go there).
+const HOME_SECTIONS = [['tracks', 'home-sec-tracks', 'home-grp-exercises'], ['intro', 'home-sec-intro', 'home-grp-exercises'], ['quizzes', 'theory-quizzes-title', 'theory-home-title']];
+const lsGet = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) || d; } catch { return d; } };
+const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* private mode */ } };
+function saveHomeNavState() {   // after a user action; ignored while a search forces everything open
   if ($('#home-search').value.trim()) return;
-  const closed = [...document.querySelectorAll('#home-topics .topic')].filter(d => !d.open).map(d => d.dataset.sec);
-  try { localStorage.setItem('homeNavClosed', JSON.stringify(closed)); } catch { /* private mode */ }
+  const all = [...document.querySelectorAll('#home-topics details')];
+  lsSet('homeNavClosed', all.filter(d => d.dataset.sec && !d.open).map(d => d.dataset.sec));
+  lsSet('homeNavOpen', all.filter(d => d.dataset.key && d.open).map(d => d.dataset.key));
+}
+function homeTree() {
+  const dotOf = (done, total) => total && done === total ? 'pass' : done ? 'attempted' : 'new';
+  const sum = (kids, f) => kids.reduce((n, k) => n + f(k), 0);
+  const group = (key, label, search, go, current, kids, extra = {}) => {
+    const done = sum(kids, k => k.done), total = sum(kids, k => k.total);
+    return { key, label, search: search.toLowerCase(), go, current, kids, done, total, ...extra };
+  };
+  const leaf = (label, search, go, current, status, idTag) =>
+    ({ label, search: search.toLowerCase(), go, current, status, idTag, done: status === 'pass' ? 1 : 0, total: 1 });
+  const exCur = e => !state.theory && state.current && state.current.id === e.id;
+  const trackTitle = k => document.querySelector(`#track-grid [data-track="${k}"] .track-card-title`).textContent;
+  const tracks = ['minimal', 'intermediate', 'full'].map(k => {
+    const here = !state.theory && !state.introCategory && state.track === k;
+    const cats = state.index.map(t => ({ t, ex: t.exercises.filter(e => e.tier !== 0 && (k === 'full' || e.tier <= TRACK_MAX[k])) })).filter(x => x.ex.length)
+      .map(({ t, ex }) => group(`track:${k}:${t.id}`, `${t.id} · ${t.title}`, `${t.id} ${t.title}`, `trackcat:${k}:${t.id}`, false,
+        ex.map(e => leaf(e.title, `${e.id} ${e.title} ${e.cmds || ''}`, `trackex:${k}:${e.id}`, here && exCur(e), e.status, e.id))));
+    return group(`track:${k}`, trackTitle(k), trackTitle(k), `track:${k}`, here, cats);
+  });
+  const introCats = state.index.filter(t => t.id !== '18' && t.id !== '19' && t.exercises.some(e => e.tier === 0)).map(t =>
+    group(`intro:${t.id}`, t.title, `${t.id} ${t.title}`, `intro:${t.id}`, !state.theory && state.introCategory === t.id,
+      t.exercises.filter(e => e.tier === 0).map(e => leaf(e.title, `${e.id} ${e.title} ${e.cmds || ''}`, `introex:${t.id}:${e.id}`,
+        !state.theory && state.introCategory === t.id && exCur(e), e.status, e.id)), { idTag: t.id }));
+  const allDone = sum(introCats, c => c.done), allTotal = sum(introCats, c => c.total);
+  const introAll = leaf($('#intro-all-card .track-card-title').textContent, 'full introduction set', 'intro:all',
+    !state.theory && state.introCategory === 'all', dotOf(allDone, allTotal));
+  introAll.done = allDone; introAll.total = allTotal;
+  const cur = Theory.current();
+  const quizzes = Theory.list().map(c => group(`quiz:${c.id}`, c.title, c.title, `quiz:${c.id}`, state.theory === c.id,
+    c.groups.map(g => group(`quizgroup:${c.id}:${g.id}`, g.title, g.title, `quizgroup:${c.id}:${g.id}`, false,
+      g.questions.map(q => leaf(q.title, q.title, `quizq:${c.id}:${q.id}`, !!cur && cur.cid === c.id && cur.qid === q.id, q.status))))));
+  return { tracks, intro: [introAll, ...introCats], quizzes };
 }
 function renderHomeNav() {
   const nav = $('#home-topics');
-  if (!nav) return;
+  if (!nav || !state.index) return;
   const q = $('#home-search').value.trim().toLowerCase();
-  const closed = homeNavClosed();
-  let html = '', lastGroup = null;
-  for (const [grp, sec, headId, sel] of HOME_PARTS) {
-    const cards = [...document.querySelectorAll(sel)];
-    const rows = cards.map(card => {
-      const key = card.dataset.track || card.dataset.introTopic || card.dataset.theory || 'all';
-      const [, done, total] = (card.querySelector('.track-card-count').textContent.match(/^(\d+)\/(\d+)/) || [0, 0, 0]).map(Number);
-      const full = card.querySelector('.track-card-title').textContent;
-      const m = full.match(/^(\d{2}) · (.*)$/);       // intro categories: "01 · Echo..." -> id + name
-      return { card, key, done, total, id: m ? m[1] : '', name: m ? m[2] : full };
-    }).filter(r => !q || `${r.id} ${r.name}`.toLowerCase().includes(q));
-    if (!rows.length) continue;
-    if (grp !== lastGroup) {
-      html += `<button class="home-group-label" data-scroll="${grp}">${esc($('#' + grp).textContent)}</button>`;
-      lastGroup = grp;
+  const closed = new Set(lsGet('homeNavClosed', [])), openKeys = new Set(lsGet('homeNavOpen', []));
+  const tree = homeTree();
+  // a node is shown when it matches, or when one of its descendants does (an ancestor match shows all its contents)
+  const node = (n, all, depth) => {
+    const own = !q || all || n.search.includes(q);
+    if (!n.kids) {
+      if (!own) return '';
+      const st = n.status || 'new';
+      return `<a class="ex-item d${depth}${n.current ? ' current' : ''}" href="#" data-go="${esc(n.go)}" title="${esc(n.label)}">
+        <span class="dot ${st}">${STATUS[st].dot}</span>${n.idTag ? `<span class="ex-id">${esc(n.idTag)}</span>` : ''}<span class="ex-name">${esc(n.label)}</span>
+        ${n.total > 1 ? `<span class="t-count">${n.done}/${n.total}</span>` : ''}</a>`;
     }
-    // the cards of a section are not all additive (a track contains the smaller ones), so only intro/quizzes sum up
-    const additive = sec !== 'tracks';
-    const items = additive && sec === 'intro' ? rows.filter(r => r.key !== 'all') : rows;
-    const done = additive ? items.reduce((n, r) => n + r.done, 0) : 0, total = additive ? items.reduce((n, r) => n + r.total, 0) : 0;
+    const kids = n.kids.map(k => node(k, q ? own : false, depth + 1)).join('');
+    if (q && !own && !kids) return '';
+    return `<details class="topic entry d${depth}" data-key="${esc(n.key)}"${q || openKeys.has(n.key) ? ' open' : ''}>
+      <summary class="${n.current ? 'current' : ''}" data-go="${esc(n.go)}" title="${esc(n.label)}"><span class="t-arrow" title="Show / hide the contents"></span>
+        <span class="t-name">${esc(n.label)}</span><span class="t-count">${n.done}/${n.total}</span></summary>
+      <div class="t-bar"><div style="width:${n.total ? 100 * n.done / n.total : 0}%"></div></div>${kids}</details>`;
+  };
+  let html = '', lastGroup = null;
+  for (const [sec, headId, grp] of HOME_SECTIONS) {
+    const items = tree[sec].map(n => node(n, false, 1)).join('');
+    if (!items) continue;
+    if (grp !== lastGroup) { html += `<button class="home-group-label" data-scroll="${grp}">${esc($('#' + grp).textContent)}</button>`; lastGroup = grp; }
+    // section count: the 17 intro categories / the 13 quizzes (tracks contain each other, so they show none)
+    const counted = sec === 'intro' ? tree[sec].filter(n => n.kids) : tree[sec];
+    const done = sec === 'tracks' ? 0 : sum2(counted, 'done'), total = sec === 'tracks' ? 0 : sum2(counted, 'total');
     html += `<details class="topic" data-sec="${sec}" data-scroll="${headId}"${q || !closed.has(sec) ? ' open' : ''}>
-      <summary><span class="t-name">${esc($('#' + headId).textContent)}</span>${additive ? `<span class="t-count">${done}/${total}</span>` : ''}</summary>
-      ${additive ? `<div class="t-bar"><div style="width:${total ? 100 * done / total : 0}%"></div></div>` : ''}` +
-      rows.map(r => {
-        const st = r.total && r.done === r.total ? 'pass' : r.done ? 'attempted' : 'new';
-        return `<a class="ex-item${r.card.classList.contains('current') ? ' current' : ''}" href="#" data-pick="${esc(sel)}" data-key="${esc(r.key)}" title="${esc(r.name)}">
-          <span class="dot ${st}">${STATUS[st].dot}</span>${r.id ? `<span class="ex-id">${r.id}</span>` : ''}<span class="ex-name">${esc(r.name)}</span>
-          <span class="t-count">${r.done}/${r.total}</span></a>`;
-      }).join('') + '</details>';
+      <summary><span class="t-name">${esc($('#' + headId).textContent)}</span>${sec === 'tracks' ? '' : `<span class="t-count">${done}/${total}</span>`}</summary>
+      ${sec === 'tracks' ? '' : `<div class="t-bar"><div style="width:${total ? 100 * done / total : 0}%"></div></div>`}${items}</details>`;
   }
   nav.innerHTML = html || '<p class="home-intro" style="margin:16px">Nothing matches.</p>';
   syncHomeNav.last = null;
   syncHomeNav();
 }
+const sum2 = (arr, f) => arr.reduce((n, k) => n + k[f], 0);
 function syncHomeNav() {
   const body = $('#home-body'), nav = $('#home-topics');
   if (!body || !nav) return;
   const at = id => $('#' + id).offsetTop;
   const y = body.scrollTop + 120;
   let cur = null;
-  for (const [, sec, headId] of HOME_PARTS) if (at(headId) <= y) cur = sec;
+  for (const [sec, headId] of HOME_SECTIONS) if (at(headId) <= y) cur = sec;
   const g = at('theory-home-title') <= y ? 'theory-home-title' : 'home-grp-exercises';
   nav.querySelectorAll('.home-group-label').forEach(b => b.classList.toggle('active', b.dataset.scroll === g));
-  nav.querySelectorAll('.topic').forEach(d => d.classList.toggle('active', d.dataset.sec === cur));
+  nav.querySelectorAll('details[data-sec]').forEach(d => d.classList.toggle('active', d.dataset.sec === cur));
   // keep the highlighted section visible in the sidebar as the page scrolls (only when it changes)
   const key = g + ':' + cur;
   if (key !== syncHomeNav.last) {
     syncHomeNav.last = key;
-    const el = nav.querySelector('.topic.active > summary') || nav.querySelector('.home-group-label.active');
+    const el = nav.querySelector('details.active > summary') || nav.querySelector('.home-group-label.active');
     if (el) el.scrollIntoView({ block: 'nearest' });
   }
 }
+// what clicking an entry / row does: the same as picking it on its card, or opening that exact exercise / question
+function homeGo(go) {
+  const [act, a, b] = go.split(':');
+  const first = list => list.find(e => e.status !== 'pass') || list[0];
+  const topic = id => state.index.find(t => t.id === id);
+  if (act === 'track') selectTrack(a);
+  else if (act === 'trackcat') selectTrack(a, (first(topic(b).exercises.filter(e => e.tier !== 0 && (a === 'full' || e.tier <= TRACK_MAX[a]))) || {}).id);
+  else if (act === 'trackex') selectTrack(a, b);
+  else if (act === 'intro') selectIntroCategory(a);
+  else if (act === 'introex') selectIntroCategory(a, b);
+  else if (act === 'quiz') Theory.go(a);
+  else if (act === 'quizgroup') {
+    const c = Theory.collection(a), g = c.groups.find(x => x.id === b);
+    Theory.go(a, (g.questions.find(x => x.status !== 'pass') || g.questions[0]).id);
+  } else if (act === 'quizq') Theory.go(a, b);
+}
 $('#home-body').addEventListener('scroll', syncHomeNav);
 $('#home-search').oninput = renderHomeNav;
-$('#home-expand-btn').onclick = () => {
-  document.querySelectorAll('#home-topics .topic').forEach(d => { d.open = true; });
-  saveHomeNavClosed();
-};
-$('#home-collapse-btn').onclick = () => {
-  document.querySelectorAll('#home-topics .topic').forEach(d => { d.open = false; });
-  saveHomeNavClosed();
-};
+$('#home-expand-btn').onclick = () => { document.querySelectorAll('#home-topics details').forEach(d => { d.open = true; }); saveHomeNavState(); };
+$('#home-collapse-btn').onclick = () => { document.querySelectorAll('#home-topics details').forEach(d => { d.open = false; }); saveHomeNavState(); };
 $('#home-topics').addEventListener('click', ev => {
-  const pick = ev.target.closest('.ex-item');
-  if (pick) {
-    ev.preventDefault();
-    const card = [...document.querySelectorAll(pick.dataset.pick)].find(c => (c.dataset.track || c.dataset.introTopic || c.dataset.theory || 'all') === pick.dataset.key);
-    if (card) card.click();
-    return;
-  }
+  const row = ev.target.closest('.ex-item');
+  if (row) { ev.preventDefault(); homeGo(row.dataset.go); return; }
   const head = ev.target.closest('summary, .home-group-label');
   if (!head) return;
-  const owner = head.closest('[data-scroll]') || head;
-  const target = $('#' + owner.dataset.scroll);
-  // a section that is about to open also comes into view; closing it only folds the list
-  const opening = head.tagName === 'SUMMARY' && !owner.open;
-  if (head.tagName === 'SUMMARY') setTimeout(saveHomeNavClosed, 0);   // the <details> toggles after this handler
-  if ((opening || head.tagName !== 'SUMMARY') && target) target.scrollIntoView({ block: 'start' });
+  if (head.tagName === 'SUMMARY') {
+    ev.preventDefault();                       // we decide ourselves between "open/close" and "go there"
+    const d = head.parentElement;
+    if (d.classList.contains('entry') && !ev.target.closest('.t-arrow')) { homeGo(head.dataset.go); return; }
+    const opening = !d.open;
+    d.open = opening;
+    saveHomeNavState();
+    // a section that opens also comes into view; folding it only folds the list
+    const target = d.dataset.scroll && $('#' + d.dataset.scroll);
+    if (opening && target) target.scrollIntoView({ block: 'start' });
+    return;
+  }
+  const target = $('#' + head.dataset.scroll);
+  if (target) target.scrollIntoView({ block: 'start' });
 });
 $('#home-nav').addEventListener('click', ev => {
   const pick = ev.target.closest('.hn-item');
@@ -945,28 +990,31 @@ function renderIntroGrid() {
     </button>`;
   }).join('');
 }
-function selectIntroCategory(id) {
+// `exId` (optional) opens that exercise instead of the first one not passed yet
+function selectIntroCategory(id, exId) {
   state.theory = null;
   state.introCategory = id;
   try { localStorage.setItem('introCategory', id); } catch { /* private mode */ }
   updateTrackBadge();
   renderSidebar();
   const pool = visibleFlat();
-  const next = pool.find(e => e.status !== 'pass') || pool[0];
+  const next = (exId && pool.find(e => e.id === exId)) || pool.find(e => e.status !== 'pass') || pool[0];
   location.hash = next ? `#/ex/${next.id}` : '#/home';
 }
-$('#track-grid').addEventListener('click', ev => {
-  const card = ev.target.closest('.track-card');
-  if (!card) return;
-  state.track = card.dataset.track;
+function selectTrack(track, exId) {
+  state.track = track;
   state.theory = null;
   state.introCategory = null;
   try { localStorage.setItem('track', state.track); localStorage.removeItem('introCategory'); } catch { /* private mode */ }
   updateTrackBadge();
   renderSidebar();
   const pool = visibleFlat();
-  const next = pool.find(e => e.status !== 'pass') || pool[0];
+  const next = (exId && pool.find(e => e.id === exId)) || pool.find(e => e.status !== 'pass') || pool[0];
   location.hash = next ? `#/ex/${next.id}` : '#/home';
+}
+$('#track-grid').addEventListener('click', ev => {
+  const card = ev.target.closest('.track-card');
+  if (card) selectTrack(card.dataset.track);
 });
 $('#intro-grid').addEventListener('click', ev => {
   const card = ev.target.closest('[data-intro-topic]');
@@ -1029,20 +1077,19 @@ window.addEventListener('hashchange', route);
 // ------------------------------------------------------------------ sidebar collapse & resize
 // The same full-height strip both collapses the sidebar (a plain click) and resizes it
 // (dragging it sideways) — a small pointer-movement threshold tells the two apart.
-(() => {
-  const btn = $('#sidebar-toggle'), sidebar = $('#sidebar'), layoutEl = document.querySelector('.layout');
+function setupSidebarHandle({ btn, sidebar, layoutEl, widthKey, collapsedKey }) {
   const MIN = 180, MAX = 480, DEFAULT_W = 290;
   let savedWidth = DEFAULT_W;
-  try { savedWidth = parseInt(localStorage.getItem('sidebarWidth'), 10) || DEFAULT_W; } catch { /* private mode */ }
+  try { savedWidth = parseInt(localStorage.getItem(widthKey), 10) || DEFAULT_W; } catch { /* private mode */ }
   sidebar.style.width = savedWidth + 'px';
 
   function setCollapsed(collapsed) {
     layoutEl.classList.toggle('sidebar-collapsed', collapsed);
     if (!collapsed) sidebar.style.width = savedWidth + 'px';
     btn.title = collapsed ? 'Expand sidebar' : 'Collapse sidebar';
-    try { localStorage.setItem('sidebarCollapsed', collapsed ? '1' : ''); } catch { /* private mode */ }
+    try { localStorage.setItem(collapsedKey, collapsed ? '1' : ''); } catch { /* private mode */ }
   }
-  try { if (localStorage.getItem('sidebarCollapsed')) setCollapsed(true); } catch { /* private mode */ }
+  try { if (localStorage.getItem(collapsedKey)) setCollapsed(true); } catch { /* private mode */ }
 
   let startX = 0, startW = 0, dragging = false;
   btn.onpointerdown = ev => {
@@ -1068,13 +1115,15 @@ window.addEventListener('hashchange', route);
     sidebar.classList.remove('no-transition');
     if (dragging) {
       btn.classList.remove('resizing');
-      try { localStorage.setItem('sidebarWidth', String(Math.round(savedWidth))); } catch { /* private mode */ }
+      try { localStorage.setItem(widthKey, String(Math.round(savedWidth))); } catch { /* private mode */ }
     } else {
       setCollapsed(!layoutEl.classList.contains('sidebar-collapsed'));
     }
     dragging = false;
   };
-})();
+}
+setupSidebarHandle({ btn: $('#sidebar-toggle'), sidebar: $('#sidebar'), layoutEl: document.querySelector('.layout'), widthKey: 'sidebarWidth', collapsedKey: 'sidebarCollapsed' });
+setupSidebarHandle({ btn: $('#home-sidebar-toggle'), sidebar: $('#home-nav'), layoutEl: $('#home-layout'), widthKey: 'homeSidebarWidth', collapsedKey: 'homeSidebarCollapsed' });
 
 (async () => {
   // theory.js is the last script on the page: wait until every script has run
