@@ -29,11 +29,6 @@ function flush() {
   printf "# %s · %s\n\n", id, title > f
   printf "**Topic:** %s · **Difficulty:** %s · **Commands:** %s\n\n", ttitle, stars, cmds > f
   printf "%s\n", readme > f
-  if (quiz) {
-    printf "\n---\nWrite your answers in `answer.txt` (one `N: answer` line per question), then run `check %s`.\n", id > f
-  } else {
-    printf "\n---\nWrite your solution in `answer.sh`, then run `check %s`.  \nTo experiment with the same test files the checker uses: `play %s`.\n", id, id > f
-  }
   close(f)
   f = dir "/check.sh"; printf "# checker spec for %s (see lib/engine.sh)\n%s\n", id, check > f; close(f)
   f = sdir "/" id "_" slug (quiz ? ".txt" : ".sh"); printf "%s\n", solution > f; close(f)
@@ -63,7 +58,7 @@ done | while read -r dir; do
       { echo "# $id — one answer per line after the colon"; grep -oE '^[0-9]+:' "$key" | sed 's/$/ /'; } > "$dir/answer.txt"
     fi
   elif [[ ! -f $dir/answer.sh ]]; then
-    printf '#!/bin/bash\n# %s — write your answer below, then run: check %s\n\n' "$id" "$id" > "$dir/answer.sh"
+    printf '#!/bin/bash\n# %s — write your answer below\n\n' "$id" > "$dir/answer.sh"
     chmod +x "$dir/answer.sh"
   fi
 done

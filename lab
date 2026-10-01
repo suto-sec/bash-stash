@@ -1,9 +1,7 @@
 #!/bin/bash
 # Host wrapper for the Ubuntu lab container.
 #   ./lab              open a shell as alumno (starts the container if needed)
-#   ./lab check ID     run the checker for an exercise (or "all")
-#   ./lab next         show the next unsolved exercise
-#   ./lab <cmd...>     run any command inside the container as alumno
+#   ./lab <cmd...>     run any command inside the container as alumno (tools/validate*.sh, build scripts...)
 #   ./lab build        (re)build the image
 #   ./lab reset        destroy the container (fresh system on next start)
 #   ./lab root         open a root shell
