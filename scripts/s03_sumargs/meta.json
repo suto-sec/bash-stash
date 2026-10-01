@@ -1,0 +1,26 @@
+{
+ "id": "s03",
+ "slug": "sumargs",
+ "title": "Adding the arguments",
+ "script": "sumargs.sh",
+ "cmds": "for, arithmetic $(( )), test, regular expressions [[ =~ ]]",
+ "group": "First steps",
+ "steps": [
+  {
+   "n": 1,
+   "title": "Add them up"
+  },
+  {
+   "n": 2,
+   "title": "At least one number"
+  },
+  {
+   "n": 3,
+   "title": "Only numbers"
+  },
+  {
+   "n": 4,
+   "title": "Count and average"
+  }
+ ]
+}

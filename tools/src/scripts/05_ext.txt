@@ -1,0 +1,113 @@
+@@script s05 | ext | What kind of file name? | ext.sh
+@@cmds case, for, arithmetic, ${var,,}
+@@fixture
+setup() { :; }
+@@step 1 | One name
+@@readme
+Write `ext.sh NAME`. It looks only at the **end of the name** and prints `NAME: kind`:
+
+| the name ends in | kind |
+|------------------|------|
+| `.txt` | `text` |
+| `.sh` | `script` |
+| `.png` or `.jpg` | `image` |
+| anything else | `other` |
+
+```
+ext.sh photo.png   ->   photo.png: image
+```
+
+This is a job for `case "$1" in *.txt) ... ;; esac`.
+@@check
+ARGS=('a.txt' 'run.sh' 'photo.png' 'photo.jpg' 'data' 'archive.tar.gz' '"my notes.txt"' 'txt' 'x.shx' 'UPPER.TXT')
+COMPARE="stdout exit"
+@@solution
+#!/bin/bash
+case $1 in
+  *.txt) kind=text ;;
+  *.sh) kind=script ;;
+  *.png|*.jpg) kind=image ;;
+  *) kind=other ;;
+esac
+echo "$1: $kind"
+@@step 2 | Many names
+@@readme
+`ext.sh` now takes any number of names and prints one `name: kind` line for each, in the order given (a name with spaces is a single argument when quoted).
+@@check
+ARGS=('a.txt' 'a.txt run.sh photo.png' '"my notes.txt" data photo.jpg' 'x.shx UPPER.TXT archive.tar.gz')
+COMPARE="stdout exit"
+@@solution
+#!/bin/bash
+for name in "$@"; do
+  case $name in
+    *.txt) kind=text ;;
+    *.sh) kind=script ;;
+    *.png|*.jpg) kind=image ;;
+    *) kind=other ;;
+  esac
+  echo "$name: $kind"
+done
+@@step 3 | A summary
+@@readme
+After the per-name lines print four summary lines, always in this order and even when a count is 0:
+
+```
+text: 2
+script: 1
+image: 0
+other: 3
+```
+
+Keep one counter per kind and add 1 to it inside the loop.
+@@check
+ARGS=('a.txt' 'a.txt run.sh photo.png' '"my notes.txt" data photo.jpg' 'x.shx UPPER.TXT archive.tar.gz' 'a.txt b.txt c.txt d.sh')
+COMPARE="stdout exit"
+@@solution
+#!/bin/bash
+text=0 script=0 image=0 other=0
+for name in "$@"; do
+  case $name in
+    *.txt) kind=text; text=$((text + 1)) ;;
+    *.sh) kind=script; script=$((script + 1)) ;;
+    *.png|*.jpg) kind=image; image=$((image + 1)) ;;
+    *) kind=other; other=$((other + 1)) ;;
+  esac
+  echo "$name: $kind"
+done
+echo "text: $text"
+echo "script: $script"
+echo "image: $image"
+echo "other: $other"
+@@step 4 | No names, any case
+@@readme
+Two last details:
+
+1. With **no arguments** print an error message **and the correct usage** on standard error and exit with code **1** (nothing on standard output).
+2. Extensions are **not case-sensitive**: `UPPER.TXT` is `text`, `Photo.PNG` is `image`.
+
+`${name,,}` gives `name` in lower case.
+@@check
+ARGS=('' 'a.txt' 'a.txt run.sh photo.png' 'UPPER.TXT Photo.PNG x.Sh' '"my notes.txt" data photo.JPG' 'x.shx archive.tar.gz')
+COMPARE="stdout exit errmsg"
+extra_check() { [[ $REF_CODE == 1 ]] && { [[ $ERR == *ext.sh* || $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* ]] || fail "the message should show the correct usage"; }; }
+@@solution
+#!/bin/bash
+if (( $# == 0 )); then
+  echo "Error: no names given" >&2
+  echo "Usage: $0 name..." >&2
+  exit 1
+fi
+text=0 script=0 image=0 other=0
+for name in "$@"; do
+  case ${name,,} in
+    *.txt) kind=text; text=$((text + 1)) ;;
+    *.sh) kind=script; script=$((script + 1)) ;;
+    *.png|*.jpg) kind=image; image=$((image + 1)) ;;
+    *) kind=other; other=$((other + 1)) ;;
+  esac
+  echo "$name: $kind"
+done
+echo "text: $text"
+echo "script: $script"
+echo "image: $image"
+echo "other: $other"

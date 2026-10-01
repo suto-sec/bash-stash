@@ -1,0 +1,38 @@
+{
+ "id": "medium-01",
+ "slug": "lowstock",
+ "tier": "medium",
+ "title": {
+  "en": "Low stock report",
+  "es": "Informe de stock bajo"
+ },
+ "script": "lowstock.sh",
+ "cmds": "read, IFS, sort, arithmetic, test, exit codes",
+ "objectives": [
+  {
+   "id": "args",
+   "label": {
+    "en": "Argument checking and error messages",
+    "es": "Comprobación de argumentos y mensajes de error"
+   },
+   "points": 3
+  },
+  {
+   "id": "core",
+   "label": {
+    "en": "Selecting, sorting and printing the items",
+    "es": "Seleccionar, ordenar e imprimir los artículos"
+   },
+   "points": 4
+  },
+  {
+   "id": "edge",
+   "label": {
+    "en": "Special cases (no low items, blank lines, spaces)",
+    "es": "Casos especiales (ninguno bajo, líneas vacías, espacios)"
+   },
+   "points": 3
+  }
+ ],
+ "total": 10
+}

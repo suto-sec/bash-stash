@@ -1,0 +1,26 @@
+{
+ "id": "s05",
+ "slug": "ext",
+ "title": "What kind of file name?",
+ "script": "ext.sh",
+ "cmds": "case, for, arithmetic, ${var,,}",
+ "group": "First steps",
+ "steps": [
+  {
+   "n": 1,
+   "title": "One name"
+  },
+  {
+   "n": 2,
+   "title": "Many names"
+  },
+  {
+   "n": 3,
+   "title": "A summary"
+  },
+  {
+   "n": 4,
+   "title": "No names, any case"
+  }
+ ]
+}

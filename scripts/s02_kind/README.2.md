@@ -1,0 +1,1 @@
+A path that does not exist is now an error: print a message that includes the path on **standard error** (instead of the `not found` line) and exit with code **2**. Files and directories still print their line and exit with 0.

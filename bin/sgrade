@@ -1,0 +1,6 @@
+#!/bin/bash
+# sgrade <exam-id> <answer-file>   grade a practice-exam script: per-objective points, then the checker's report
+source "$(dirname "$(readlink -f "$0")")/../lib/engine.sh"
+lab_lock
+[[ -n ${2:-} ]] || { sed -n '2p' "$0" | sed 's/^# //'; exit 2; }
+grade_exam "$@"

@@ -1,0 +1,26 @@
+{
+ "id": "s04",
+ "slug": "lines",
+ "title": "Counting lines",
+ "script": "lines.sh",
+ "cmds": "wc, test -f -r, for, exit codes, getopts / case on $1",
+ "group": "First steps",
+ "steps": [
+  {
+   "n": 1,
+   "title": "Lines of one file"
+  },
+  {
+   "n": 2,
+   "title": "Check the file"
+  },
+  {
+   "n": 3,
+   "title": "Many files"
+  },
+  {
+   "n": 4,
+   "title": "Words instead of lines"
+  }
+ ]
+}

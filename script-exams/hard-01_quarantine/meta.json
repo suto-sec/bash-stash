@@ -1,0 +1,62 @@
+{
+ "id": "hard-01",
+ "slug": "quarantine",
+ "tier": "hard",
+ "title": {
+  "en": "Quarantine for world-writable files",
+  "es": "Cuarentena para ficheros escribibles por todos"
+ },
+ "script": "quarantine.sh",
+ "cmds": "find -perm, mv, chmod, mkdir, while read, sort, exit codes",
+ "objectives": [
+  {
+   "id": "args",
+   "label": {
+    "en": "Argument checking and error messages",
+    "es": "Comprobación de argumentos y mensajes de error"
+   },
+   "points": 2
+  },
+  {
+   "id": "create",
+   "label": {
+    "en": "Creating the quarantine directory and its message",
+    "es": "Crear el directorio de cuarentena y su mensaje"
+   },
+   "points": 1
+  },
+  {
+   "id": "select",
+   "label": {
+    "en": "Choosing the right files",
+    "es": "Elegir los ficheros correctos"
+   },
+   "points": 2
+  },
+  {
+   "id": "collision",
+   "label": {
+    "en": "Names that already exist in the quarantine",
+    "es": "Nombres que ya existen en la cuarentena"
+   },
+   "points": 2
+  },
+  {
+   "id": "failure",
+   "label": {
+    "en": "Files that cannot be moved: count and exit code",
+    "es": "Ficheros que no se pueden mover: cuenta y código de salida"
+   },
+   "points": 2
+  },
+  {
+   "id": "default",
+   "label": {
+    "en": "Whole script on the current directory",
+    "es": "Script completo sobre el directorio actual"
+   },
+   "points": 1
+  }
+ ],
+ "total": 10
+}

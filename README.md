@@ -113,7 +113,7 @@ Progress is stored in `.progress/` (delete it to start over).
 
 ## Theory quizzes
 
-The home page has two big parts, **Scripting exercises** (*Tracks* and *Introduction*) and **Theory** (*Quizzes*), with
+The home page has two big parts, **Coding exercises** (*Tracks*, *Introduction*, *Scripts* and *Practice exams*) and **Theory** (*Quizzes*), with
 a left-hand navigation to jump to a section or pick a track, an introduction category or a quiz collection directly.
 
 Besides the exercises, the web UI has a **Theory** part on the home page: 13 collections and more
@@ -148,6 +148,21 @@ sources in `tools/theory/*.txt` (format in `tools/THEORY_AUTHORING.md`), compile
 The quizzes are available in **English and Spanish**: Settings (⚙) → *Theory language*. The switch only
 affects the Theory section (its home-page cards, categories, questions and explanations); exercises and
 the rest of the app stay in English. Progress is shared between the two languages.
+
+## Scripts
+
+Under **Coding exercises → Scripts**: whole scripts built up step by step. Each script is one exercise with a few steps; every step adds one
+requirement and has its own check, and your file keeps growing from step to step (`.progress/scripts/`). Info and Show solution work as in the
+other exercises, and *Load step N code* continues from the reference code (your file is archived first). They have their own counter, outside
+the tracks. Sources: `tools/src/scripts/*.txt` (see `tools/SCRIPTS_AUTHORING.md`).
+
+## Script practice exams
+
+Under **Coding exercises → Practice exams** there are exams with one bash script each (three levels, seven exams per level), written in
+VS Code and the terminal and graded out of 10 by objectives (pass at 5), with a history of attempts, the score of each objective and your
+script. Settings (⚙ → *Script practice exams*): the checker may be run **any time** (practice) or **only on submit** (exam-like: statement,
+VS Code and terminal only). An unfinished attempt is kept; resume or discard it from the exam's overview. Statements follow the Theory
+language toggle. Sources: `tools/src/script-exams/*.txt` (see `tools/EXAMS_AUTHORING.md`); history and your scripts: `.progress/script-exams/`.
 
 ## Practice exams
 

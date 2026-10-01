@@ -18,7 +18,7 @@ const PORT = Number(process.env.PORT || 8080);
 const CODE_SERVER = 'http://127.0.0.1:8081';
 const VENDOR = process.env.VENDOR || '/opt/web/node_modules';
 const PUBLIC = path.join(__dirname, 'public');
-const PROGRESS = path.join(LAB, '.progress');
+const PROGRESS = process.env.LAB_PROGRESS || path.join(LAB, '.progress');   // LAB_PROGRESS: scratch dir for tests
 const CS_SETTINGS = path.join(process.env.HOME || '/home/alumno', '.local/share/code-server/User/settings.json');
 
 // ------------------------------------------------------------------ exercises
@@ -242,6 +242,160 @@ function gradeAttempt(exam, body, prev) {
   };
 }
 
+// ------------------------------------------------------------------ script practice exams
+// One bash script per exam, graded out of 10 by objectives (bin/sgrade, lib/engine.sh: grade_exam). Sources:
+// tools/src/script-exams/*.txt -> script-exams/<id>_<slug>/{README.md,README.es.md,check.sh,meta.json} (tools/build_script_exams.js).
+// Everything the user does lives under .progress/script-exams/: <id>.json (finished attempts, oldest first),
+// <id>.attempt.json (the attempt in progress: kept until it is submitted or discarded), <id>/work/<script>
+// (the script being written; the terminal and VS Code open there) and <id>/archive/ (earlier scripts).
+const SX = path.join(LAB, 'script-exams');
+const SX_PROGRESS = path.join(PROGRESS, 'script-exams');
+const SX_ID = /^(easy|medium|hard)-\d\d$/;
+const SX_PASS = 5;
+const SX_MAX_ATTEMPTS = 200;
+function sxDir(id) {
+  if (!SX_ID.test(id)) return null;
+  try { const d = fs.readdirSync(SX).find(n => n.startsWith(id + '_')); return d ? path.join(SX, d) : null; } catch { return null; }
+}
+function sxMeta(id) {
+  const d = sxDir(id);
+  if (!d) return null;
+  try { return { ...JSON.parse(fs.readFileSync(path.join(d, 'meta.json'), 'utf8')), dir: d }; } catch { return null; }
+}
+const sxAttemptsFile = id => path.join(SX_PROGRESS, id + '.json');
+const sxCurrentFile = id => path.join(SX_PROGRESS, id + '.attempt.json');
+const sxWorkDir = id => path.join(SX_PROGRESS, id, 'work');
+function sxAttempts(id) {
+  try { const a = JSON.parse(fs.readFileSync(sxAttemptsFile(id), 'utf8')); return Array.isArray(a) ? a : []; } catch { return []; }
+}
+function sxCurrent(id) {
+  try { return JSON.parse(fs.readFileSync(sxCurrentFile(id), 'utf8')); } catch { return null; }
+}
+function sxWrite(file, value) {
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file + '.tmp', JSON.stringify(value));
+  fs.renameSync(file + '.tmp', file);
+}
+const sxLang = lang => THEORY_LANGS.includes(lang) ? lang : 'en';
+const sxText = (o, lang) => (o && (o[lang] || o.en)) || '';
+function sxIndex(lang) {
+  let dirs = [];
+  try { dirs = fs.readdirSync(SX).filter(n => SX_ID.test(n.split('_')[0])); } catch { /* none yet */ }
+  const rank = m => EXAM_TIER_ORDER.indexOf(m.tier) * 1000 + (parseInt(m.id.split('-')[1], 10) || 0);
+  return dirs.map(n => sxMeta(n.split('_')[0])).filter(Boolean).sort((a, b) => rank(a) - rank(b)).map(m => {
+    const at = sxAttempts(m.id), last = at[at.length - 1], cur = sxCurrent(m.id);
+    return { id: m.id, tier: m.tier, title: sxText(m.title, lang), script: m.script, cmds: m.cmds, total: m.total, pass: SX_PASS,
+      attempts: at.length, best: at.length ? Math.max(...at.map(a => a.score)) : null,
+      last: last ? { n: last.n, score: last.score, finishedAt: last.finishedAt } : null,
+      inProgress: cur ? { startedAt: cur.startedAt } : null };
+  });
+}
+function sxDetail(m, lang) {
+  const readme = fs.readFileSync(path.join(m.dir, lang === 'es' ? 'README.es.md' : 'README.md'), 'utf8');
+  const cur = sxCurrent(m.id);
+  return { id: m.id, tier: m.tier, title: sxText(m.title, lang), script: m.script, cmds: m.cmds, total: m.total, pass: SX_PASS,
+    objectives: m.objectives.map(o => ({ id: o.id, label: sxText(o.label, lang), points: o.points })),
+    readme, attempt: cur, workDir: sxWorkDir(m.id), scriptPath: path.join(sxWorkDir(m.id), m.script) };
+}
+function sxArchive(m, why) {      // keep whatever script is in the work dir before it is replaced
+  const file = path.join(sxWorkDir(m.id), m.script);
+  if (!isAttempted(file)) return;
+  const dest = path.join(SX_PROGRESS, m.id, 'archive');
+  fs.mkdirSync(dest, { recursive: true });
+  fs.copyFileSync(file, path.join(dest, new Date().toISOString().replace(/[:.]/g, '-') + (why ? '-' + why : '') + '.sh'));
+}
+function sxStart(m, body) {
+  const cur = sxCurrent(m.id);
+  if (cur) return cur;                                   // an attempt in progress is resumed, never replaced
+  sxArchive(m, 'previous');
+  const work = sxWorkDir(m.id), file = path.join(work, m.script);
+  fs.mkdirSync(work, { recursive: true });
+  fs.writeFileSync(file, `#!/bin/bash\n# ${m.script} — write your solution here\n\n`);
+  fs.chmodSync(file, 0o755);
+  const st = body.settings && typeof body.settings === 'object' ? body.settings : {};
+  const attempt = { startedAt: new Date().toISOString(), settings: { checkAnytime: st.checkAnytime === true }, lang: sxLang(body.lang) };
+  sxWrite(sxCurrentFile(m.id), attempt);
+  return attempt;
+}
+function sxGrade(m, file) {       // -> Promise of the parsed bin/sgrade report
+  return new Promise((resolve, reject) => {
+    const p = spawn(path.join(LAB, 'bin/sgrade'), [m.id, file], { cwd: LAB, env: process.env });
+    let out = '', err = '';
+    p.stdout.on('data', d => { out += d; });
+    p.stderr.on('data', d => { err += d; });
+    const timer = setTimeout(() => p.kill(), 300000);
+    p.on('error', reject);
+    p.on('close', () => {
+      clearTimeout(timer);
+      const cut = out.indexOf('\n---\n');
+      const head = (cut < 0 ? out : out.slice(0, cut)).split('\n');
+      const details = (cut < 0 ? err : out.slice(cut + 5)).slice(0, 12000);
+      const objectives = head.filter(l => l.startsWith('OBJ|')).map(l => {
+        const [, id, , points, passed, cases, earned] = l.split('|');
+        return { id, points: +points, passed: +passed, cases: +cases, earned: +earned };
+      });
+      const sc = head.find(l => l.startsWith('SCORE|'));
+      if (!sc || !objectives.length) return reject(new Error('the grader failed: ' + (err || out).slice(0, 400)));
+      resolve({ score: +sc.split('|')[1], objectives, details });
+    });
+  });
+}
+
+// ------------------------------------------------------------------ scripts (one script built up in steps)
+// scripts/<id>_<slug>/{meta.json, README.<n>.md, check.<n>.sh} are built from tools/src/scripts/*.txt (tools/build_scripts.js). The
+// learner's file lives in .progress/scripts/<id>/<name>.sh and keeps growing from step to step; a step passes when bin/check
+// <id>.<n> succeeds, which the engine records in .progress/scripts/<id>.steps (a passed step stays passed). A script counts as
+// done when every step has passed. These are not tracks exercises: they have their own section and counter.
+const SC = path.join(LAB, 'scripts');
+const SC_PROGRESS = path.join(PROGRESS, 'scripts');
+const SC_ID = /^s\d\d$/;
+function scDir(id) {
+  if (!SC_ID.test(id)) return null;
+  try { const d = fs.readdirSync(SC).find(n => n.startsWith(id + '_')); return d ? path.join(SC, d) : null; } catch { return null; }
+}
+function scMeta(id) {
+  const d = scDir(id);
+  if (!d) return null;
+  try { return { ...JSON.parse(fs.readFileSync(path.join(d, 'meta.json'), 'utf8')), dir: d }; } catch { return null; }
+}
+function scPassed(id) {
+  try { return [...new Set(fs.readFileSync(path.join(SC_PROGRESS, id + '.steps'), 'utf8').split('\n').map(Number).filter(n => n > 0))].sort((a, b) => a - b); }
+  catch { return []; }
+}
+const scAnswer = m => path.join(SC_PROGRESS, m.id, m.script);
+const scTemplate = m => `#!/bin/bash\n# ${m.script} — write your script here, then run the step's Check\n\n`;
+function scEnsure(m) {          // the learner's file exists from the first visit on (never overwritten here)
+  const f = scAnswer(m);
+  if (!fs.existsSync(f)) { fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, scTemplate(m)); fs.chmodSync(f, 0o755); }
+  return f;
+}
+function scPlay(m) {            // ~/play/<id>/work: the checker's fixture files plus the script, for the terminal and VS Code
+  scEnsure(m);
+  const dir = playDirFor(m.id);
+  if (!fs.existsSync(dir)) { try { buildPlay(m.id); } catch { /* the terminal falls back to LAB */ } }
+  return fs.existsSync(dir) ? dir : null;
+}
+function scStatus(m, passed) { return passed.length >= m.steps.length ? 'pass' : (passed.length || isAttempted(scAnswer(m))) ? 'attempted' : 'new'; }
+function scIndex() {
+  let dirs = [];
+  try { dirs = fs.readdirSync(SC).filter(n => /^s\d\d_/.test(n)).sort(); } catch { /* none yet */ }
+  return dirs.map(n => scMeta(n.slice(0, 3))).filter(Boolean).map(m => {
+    const passed = scPassed(m.id);
+    return { id: m.id, slug: m.slug, title: m.title, script: m.script, cmds: m.cmds, group: m.group, steps: m.steps, passed, status: scStatus(m, passed) };
+  });
+}
+function scDetail(m) {
+  const passed = scPassed(m.id);
+  const steps = m.steps.map(st => ({ ...st, readme: fs.readFileSync(path.join(m.dir, `README.${st.n}.md`), 'utf8') }));
+  const current = (steps.find(st => !passed.includes(st.n)) || steps[steps.length - 1]).n;
+  return { id: m.id, title: m.title, script: m.script, cmds: m.cmds, group: m.group, steps, passed, current, status: scStatus(m, passed),
+    answer: scEnsure(m), playDir: scPlay(m) };
+}
+function scSolution(m, n) {
+  const f = path.join(LAB, 'solutions/scripts', path.basename(m.dir), `${n}.sh`);
+  try { return fs.readFileSync(f, 'utf8'); } catch { return null; }
+}
+
 // ------------------------------------------------------------------ practice fixture ("play")
 // exercises/<id>/ only holds README.md, check.sh and answer.sh — the actual files a script
 // needs to read (created by the checker's setup()) live nowhere on disk until built. So that a
@@ -421,6 +575,109 @@ async function api(req, res, url) {
     return send(res, 404, { error: 'unknown endpoint' });
   }
 
+  if (parts[1] === 'scripts') {
+    if (req.method === 'GET' && !parts[2]) return send(res, 200, scIndex());
+    const m = parts[2] ? scMeta(parts[2]) : null;
+    if (!m) return send(res, 404, { error: 'no such script' });
+    const step = Number(url.searchParams.get('step'));
+    if (req.method === 'GET' && !parts[3]) return send(res, 200, scDetail(m));
+    if (parts[3] === 'check' && req.method === 'POST') {
+      if (!m.steps.some(st => st.n === step)) return send(res, 400, { error: 'no such step' });
+      scEnsure(m);
+      res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' });
+      const p = spawn(path.join(LAB, 'bin/check'), [`${m.id}.${step}`], { cwd: LAB, env: { ...process.env, LAB_COLOR: '1' } });
+      p.stdout.on('data', d => res.write(d));
+      p.stderr.on('data', d => res.write(d));
+      p.on('close', code => res.end(`\n\x1b[2m[exit ${code}]\x1b[0m\n`));
+      res.on('close', () => { if (p.exitCode === null) p.kill(); });
+      return;
+    }
+    if (parts[3] === 'solution' && req.method === 'POST') {
+      const content = m.steps.some(st => st.n === step) ? scSolution(m, step) : null;
+      return content == null ? send(res, 404, { error: 'no solution' }) : send(res, 200, { file: `solutions/scripts/${path.basename(m.dir)}/${step}.sh`, content });
+    }
+    if (parts[3] === 'load' && req.method === 'POST') {    // replace the learner's file with the reference code of a step (0 = empty template)
+      const body = await readBody(req);
+      const n = Number(body.step);
+      const text = n === 0 ? scTemplate(m) : m.steps.some(st => st.n === n) ? scSolution(m, n) : null;
+      if (text == null) return send(res, 400, { error: 'no such step' });
+      const f = scEnsure(m);
+      if (isAttempted(f)) {                                  // never lose what is there: it is archived first
+        const arch = path.join(SC_PROGRESS, m.id, 'archive');
+        fs.mkdirSync(arch, { recursive: true });
+        fs.copyFileSync(f, path.join(arch, new Date().toISOString().replace(/[:.]/g, '-') + '.sh'));
+      }
+      fs.writeFileSync(f, text); fs.chmodSync(f, 0o755);
+      return send(res, 200, { ok: true });
+    }
+    if (parts[3] === 'reset' && req.method === 'POST') {
+      try { buildPlay(m.id); } catch (e) { return send(res, 500, { error: String(e) }); }
+      return send(res, 200, { playDir: playDirFor(m.id) });
+    }
+    return send(res, 404, { error: 'unknown endpoint' });
+  }
+
+  if (parts[1] === 'sexams') {
+    const lang = sxLang(url.searchParams.get('lang'));
+    if (req.method === 'GET' && !parts[2]) return send(res, 200, sxIndex(lang));
+    const m = parts[2] ? sxMeta(parts[2]) : null;
+    if (!m) return send(res, 404, { error: 'no such script exam' });
+    if (req.method === 'GET' && !parts[3]) return send(res, 200, sxDetail(m, lang));
+    if (parts[3] === 'attempts' && req.method === 'GET') return send(res, 200, sxAttempts(m.id));
+    if (parts[3] === 'start' && req.method === 'POST') {
+      const body = await readBody(req);
+      try { sxStart(m, body || {}); } catch (e) { return send(res, 500, { error: String(e) }); }
+      return send(res, 200, sxDetail(m, lang));
+    }
+    if (parts[3] === 'discard' && req.method === 'POST') {
+      try { sxArchive(m, 'discarded'); fs.unlinkSync(sxCurrentFile(m.id)); } catch { /* nothing in progress */ }
+      return send(res, 200, { ok: true });
+    }
+    if (parts[3] === 'check' && req.method === 'POST') {
+      const cur = sxCurrent(m.id);
+      if (!cur) return send(res, 409, { error: 'no attempt in progress' });
+      if (!cur.settings.checkAnytime) return send(res, 403, { error: 'this attempt grades only when you submit it' });
+      res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' });
+      const p = spawn(path.join(LAB, 'bin/check'), [m.id, path.join(sxWorkDir(m.id), m.script)], { cwd: LAB, env: { ...process.env, LAB_COLOR: '1' } });
+      p.stdout.on('data', d => res.write(d));
+      p.stderr.on('data', d => res.write(d));
+      p.on('close', code => res.end(`\n\x1b[2m[exit ${code}]\x1b[0m\n`));
+      res.on('close', () => { if (p.exitCode === null) p.kill(); });
+      return;
+    }
+    if (parts[3] === 'submit' && req.method === 'POST') {
+      const cur = sxCurrent(m.id);
+      if (!cur) return send(res, 409, { error: 'no attempt in progress' });
+      const file = path.join(sxWorkDir(m.id), m.script);
+      let graded;
+      try { graded = await sxGrade(m, file); } catch (e) { return send(res, 500, { error: String(e.message || e) }); }
+      const prev = sxAttempts(m.id), finished = Date.now(), started = Date.parse(cur.startedAt) || finished;
+      let script = '';
+      try { script = fs.readFileSync(file, 'utf8').slice(0, 30000); } catch { /* missing */ }
+      const attempt = {
+        n: prev.reduce((mx, a) => Math.max(mx, a.n || 0), 0) + 1,
+        startedAt: new Date(started).toISOString(), finishedAt: new Date(finished).toISOString(),
+        seconds: Math.round((finished - started) / 1000),
+        score: Math.round(graded.score * 10) / 10, total: m.total, pass: graded.score >= SX_PASS,
+        settings: cur.settings, lang: cur.lang || 'en', objectives: graded.objectives, details: graded.details, script,
+      };
+      sxArchive(m, 'submitted');
+      sxWrite(sxAttemptsFile(m.id), [...prev, attempt].slice(-SX_MAX_ATTEMPTS));
+      try { fs.unlinkSync(sxCurrentFile(m.id)); } catch { /* already gone */ }
+      return send(res, 200, attempt);
+    }
+    if (parts[3] === 'solution' && req.method === 'POST') {
+      if (sxCurrent(m.id)) return send(res, 403, { error: 'finish or discard the attempt in progress first' });
+      const f = path.join(LAB, 'solutions/script-exams', path.basename(m.dir) + '.sh');
+      try { return send(res, 200, { content: fs.readFileSync(f, 'utf8') }); } catch { return send(res, 404, { error: 'no reference solution' }); }
+    }
+    if (parts[3] === 'reset' && req.method === 'POST') {
+      try { fs.unlinkSync(sxAttemptsFile(m.id)); } catch { /* nothing stored */ }
+      return send(res, 200, { ok: true });
+    }
+    return send(res, 404, { error: 'unknown endpoint' });
+  }
+
   const ex = parts[2] ? findExercise(parts[2]) : null;
   if (['exercise', 'check', 'solution', 'reset', 'attempt'].includes(parts[1]) && !ex) return send(res, 404, { error: 'no such exercise' });
 
@@ -583,11 +840,13 @@ const wss = new WebSocketServer({ noServer: true });
 wss.on('connection', (ws, req) => {
   const url = new URL(req.url, 'http://localhost');
   const ex = url.searchParams.get('ex') ? findExercise(url.searchParams.get('ex')) : null;
+  const sx = SX_ID.test(url.searchParams.get('sx') || '') ? sxWorkDir(url.searchParams.get('sx')) : null;   // a script exam: its work dir
+  const sc = SC_ID.test(url.searchParams.get('sc') || '') ? scMeta(url.searchParams.get('sc')) : null;   // a script: its fixture dir
   const term = pty.spawn('bash', ['-l'], {
     name: 'xterm-256color',
     cols: Number(url.searchParams.get('cols')) || 80,
     rows: Number(url.searchParams.get('rows')) || 24,
-    cwd: ex ? (ensurePlay(ex) || ex.dir) : LAB,
+    cwd: sc && scPlay(sc) ? scPlay(sc) : sx && fs.existsSync(sx) ? sx : ex ? (ensurePlay(ex) || ex.dir) : LAB,
     env: { ...process.env, TERM: 'xterm-256color', LAB_QUIET: '' },
   });
   term.onData(d => { if (ws.readyState === ws.OPEN) ws.send(d); });

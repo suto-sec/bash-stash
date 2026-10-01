@@ -1,0 +1,3 @@
+The script now accepts **one or more** files (no file at all is still the usage error, code 1). It prints one `file: N` line for each, in the order given. When more than one file is given, add a final line `total: T` with the sum of all the line counts.
+
+If one of the files has a problem (it is not a regular file, or not readable), print the error message on standard error, **skip it and go on** with the others, and finish with exit code **2** after printing everything else. The `total:` line counts only the files that were read, and is printed only if more than one file was given and at least one of them was read.

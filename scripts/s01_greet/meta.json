@@ -1,0 +1,22 @@
+{
+ "id": "s01",
+ "slug": "greet",
+ "title": "A friendly greeting",
+ "script": "greet.sh",
+ "cmds": "echo, test, exit codes",
+ "group": "First steps",
+ "steps": [
+  {
+   "n": 1,
+   "title": "Say hello"
+  },
+  {
+   "n": 2,
+   "title": "Greet by name"
+  },
+  {
+   "n": 3,
+   "title": "Refuse too many arguments"
+  }
+ ]
+}

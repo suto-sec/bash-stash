@@ -92,6 +92,14 @@
           <span class="settings-row-label">Allow going back</span>
           <input type="checkbox" id="exam-back">
         </label>
+        <div class="layout-menu-sep"></div>
+        <div class="layout-menu-label">Script practice exams</div>
+        <button class="settings-row" id="sx-check-row" role="menuitemradio">
+          <span class="settings-row-label">Checker during an attempt</span>
+          <span class="settings-row-value" id="sx-check-value">Only on submit</span>
+        </button>
+        <p class="settings-note"><strong>Only on submit</strong> resembles the exam: you only get the statement, VS Code and the terminal, and the script is graded once, when you submit. <strong>Any time</strong> lets you run the checker while you work. An attempt in progress keeps the setting it started with.</p>
+        <div class="layout-menu-sep"></div>
         <p class="settings-note"><strong>After each question</strong> is for practice: each answer is explained and locked. <strong>At the end</strong> resembles the exam: nothing is revealed until you finish. <strong>Allow going back</strong> is independent: off means strictly sequential (a question is final once you move on). An attempt in progress is kept, and keeps the settings it started with.</p>
       </div>
     </div>
@@ -158,12 +166,17 @@
               </div>
               <span id="ex-status" class="badge"></span>
             </div>
+            <div id="sc-steps" class="sc-only"></div>
             <div class="actions">
               <button id="check-btn" class="primary" title="Ctrl+Enter">▶ Check</button>
               <button id="info-btn" title="What the commands used in this exercise do, in general">ℹ Info</button>
               <button id="solution-btn">Show solution</button>
               <button id="prev-btn" title="Previous exercise">◀</button>
               <button id="next-btn" title="Next exercise">▶▶</button>
+              <button id="sc-load-btn" class="sc-only"></button>
+              <button id="sx-check-btn" class="sx-only hidden"></button>
+              <button id="sx-submit-btn" class="primary sx-only"></button>
+              <button id="sx-quit-btn" class="sx-only"></button>
               <span class="hint" id="answer-path"></span>
             </div>
             <div id="result" class="result hidden" aria-live="polite">
@@ -216,7 +229,7 @@
     </aside>
     <button id="home-sidebar-toggle" class="sidebar-toggle" title="Collapse sidebar" aria-label="Collapse sidebar"><span class="arrow">‹</span></button>
     <div class="home-body" id="home-body">
-      <h1 class="home-group-title" id="home-grp-exercises">Scripting exercises</h1>
+      <h1 class="home-group-title" id="home-grp-exercises">Coding exercises</h1>
       <h2 class="home-section-title" id="home-sec-tracks">Tracks</h2>
       <p class="home-intro">Pick a collection. It decides which exercises show up in the sidebar — you can change this anytime by clicking the logo again.</p>
       <div class="track-grid" id="track-grid">
@@ -245,6 +258,14 @@
         <div class="track-card-count" data-count="intro-all"></div>
       </button>
       <div class="track-grid" id="intro-grid"></div>
+
+      <h2 class="home-section-title" id="home-sec-scripts">Scripts</h2>
+      <p class="home-intro">Whole scripts, built up step by step: each script starts with a few lines and grows one requirement at a time, and every step has its own check. The first ones are tiny; the last ones look like exam scripts. Use ◀ ▶▶ to move between steps, and <strong>Load step N code</strong> if you want to continue from the reference code.</p>
+      <div id="scripts-grid"></div>
+
+      <h2 class="home-section-title" id="home-sec-sexams">Practice exams</h2>
+      <p class="home-intro" id="sexams-intro"></p>
+      <div id="sexams-grid"></div>
 
       <h1 class="home-group-title" id="theory-home-title">Theory</h1>
       <h2 class="home-section-title" id="theory-quizzes-title">Quizzes</h2>
@@ -310,5 +331,7 @@
   <script src="/app.js"></script>
   <script src="/theory.js"></script>
   <script src="/exams.js"></script>
+  <script src="/scripts.js"></script>
+  <script src="/sexams.js"></script>
 </body>
 </html>

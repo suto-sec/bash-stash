@@ -1,0 +1,105 @@
+@@script s02 | kind | What is this path? | kind.sh
+@@cmds test -f -d -e, echo, exit codes
+@@fixture
+setup() {
+  echo hi > notes.txt; echo hello > "my notes.txt"; mkdir docs; mkfifo pipe1
+}
+@@step 1 | File or directory
+@@readme
+Write `kind.sh PATH`. It prints the path, a colon, a space and what the path is:
+
+```
+notes.txt: file
+docs: directory
+nothing: not found
+```
+
+`file` is for a regular file (`[[ -f path ]]`), `directory` for a directory (`[[ -d path ]]`); anything that does not exist prints `not found`. Paths may contain spaces. Use `play s02` to get the files the checker uses.
+@@check
+ARGS=('notes.txt' 'docs' 'nothing' '"my notes.txt"')
+COMPARE="stdout exit"
+@@solution
+#!/bin/bash
+p=$1
+if [[ -f $p ]]; then
+  echo "$p: file"
+elif [[ -d $p ]]; then
+  echo "$p: directory"
+else
+  echo "$p: not found"
+fi
+@@step 2 | A missing path is an error
+@@readme
+A path that does not exist is now an error: print a message that includes the path on **standard error** (instead of the `not found` line) and exit with code **2**. Files and directories still print their line and exit with 0.
+@@check
+ARGS=('notes.txt' 'docs' 'nothing' '"my notes.txt"' '"no such file"')
+COMPARE="stdout exit errmsg"
+extra_check() { [[ $REF_CODE == 2 ]] && mentions "$(eval "set -- $CASE"; echo "$1")"; }
+@@solution
+#!/bin/bash
+p=$1
+if [[ -f $p ]]; then
+  echo "$p: file"
+elif [[ -d $p ]]; then
+  echo "$p: directory"
+else
+  echo "Error: $p not found" >&2
+  exit 2
+fi
+@@step 3 | Exactly one argument
+@@readme
+The script needs **exactly one** argument. With none, or with more than one, print an error message **and the correct usage** on standard error and exit with code **1** (before looking at any path).
+@@check
+ARGS=('notes.txt' 'docs' 'nothing' '' 'notes.txt docs' '"my notes.txt"')
+COMPARE="stdout exit errmsg"
+extra_check() {
+  [[ $REF_CODE == 2 ]] && mentions "$(eval "set -- $CASE"; echo "$1")"
+  [[ $REF_CODE == 1 ]] && { [[ $ERR == *kind.sh* || $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* ]] || fail "the message should show the correct usage"; }
+}
+@@solution
+#!/bin/bash
+if (( $# != 1 )); then
+  echo "Error: exactly one argument is needed" >&2
+  echo "Usage: $0 path" >&2
+  exit 1
+fi
+p=$1
+if [[ -f $p ]]; then
+  echo "$p: file"
+elif [[ -d $p ]]; then
+  echo "$p: directory"
+else
+  echo "Error: $p not found" >&2
+  exit 2
+fi
+@@step 4 | Something else
+@@readme
+A path can exist and be neither a regular file nor a directory (for example a named pipe). Then print `PATH: other` on standard output and exit with code **3**.
+
+`[[ -e path ]]` is true for anything that exists.
+@@check
+ARGS=('notes.txt' 'docs' 'nothing' '' 'notes.txt docs' '"my notes.txt"' 'pipe1')
+COMPARE="stdout exit errmsg"
+extra_check() {
+  [[ $REF_CODE == 2 ]] && mentions "$(eval "set -- $CASE"; echo "$1")"
+  [[ $REF_CODE == 1 ]] && { [[ $ERR == *kind.sh* || $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* ]] || fail "the message should show the correct usage"; }
+}
+@@solution
+#!/bin/bash
+if (( $# != 1 )); then
+  echo "Error: exactly one argument is needed" >&2
+  echo "Usage: $0 path" >&2
+  exit 1
+fi
+p=$1
+if [[ -f $p ]]; then
+  echo "$p: file"
+elif [[ -d $p ]]; then
+  echo "$p: directory"
+elif [[ -e $p ]]; then
+  echo "$p: other"
+  exit 3
+else
+  echo "Error: $p not found" >&2
+  exit 2
+fi

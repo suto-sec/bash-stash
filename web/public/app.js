@@ -12,6 +12,8 @@ const state = {
   introCategory: null, // topic id (e.g. '06') while browsing that category's Introduction refreshers
   theory: null,     // Theory collection id while browsing quizzes (sidebar + main panel switch to them)
   exam: null,       // practice exam id while one is open (its own panel + a sidebar listing its questions)
+  script: null,     // script id while one is open (Scripts: one script built up in steps)
+  sexam: null,      // script practice exam id while one is open (overview, result or the attempt itself)
 };
 try { state.track = localStorage.getItem('track') || 'full'; } catch { /* private mode */ }
 if (state.track === 'complete') state.track = 'full'; // "Complete" was dropped as a choice — identical to Full anyway
@@ -103,11 +105,15 @@ async function loadIndex() {
   state.flat = state.index.flatMap(t => t.exercises);
   await Theory.load();
   await Exams.load();
+  await SExams.load();
+  await Scripts.load();
   renderSidebar();
 }
 
 function renderSidebar() {
   if (state.theory) return Theory.renderSidebar();
+  if (state.script) return Scripts.renderSidebar();
+  if (state.sexam) return SExams.renderSidebar();
   if (state.exam) return Exams.renderSidebar();
   const q = $('#search').value.trim().toLowerCase();
   const hidePassed = $('#hide-passed').checked;
@@ -193,6 +199,7 @@ function setStatus(s) {
 }
 
 function neighbour(delta) {
+  if (state.script) return Scripts.neighbour(delta);
   const i = state.flat.findIndex(e => state.current && e.id === state.current.id);
   const n = state.flat[i + delta];
   if (n) location.hash = `#/ex/${n.id}`;
@@ -203,6 +210,7 @@ $('#next-btn').onclick = () => neighbour(1);
 // ------------------------------------------------------------------ check
 let checking = false;
 async function runCheck() {
+  if (state.current && state.current.sc) return Scripts.runCheck();
   if (!state.current || checking) return;
   checking = true;
   const btn = $('#check-btn');
@@ -245,7 +253,7 @@ async function runCheck() {
 $('#check-btn').onclick = runCheck;
 $('#result-close').onclick = () => $('#result').classList.add('hidden');
 document.addEventListener('keydown', ev => {
-  if (state.theory || state.exam) return; // the quiz and exam views have their own keys (theory.js, exams.js)
+  if (state.theory || state.exam || state.sexam) return; // the quiz and exam views have their own keys (theory.js, exams.js)
   if ((ev.ctrlKey || ev.metaKey) && ev.key === 'Enter') { ev.preventDefault(); runCheck(); }
 });
 
@@ -412,6 +420,7 @@ $('#reference-search').oninput = () => {
 };
 
 $('#solution-btn').onclick = async () => {
+  if (state.current && state.current.sc) return Scripts.showSolution();
   if (!state.current) return;
   let confirm = false;
   if (state.current.status !== 'pass') {
@@ -451,7 +460,7 @@ function startTerminal() {
   fit.fit();
   term.reset();
   const q = new URLSearchParams({ cols: term.cols, rows: term.rows });
-  if (state.current) q.set('ex', state.current.id);
+  if (state.current) q.set(state.current.sc ? 'sc' : state.current.sx ? 'sx' : 'ex', state.current.id);
   sock = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/pty?${q}`);
   sock.onmessage = ev => term.write(ev.data);
   sock.onclose = () => term.write('\r\n\x1b[2m[session ended — click "new session" to start another]\x1b[0m\r\n');
@@ -466,6 +475,7 @@ function typeInTerminal(cmd) {
 const shq = s => `'${s.replace(/'/g, `'\\''`)}'`;
 $('#restart-btn').onclick = startTerminal;
 $('#cd-btn').onclick = async () => {
+  if (state.current && state.current.sc) return Scripts.resetFixture();
   if (!state.current) return;
   if (!state.current.playDir) { typeInTerminal(`cd ${shq(state.current.dir)}`); return; }
   $('#cd-btn').disabled = true;
@@ -782,6 +792,18 @@ document.addEventListener('click', ev => {
 const TRACK_LABELS = { minimal: 'Minimal', intermediate: 'Intermediate', complete: 'Complete' };
 function updateTrackBadge() {
   const badge = $('#track-badge');
+  if (state.script) {
+    const e = Scripts.entry(state.script);
+    badge.textContent = 'Script: ' + (e ? e.title : state.script);
+    badge.classList.remove('hidden');
+    return;
+  }
+  if (state.sexam) {
+    const e = SExams.entry(state.sexam);
+    badge.textContent = SExams.t('badge') + (e ? e.title : state.sexam);
+    badge.classList.remove('hidden');
+    return;
+  }
   if (state.exam) {
     const e = Exams.entry(state.exam);
     badge.textContent = Exams.t('badge') + (e ? e.title : state.exam);
@@ -824,8 +846,12 @@ function renderHomePage() {
   renderIntroGrid();
   Theory.renderHomeGrid();
   Exams.renderHomeGrid();
+  Scripts.renderHomeGrid();
+  SExams.renderHomeGrid();
   renderHomeNav();
   Exams.refresh();
+  Scripts.refresh();
+  SExams.refresh();
 }
 
 // Left navigation of the home page. It is the exercise sidebar (same markup and classes) as a tree:
@@ -834,6 +860,7 @@ function renderHomePage() {
 //   Quizzes    -> collection -> group -> question
 // Every entry that has contents shows an arrow (click it to open/close) and its name (click it to go there).
 const HOME_SECTIONS = [['tracks', 'home-sec-tracks', 'home-grp-exercises'], ['intro', 'home-sec-intro', 'home-grp-exercises'], ['quizzes', 'theory-quizzes-title', 'theory-home-title'], ['exams', 'theory-exams-title', 'theory-home-title']];
+HOME_SECTIONS.splice(2, 0, ['scripts', 'home-sec-scripts', 'home-grp-exercises'], ['sexams', 'home-sec-sexams', 'home-grp-exercises']);   // last section of the Scripting group, after Introduction
 const lsGet = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) || d; } catch { return d; } };
 const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* private mode */ } };
 function saveHomeNavState() {   // after a user action; ignored while a search forces everything open
@@ -877,7 +904,15 @@ function homeTree() {
     return group(`examtier:${t}`, lab, lab, `examtier:${t}`, false,
       Exams.list().filter(e => e.tier === t).map(e => leaf(e.title, `${e.title} ${lab}`, `exam:${e.id}`, state.exam === e.id, Exams.statusOf(e))));
   });
-  return { tracks, intro: [introAll, ...introCats], quizzes, exams: examTiers };
+  const sexamTiers = ['easy', 'medium', 'hard'].filter(t => SExams.list().some(e => e.tier === t)).map(t => {
+    const lab = SExams.tierLabel(t);
+    return group(`sexamtier:${t}`, lab, lab, `sexamtier:${t}`, false,
+      SExams.list().filter(e => e.tier === t).map(e => leaf(e.title, `${e.title} ${lab}`, `sexam:${e.id}`, state.sexam === e.id, SExams.statusOf(e))));
+  });
+  const scriptGroups = [...new Set(Scripts.list().map(e => e.group))].map(g =>
+    group(`scriptgroup:${g}`, g, g, `scriptgroup:${g}`, false,
+      Scripts.list().filter(e => e.group === g).map(e => leaf(e.title, `${e.id} ${e.title} ${e.cmds}`, `script:${e.id}`, state.script === e.id, e.status, e.id.slice(1)))));
+  return { tracks, intro: [introAll, ...introCats], scripts: scriptGroups, sexams: sexamTiers, quizzes, exams: examTiers };
 }
 function renderHomeNav() {
   const nav = $('#home-topics');
@@ -953,6 +988,17 @@ function homeGo(go) {
     const c = Theory.collection(a), g = c.groups.find(x => x.id === b);
     Theory.go(a, (g.questions.find(x => x.status !== 'pass') || g.questions[0]).id);
   } else if (act === 'quizq') Theory.go(a, b);
+  else if (act === 'script') { const e = Scripts.entry(a); Scripts.go(a, e ? (e.steps.find(s => !e.passed.includes(s.n)) || e.steps[0]).n : 1); }
+  else if (act === 'scriptgroup') {
+    const es = Scripts.list().filter(e => e.group === a), next = es.find(e => e.status !== 'pass') || es[0];
+    if (next) Scripts.go(next.id, (next.steps.find(s => !next.passed.includes(s.n)) || next.steps[0]).n);
+  }
+  else if (act === 'sexam') SExams.go(a);
+  else if (act === 'sexamtier') {
+    const es = SExams.list().filter(e => e.tier === a);
+    const next = es.find(e => SExams.statusOf(e) !== 'pass') || es[0];
+    if (next) SExams.go(next.id);
+  }
   else if (act === 'exam') Exams.go(a);
   else if (act === 'examtier') {
     const es = Exams.list().filter(e => e.tier === a);
@@ -1018,6 +1064,8 @@ function renderIntroGrid() {
 function selectIntroCategory(id, exId) {
   state.theory = null;
   state.exam = null;
+  state.sexam = null;
+  state.script = null;
   state.introCategory = id;
   try { localStorage.setItem('introCategory', id); } catch { /* private mode */ }
   updateTrackBadge();
@@ -1030,6 +1078,8 @@ function selectTrack(track, exId) {
   state.track = track;
   state.theory = null;
   state.exam = null;
+  state.sexam = null;
+  state.script = null;
   state.introCategory = null;
   try { localStorage.setItem('track', state.track); localStorage.removeItem('introCategory'); } catch { /* private mode */ }
   updateTrackBadge();
@@ -1087,6 +1137,21 @@ function route() {
   showReferencePage(false);
   if (location.hash === '#/home') { showHomePage(true); return; }
   showHomePage(false);
+  const scm = location.hash.match(/^#\/script\/(s\d\d)(?:\/(\d+))?$/);
+  if (scm) {
+    if (state.exam || Exams.visible()) { state.exam = null; Exams.hide(); }
+    if (state.sexam || SExams.visible()) { state.sexam = null; SExams.hide(); }
+    if (!$('#theory-main').classList.contains('hidden')) Theory.hide();
+    return Scripts.open(scm[1], scm[2]);
+  }
+  if (state.script) { state.script = null; Scripts.leave(); updateTrackBadge(); renderSidebar(); }
+  const sxm = location.hash.match(/^#\/sexam\/([\w-]+)(?:\/(run)|\/attempt\/(\d+))?$/);
+  if (sxm) {
+    if (state.exam || Exams.visible()) { state.exam = null; Exams.hide(); }
+    if (!$('#theory-main').classList.contains('hidden')) Theory.hide();
+    return SExams.open(sxm[1], sxm[2], sxm[3]);
+  }
+  if (state.sexam || SExams.visible()) { state.sexam = null; SExams.hide(); updateTrackBadge(); renderSidebar(); }
   const exm = location.hash.match(/^#\/exam\/([\w-]+)(?:\/attempt\/(\d+))?$/);
   if (exm) {
     if (!$('#theory-main').classList.contains('hidden')) Theory.hide();

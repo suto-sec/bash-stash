@@ -633,3 +633,30 @@ a.gl-item:hover { border-color: var(--accent); background: var(--sel); }
 
 .exam-draft { color: var(--warn); font-weight: 600; }
 .ex-draft { border: 1px solid var(--warn); border-radius: 8px; padding: 8px 14px; margin: 10px auto; font-size: 13.5px; background: var(--panel); }
+
+/* ---- script practice exams */
+.sx-only { display: none; }
+body.sexam-run .sx-only { display: inline-block; }
+body.sexam-run .sx-only.hidden { display: none; }
+body.sexam-run #check-btn, body.sexam-run #info-btn, body.sexam-run #solution-btn, body.sexam-run #prev-btn, body.sexam-run #next-btn,
+body.sexam-run #cd-btn, body.sexam-run #new-attempt-btn, body.sexam-run #sidebar, body.sexam-run #sidebar-toggle { display: none; }
+.sx-objectives { max-width: 760px; margin-bottom: 6px; }
+.sx-objectives td:last-child { white-space: nowrap; }
+.sx-bar { display: inline-block; width: 120px; height: 8px; background: var(--border); border-radius: 4px; vertical-align: middle; margin-right: 8px; overflow: hidden; }
+.sx-bar span { display: block; height: 100%; background: var(--accent); }
+.sx-fold { margin: 10px 0; }
+.sx-fold summary { cursor: pointer; font-weight: 600; margin-bottom: 6px; }
+.sx-pre { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; overflow: auto; max-height: 460px; font-size: 12.5px; white-space: pre; }
+body.sexam-strict #reference-btn { display: none; }
+
+/* ---- scripts (one script built up in steps) */
+.sc-only { display: none; }
+body.script-run .sc-only { display: inline-block; }
+body.script-run #sc-steps { display: flex; }
+body.script-run #new-attempt-btn { display: none; }
+#sc-steps { gap: 6px; align-items: center; flex-wrap: wrap; margin: 4px 0 10px; }
+.sc-step { min-width: 34px; border: 1px solid var(--border); border-radius: 6px; padding: 3px 9px; background: var(--panel); color: var(--fg); cursor: pointer; }
+.sc-step.done { border-color: var(--accent); color: var(--accent); }
+.sc-step.active { background: var(--accent); color: #0b0f0c; border-color: var(--accent); font-weight: 700; }
+.sc-step-title { margin-left: 8px; color: var(--muted); font-size: 13px; }
+.sidebar.script-mode #search, .sidebar.script-mode .sidebar-tools { display: none; }
