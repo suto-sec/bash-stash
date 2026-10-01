@@ -321,13 +321,13 @@ input.switch:focus-visible, .seg button:focus-visible { outline: 2px solid var(-
 /* ---------- home page (track picker) ---------- */
 .home-page { position: fixed; inset: 0; z-index: 20; background: var(--bg); display: flex; flex-direction: column; }
 .home-layout { flex: 1; display: flex; min-height: 0; }
-.home-body { flex: 1; overflow-y: auto; padding: 40px 32px 60px; scroll-behavior: smooth; position: relative; }
+.home-body { flex: 1; overflow-y: auto; padding: 0 32px 60px; scroll-behavior: smooth; position: relative; }
 .home-group-title {
   max-width: 1100px; margin: 0 auto 36px; padding-bottom: 12px; font-size: 30px; font-weight: 800;
   text-align: center; letter-spacing: .2px; border-bottom: 2px solid var(--accent);
 }
 .home-body .home-group-title:not(:first-child) { margin-top: 88px; }
-.home-section-title { max-width: 1100px; margin: 0 auto; font-size: 20px; text-align: center; scroll-margin-top: 16px; }
+.home-section-title { max-width: 1100px; margin: 0 auto; font-size: 20px; text-align: center; scroll-margin-top: 92px; }
 .home-body .track-grid + .home-section-title { margin-top: 56px; }
 /* left navigation of the home page: it is the exercise sidebar (same classes), plus group labels */
 .home-group-label {
@@ -775,3 +775,38 @@ kbd { font: 11px ui-monospace, Menlo, monospace; padding: 1px 5px; border: 1px s
 .keys-mode-title { font-weight: 600; margin-bottom: 8px; }
 .keys-mode-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 5px 14px; }
 .keys-toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 195; padding: 8px 16px; background: var(--panel-2); border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 6px 24px rgba(0,0,0,.4); font-size: 13px; }
+
+/* home page: folding sections, sticky section bar, continue card (home.js) */
+.home-minibar { position: sticky; top: 0; z-index: 5; margin: 0 -32px 28px; padding: 14px 32px 10px; display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 6px 8px;
+  background: color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter: blur(6px); border-bottom: 1px solid var(--border); }
+.home-minibar .mb-part { margin-left: 14px; font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; color: var(--muted); }
+.home-minibar .mb-part:first-child { margin-left: 0; }
+.home-minibar button { padding: 4px 11px; border-radius: 14px; background: var(--panel-2); color: var(--text); font-size: 13px; }
+.home-minibar button i { font-style: normal; color: var(--muted); font-size: 11.5px; margin-left: 3px; }
+.home-minibar button.active { border-color: var(--accent); color: var(--accent); }
+.home-continue + .home-group-title { margin-top: 12px; }
+.home-continue { max-width: 1100px; margin: 0 auto 36px; display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+.hc-card { padding: 16px 18px; border: 1px solid var(--accent); border-radius: 10px; background: var(--panel); display: flex; flex-direction: column; gap: 4px; }
+.hc-kind { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--accent); }
+.hc-title { font-size: 17px; font-weight: 700; }
+.hc-sub { color: var(--muted); font-size: 13px; }
+.hc-btn { align-self: flex-start; margin-top: 8px; padding: 6px 16px; background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+.home-sec + .home-sec { margin-top: 56px; }
+.home-sec > .home-section-title { cursor: pointer; user-select: none; }
+.home-sec > .home-section-title::before { content: '▾'; display: inline-block; width: 1.1em; margin-right: 4px; color: var(--muted); font-size: .8em; }
+.home-sec.collapsed > .home-section-title::before { content: '▸'; }
+.home-sec > .home-section-title:hover::before { color: var(--accent); }
+.home-sec.collapsed > .home-sec-body { display: none; }
+.home-sec-summary { display: none; max-width: 1100px; margin: 12px auto 0; padding: 10px 16px; align-items: center; gap: 14px; flex-wrap: wrap; border: 1px solid var(--border); border-radius: 10px; background: var(--panel); cursor: pointer; }
+.home-sec.collapsed > .home-sec-summary { display: flex; }
+.home-sec-summary:hover { border-color: var(--muted); }
+.hs-bar { flex: 0 0 140px; height: 7px; border-radius: 4px; background: var(--border); overflow: hidden; }
+.hs-bar i { display: block; height: 100%; background: var(--accent); }
+.hs-count { font-weight: 600; font-size: 13px; white-space: nowrap; }
+.hs-next { flex: 1 1 200px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font-size: 13px; }
+.hs-next b { color: var(--text); font-weight: 600; }
+.hs-more { color: var(--muted); font-size: 12px; margin-left: auto; }
+.home-tier-title { cursor: pointer; user-select: none; }
+.home-tier-title::before { content: '▾'; display: inline-block; width: 1em; color: var(--muted); font-size: .8em; }
+.home-tier-title.folded::before { content: '▸'; }
+.track-grid.home-folded { display: none; }

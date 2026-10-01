@@ -43,10 +43,11 @@ const Keys = (() => {
     const t = setInterval(() => { const el = find(); if (shown(el)) { clearInterval(t); fn(el); } else if (--tries <= 0) clearInterval(t); }, 80);
   }
   function goHome(sectionId) {
+    if (typeof Home !== 'undefined') Home.expandById(sectionId);                         // a folded section opens
     const scroll = () => { const el = e$(sectionId); if (shown(el)) { el.scrollIntoView({ block: 'start' }); return true; } return false; };
     if (location.hash === '#/home' && scroll()) return;
     location.hash = '#/home';
-    whenShown(() => e$(sectionId), el => el.scrollIntoView({ block: 'start' }));
+    whenShown(() => e$(sectionId), el => { if (typeof Home !== 'undefined') Home.expandById(sectionId); el.scrollIntoView({ block: 'start' }); });
   }
   function openSettings() {
     const open = () => { const b = e$('settings-btn'); if (b && e$('settings-menu').classList.contains('hidden')) b.click(); };
