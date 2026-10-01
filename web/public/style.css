@@ -84,13 +84,13 @@ button:disabled { opacity: .5; cursor: default; }
   width: 290px; flex: none; background: var(--panel); border-right: 1px solid var(--border);
   display: flex; flex-direction: column; min-height: 0;
 }
-#search {
+#search, #home-search {
   margin: 10px 10px 4px; padding: 6px 10px; border-radius: 6px;
   background: var(--panel-2); border: 1px solid var(--border);
 }
 .sidebar-tools { display: flex; gap: 6px; padding: 0 10px 8px; }
 .sidebar-tools .small { flex: 1; }
-#topics { overflow-y: auto; flex: 1; padding-bottom: 20px; }
+#topics, #home-topics { overflow-y: auto; flex: 1; padding-bottom: 20px; }
 
 .topic > summary {
   list-style: none; cursor: pointer; padding: 7px 12px; display: flex; align-items: center; gap: 8px;
@@ -321,36 +321,14 @@ dialog::backdrop { background: rgba(0,0,0,.5); }
 .home-body .home-group-title:not(:first-child) { margin-top: 88px; }
 .home-section-title { max-width: 1100px; margin: 0 auto; font-size: 20px; text-align: center; scroll-margin-top: 16px; }
 .home-body .track-grid + .home-section-title { margin-top: 56px; }
-/* left navigation of the home page: same look as the exercise sidebar */
-.home-nav {
-  flex: none; width: 270px; box-sizing: border-box; overflow-y: auto; padding: 14px 10px 24px;
-  background: var(--panel); border-right: 1px solid var(--border);
+/* left navigation of the home page: it is the exercise sidebar (same classes), plus group labels */
+.home-group-label {
+  display: block; width: 100%; box-sizing: border-box; padding: 12px 12px 6px; border: none; background: none; cursor: pointer;
+  text-align: left; font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; color: var(--muted);
 }
-.hn-group {
-  display: block; width: 100%; box-sizing: border-box; padding: 14px 8px 6px; border: none; background: none; cursor: pointer;
-  text-align: left; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .8px; color: var(--muted);
-}
-.hn-group:hover { color: var(--text); }
-.hn-group.active { color: var(--accent); }
-.hn-section { margin: 2px 0; }
-.hn-section > summary {
-  display: flex; align-items: center; gap: 6px; padding: 7px 8px; border-radius: 6px; cursor: pointer; list-style: none;
-  font-size: 13.5px; font-weight: 700;
-}
-.hn-section > summary::-webkit-details-marker { display: none; }
-.hn-section > summary::before { content: "▸"; color: var(--muted); width: 10px; }
-.hn-section[open] > summary::before { content: "▾"; }
-.hn-section > summary:hover { background: var(--panel-2); }
-.hn-section.active > summary { color: var(--accent); }
-.hn-item {
-  display: flex; align-items: center; gap: 8px; width: 100%; box-sizing: border-box; padding: 5px 8px 5px 26px; border: none;
-  background: none; border-radius: 6px; cursor: pointer; text-align: left; color: var(--text); font-size: 12.5px;
-}
-.hn-item:hover { background: var(--panel-2); }
-.hn-item.current { background: var(--sel); }
-.hn-item .hn-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.hn-item .hn-count { color: var(--muted); font-size: 11.5px; }
-@media (max-width: 900px) { .home-nav { display: none; } }
+.home-group-label:hover { color: var(--text); }
+.home-group-label.active, .topic.active > summary .t-name { color: var(--accent); }
+@media (max-width: 900px) { #home-nav { display: none; } }
 .home-intro { max-width: 720px; margin: 6px auto 28px; color: var(--muted); text-align: center; }
 .track-grid {
   display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px;
