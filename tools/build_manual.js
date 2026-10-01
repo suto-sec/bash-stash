@@ -36,9 +36,15 @@ function run(cmd) {
     cwd: DEMO, encoding: 'utf8', timeout: 15000, input: '', maxBuffer: 1 << 20,
     env: { HOME: DEMO, PATH: process.env.PATH, LANG: 'en_US.UTF-8', TZ: 'UTC', TERM: 'dumb', USER: 'user', LOGNAME: 'user', SHELL: '/bin/bash' },
   });
-  const out = (r.stdout || '').replace(/\n+$/, '').split(DEMO).join('/home/user/demo');
+  // the lab user is "alumno": show a made-up one of the same length so `ls -l` columns stay aligned
+  const out = (r.stdout || '').replace(/\n+$/, '').split(DEMO).join('/home/user/demo').split('alumno').join('carlos');
   return { out, status: r.status === null ? 'timeout' : r.status };
 }
+
+// today's date in an output would change every day: such examples must pin their dates (touch -d, --time-style=long-iso ...)
+const now = new Date();
+const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][now.getMonth()];
+const todayRe = new RegExp(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}|${MON} +${now.getDate()} \\d\\d:\\d\\d|${MON} +${now.getDate()} \\d{4}|\\b${now.getFullYear()}\\b`);
 
 const outputs = fs.existsSync(OUTFILE) && only ? JSON.parse(fs.readFileSync(OUTFILE, 'utf8')) : {};
 const entries = M.all();
@@ -63,6 +69,7 @@ for (const e of entries) {
     const a = run(x.cmd);
     if (check) { const b = run(x.cmd); if (a.out !== b.out) warn(`${tag} example ${i + 1} ("${x.title}") is not deterministic`); }
     if (a.status !== 0 && !x.fails) warn(`${tag} example ${i + 1} ("${x.title}") exited with ${a.status}:\n${a.out.split('\n').map(l => '      ' + l).join('\n')}`);
+    if (todayRe.test(a.out)) warn(`${tag} example ${i + 1} ("${x.title}") shows today's date or year; pin the dates`);
     outputs[id] = a.out;
     ran++;
   });
