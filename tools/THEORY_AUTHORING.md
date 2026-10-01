@@ -48,3 +48,14 @@ Rules that keep the quizzes useful:
 - Question text must not start a line with `(`.
 - Write original wording; teach the concept, don't transcribe course material.
 - Verify every claimed output by running it (the lab container is the reference environment).
+
+## Translations
+
+A translation lives in `tools/theory/<lang>/` (currently `es`) with the **same file name and the same
+`@@collection` id** as the English file, and is compiled to `theory/<lang>/<id>.json`. It must mirror
+the English file question by question: same groups in the same order, same number of questions per
+group, same types, the right options in the same positions, the same number of blanks/steps/pairs/decoys,
+and the items in the same buckets. The compiler checks all of this and copies the question ids from the
+English file, so a learner's progress is shared between languages. Translate titles, text, options,
+explanations, notes and bucket names; keep commands, options and code in backticks unchanged. A
+collection without a translation falls back to English.
