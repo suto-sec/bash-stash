@@ -256,9 +256,9 @@ dialog::backdrop { background: rgba(0,0,0,.5); }
 }
 .sidebar-toggle:hover { background: var(--panel-2); color: var(--text); border-color: var(--muted); }
 .sidebar-toggle.resizing { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
-.layout.sidebar-collapsed .sidebar { width: 0 !important; min-width: 0; padding: 0; border: none; overflow: hidden; }
+.layout.sidebar-collapsed .sidebar, .home-layout.sidebar-collapsed .sidebar { width: 0 !important; min-width: 0; padding: 0; border: none; overflow: hidden; }
 .sidebar-toggle .arrow { display: inline-block; transition: transform .15s; cursor: pointer; }
-.layout.sidebar-collapsed .sidebar-toggle .arrow { transform: rotate(180deg); }
+.layout.sidebar-collapsed .sidebar-toggle .arrow, .home-layout.sidebar-collapsed .sidebar-toggle .arrow { transform: rotate(180deg); }
 
 /* ---------- reference & layout buttons (topbar) ---------- */
 #reference-btn, #layout-btn {
@@ -328,7 +328,23 @@ dialog::backdrop { background: rgba(0,0,0,.5); }
 }
 .home-group-label:hover { color: var(--text); }
 .home-group-label.active, .topic.active > summary .t-name { color: var(--accent); }
-@media (max-width: 900px) { #home-nav { display: none; } }
+/* entries with contents: an arrow button to open/close, and the name to go there */
+.topic.entry > summary { border-top: none; font-weight: 500; font-size: 13px; }
+.topic.entry > summary::before { content: none; }
+.topic.entry > summary.current { background: var(--sel); }
+.topic.entry > summary:hover { background: var(--panel-2); }
+.topic.entry.d1 > summary { padding-left: 20px; }
+.topic.entry.d2 > summary { padding-left: 34px; }
+.t-arrow { flex: none; width: 18px; height: 18px; margin-right: -2px; display: inline-flex; align-items: center; justify-content: center; border-radius: 4px; color: var(--muted); }
+.t-arrow::before { content: "▸"; }
+.topic[open] > summary > .t-arrow::before { content: "▾"; }
+.t-arrow:hover { background: var(--border); color: var(--text); }
+.topic.entry > .t-bar { margin-left: 38px; }
+.topic.entry.d2 > .t-bar { margin-left: 52px; }
+.ex-item.d1 { padding-left: 30px; }
+.ex-item.d2 { padding-left: 44px; }
+.ex-item.d3 { padding-left: 58px; }
+@media (max-width: 900px) { #home-nav, #home-sidebar-toggle { display: none; } }
 .home-intro { max-width: 720px; margin: 6px auto 28px; color: var(--muted); text-align: center; }
 .track-grid {
   display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px;
