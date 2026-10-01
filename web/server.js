@@ -458,7 +458,7 @@ function send(res, code, body, type = 'application/json') {
 }
 
 const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml',
-               '.map': 'application/json', '.woff2': 'font/woff2' };
+               '.map': 'application/json', '.json': 'application/json', '.woff2': 'font/woff2' };
 function serveFile(res, file) {
   fs.readFile(file, (err, data) => {
     if (err) return send(res, 404, 'not found', 'text/plain');
