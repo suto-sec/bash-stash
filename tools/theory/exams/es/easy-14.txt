@@ -46,7 +46,7 @@ El fichero tiene las líneas `axb` y `a.b`. ¿Qué afirmación sobre buscar un p
 
 @@q single | Espacios alrededor del signo igual
 Escribes `count = 5` en bash. ¿Qué ocurre?
-(+) La shell intenta ejecutar un mandato llamado `count` con los argumentos `=` y `5`, y responde «command not found». :: En una asignación no puede haber espacios alrededor de `=`.
+(+) Busca un mandato llamado `count` y responde «command not found». :: En una asignación no puede haber espacios alrededor de `=`.
 (-) La variable `count` toma el valor `5`. :: Eso es lo que hace `count=5`, sin espacios.
 (-) La variable `count` toma la cadena ` 5`, con un espacio delante. :: La shell no trata la línea como una asignación.
 (-) La shell imprime `5`, el valor de la asignación. :: Las asignaciones no imprimen nada en la shell.
