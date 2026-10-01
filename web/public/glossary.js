@@ -1165,6 +1165,11 @@ const FALLBACK_PATTERNS = [
   [/^\[\[/, '[[ ]]', { name: '[[ ]]', desc: "Bash's extended conditional test." }],
 ];
 function explainToken(token) {
+  // the new manual (manual.js) first; the older compact entries below are only a fallback
+  if (typeof MANUAL !== 'undefined') {
+    const m = MANUAL.lookup(token);
+    if (m) return { ...m, desc: m.summary };
+  }
   const t = norm(token);
   if (GLOSSARY[t]) return { key: t, ...GLOSSARY[t] };
   const b = norm(baseWord(t));
@@ -1186,4 +1191,9 @@ function explainCmds(cmdsStr) {
     out.push(e);
   }
   return out;
+}
+
+// Entries of the older compact glossary that the manual has not replaced yet (shown under "More entries" in the reference).
+function legacyEntries() {
+  return Object.keys(GLOSSARY).filter(k => typeof MANUAL === 'undefined' || !MANUAL.get(k)).map(k => ({ key: k, cat: 'more', ...GLOSSARY[k] }));
 }

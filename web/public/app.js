@@ -260,10 +260,11 @@ document.addEventListener('keydown', ev => {
 // ------------------------------------------------------------------ solution
 // ------------------------------------------------------------------ info & reference (glossary)
 function glossaryHTML(entries, linkify) {
-  const known = entries.filter(e => e.desc);
+  const known = entries.filter(e => e.desc || e.summary);
   if (!known.length) return '<p class="hint">No commands with a write-up yet for this one.</p>';
   return known.map(e => {
-    const inner = `<code>${esc(e.name)}</code><p>${esc(e.desc)}</p>`;
+    if (e.cat && e.cat !== 'more' && e.summary) return MANUAL.cardHTML(e, linkify);
+    const inner = `<code>${esc(e.name)}</code><p>${esc(e.desc || '')}</p>`;
     // the whole card is the click target, not just the command name inside it
     return linkify ? `<a href="#" class="gl-item" data-goto-cmd="${esc(e.key)}">${inner}</a>` : `<div class="gl-item">${inner}</div>`;
   }).join('');
@@ -272,6 +273,7 @@ function glossaryHTML(entries, linkify) {
 // The single-command focused view: same name+description, plus a usage line, an options table and
 // worked examples when the glossary entry has them (older/rarer entries fall back gracefully).
 function focusedGlossaryHTML(e) {
+  if (e.cat && e.cat !== 'more' && e.summary) return MANUAL.entryHTML(e);
   let html = `<code>${esc(e.name)}</code><p>${esc(e.desc)}</p>`;
   if (e.usage) html += `<div class="gl-usage">${esc(e.usage)}</div>`;
   if (e.options && e.options.length) {
@@ -293,6 +295,7 @@ $('#info-btn').onclick = () => {
 $('#info-body').addEventListener('click', ev => {
   const el = ev.target.closest('[data-goto-cmd]');
   if (!el) return;
+  ev.preventDefault();          // the card is an <a href="#">: without this the browser then navigates to "#" and the app falls back to the first exercise
   $('#info-dialog').close();
   location.hash = `#/reference/cmd/${encodeURIComponent(el.dataset.gotoCmd)}`;
 });
@@ -300,43 +303,46 @@ $('#info-body').addEventListener('click', ev => {
 // An index of every topic's distinct commands, and every exercise each command appears in (so a
 // focused command view can both link back to its categories and show per-exercise progress there,
 // the same way the exercise sidebar does for a whole topic).
-let refTopics = null;       // [{id, title, cmds: [{key,name,desc}, ...]}]
-let refCmdExercises = null; // key -> [{id, title, topicId, topicTitle}]
+let refTopics = null;       // [{id, title, cmds: [entry, ...]}]  (one per manual category)
+let refCmdExercises = null; // key -> [{id, title, topicTitle, href}]  (exercises and scripts that use the command)
 let refSel = { type: 'all' }; // {type:'all'} | {type:'topic', id} | {type:'cmd', key}
 
 function buildReferenceIndex() {
-  refTopics = state.index.map(t => {
-    const cmds = new Map();
-    for (const e of t.exercises) for (const c of explainCmds(e.cmds)) if (c.desc && !cmds.has(c.key)) cmds.set(c.key, c);
-    return { id: t.id, title: t.title, cmds: [...cmds.values()].sort((a, b) => a.name.localeCompare(b.name)) };
-  });
+  const legacy = legacyEntries();
+  refTopics = [...MANUAL.CATS, ['more', 'More entries']].map(([id, title]) => ({
+    id, title, cmds: id === 'more' ? legacy.sort((a, b) => a.name.localeCompare(b.name)) : MANUAL.byCat(id),
+  })).filter(t => t.cmds.length);
   refCmdExercises = new Map();
-  for (const t of state.index) for (const e of t.exercises) for (const c of explainCmds(e.cmds)) {
-    if (!c.desc) continue;
+  const use = (cmds, item) => { for (const c of explainCmds(cmds)) {
+    if (!c.desc && !c.summary) continue;
     if (!refCmdExercises.has(c.key)) refCmdExercises.set(c.key, []);
-    refCmdExercises.get(c.key).push({ id: e.id, title: e.title, topicId: t.id, topicTitle: t.title });
-  }
+    if (!refCmdExercises.get(c.key).some(x => x.id === item.id)) refCmdExercises.get(c.key).push(item);
+  } };
+  for (const t of state.index) for (const e of t.exercises) use(e.cmds, { id: e.id, title: e.title, topicTitle: t.title, href: `#/ex/${e.id}`, kind: 'ex' });
+  for (const sc of Scripts.list()) use(sc.cmds, { id: sc.id, title: sc.title, topicTitle: 'Scripts', href: `#/script/${sc.id}/1`, kind: 'script' });
 }
 
 function topicSection(t) {
   return `<section class="ref-topic" id="ref-topic-${esc(t.id)}">
-    <h3><a href="#" data-action="topic" data-id="${esc(t.id)}">${esc(t.id)} · ${esc(t.title)}</a></h3>
+    <h3><a href="#" data-action="topic" data-id="${esc(t.id)}">${esc(t.title)}</a> <span class="t-count">${t.cmds.length}</span></h3>
     <div class="glossary-list">${glossaryHTML(t.cmds, true)}</div>
   </section>`;
 }
 
-// The "used in" list for a focused command: a progress bar + each exercise with the same pass/
-// attempted/viewed/new dot the exercise sidebar uses, freshly read from state.flat every render.
+// The "used in" list for a focused command: a progress bar + each exercise / script with its status dot.
 function usedInHTML(key) {
   const uses = refCmdExercises.get(key) || [];
   if (!uses.length) return '';
-  const live = uses.map(u => ({ ...u, ...state.flat.find(e => e.id === u.id) }));
+  const live = uses.map(u => {
+    const cur = u.kind === 'script' ? Scripts.entry(u.id) : state.flat.find(e => e.id === u.id);
+    return { ...u, status: cur ? cur.status : 'new' };
+  });
   const passed = live.filter(e => e.status === 'pass').length;
-  const rows = live.map(e => `<a href="#/ex/${e.id}"><span class="dot ${e.status}">${STATUS[e.status].dot}</span>
-    <span class="ex-id">${e.id}</span> ${esc(e.title)}<span class="ex-topic-label">${esc(e.topicTitle)}</span></a>`).join('');
+  const rows = live.map(e => `<a href="${e.href}"><span class="dot ${e.status}">${STATUS[e.status].dot}</span>
+    <span class="ex-id">${e.kind === 'script' ? e.id : e.id}</span> ${esc(e.title)}<span class="ex-topic-label">${esc(e.topicTitle)}</span></a>`).join('');
   return `<div class="gl-seealso">
     <div class="gl-seealso-head">
-      <strong>Used in ${live.length} exercise${live.length === 1 ? '' : 's'}</strong>
+      <strong>Used in ${live.length} exercise${live.length === 1 ? '' : 's'} and scripts</strong>
       <div class="bar"><div style="width:${100 * passed / live.length}%"></div></div>
       <span class="t-count">${passed}/${live.length}</span>
     </div>
@@ -344,6 +350,13 @@ function usedInHTML(key) {
   </div>`;
 }
 
+let manualOutputsLoaded = false;
+async function loadManualOutputs() {     // the real output of every runnable example (generated by tools/build_manual.js)
+  if (manualOutputsLoaded) return;
+  manualOutputsLoaded = true;
+  try { MANUAL.setOutputs(await (await fetch('/manual-outputs.json')).json()); } catch { /* the examples are then shown without output */ }
+  if (refSel && refSel.type === 'cmd' && !$('#reference-page').classList.contains('hidden')) { const y = $('#reference-content').scrollTop; renderReferenceContent(); $('#reference-content').scrollTop = y; }
+}
 function renderReferenceContent() {
   const content = $('#reference-content');
   if (refSel.type === 'topic') {
@@ -364,7 +377,7 @@ function renderReferenceNav() {
   $('#reference-tree').innerHTML = refTopics.map(t => `
     <div class="ref-nav-topic${refSel.type !== 'all' ? ' open' : ''}" data-topic="${esc(t.id)} ${esc(t.title.toLowerCase())}">
       <button class="ref-nav-topic-head${refSel.type === 'topic' && refSel.id === t.id ? ' current' : ''}" data-action="topic" data-id="${esc(t.id)}">
-        <span class="chev">▸</span><span class="t-name">${esc(t.id)} · ${esc(t.title)}</span><span class="count">${t.cmds.length}</span>
+        <span class="chev">▸</span><span class="t-name">${esc(t.title)}</span><span class="count">${t.cmds.length}</span>
       </button>
       <div class="ref-nav-cmds">${t.cmds.map(c => `<a href="#" class="ref-nav-cmd${refSel.type === 'cmd' && refSel.key === c.key ? ' current' : ''}"
         data-action="cmd" data-key="${esc(c.key)}" data-name="${esc(c.name.toLowerCase())}" title="${esc(c.name)}">${esc(c.name)}</a>`).join('')}</div>
@@ -393,6 +406,8 @@ $('#reference-nav').addEventListener('click', ev => {
 $('#reference-content').addEventListener('click', ev => {
   const topicEl = ev.target.closest('[data-action="topic"]');
   if (topicEl) { ev.preventDefault(); refSel = { type: 'topic', id: topicEl.dataset.id }; renderReference(); return; }
+  const jump = ev.target.closest('[data-man-jump]');
+  if (jump) { ev.preventDefault(); const t = document.getElementById(jump.dataset.manJump); if (t) t.scrollIntoView({ block: 'start', behavior: 'smooth' }); return; }
   const cmdEl = ev.target.closest('[data-goto-cmd]');
   if (cmdEl) { ev.preventDefault(); location.hash = `#/reference/cmd/${encodeURIComponent(cmdEl.dataset.gotoCmd)}`; }
 });
@@ -1127,7 +1142,8 @@ function route() {
   if (location.hash === '#/reference' || refCmd || refTopic) {
     showHomePage(false);
     showReferencePage(true);
-    if (!refTopics) buildReferenceIndex();
+    buildReferenceIndex();      // rebuilt on every visit: scripts and statuses may have changed
+    loadManualOutputs();
     if (refCmd) refSel = { type: 'cmd', key: decodeURIComponent(refCmd[1]) };
     else if (refTopic) refSel = { type: 'topic', id: decodeURIComponent(refTopic[1]) };
     else { refSel = { type: 'all' }; $('#reference-search').value = ''; }

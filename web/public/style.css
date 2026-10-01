@@ -434,7 +434,7 @@ a.gl-item:hover { border-color: var(--accent); background: var(--sel); }
 .gl-item code { font-size: 12.5px; color: var(--accent); }
 .gl-item p { margin: 6px 0 0; font-size: 12.5px; color: var(--text); line-height: 1.5; }
 
-.gl-focus { max-width: 720px; }
+.gl-focus { max-width: 900px; }
 .gl-focus > code { font-size: 19px; }
 .gl-focus > p { font-size: 14px; margin-top: 8px; }
 .gl-focus .gl-usage {
@@ -673,3 +673,36 @@ body.script-run #new-attempt-btn { display: none; }
 #scripts-group:hover { border-color: var(--muted); }
 #scripts-group:focus-visible { outline: none; border-color: var(--accent); }
 #scripts-group option { background: var(--panel); color: var(--text); }
+
+/* ---- the manual (reference entries) */
+.man { line-height: 1.6; }
+.man-head h1 { display: inline-block; margin: 0 10px 4px 0; font-size: 26px; }
+.man-head h1 code { color: var(--accent); }
+.man-kind, .man-cat { display: inline-block; font-size: 11px; border: 1px solid var(--border); border-radius: 10px; padding: 1px 9px; color: var(--muted); margin-right: 6px; vertical-align: middle; }
+.man-kind { color: var(--info); }
+.man-sum { margin: 6px 0 10px; font-size: 15px; color: var(--text); }
+.man-toc { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 8px 0 4px; padding: 8px 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); font-size: 12.5px; }
+.man-toc a { color: var(--muted); text-decoration: none; }
+.man-toc a:hover { color: var(--accent); }
+.man-sec { margin-top: 26px; }
+.man-sec h2 { margin: 0 0 10px; font-size: 13px; letter-spacing: .6px; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--border); padding-bottom: 5px; }
+.man-sec h3 { margin: 16px 0 6px; font-size: 14px; color: var(--text); }
+.man-sec p, .man-sec li { font-size: 14px; }
+.man-sec code { font-size: 12.5px; color: var(--accent); }
+.man-sec ul { margin: 6px 0 6px 18px; padding: 0; }
+.man-syn { background: var(--code-bg); border: 1px solid var(--border); border-radius: 6px; padding: 10px 14px; font-size: 13px; overflow-x: auto; margin: 0; }
+.man-opts { display: grid; grid-template-columns: minmax(130px, max-content) 1fr; gap: 8px 18px; margin: 6px 0; }
+.man-opts dt { margin: 0; }
+.man-opts dt code { display: inline-block; margin: 0 4px 3px 0; background: var(--code-bg); border: 1px solid var(--border); border-radius: 4px; padding: 1px 6px; }
+.man-opts dd { margin: 0; font-size: 13.5px; }
+.man-ex { margin: 12px 0 18px; }
+.man-cmd, .man-out { margin: 0; padding: 8px 14px; font-size: 12.5px; overflow-x: auto; background: var(--code-bg); border: 1px solid var(--border); }
+.man-cmd { border-radius: 6px 6px 0 0; color: var(--accent); }
+.man-out { border-top: none; border-radius: 0 0 6px 6px; color: var(--text); white-space: pre; }
+.man-cmd:last-child { border-radius: 6px; }
+.man-ex p { margin: 6px 0 0; color: var(--muted); font-size: 13px; }
+.man-table { border-collapse: collapse; margin: 8px 0; font-size: 13px; }
+.man-table th, .man-table td { border: 1px solid var(--border); padding: 4px 10px; text-align: left; vertical-align: top; }
+.man-table th { background: var(--panel-2); }
+.man-see a { text-decoration: none; }
+.gl-syn { display: block; margin-top: 6px; font-family: ui-monospace, monospace; font-size: 11.5px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
