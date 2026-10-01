@@ -29,10 +29,21 @@ const M = ctx.MANUAL;
 let problems = 0;
 const warn = m => { problems++; console.log('  ! ' + m); };
 
+// examples may leave root-owned or 000 files behind (chown, chmod): fall back to sudo
+function clean() {
+  try { fs.rmSync(DEMO, { recursive: true, force: true }); } catch (e) {
+    spawnSync('sudo', ['-n', 'chmod', '-R', 'u+rwx', DEMO]);
+    spawnSync('sudo', ['-n', 'rm', '-rf', DEMO]);
+  }
+}
+
 function run(cmd) {
-  fs.rmSync(DEMO, { recursive: true, force: true });
+  clean();
   fs.mkdirSync(DEMO, { recursive: true });
-  const r = spawnSync('sh', ['-c', 'exec bash -c "$0" 2>&1', cmd], {
+  // examples that start background jobs must not leave processes (or zombies: the lab's PID 1 does not reap them) behind for the next
+  // example: an EXIT trap on the first line (so the line numbers of error messages stay those of the example) kills and reaps the jobs
+  const prelude = "trap 'kill $(jobs -p) 2>/dev/null; wait 2>/dev/null' EXIT; ";
+  const r = spawnSync('sh', ['-c', 'exec bash -c "$0" 2>&1', prelude + cmd], {
     cwd: DEMO, encoding: 'utf8', timeout: 15000, input: '', maxBuffer: 1 << 20,
     env: { HOME: DEMO, PATH: process.env.PATH, LANG: 'en_US.UTF-8', TZ: 'UTC', TERM: 'dumb', USER: 'user', LOGNAME: 'user', SHELL: '/bin/bash' },
   });
@@ -76,6 +87,6 @@ for (const e of entries) {
 }
 const sorted = Object.fromEntries(Object.keys(outputs).sort().map(k => [k, outputs[k]]));
 fs.writeFileSync(OUTFILE, JSON.stringify(sorted, null, 1) + '\n');
-fs.rmSync(DEMO, { recursive: true, force: true });
+clean();
 console.log(`${entries.length} entries, ${ran} examples run, ${Object.keys(sorted).length} outputs stored, ${problems} problem(s)`);
 process.exit(problems ? 1 : 0);

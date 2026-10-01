@@ -1,7 +1,7 @@
 'use strict';
 MANUAL.add('text', [
   {
-    name: 'cat', kind: 'command', aliases: ['cat -n', 'cat -A', 'cat > file', 'cat > file << EOF', 'cat <<EOF', 'cat -s', 'concatenate'],
+    name: 'cat', kind: 'command', aliases: ['cat -n', 'cat -A', 'cat > file', 'cat -s', 'concatenate'],
     summary: 'Concatenate files and print them on standard output (also: show a file, create a file from the keyboard).',
     synopsis: ['cat [OPTION]... [FILE]...'],
     desc: [
