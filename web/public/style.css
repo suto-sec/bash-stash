@@ -648,6 +648,8 @@ body.sexam-run #cd-btn, body.sexam-run #new-attempt-btn, body.sexam-run #sidebar
 .sx-fold summary { cursor: pointer; font-weight: 600; margin-bottom: 6px; }
 .sx-pre { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; overflow: auto; max-height: 460px; font-size: 12.5px; white-space: pre; }
 body.sexam-strict #reference-btn { display: none; }
+/* the quizzes and theory exams have no instructions/terminal/VS Code panels to arrange */
+body.theory-view #layout-picker { display: none; }
 
 /* ---- scripts (one script built up in steps) */
 .sc-only { display: none; }
