@@ -128,7 +128,7 @@ MANUAL.add('procs', [
     see: ['ps', 'top', 'processes'],
   },
   {
-    name: 'top', kind: 'command', aliases: ['top -b', 'top -n', 'top -u', 'top -p', 'htop', 'top -d', 'top -H', 'load average'],
+    name: 'top', kind: 'command', aliases: ['top -b', 'top -n', 'top -u', 'top -p', 'htop', 'top -d', 'top -H'],
     summary: 'Live, updating view of the processes and the system load (CPU, memory).',
     synopsis: ['top [OPTION]...'],
     desc: [
@@ -175,7 +175,7 @@ MANUAL.add('procs', [
     see: ['ps', 'kill', 'nice', 'uptime', 'free'],
   },
   {
-    name: 'signals', kind: 'concept', aliases: ['signal', 'SIGTERM', 'SIGKILL', 'SIGINT', 'SIGHUP', 'SIGSTOP', 'SIGCONT', 'SIGTSTP', 'SIGUSR1', 'SIGCHLD', 'SIGPIPE', 'ctrl-c', 'ctrl-z', 'ctrl-d', 'ctrl-\\', 'exit status 128+n', '128+n', 'señales', 'kill signals', 'signal numbers'],
+    name: 'signals', kind: 'concept', aliases: ['signal', 'SIGTERM', 'SIGKILL', 'SIGINT', 'SIGHUP', 'SIGSTOP', 'SIGCONT', 'SIGTSTP', 'SIGUSR1', 'SIGCHLD', 'SIGPIPE', 'ctrl-c', 'ctrl-z', 'ctrl-d', 'ctrl-\\', 'exit status 128+n', 'señales', 'kill signals', 'signal numbers'],
     summary: 'Signals: the short messages the kernel and users send to processes (SIGTERM, SIGKILL, SIGINT, SIGSTOP...).',
     synopsis: ['kill -SIGNAL PID...     kill -l     trap \'CMD\' SIGNAL     Ctrl-C  Ctrl-Z  Ctrl-\\'],
     desc: [
@@ -301,11 +301,11 @@ MANUAL.add('procs', [
     ],
     examples: [
       { title: 'Start in the background', cmd: 'sleep 30 &\necho "PID of the last background job: $!"', norun: true, out: '[1] 4521\nPID of the last background job: 4521', note: 'In an interactive shell bash prints `[job] PID`; `$!` holds the PID.' },
-      { title: 'List the jobs', cmd: 'set -m\nsleep 30 & sleep 31 &\njobs\njobs -l | sed "s/[0-9]\\{3,\\}/PID/"\nkill %1 %2', note: '`set -m` turns job control on in a script; in your terminal it is already on. The `+` is the current job and `-` the previous one.' },
-      { title: 'Only the PIDs / running / stopped', cmd: 'set -m\nsleep 30 & sleep 31 &\njobs -p | wc -l\njobs -r | wc -l\njobs -s | wc -l\nkill $(jobs -p)' },
+      { title: 'List the jobs', cmd: 'sleep 30 &\nsleep 31 &\njobs\njobs -l', norun: true, out: '[1] 4601\n[2] 4602\n[1]-  Running                 sleep 30 &\n[2]+  Running                 sleep 31 &\n[1]-  4601 Running                 sleep 30 &\n[2]+  4602 Running                 sleep 31 &', note: 'In an interactive shell job control is on. The `+` is the current job and `-` the previous one; `-l` adds the PIDs. (In a script, `set -m` turns job control on.)' },
+      { title: 'Only the PIDs / running / stopped', cmd: 'sleep 30 & sleep 31 &\nkill -STOP %1\njobs -p\njobs -r\njobs -s', norun: true, out: '4601\n4602\n[2]+  Running                 sleep 31 &\n[1]-  Stopped                 sleep 30', note: '`jobs -p` prints only the process IDs (handy for `kill $(jobs -p)`).' },
       { title: 'Suspend, resume in the background, bring back', cmd: 'sleep 100\n^Z\n[1]+  Stopped                 sleep 100\nbg\n[1]+ sleep 100 &\njobs\n[1]+  Running                 sleep 100 &\nfg %1\nsleep 100\n^C', norun: true, out: '(an interactive transcript: you type sleep 100, Ctrl-Z, bg, jobs, fg and Ctrl-C)', note: 'This cannot be recorded automatically because it uses the keyboard; try it in your terminal.' },
-      { title: 'Which job? %N, %%, %?string', cmd: 'set -m\nsleep 41 & sleep 42 &\nkill %?42\n{ wait %?42; } 2>/dev/null\njobs\nkill %%\n{ wait; } 2>/dev/null; true', note: '`%?42` is the job whose command contains 42; `%%` the current job. `%sleep` would be ambiguous here (both start with `sleep`): bash refuses with `ambiguous job spec`; use the number.' },
-      { title: 'Stop and continue a job with signals', cmd: 'set -m\nsleep 50 &\nkill -STOP %1\njobs\nkill -CONT %1\njobs\nkill %1', note: 'This is what `Ctrl-Z` and `bg` do.' },
+      { title: 'Which job? %N, %%, %?string', cmd: 'sleep 41 &\nsleep 42 &\nkill %?42\njobs\nkill %%', norun: true, out: '[1] 4701\n[2] 4702\n[2]+  Terminated              sleep 42\n[1]+  Running                 sleep 41 &', note: '`%?42` is the job whose command contains 42; `%%` the current job. `%sleep` would be ambiguous here (both start with `sleep`): bash refuses with `ambiguous job spec`; use the number.' },
+      { title: 'Stop and continue a job with signals', cmd: 'sleep 50 &\nkill -STOP %1\njobs\nkill -CONT %1\njobs\nkill %1', norun: true, out: '[1] 4801\n[1]+  Stopped                 sleep 50\n[1]+  Running                 sleep 50 &', note: 'This is what `Ctrl-Z` and `bg` do.' },
       { title: 'Keep a job alive after logout', cmd: 'nohup ./long_task.sh > task.log 2>&1 &\ndisown', norun: true, out: '[1] 4590', note: '`nohup` makes the command ignore SIGHUP; `disown` removes it from the job table.' },
       { title: 'Do not let the background job write on the terminal', cmd: 'ls -R /usr > /tmp/list.txt 2>&1 &\nwait\nwc -l < /tmp/list.txt | sed "s/[0-9]\\+/N/"', note: 'Redirect both outputs of background jobs.' },
       { title: 'Wait for a job', cmd: 'sleep 1 &\njobs -p | wc -l\nwait\njobs -p | wc -l' },
@@ -411,7 +411,7 @@ MANUAL.add('procs', [
       { title: 'Other options', cmd: 'sleep 300 &\ndisown', norun: true, out: '[1] 4810', note: '`disown` makes the shell forget the job (no SIGHUP when the shell exits); `setsid cmd` starts it in a new session.' },
     ],
     exit: ['The status of the command; 125 if `nohup` itself fails, 126 cannot run, 127 not found.'],
-    see: ['jobs', 'kill', 'signals', 'screen'],
+    see: ['jobs', 'kill', 'signals'],
   },
   {
     name: 'watch', kind: 'command',

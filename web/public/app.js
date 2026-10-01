@@ -260,32 +260,11 @@ document.addEventListener('keydown', ev => {
 // ------------------------------------------------------------------ solution
 // ------------------------------------------------------------------ info & reference (glossary)
 function glossaryHTML(entries, linkify) {
-  const known = entries.filter(e => e.desc || e.summary);
+  const known = entries.filter(e => e.summary);
   if (!known.length) return '<p class="hint">No commands with a write-up yet for this one.</p>';
-  return known.map(e => {
-    if (e.cat && e.cat !== 'more' && e.summary) return MANUAL.cardHTML(e, linkify);
-    const inner = `<code>${esc(e.name)}</code><p>${esc(e.desc || '')}</p>`;
-    // the whole card is the click target, not just the command name inside it
-    return linkify ? `<a href="#" class="gl-item" data-goto-cmd="${esc(e.key)}">${inner}</a>` : `<div class="gl-item">${inner}</div>`;
-  }).join('');
+  return known.map(e => MANUAL.cardHTML(e, linkify)).join('');
 }
-
-// The single-command focused view: same name+description, plus a usage line, an options table and
-// worked examples when the glossary entry has them (older/rarer entries fall back gracefully).
-function focusedGlossaryHTML(e) {
-  if (e.cat && e.cat !== 'more' && e.summary) return MANUAL.entryHTML(e);
-  let html = `<code>${esc(e.name)}</code><p>${esc(e.desc)}</p>`;
-  if (e.usage) html += `<div class="gl-usage">${esc(e.usage)}</div>`;
-  if (e.options && e.options.length) {
-    html += `<h4>Options</h4><div class="gl-opts">${e.options.map(o =>
-      `<div class="opt"><code>${esc(o.flag)}</code><span>${esc(o.desc)}</span></div>`).join('')}</div>`;
-  }
-  if (e.examples && e.examples.length) {
-    html += `<h4>Examples</h4><div class="gl-examples">${e.examples.map(x =>
-      `<div class="ex"><code>${esc(x.cmd)}</code><span>${esc(x.desc)}</span></div>`).join('')}</div>`;
-  }
-  return html;
-}
+const focusedGlossaryHTML = e => MANUAL.entryHTML(e);
 $('#info-btn').onclick = () => {
   if (!state.current) return;
   $('#info-title').textContent = `Commands used in ${state.current.id}`;
@@ -308,13 +287,10 @@ let refCmdExercises = null; // key -> [{id, title, topicTitle, href}]  (exercise
 let refSel = { type: 'all' }; // {type:'all'} | {type:'topic', id} | {type:'cmd', key}
 
 function buildReferenceIndex() {
-  const legacy = legacyEntries();
-  refTopics = [...MANUAL.CATS, ['more', 'More entries']].map(([id, title]) => ({
-    id, title, cmds: id === 'more' ? legacy.sort((a, b) => a.name.localeCompare(b.name)) : MANUAL.byCat(id),
-  })).filter(t => t.cmds.length);
+  refTopics = MANUAL.CATS.map(([id, title]) => ({ id, title, cmds: MANUAL.byCat(id) })).filter(t => t.cmds.length);
   refCmdExercises = new Map();
   const use = (cmds, item) => { for (const c of explainCmds(cmds)) {
-    if (!c.desc && !c.summary) continue;
+    if (!c.summary) continue;
     if (!refCmdExercises.has(c.key)) refCmdExercises.set(c.key, []);
     if (!refCmdExercises.get(c.key).some(x => x.id === item.id)) refCmdExercises.get(c.key).push(item);
   } };
@@ -375,18 +351,20 @@ function renderReferenceContent() {
 function renderReferenceNav() {
   $('#reference-all').classList.toggle('current', refSel.type === 'all');
   $('#reference-tree').innerHTML = refTopics.map(t => `
-    <div class="ref-nav-topic${refSel.type !== 'all' ? ' open' : ''}" data-topic="${esc(t.id)} ${esc(t.title.toLowerCase())}">
+    <div class="ref-nav-topic${(refSel.type === 'topic' && refSel.id === t.id) || (refSel.type === 'cmd' && t.cmds.some(c => c.key === refSel.key)) ? ' open' : ''}" data-topic="${esc(t.id)} ${esc(t.title.toLowerCase())}">
       <button class="ref-nav-topic-head${refSel.type === 'topic' && refSel.id === t.id ? ' current' : ''}" data-action="topic" data-id="${esc(t.id)}">
         <span class="chev">▸</span><span class="t-name">${esc(t.title)}</span><span class="count">${t.cmds.length}</span>
       </button>
       <div class="ref-nav-cmds">${t.cmds.map(c => `<a href="#" class="ref-nav-cmd${refSel.type === 'cmd' && refSel.key === c.key ? ' current' : ''}"
-        data-action="cmd" data-key="${esc(c.key)}" data-name="${esc(c.name.toLowerCase())}" title="${esc(c.name)}">${esc(c.name)}</a>`).join('')}</div>
+        data-action="cmd" data-key="${esc(c.key)}" data-name="${esc(MANUAL.searchText(c))}" title="${esc(c.name)}">${esc(c.name)}</a>`).join('')}</div>
     </div>`).join('');
 }
 
 function renderReference() {
   renderReferenceNav();
   renderReferenceContent();
+  const cur = document.querySelector('.ref-nav-cmd.current');   // keep the selected entry visible in the long list
+  if (cur) cur.scrollIntoView({ block: 'nearest' });
 }
 
 $('#reference-nav').addEventListener('click', ev => {
@@ -1144,7 +1122,7 @@ function route() {
     showReferencePage(true);
     buildReferenceIndex();      // rebuilt on every visit: scripts and statuses may have changed
     loadManualOutputs();
-    if (refCmd) refSel = { type: 'cmd', key: decodeURIComponent(refCmd[1]) };
+    if (refCmd) { const k = decodeURIComponent(refCmd[1]); const m = MANUAL.get(k); refSel = { type: 'cmd', key: m ? m.key : k }; }
     else if (refTopic) refSel = { type: 'topic', id: decodeURIComponent(refTopic[1]) };
     else { refSel = { type: 'all' }; $('#reference-search').value = ''; }
     renderReference();

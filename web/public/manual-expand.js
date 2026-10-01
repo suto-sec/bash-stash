@@ -32,7 +32,7 @@ MANUAL.add('expand', [
     see: ['quoting', 'parameter-expansion', 'command-substitution', 'brace-expansion', 'glob', 'word-splitting', 'arithmetic'],
   },
   {
-    name: 'variables', kind: 'syntax', aliases: ['variable', 'shell variables', 'environment variables', 'assignment', 'VAR=value', '$VAR', '${VAR}', '$var', 'variable assignment', '${var}', 'variables de entorno', 'shell vs environment variables', 'variable naming', 'PATH', 'HOME', 'USER', 'PWD', 'OLDPWD', 'SHELL', 'LANG', 'HOSTNAME', 'RANDOM', 'SECONDS', 'LINENO', 'UID', 'EUID', 'PS1', 'BASH_VERSION',  'TERM', 'EDITOR', 'TMPDIR', 'REPLY', 'OPTIND', 'OPTARG', 'BASH_REMATCH', 'FUNCNAME', 'HISTSIZE', 'HISTFILE', 'MANPATH', 'PS2', 'PROMPT_COMMAND', 'LC_ALL', 'path variable', 'variable names', 'readonly variable'],
+    name: 'variables', kind: 'syntax', aliases: ['variable', 'shell variables', 'environment variables', 'assignment', 'VAR=value', '$VAR', '${VAR}', '$var', 'variable assignment', '${var}', 'variables de entorno', 'shell vs environment variables', 'variable naming', 'PATH', 'HOME', 'USER', 'PWD', 'OLDPWD', 'SHELL', 'LANG', 'HOSTNAME', 'RANDOM', 'SECONDS', 'LINENO', 'UID', 'EUID', 'PS1', 'BASH_VERSION',  'TERM', 'EDITOR', 'TMPDIR', 'BASH_REMATCH', 'HISTSIZE', 'HISTFILE', 'MANPATH', 'PS2', 'PROMPT_COMMAND', 'LC_ALL', 'path variable', 'variable names', 'readonly variable'],
     summary: 'Shell variables: assigning (`name=value`), using (`$name`, `${name}`), scope, environment variables and the important predefined ones.',
     synopsis: ['NAME=value            # assignment: NO spaces around =', 'echo "$NAME"  echo "${NAME}text"', 'NAME=value COMMAND     # for one command only', 'export NAME           # visible to child processes'],
     desc: [
@@ -161,7 +161,7 @@ MANUAL.add('expand', [
     see: ['export', 'variables', 'set'],
   },
   {
-    name: 'declare', kind: 'builtin', aliases: ['typeset', 'declare -i', 'declare -a', 'declare -A', 'declare -r', 'declare -x', 'declare -p', 'declare -l', 'declare -u', 'declare -n', 'readonly', 'local', 'declare -g', 'declare -f', 'declare -F'],
+    name: 'declare', kind: 'builtin', aliases: ['typeset', 'declare -i', 'declare -a', 'declare -A', 'declare -r', 'declare -x', 'declare -p', 'declare -l', 'declare -u', 'declare -n', 'readonly', 'declare -g', 'declare -f', 'declare -F'],
     summary: 'Declare variables with attributes: integer, array, associative array, read-only, exported, lower/upper case, reference.',
     synopsis: ['declare [-aAfFgilnrtux] [-p] [NAME[=VALUE]]...', 'readonly NAME=VALUE', 'local NAME=VALUE        # inside functions'],
     desc: ['`declare` creates variables and gives them **attributes**; a bare `NAME=value` already works for ordinary variables, but attributes let the shell help you: **`-i`** integer (assignments are evaluated as arithmetic), **`-a`** indexed array, **`-A`** associative array (bash 4+; a *must* before using string keys), **`-r`** read-only, **`-x`** exported, **`-l` / `-u`** convert the value to lower / upper case, **`-n`** name reference. A **minus** turns an attribute on, a **plus** turns it off. Inside a function `declare` makes the variable **local** (so does `local`); `-g` forces global. `readonly NAME` is `declare -r`. `declare -p NAME` prints how a variable is defined; `declare -f` / `-F` list functions.'],
@@ -250,7 +250,7 @@ MANUAL.add('expand', [
     see: ['expansions', 'glob', 'mkdir', 'seq', 'for'],
   },
   {
-    name: 'parameter-expansion', kind: 'syntax', aliases: ['${var:-default}', '${var:=default}', '${var:+alt}', '${var:?error}', '${var#pattern}', '${var##pattern}', '${var%pattern}', '${var%%pattern}', '${var/pat/rep}', '${var//pat/rep}', '${#var}', '${var:offset:length}', '${var^^}', '${var,,}', '${!var}', '${var-default}', '${var#prefix}', '${var%suffix}', '${var%.*}', '${var##*/}', '${var:-}', '${#v}', '${#var}', '${var:?}', '${var^}', '${var,}', '${!prefix*}', '${var@Q}', '${var:1}', '${var: -3}', 'substring', 'default values', 'string manipulation', 'expansión de parámetros', '${var:-word}', '${var:+word}', '${var:?word}', '${var:=word}', '${var#pattern}', '${var/#pat/rep}', '${var/%pat/rep}', '${var%pattern}', '${var##*:}', '${var#*:}', 'default value', 'remove prefix', 'remove suffix'],
+    name: 'parameter-expansion', kind: 'syntax', aliases: ['parameter expansion', 'parameter', '${var:-default}', '${var:=default}', '${var:+alt}', '${var:?error}', '${var#pattern}', '${var##pattern}', '${var%pattern}', '${var%%pattern}', '${var/pat/rep}', '${var//pat/rep}', '${#var}', '${var:offset:length}', '${var^^}', '${var,,}', '${!var}', '${var-default}', '${var#prefix}', '${var%suffix}', '${var%.*}', '${var##*/}', '${var:-}', '${#v}', '${#var}', '${var:?}', '${var^}', '${var,}', '${!prefix*}', '${var@Q}', '${var:1}', '${var: -3}', 'substring', 'default values', 'string manipulation', 'expansión de parámetros', '${var:-word}', '${var:+word}', '${var:?word}', '${var:=word}', '${var#pattern}', '${var/#pat/rep}', '${var/%pat/rep}', '${var%pattern}', '${var##*:}', '${var#*:}', 'default value', 'remove prefix', 'remove suffix'],
     summary: 'The `${...}` forms: default values, string length, substrings, removing prefixes/suffixes, search and replace, case conversion.',
     synopsis: ['${var:-default}  ${var:=default}  ${var:+alt}  ${var:?message}', '${#var}  ${var:OFFSET:LENGTH}', '${var#PAT}  ${var##PAT}  ${var%PAT}  ${var%%PAT}', '${var/PAT/REP}  ${var//PAT/REP}  ${var^^}  ${var,,}'],
     desc: [
@@ -317,7 +317,7 @@ MANUAL.add('expand', [
     see: ['variables', 'arithmetic', 'process-substitution', 'quoting', 'expansions'],
   },
   {
-    name: 'arithmetic', kind: 'syntax', aliases: ['$(( ))', '$((...))', '(( ))', '((...))', 'let', 'arithmetic expansion', 'arithmetic $(( ))', 'integer arithmetic', 'aritmética', '((i++))', 'i++', '$((a+b))', 'operators', 'modulo', '%', '**', 'let i++', 'arithmetic evaluation', 'arithmetic for', 'for (( ))', '(( ))vs[[ ]]'],
+    name: 'arithmetic', kind: 'syntax', aliases: ['$(( ))', '$((...))', '(( ))', '((...))', 'let', 'arithmetic expansion', 'arithmetic $(( ))', 'integer arithmetic', 'aritmética', '((i++))', 'i++', '$((a+b))', 'operators', 'modulo', '%', '**', 'let i++', 'arithmetic evaluation', 'arithmetic for', '(( ))vs[[ ]]'],
     summary: 'Integer arithmetic in the shell: `$(( ))`, `(( ))`, `let` (and `expr`, `bc` for the rest).',
     synopsis: ['$(( EXPRESSION ))     # expands to the value', '(( EXPRESSION ))       # command: status 0 if the value is non-zero', 'let "EXPRESSION"', 'expr 2 + 3        echo "scale=2; 10/4" | bc'],
     desc: [
@@ -361,7 +361,7 @@ MANUAL.add('expand', [
     see: ['variables', 'test', 'for', 'bc', 'expr', 'declare'],
   },
   {
-    name: 'word-splitting', kind: 'syntax', aliases: ['IFS', '$IFS', 'IFS=', 'IFS=: read', 'IFS= read -r', 'splitting', 'field splitting', 'IFS=, read -ra', 'word splitting', 'division de palabras'],
+    name: 'word-splitting', kind: 'syntax', aliases: ['IFS', '$IFS', 'IFS=', 'IFS=: read', 'splitting', 'field splitting', 'IFS=, read -ra', 'word splitting', 'division de palabras'],
     summary: 'Word splitting and `$IFS`: how unquoted expansions are cut into words, and how to split on other characters.',
     synopsis: ['IFS=$\' \\t\\n\'   (default)', 'IFS=: read -r a b c <<< "x:y:z"', 'IFS=, read -ra array <<< "a,b,c"'],
     desc: ['After parameter, command and arithmetic expansion, the shell takes every **unquoted** result and splits it into words at the characters of the variable **`IFS`** (the *Internal Field Separator*). Its default is **space, tab and newline**, and runs of them count as one separator. That is why `ls $file` breaks when the name contains a space and why you quote: **`"$var"` is never split**. Splitting does not happen on the literal text you type, only on expansion results.', 'Changing `IFS` lets you split on other characters, most often with `read`: **`IFS=: read -r a b c`** splits one line at colons (the assignment applies only to that command). An **empty** `IFS=` disables trimming and splitting (`IFS= read -r line` keeps leading and trailing spaces: the correct way to read lines). Never leave a changed `IFS` set for the rest of the script: put it in a subshell or on the command.'],
@@ -380,7 +380,7 @@ MANUAL.add('expand', [
     see: ['quoting', 'read', 'expansions', 'arrays', 'special-parameters'],
   },
   {
-    name: 'arrays', kind: 'syntax', aliases: ['array', 'associative arrays', 'associative array', '${arr[@]}', '${#arr[@]}', '${!arr[@]}', 'arr=()', 'arr+=()', 'mapfile', 'readarray', 'indexed arrays', 'arrays: ${arr[@]}', '${arr[*]}', '${arr[0]}', 'array slice', '"${arr[@]}"', 'keys of an array', 'arrays asociativos'],
+    name: 'arrays', kind: 'syntax', aliases: ['associative', 'array', 'associative arrays', 'associative array', '${arr[@]}', '${#arr[@]}', '${!arr[@]}', 'arr=()', 'arr+=()', 'mapfile', 'readarray', 'indexed arrays', 'arrays: ${arr[@]}', '${arr[*]}', '${arr[0]}', 'array slice', '"${arr[@]}"', 'keys of an array', 'arrays asociativos'],
     summary: 'Bash arrays: indexed (`arr=(a b c)`) and associative (`declare -A map`), with all the ways to read them.',
     synopsis: ['arr=(a b c)   arr[3]=d   arr+=(e f)', '"${arr[@]}"   "${#arr[@]}"   "${!arr[@]}"   "${arr[@]:1:2}"', 'declare -A map; map[key]=value; "${map[key]}"; "${!map[@]}"'],
     desc: [

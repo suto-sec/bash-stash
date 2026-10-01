@@ -34,11 +34,15 @@ const MANUAL = (() => {
       for (const a of e.aliases || []) alias.set(norm(a), e.key);
     }
   }
-  const get = key => entries.get(norm(key)) || null;
+  const get = key => entries.get(norm(key)) || (alias.has(norm(key)) ? entries.get(alias.get(norm(key))) : null);
   const all = () => [...entries.values()];
   const byCat = cat => all().filter(e => e.cat === cat).sort((a, b) => a.name.localeCompare(b.name, 'en', { sensitivity: 'base' }));
   const catTitle = id => (CATS.find(c => c[0] === id) || [id, id])[1];
   const setOutputs = o => { outputs = o || {}; };
+
+  // pattern rules for tokens that are syntax rather than words (manual-rules.js): [regex, key]
+  const rules = [];
+  const rule = (re, key) => rules.push([re, norm(key)]);
 
   // token (as written in an exercise's "Commands:" line) -> entry or null
   function lookup(token) {
@@ -48,11 +52,18 @@ const MANUAL = (() => {
     const b = norm((t.match(/^\S+/) || [t])[0]);
     if (entries.has(b)) return entries.get(b);
     if (alias.has(b)) return entries.get(alias.get(b));
+    for (const [re, key] of rules) if (re.test(String(token).trim()) && entries.has(key)) return entries.get(key);
     return null;
   }
 
   // text with `code` and **bold**
-  const inline = s => esc(s).replace(/`([^`]+)`/g, '<code>$1</code>').replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  // `code`, ``code with `backticks` inside`` and **bold**; code spans are lifted out first so that `**` or `*` inside code never starts a bold
+  function inline(src) {
+    const codes = [];
+    const lift = (m, c) => { codes.push(c); return `\u0002${codes.length - 1}\u0003`; };
+    return esc(src).replace(/`` ` ``/g, () => lift(0, '`')).replace(/``\s?(.+?)\s?``/g, lift).replace(/`([^`]+)`/g, lift)
+      .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>').replace(/\u0002(\d+)\u0003/g, (m, n) => `<code>${codes[n]}</code>`);
+  }
   function paras(list) {
     return (list || []).map(p => {
       const lines = String(p).split('\n');
@@ -88,7 +99,7 @@ const MANUAL = (() => {
     for (const s of (e.sections || []).filter(s => s.after)) secs.push([`s-${esc(norm(s.title)).replace(/\W+/g, '-')}`, s.title, sectionBody(s)]);
     if (e.exit && e.exit.length) secs.push(['exit', 'Exit status', paras(e.exit)]);
     if (e.notes && e.notes.length) secs.push(['notes', 'Notes and common mistakes', paras(e.notes.map(n => `- ${n}`).join('\n').split('\n\n'))]);
-    if (e.see && e.see.length) secs.push(['see', 'See also', `<p class="man-see">${e.see.map(k => get(k) ? `<a href="#" data-goto-cmd="${esc(norm(k))}"><code>${esc(get(k).name)}</code></a>` : `<code>${esc(k)}</code>`).join(' · ')}</p>`]);
+    if (e.see && e.see.length) secs.push(['see', 'See also', `<p class="man-see">${e.see.map(k => get(k) ? `<a href="#" data-goto-cmd="${esc(get(k).key)}"><code>${esc(get(k).name)}</code></a>` : `<code>${esc(k)}</code>`).join(' · ')}</p>`]);
     const toc = secs.map(([id, t]) => `<a href="#" data-man-jump="m-${id}">${esc(t)}</a>`).join('');
     return `<article class="man" data-key="${esc(e.key)}">
       <header class="man-head"><h1><code>${esc(e.name)}</code></h1>${e.kind ? `<span class="man-kind">${KIND[e.kind] || e.kind}</span>` : ''}<span class="man-cat">${esc(catTitle(e.cat))}</span>
@@ -107,5 +118,5 @@ const MANUAL = (() => {
   }
   const searchText = e => norm([e.name, e.summary, ...(e.aliases || []), ...(e.synopsis || [])].join(' '));
 
-  return { CATS, add, get, all, byCat, catTitle, lookup, entryHTML, cardHTML, inline, setOutputs, searchText, esc };
+  return { CATS, add, get, all, byCat, catTitle, lookup, rule, entryHTML, cardHTML, inline, setOutputs, searchText, esc };
 })();

@@ -157,7 +157,7 @@ MANUAL.add('help', [
     see: ['man', 'whatis'],
   },
   {
-    name: 'help', kind: 'builtin',
+    name: 'help', kind: 'builtin', aliases: ['builtins', 'builtin'],
     summary: 'Show help for the shell builtins (cd, echo, read, test, ...).',
     synopsis: ['help [-dms] [PATTERN...]'],
     desc: [

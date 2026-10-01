@@ -1,7 +1,7 @@
 'use strict';
 MANUAL.add('users', [
   {
-    name: 'users-and-passwords', kind: 'concept', aliases: ['users and groups', 'gid', 'uid 0', 'root', 'superuser', 'system users', 'primary group', 'supplementary groups', 'login shell', 'nologin', 'usuarios', 'user accounts', 'accounts', '/usr/sbin/nologin'],
+    name: 'users-and-passwords', kind: 'concept', aliases: ['users and groups', 'gid', 'uid 0', 'root', 'superuser', 'system users', 'primary group', 'supplementary groups', 'nologin', 'usuarios', 'user accounts', 'accounts', '/usr/sbin/nologin'],
     summary: 'How Linux represents users and groups: UID/GID, primary and supplementary groups, root, system accounts and login shells.',
     synopsis: ['id [USER]        getent passwd USER        getent group GROUP', 'cat /etc/passwd   /etc/group   /etc/shadow   /etc/sudoers'],
     desc: [
@@ -269,7 +269,7 @@ MANUAL.add('users', [
     ],
     exit: ['The exit status of the shell or command; 125 if `su` itself failed, 126 if the command cannot be run, 127 if not found.'],
     notes: ['Root can be locked (no password) on Ubuntu: then `su -` fails and you use `sudo -i`.', 'After `su -`, `whoami` is the new user but `logname` still shows who logged in.'],
-    see: ['sudo', 'whoami', 'id', 'passwd', 'login-shell'],
+    see: ['sudo', 'whoami', 'id', 'passwd', 'bash'],
   },
   {
     name: 'sudo', kind: 'command', aliases: ['sudo -u', 'sudo -i', 'sudo -s', 'sudo -l', 'sudo -k', 'sudo -E', 'sudo -n', 'sudo su', 'sudo -g', 'sudo -v', 'sudo -H', 'sudoedit', 'sudo !!', 'sudo -u user'],

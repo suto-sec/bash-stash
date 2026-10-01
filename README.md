@@ -149,6 +149,15 @@ The quizzes are available in **English and Spanish**: Settings (⚙) → *Theory
 affects the Theory section (its home-page cards, categories, questions and explanations); exercises and
 the rest of the app stay in English. Progress is shared between the two languages.
 
+## Reference manual
+
+The **Reference** page (top bar, and every command in an exercise's *Info* panel) is a manual written like a good `man` page, for the commands,
+syntax and concepts of the course: synopsis, a full description, **every option**, worked examples for each use case, exit status, common mistakes
+and *see also*, in 14 categories (files, archives, text, search, permissions, users, processes, redirection, variables and expansions, scripting,
+script patterns, system, utilities). The output shown under each example is **real**: `tools/build_manual.js` runs every example in the lab
+and stores what it printed in `web/public/manual-outputs.json`. The *Used in* box lists the exercises and scripts that use the entry. Entries live
+in `web/public/manual-<category>.js` (format in `tools/MANUAL_AUTHORING.md`).
+
 ## Scripts
 
 Under **Coding exercises → Scripts**: whole scripts built up step by step. Each script is one exercise with a few steps; every step adds one
@@ -190,6 +199,7 @@ Sources: `tools/theory/exams/*.txt`, built by `node tools/build_theory.js exams`
 - `tools/theory/*.txt` + `node tools/build_theory.js` — theory quiz sources and their compiler/validator (writes `theory/*.json`).
 - `tools/theory/exams/` + `node tools/build_theory.js exams` — practice exams; `node tools/exam_blueprint.js` (coverage matrix) and `node tools/exam_check.js` (near-duplicate check).
 - `tools/validate.sh [ids]` (inside the lab) — proves every reference passes and an empty answer fails.
+- `web/public/manual-*.js` + `node tools/build_manual.js` (inside the lab) — the Reference manual and its example runner; `node tools/manual_coverage.js` lists the exercise commands the manual cannot resolve.
 - `container/` — image definition (users, fake logs, sessions, code-server).
 - `web/` — web UI: `server.js` (Node: API, terminal over websocket, proxy to code-server) and `public/`.
 
