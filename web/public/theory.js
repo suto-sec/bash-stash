@@ -13,7 +13,7 @@ const Theory = (() => {
         order: 'Put in order · drag or use the arrows', match: 'Match the pairs · drag, or click a chip then a slot',
         sort: 'Sort into categories · drag, or click a chip then a category' },
       status: { pass: 'passed', attempted: 'tried', new: 'not started' },
-      langName: 'English', homeTitle: 'Theory',
+      langName: 'English', homeTitle: 'Theory', quizzesTitle: 'Quizzes',
       homeIntro: 'Interactive quizzes on the concepts behind the commands: single and multiple choice, fill in the blank, ordering, matching and sorting. Every answer gets instant feedback explaining why each option is right or wrong. Pick a collection to browse its questions in the sidebar.',
       none: 'No theory collections built yet (run <code>node tools/build_theory.js</code>).',
       count: (p, t) => `${p}/${t} questions`, badge: 'Theory: ', theory: 'Theory',
@@ -45,7 +45,7 @@ const Theory = (() => {
         order: 'Ordena · arrastra o usa las flechas', match: 'Empareja · arrastra, o pulsa una ficha y luego un hueco',
         sort: 'Clasifica · arrastra, o pulsa una ficha y luego una categoría' },
       status: { pass: 'superada', attempted: 'intentada', new: 'sin empezar' },
-      langName: 'Español', homeTitle: 'Teoría',
+      langName: 'Español', homeTitle: 'Teoría', quizzesTitle: 'Cuestionarios',
       homeIntro: 'Cuestionarios interactivos sobre los conceptos que hay detrás de los mandatos: respuesta única y múltiple, rellenar huecos, ordenar, emparejar y clasificar. Cada respuesta se corrige al momento y se explica por qué cada opción es correcta o incorrecta. Elige una colección para recorrer sus preguntas en la barra lateral.',
       none: 'Aún no hay colecciones de teoría (ejecuta <code>node tools/build_theory.js</code>).',
       count: (p, t) => `${p}/${t} preguntas`, badge: 'Teoría: ', theory: 'Teoría',
@@ -83,6 +83,7 @@ const Theory = (() => {
   function applyStatic() {
     $('#theory-lang-value').textContent = T('langName');
     $('#theory-home-title').textContent = T('homeTitle');
+    $('#theory-quizzes-title').textContent = T('quizzesTitle');
     $('#theory-home-intro').textContent = T('homeIntro');
     $('#th-check').textContent = T('check');
     $('#th-next').textContent = T('next');
@@ -97,6 +98,7 @@ const Theory = (() => {
     await load();
     applyStatic();
     renderHomeGrid();
+    if (typeof renderHomeNav === 'function') renderHomeNav();
     if (typeof updateTrackBadge === 'function') updateTrackBadge();
     if (state.theory && view && !$('#theory-main').classList.contains('hidden')) {
       const cid = view.cid, qid = view.item.q.id;

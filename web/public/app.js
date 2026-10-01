@@ -814,7 +814,82 @@ function renderHomePage() {
   $('#intro-all-card').classList.toggle('current', state.introCategory === 'all');
   renderIntroGrid();
   Theory.renderHomeGrid();
+  renderHomeNav();
 }
+
+// Left navigation of the home page: group labels and section titles scroll the page to that part; the items
+// underneath pick a track / intro category / quiz collection directly (they click the matching card).
+function renderHomeNav() {
+  const nav = $('#home-nav');
+  if (!nav) return;
+  let closed = [];
+  try { closed = JSON.parse(localStorage.getItem('homeNavClosed') || '[]'); } catch { /* private mode */ }
+  const open = new Map([...nav.querySelectorAll('details')].map(d => [d.dataset.sec, d.open]));
+  closed.forEach(id => { if (!open.has(id)) open.set(id, false); });
+  const items = (sel, cur) => [...document.querySelectorAll(sel)].map(card => {
+    const title = card.querySelector('.track-card-title').textContent;
+    const m = (card.querySelector('.track-card-count').textContent.match(/^\d+\/\d+/) || [''])[0];
+    const key = card.dataset.track || card.dataset.introTopic || card.dataset.theory || 'all';
+    return `<button class="hn-item${card.classList.contains('current') ? ' current' : ''}" data-pick="${esc(sel)}" data-key="${esc(key)}">
+      <span class="hn-name">${esc(title)}</span><span class="hn-count">${m}</span></button>`;
+  }).join('');
+  const section = (id, target, label, body) => `<details class="hn-section" data-sec="${id}" data-scroll="${target}"${open.get(id) === false ? '' : ' open'}>
+    <summary>${esc(label)}</summary>${body}</details>`;
+  nav.innerHTML =
+    `<button class="hn-group" data-scroll="home-grp-exercises">${esc($('#home-grp-exercises').textContent)}</button>` +
+    section('tracks', 'home-sec-tracks', $('#home-sec-tracks').textContent, items('#track-grid .track-card')) +
+    section('intro', 'home-sec-intro', $('#home-sec-intro').textContent,
+      items('#intro-all-card') + items('#intro-grid .track-card')) +
+    `<button class="hn-group" data-scroll="theory-home-title">${esc($('#theory-home-title').textContent)}</button>` +
+    section('quizzes', 'theory-quizzes-title', $('#theory-quizzes-title').textContent, items('#theory-grid .track-card'));
+  syncHomeNav();
+}
+function syncHomeNav() {
+  const body = $('#home-body'), nav = $('#home-nav');
+  if (!body || !nav) return;
+  const at = id => $('#' + id).offsetTop;
+  const y = body.scrollTop + 120;
+  const groups = ['home-grp-exercises', 'theory-home-title'], secs = { tracks: 'home-sec-tracks', intro: 'home-sec-intro', quizzes: 'theory-quizzes-title' };
+  const g = at(groups[1]) <= y ? 1 : 0;
+  nav.querySelectorAll('.hn-group').forEach((b, i) => b.classList.toggle('active', i === g));
+  let cur = null;
+  for (const [k, id] of Object.entries(secs)) if (at(id) <= y) cur = k;
+  nav.querySelectorAll('details').forEach(d => d.classList.toggle('active', d.dataset.sec === cur));
+  // keep the highlighted section visible in the nav as the page scrolls (only when it changes)
+  const key = g + ':' + cur;
+  if (key !== syncHomeNav.last) {
+    syncHomeNav.last = key;
+    const el = nav.querySelector('details.active > summary') || nav.querySelectorAll('.hn-group')[g];
+    if (el) el.scrollIntoView({ block: 'nearest' });
+  }
+}
+$('#home-body').addEventListener('scroll', syncHomeNav);
+// remember which sections the learner folded (the nav is long; folding "Introduction" keeps Theory in view)
+$('#home-nav').addEventListener('toggle', ev => {
+  const d = ev.target; if (!d.dataset || !d.dataset.sec) return;
+  let closed = [];
+  try { closed = JSON.parse(localStorage.getItem('homeNavClosed') || '[]'); } catch { /* private mode */ }
+  closed = closed.filter(x => x !== d.dataset.sec);
+  if (!d.open) closed.push(d.dataset.sec);
+  try { localStorage.setItem('homeNavClosed', JSON.stringify(closed)); } catch { /* private mode */ }
+}, true);
+$('#home-nav').addEventListener('click', ev => {
+  const pick = ev.target.closest('.hn-item');
+  if (pick) {
+    const sel = pick.dataset.pick, key = pick.dataset.key;
+    const card = sel === '#intro-all-card' ? $(sel)
+      : [...document.querySelectorAll(sel)].find(c => (c.dataset.track || c.dataset.introTopic || c.dataset.theory) === key);
+    if (card) card.click();
+    return;
+  }
+  const head = ev.target.closest('summary, .hn-group');
+  if (!head) return;
+  const owner = head.closest('[data-scroll]') || head;
+  const target = $('#' + owner.dataset.scroll);
+  // opening a section also brings it into view; closing it only folds the list
+  if (head.tagName === 'SUMMARY' && owner.open) return;
+  if (target) target.scrollIntoView({ block: 'start' });
+});
 function renderIntroGrid() {
   const grid = $('#intro-grid');
   grid.innerHTML = state.index.filter(t => t.id !== '18' && t.id !== '19').map(t => {

@@ -182,8 +182,11 @@
       <strong>Choose what to browse</strong>
       <div class="spacer"></div>
     </div>
-    <div class="home-body">
-      <h2 class="home-section-title">Track selection</h2>
+    <div class="home-layout">
+    <nav class="home-nav" id="home-nav" aria-label="Home sections"></nav>
+    <div class="home-body" id="home-body">
+      <h1 class="home-group-title" id="home-grp-exercises">Scripting exercises</h1>
+      <h2 class="home-section-title" id="home-sec-tracks">Tracks</h2>
       <p class="home-intro">Pick a collection. It decides which exercises show up in the sidebar — you can change this anytime by clicking the logo again.</p>
       <div class="track-grid" id="track-grid">
         <button class="track-card" data-track="minimal">
@@ -203,7 +206,7 @@
         </button>
       </div>
 
-      <h2 class="home-section-title">Introduction</h2>
+      <h2 class="home-section-title" id="home-sec-intro">Introduction</h2>
       <p class="home-intro">Quick refreshers — a handful of tiny, single-concept exercises per category just to shake the rust off the basics and syntax. Pick a category to browse only its refreshers.</p>
       <button class="track-card intro-all-card" id="intro-all-card">
         <div class="track-card-title">Full introduction set</div>
@@ -212,9 +215,11 @@
       </button>
       <div class="track-grid" id="intro-grid"></div>
 
-      <h2 class="home-section-title" id="theory-home-title">Theory</h2>
+      <h1 class="home-group-title" id="theory-home-title">Theory</h1>
+      <h2 class="home-section-title" id="theory-quizzes-title">Quizzes</h2>
       <p class="home-intro" id="theory-home-intro">Interactive quizzes on the concepts behind the commands: single and multiple choice, fill in the blank, ordering, matching and sorting. Every answer gets instant feedback explaining why each option is right or wrong. Pick a collection to browse its questions in the sidebar.</p>
       <div class="track-grid" id="theory-grid"></div>
+    </div>
     </div>
   </div>
 
