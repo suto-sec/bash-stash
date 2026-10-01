@@ -312,9 +312,45 @@ dialog::backdrop { background: rgba(0,0,0,.5); }
 
 /* ---------- home page (track picker) ---------- */
 .home-page { position: fixed; inset: 0; z-index: 20; background: var(--bg); display: flex; flex-direction: column; }
-.home-body { flex: 1; overflow-y: auto; padding: 40px 32px 60px; }
-.home-section-title { max-width: 1100px; margin: 0 auto; font-size: 18px; text-align: center; }
-.home-body .home-section-title:not(:first-child) { margin-top: 56px; }
+.home-layout { flex: 1; display: flex; min-height: 0; }
+.home-body { flex: 1; overflow-y: auto; padding: 40px 32px 60px; scroll-behavior: smooth; position: relative; }
+.home-group-title {
+  max-width: 1100px; margin: 0 auto 36px; padding-bottom: 12px; font-size: 30px; font-weight: 800;
+  text-align: center; letter-spacing: .2px; border-bottom: 2px solid var(--accent);
+}
+.home-body .home-group-title:not(:first-child) { margin-top: 88px; }
+.home-section-title { max-width: 1100px; margin: 0 auto; font-size: 20px; text-align: center; scroll-margin-top: 16px; }
+.home-body .track-grid + .home-section-title { margin-top: 56px; }
+/* left navigation of the home page: same look as the exercise sidebar */
+.home-nav {
+  flex: none; width: 270px; box-sizing: border-box; overflow-y: auto; padding: 14px 10px 24px;
+  background: var(--panel); border-right: 1px solid var(--border);
+}
+.hn-group {
+  display: block; width: 100%; box-sizing: border-box; padding: 14px 8px 6px; border: none; background: none; cursor: pointer;
+  text-align: left; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .8px; color: var(--muted);
+}
+.hn-group:hover { color: var(--text); }
+.hn-group.active { color: var(--accent); }
+.hn-section { margin: 2px 0; }
+.hn-section > summary {
+  display: flex; align-items: center; gap: 6px; padding: 7px 8px; border-radius: 6px; cursor: pointer; list-style: none;
+  font-size: 13.5px; font-weight: 700;
+}
+.hn-section > summary::-webkit-details-marker { display: none; }
+.hn-section > summary::before { content: "▸"; color: var(--muted); width: 10px; }
+.hn-section[open] > summary::before { content: "▾"; }
+.hn-section > summary:hover { background: var(--panel-2); }
+.hn-section.active > summary { color: var(--accent); }
+.hn-item {
+  display: flex; align-items: center; gap: 8px; width: 100%; box-sizing: border-box; padding: 5px 8px 5px 26px; border: none;
+  background: none; border-radius: 6px; cursor: pointer; text-align: left; color: var(--text); font-size: 12.5px;
+}
+.hn-item:hover { background: var(--panel-2); }
+.hn-item.current { background: var(--sel); }
+.hn-item .hn-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hn-item .hn-count { color: var(--muted); font-size: 11.5px; }
+@media (max-width: 900px) { .home-nav { display: none; } }
 .home-intro { max-width: 720px; margin: 6px auto 28px; color: var(--muted); text-align: center; }
 .track-grid {
   display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px;

@@ -113,7 +113,10 @@ Progress is stored in `.progress/` (delete it to start over).
 
 ## Theory quizzes
 
-Besides the exercises, the web UI has a **Theory** section on the home page: 13 collections and more
+The home page has two big parts, **Scripting exercises** (*Tracks* and *Introduction*) and **Theory** (*Quizzes*), with
+a left-hand navigation to jump to a section or pick a track, an introduction category or a quiz collection directly.
+
+Besides the exercises, the web UI has a **Theory** part on the home page: 13 collections and more
 than 830 interactive questions on the concepts behind the commands. They are graded in the browser with
 instant feedback, in six styles: single choice, multiple choice, fill in the blank, put in order (drag
 or arrows), match the pairs, and sort into categories (drag or click). After each answer *every* option
