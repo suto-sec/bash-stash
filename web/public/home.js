@@ -97,6 +97,7 @@ const Home = (() => {
       return { done: all.filter(e => Exams.statusOf(e) === 'pass').length, total: all.length, next: next && { label: next.title, run: () => Exams.go(next.id) } };
     },
   };
+  const hooks = [];
   const cache = {};
   const nextOf = key => (cache[key] || {}).next;
   function refreshSummaries() {
@@ -115,6 +116,7 @@ const Home = (() => {
     }
     renderBar();
     renderContinue();
+    hooks.forEach(fn => { try { fn(); } catch { /* a hook must not break the page */ } });
   }
 
   // ---------------------------------------------------------------- the sticky bar
@@ -250,5 +252,5 @@ const Home = (() => {
     later();
   }
   init();
-  return { refresh: refreshSummaries, expandById, apply };
+  return { refresh: refreshSummaries, expandById, apply, onRefresh: fn => hooks.push(fn) };
 })();
