@@ -1,0 +1,27 @@
+{
+ "id": "s43",
+ "slug": "maxnum",
+ "title": "The biggest number",
+ "script": "maxnum.sh",
+ "cmds": "for, if, arithmetic, [[ =~ ]], exit codes",
+ "level": 1,
+ "tags": [
+  "tests",
+  "arithmetic",
+  "arguments"
+ ],
+ "steps": [
+  {
+   "n": 1,
+   "title": "Find the biggest"
+  },
+  {
+   "n": 2,
+   "title": "Check the numbers"
+  },
+  {
+   "n": 3,
+   "title": "And the smallest"
+  }
+ ]
+}

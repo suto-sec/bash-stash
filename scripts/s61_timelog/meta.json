@@ -1,0 +1,27 @@
+{
+ "id": "s61",
+ "slug": "timelog",
+ "title": "Activity per hour",
+ "script": "timelog.sh",
+ "cmds": "cut -c, associative arrays, sort, printf, arithmetic, exit codes",
+ "level": 3,
+ "tags": [
+  "logs",
+  "text",
+  "arithmetic"
+ ],
+ "steps": [
+  {
+   "n": 1,
+   "title": "Events per hour"
+  },
+  {
+   "n": 2,
+   "title": "The busiest hour"
+  },
+  {
+   "n": 3,
+   "title": "Check the file"
+  }
+ ]
+}

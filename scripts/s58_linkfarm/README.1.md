@@ -1,0 +1,1 @@
+Write `linkfarm.sh DIR LINKDIR`. In the existing directory `LINKDIR` it creates a **symbolic link** to every **regular file directly inside** `DIR`, with the same name; the link must point to the file's **absolute path** (`$(readlink -f "$f")`). Print `linked NAME` for each; the order does not matter. Assume no name exists yet in `LINKDIR`.

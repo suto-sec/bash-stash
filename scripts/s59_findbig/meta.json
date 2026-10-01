@@ -1,0 +1,27 @@
+{
+ "id": "s59",
+ "slug": "findbig",
+ "title": "The biggest files",
+ "script": "findbig.sh",
+ "cmds": "find -printf, sort -nr, head, shift, exit codes",
+ "level": 3,
+ "tags": [
+  "find",
+  "files",
+  "pipes"
+ ],
+ "steps": [
+  {
+   "n": 1,
+   "title": "The biggest one"
+  },
+  {
+   "n": 2,
+   "title": "Check the directory"
+  },
+  {
+   "n": 3,
+   "title": "The top N"
+  }
+ ]
+}

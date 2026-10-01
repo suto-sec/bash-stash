@@ -1,0 +1,35 @@
+{
+ "id": "s67",
+ "slug": "report",
+ "title": "A directory report",
+ "script": "report.sh",
+ "cmds": "find -type f -printf, associative arrays, sort, mkdir -p, shift, exit codes",
+ "level": 5,
+ "tags": [
+  "files",
+  "text",
+  "find"
+ ],
+ "steps": [
+  {
+   "n": 1,
+   "title": "Print the report"
+  },
+  {
+   "n": 2,
+   "title": "Save it"
+  },
+  {
+   "n": 3,
+   "title": "Create the reports directory"
+  },
+  {
+   "n": 4,
+   "title": "Another output file"
+  },
+  {
+   "n": 5,
+   "title": "Check the directory"
+  }
+ ]
+}

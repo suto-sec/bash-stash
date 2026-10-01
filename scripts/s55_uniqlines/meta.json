@@ -1,0 +1,31 @@
+{
+ "id": "s55",
+ "slug": "uniqlines",
+ "title": "Distinct lines",
+ "script": "uniqlines.sh",
+ "cmds": "sort -u, wc -l, associative arrays, sort -k, shift, exit codes",
+ "level": 3,
+ "tags": [
+  "text",
+  "pipes",
+  "files"
+ ],
+ "steps": [
+  {
+   "n": 1,
+   "title": "Sorted and distinct"
+  },
+  {
+   "n": 2,
+   "title": "How many"
+  },
+  {
+   "n": 3,
+   "title": "Check the file"
+  },
+  {
+   "n": 4,
+   "title": "Count the repetitions"
+  }
+ ]
+}

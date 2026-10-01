@@ -1,0 +1,31 @@
+{
+ "id": "s53",
+ "slug": "upperfile",
+ "title": "An upper-case copy",
+ "script": "upperfile.sh",
+ "cmds": "tr, redirection >, test -e, shift, exit codes",
+ "level": 2,
+ "tags": [
+  "text",
+  "pipes",
+  "files"
+ ],
+ "steps": [
+  {
+   "n": 1,
+   "title": "Make the copy"
+  },
+  {
+   "n": 2,
+   "title": "Check the file"
+  },
+  {
+   "n": 3,
+   "title": "Do not overwrite"
+  },
+  {
+   "n": 4,
+   "title": "Force it"
+  }
+ ]
+}

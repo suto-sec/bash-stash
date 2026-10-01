@@ -1,0 +1,1 @@
+Add a line `Usage: P%` between `Limit` and the verdict, with `P = 100 * used / limit` (integer division). With a limit of 0 there is no division: print `Usage: 0%` if nothing is used and `Usage: 100%` otherwise. Finish with exit code **5** when the verdict is `OVER`, and 0 otherwise.

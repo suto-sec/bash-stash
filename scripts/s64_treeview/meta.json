@@ -1,0 +1,31 @@
+{
+ "id": "s64",
+ "slug": "treeview",
+ "title": "A tree view",
+ "script": "treeview.sh",
+ "cmds": "find -mindepth, sort, ${var#prefix}, tr -cd /, wc -c, test -d, exit codes",
+ "level": 4,
+ "tags": [
+  "files",
+  "find",
+  "loops"
+ ],
+ "steps": [
+  {
+   "n": 1,
+   "title": "Indented names"
+  },
+  {
+   "n": 2,
+   "title": "Mark the directories"
+  },
+  {
+   "n": 3,
+   "title": "Check the directory"
+  },
+  {
+   "n": 4,
+   "title": "Limit the depth"
+  }
+ ]
+}

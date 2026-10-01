@@ -1,0 +1,31 @@
+{
+ "id": "s60",
+ "slug": "cronlog",
+ "title": "Who runs what in cron",
+ "script": "cronlog.sh",
+ "cmds": "grep, read -r, associative arrays, sort, shift, exit codes",
+ "level": 3,
+ "tags": [
+  "logs",
+  "text",
+  "loops"
+ ],
+ "steps": [
+  {
+   "n": 1,
+   "title": "How many jobs ran"
+  },
+  {
+   "n": 2,
+   "title": "Per user"
+  },
+  {
+   "n": 3,
+   "title": "Check the file"
+  },
+  {
+   "n": 4,
+   "title": "One user"
+  }
+ ]
+}

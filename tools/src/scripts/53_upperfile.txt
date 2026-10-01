@@ -1,0 +1,80 @@
+@@script s53 | upperfile | An upper-case copy | upperfile.sh
+@@level 2
+@@tags text, pipes, files
+@@cmds tr, redirection >, test -e, shift, exit codes
+@@fixture
+setup() {
+  mkfl notes.txt "hello world" "second Line" "" "last one"; echo "two words" > "my file.txt"; : > empty.txt
+  echo x > locked.txt; chmod 000 locked.txt; mkdir adir; echo "old copy" > old.txt.upper; echo "old text" > old.txt
+}
+usage_ok() { [[ $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* || $ERR == *upperfile.sh* ]]; }
+@@step 1 | Make the copy
+@@readme
+Write `upperfile.sh FILE`. It creates `FILE.upper` (next to it) with the content of `FILE` converted to upper case, and prints `Created FILE.upper`.
+
+`tr a-z A-Z < "$1" > "$1.upper"`.
+@@check
+ARGS=('notes.txt' '"my file.txt"' 'empty.txt')
+COMPARE="stdout exit files"
+@@solution
+#!/bin/bash
+tr a-z A-Z < "$1" > "$1.upper"
+echo "Created $1.upper"
+@@step 2 | Check the file
+@@readme
+Not exactly one argument → error message **and the correct usage**, exit **1**; the argument is not a readable regular file → error with its name, exit **2**. Nothing is created in those cases.
+@@check
+ARGS=('notes.txt' 'empty.txt' '' 'notes.txt empty.txt' 'nothing.txt' 'adir' 'locked.txt')
+COMPARE="stdout exit errmsg files"
+extra_check() {
+  [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }
+  [[ $REF_CODE == 2 ]] && mentions "$(eval "set -- $CASE"; echo "$1")"
+}
+@@solution
+#!/bin/bash
+if (( $# != 1 )); then echo "Error: one file is needed" >&2; echo "Usage: $0 file" >&2; exit 1; fi
+[[ -f $1 && -r $1 ]] || { echo "Error: cannot read $1" >&2; exit 2; }
+tr a-z A-Z < "$1" > "$1.upper"
+echo "Created $1.upper"
+@@step 3 | Do not overwrite
+@@readme
+If `FILE.upper` **already exists**, leave it alone: error message that includes its name on standard error and exit code **3** (the existing copy of `old.txt` in the checker).
+@@check
+ARGS=('notes.txt' 'old.txt' 'empty.txt' '' 'nothing.txt' 'locked.txt')
+COMPARE="stdout exit errmsg files"
+extra_check() {
+  [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }
+  [[ $REF_CODE == 2 ]] && mentions "$(eval "set -- $CASE"; echo "$1")"
+  [[ $REF_CODE == 3 ]] && mentions "old.txt.upper"
+}
+@@solution
+#!/bin/bash
+if (( $# != 1 )); then echo "Error: one file is needed" >&2; echo "Usage: $0 file" >&2; exit 1; fi
+[[ -f $1 && -r $1 ]] || { echo "Error: cannot read $1" >&2; exit 2; }
+if [[ -e $1.upper ]]; then echo "Error: $1.upper already exists" >&2; exit 3; fi
+tr a-z A-Z < "$1" > "$1.upper"
+echo "Created $1.upper"
+@@step 4 | Force it
+@@readme
+With `-f` as the **first** argument an existing `FILE.upper` is replaced (and the message is `Replaced FILE.upper` in that case; `Created FILE.upper` when it did not exist). `-f` needs a file after it (otherwise the usage error). Without `-f` everything is as before.
+@@check
+ARGS=('notes.txt' 'old.txt' '-f notes.txt' '-f old.txt' '-f "my file.txt"' '-f' '' '-f nothing.txt' '-f locked.txt' 'nothing.txt')
+COMPARE="stdout exit errmsg files"
+extra_check() {
+  [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }
+  [[ $REF_CODE == 2 ]] && mentions "$(eval "set -- $CASE"; echo "${@: -1}")"
+  [[ $REF_CODE == 3 ]] && mentions "old.txt.upper"
+}
+@@solution
+#!/bin/bash
+force=
+if [[ $1 == -f ]]; then force=1; shift; fi
+if (( $# != 1 )); then echo "Error: one file is needed" >&2; echo "Usage: $0 [-f] file" >&2; exit 1; fi
+[[ -f $1 && -r $1 ]] || { echo "Error: cannot read $1" >&2; exit 2; }
+verb=Created
+if [[ -e $1.upper ]]; then
+  [[ -n $force ]] || { echo "Error: $1.upper already exists" >&2; exit 3; }
+  verb=Replaced
+fi
+tr a-z A-Z < "$1" > "$1.upper"
+echo "$verb $1.upper"

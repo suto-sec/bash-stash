@@ -1,0 +1,31 @@
+{
+ "id": "s47",
+ "slug": "hasfile",
+ "title": "Which names exist?",
+ "script": "hasfile.sh",
+ "cmds": "test -e -f -d, for, shift, counters, exit codes",
+ "level": 2,
+ "tags": [
+  "tests",
+  "files",
+  "loops"
+ ],
+ "steps": [
+  {
+   "n": 1,
+   "title": "Yes or no"
+  },
+  {
+   "n": 2,
+   "title": "Check the directory"
+  },
+  {
+   "n": 3,
+   "title": "Say what it is"
+  },
+  {
+   "n": 4,
+   "title": "An exit code for the missing"
+  }
+ ]
+}

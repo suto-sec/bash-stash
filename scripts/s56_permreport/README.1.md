@@ -1,0 +1,1 @@
+Write `permreport.sh DIR`. For every **regular file directly inside** `DIR` print `MODE NAME`, the permissions in octal (`stat -c %a file`) and the file name without the directory (`644 index.html`). Directories do not count. The order does not matter.

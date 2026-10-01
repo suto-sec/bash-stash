@@ -1,0 +1,1 @@
+Not exactly two arguments → error message **and the correct usage**, exit **1**; `DIR` does not exist → error with its name, exit **2**; `DIR` is not a directory → error with its name, exit **3**; `LINKDIR` exists but is not a directory → error with its name, exit **3**. Nothing is created in those cases.

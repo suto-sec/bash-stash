@@ -1,0 +1,1 @@
+If the destination file **already exists** (`org2/txt/a.txt`), do not overwrite it: the new file is stored as `NAME.1`, or `NAME.2`, ... with the first number that is free (`a.txt.1` exists too in the checker). Print `renamed OLDNAME to NEWNAME` for those files (names only, without the directory), before moving them. Process the files in the order `for f in "$1"/*` gives.

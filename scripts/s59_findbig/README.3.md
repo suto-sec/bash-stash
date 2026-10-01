@@ -1,0 +1,1 @@
+`findbig.sh -n N DIR` prints the biggest **N** files, the biggest first (default 1 when `-n` is not given). In the checker the biggest four have different sizes except the `4500` ones, which tie: for the same size order by path as `sort` does. `N` must be a positive integer (otherwise error that includes it, exit **4**); `-n` needs `N` and `DIR`.

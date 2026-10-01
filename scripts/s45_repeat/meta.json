@@ -1,0 +1,26 @@
+{
+ "id": "s45",
+ "slug": "repeat",
+ "title": "Repeat a word",
+ "script": "repeat.sh",
+ "cmds": "for, [[ =~ ]], echo -n, shift, exit codes",
+ "level": 1,
+ "tags": [
+  "loops",
+  "arguments"
+ ],
+ "steps": [
+  {
+   "n": 1,
+   "title": "N times"
+  },
+  {
+   "n": 2,
+   "title": "Check the arguments"
+  },
+  {
+   "n": 3,
+   "title": "On one line"
+  }
+ ]
+}

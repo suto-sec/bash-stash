@@ -1,0 +1,35 @@
+{
+ "id": "s66",
+ "slug": "organize",
+ "title": "Sorting files into folders",
+ "script": "organize.sh",
+ "cmds": "mv, mkdir -p, case, ${name##*.}, test -e -d, counters, exit codes",
+ "level": 5,
+ "tags": [
+  "files",
+  "copy and move",
+  "case"
+ ],
+ "steps": [
+  {
+   "n": 1,
+   "title": "One folder per extension"
+  },
+  {
+   "n": 2,
+   "title": "Say what was created"
+  },
+  {
+   "n": 3,
+   "title": "Files without extension"
+  },
+  {
+   "n": 4,
+   "title": "Never overwrite"
+  },
+  {
+   "n": 5,
+   "title": "Checks, failures and a summary"
+  }
+ ]
+}

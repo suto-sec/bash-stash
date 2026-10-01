@@ -1,0 +1,31 @@
+{
+ "id": "s65",
+ "slug": "quota",
+ "title": "Staying under a quota",
+ "script": "quota.sh",
+ "cmds": "find -printf %s, while read, arithmetic, test, exit codes",
+ "level": 4,
+ "tags": [
+  "files",
+  "arithmetic",
+  "exit codes"
+ ],
+ "steps": [
+  {
+   "n": 1,
+   "title": "How much is used"
+  },
+  {
+   "n": 2,
+   "title": "Against a limit"
+  },
+  {
+   "n": 3,
+   "title": "Check the arguments"
+  },
+  {
+   "n": 4,
+   "title": "Percentage and exit code"
+  }
+ ]
+}

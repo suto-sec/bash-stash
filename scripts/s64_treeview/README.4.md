@@ -1,0 +1,1 @@
+`treeview.sh -d N DIR` shows only the entries up to `N` levels below `DIR` (`-d 1` = only what is directly inside). `N` must be a positive integer, otherwise an error that includes it and exit code **4**; `-d` needs `N` and `DIR` (otherwise the usage error).

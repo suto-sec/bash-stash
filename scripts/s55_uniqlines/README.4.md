@@ -1,0 +1,1 @@
+With `-c` as the **first** argument, print `COUNT LINE` for each distinct line instead (how many times it appears, a space, the line), the most repeated first and, for the same count, alphabetically; the `Distinct: N` line stays at the end. `-c` alone is the usage error.

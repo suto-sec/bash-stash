@@ -1,0 +1,31 @@
+{
+ "id": "s57",
+ "slug": "setexec",
+ "title": "Making files executable",
+ "script": "setexec.sh",
+ "cmds": "chmod u+x / a+x, test -f -x, for, shift, counters, exit codes",
+ "level": 3,
+ "tags": [
+  "permissions",
+  "files",
+  "exit codes"
+ ],
+ "steps": [
+  {
+   "n": 1,
+   "title": "Add the permission"
+  },
+  {
+   "n": 2,
+   "title": "Bad arguments"
+  },
+  {
+   "n": 3,
+   "title": "For everybody"
+  },
+  {
+   "n": 4,
+   "title": "How many really changed"
+  }
+ ]
+}

@@ -1,0 +1,1 @@
+If **any** of the files to create already exists, create **none** of them: print an error message that includes the name of the **first** existing one on standard error and exit with code **4**. (In the checker `report2` exists, and `adir1` is a directory.)

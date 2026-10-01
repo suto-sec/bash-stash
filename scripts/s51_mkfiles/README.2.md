@@ -1,0 +1,1 @@
+Checks, in this order: not exactly two arguments → error message **and the correct usage**, exit **1**; `N` is not a positive integer → error that includes it, exit **2**; `PREFIX` is empty or contains a `/` → error that includes it, exit **3**. Nothing is created in those cases.

@@ -1,0 +1,1 @@
+Options may come **before** `FILE N`. `-h` skips the first line (the header). An option that is not `-h` → error message that includes it and exit code **4**. All the checks of step 2 still apply (to the arguments left after the options).

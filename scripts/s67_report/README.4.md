@@ -1,0 +1,1 @@
+`report.sh -o FILE DIR` writes the report to `FILE` instead (the message names that file, as given). The directory that must contain `FILE` has to exist, otherwise: error message that includes `FILE` on standard error and exit code **5** (nothing is created). Without `-o` everything is as in step 3. `-o` needs `FILE` and `DIR`.

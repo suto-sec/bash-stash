@@ -1,0 +1,27 @@
+{
+ "id": "s52",
+ "slug": "dirsize",
+ "title": "Entries per directory",
+ "script": "dirsize.sh",
+ "cmds": "ls -A, wc -l, for, test -d, counters, exit codes",
+ "level": 2,
+ "tags": [
+  "files",
+  "loops",
+  "tests"
+ ],
+ "steps": [
+  {
+   "n": 1,
+   "title": "Count the entries"
+  },
+  {
+   "n": 2,
+   "title": "Bad arguments"
+  },
+  {
+   "n": 3,
+   "title": "A total"
+  }
+ ]
+}

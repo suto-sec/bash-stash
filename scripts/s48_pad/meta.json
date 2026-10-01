@@ -1,0 +1,27 @@
+{
+ "id": "s48",
+ "slug": "pad",
+ "title": "Numbering the lines",
+ "script": "pad.sh",
+ "cmds": "while read -r, printf '%03d', counters, shift, exit codes",
+ "level": 2,
+ "tags": [
+  "text",
+  "files",
+  "loops"
+ ],
+ "steps": [
+  {
+   "n": 1,
+   "title": "Three digits"
+  },
+  {
+   "n": 2,
+   "title": "Check the file"
+  },
+  {
+   "n": 3,
+   "title": "Your own width"
+  }
+ ]
+}

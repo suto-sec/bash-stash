@@ -1,0 +1,110 @@
+@@script s62 | splitfile | Splitting a file | splitfile.sh
+@@level 4
+@@tags files, text, loops
+@@cmds head, tail, sed -n 'a,bp', arithmetic, wc -l, test -e, exit codes
+@@fixture
+setup() {
+  local i
+  for ((i = 1; i <= 10; i++)); do echo "line $i $(word)"; done > ten.txt
+  for ((i = 1; i <= 3; i++)); do echo "short $i"; done > three.txt
+  : > empty.txt; echo x > locked.txt; chmod 000 locked.txt; mkdir adir; echo "old" > ten.txt.part2
+}
+usage_ok() { [[ $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* || $ERR == *splitfile.sh* ]]; }
+@@step 1 | Cut it into parts
+@@readme
+Write `splitfile.sh FILE N`. It cuts `FILE` into parts of `N` lines each: `FILE.part1` has the lines 1 to N, `FILE.part2` the next N, and so on (the last part may be shorter). Print `Created FILE.partK` for each part. An empty file creates no parts. Assume no part exists yet (in this step the checker uses `three.txt` and `empty.txt`).
+
+`sed -n "${a},${b}p" file` prints the lines `a` to `b`.
+@@check
+ARGS=('three.txt 2' 'three.txt 1' 'three.txt 5' 'empty.txt 3')
+COMPARE="stdout exit files"
+@@solution
+#!/bin/bash
+total=$(wc -l < "$1")
+k=0
+for ((a = 1; a <= total; a += $2)); do
+  k=$((k + 1))
+  sed -n "${a},$((a + $2 - 1))p" "$1" > "$1.part$k"
+  echo "Created $1.part$k"
+done
+exit 0
+@@step 2 | Check the arguments
+@@readme
+Not exactly two arguments → error message **and the correct usage**, exit **1**; `FILE` is not a readable regular file → error with its name, exit **2**; `N` is not a positive integer → error that includes it, exit **3**. Nothing is created in those cases.
+@@check
+ARGS=('three.txt 2' 'empty.txt 3' '' 'three.txt' 'three.txt 1 2' 'nothing.txt 2' 'adir 2' 'locked.txt 2' 'three.txt 0' 'three.txt x' 'nothing.txt x')
+COMPARE="stdout exit errmsg files"
+extra_check() {
+  [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }
+  [[ $REF_CODE == 2 ]] && mentions "$(eval "set -- $CASE"; echo "$1")"
+  [[ $REF_CODE == 3 ]] && mentions "$(eval "set -- $CASE"; echo "$2")"
+}
+@@solution
+#!/bin/bash
+if (( $# != 2 )); then echo "Error: a file and a size are needed" >&2; echo "Usage: $0 file N" >&2; exit 1; fi
+[[ -f $1 && -r $1 ]] || { echo "Error: cannot read $1" >&2; exit 2; }
+[[ $2 =~ ^[1-9][0-9]*$ ]] || { echo "Error: '$2' is not a positive integer" >&2; exit 3; }
+total=$(wc -l < "$1")
+k=0
+for ((a = 1; a <= total; a += $2)); do
+  k=$((k + 1))
+  sed -n "${a},$((a + $2 - 1))p" "$1" > "$1.part$k"
+  echo "Created $1.part$k"
+done
+exit 0
+@@step 3 | Never overwrite
+@@readme
+Before creating anything, if **any** of the parts that would be created already exists (`ten.txt.part2` in the checker), create **none**: print an error message that includes the name of the first existing one on standard error and exit with code **4**.
+@@check
+ARGS=('three.txt 2' 'ten.txt 5' 'ten.txt 3' 'ten.txt 10' 'ten.txt 20' 'empty.txt 3' '' 'nothing.txt 2' 'three.txt x')
+COMPARE="stdout exit errmsg files"
+extra_check() {
+  [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }
+  [[ $REF_CODE == 2 ]] && mentions "$(eval "set -- $CASE"; echo "$1")"
+  [[ $REF_CODE == 3 ]] && mentions "$(eval "set -- $CASE"; echo "$2")"
+  [[ $REF_CODE == 4 ]] && mentions "ten.txt.part2"
+}
+@@solution
+#!/bin/bash
+if (( $# != 2 )); then echo "Error: a file and a size are needed" >&2; echo "Usage: $0 file N" >&2; exit 1; fi
+[[ -f $1 && -r $1 ]] || { echo "Error: cannot read $1" >&2; exit 2; }
+[[ $2 =~ ^[1-9][0-9]*$ ]] || { echo "Error: '$2' is not a positive integer" >&2; exit 3; }
+total=$(wc -l < "$1")
+parts=$(( (total + $2 - 1) / $2 ))
+for ((k = 1; k <= parts; k++)); do
+  if [[ -e $1.part$k ]]; then echo "Error: $1.part$k already exists" >&2; exit 4; fi
+done
+for ((k = 1; k <= parts; k++)); do
+  a=$(( (k - 1) * $2 + 1 ))
+  sed -n "${a},$((a + $2 - 1))p" "$1" > "$1.part$k"
+  echo "Created $1.part$k"
+done
+exit 0
+@@step 4 | A summary
+@@readme
+Finish with `Created P parts` (`P` = number of parts; `Created 0 parts` for an empty file). Always the plural.
+@@check
+ARGS=('three.txt 2' 'ten.txt 5' 'ten.txt 3' 'empty.txt 3' 'three.txt 5' '' 'nothing.txt 2' 'three.txt x')
+COMPARE="stdout exit errmsg files"
+extra_check() {
+  [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }
+  [[ $REF_CODE == 2 ]] && mentions "$(eval "set -- $CASE"; echo "$1")"
+  [[ $REF_CODE == 3 ]] && mentions "$(eval "set -- $CASE"; echo "$2")"
+  [[ $REF_CODE == 4 ]] && mentions "ten.txt.part2"
+}
+@@solution
+#!/bin/bash
+if (( $# != 2 )); then echo "Error: a file and a size are needed" >&2; echo "Usage: $0 file N" >&2; exit 1; fi
+[[ -f $1 && -r $1 ]] || { echo "Error: cannot read $1" >&2; exit 2; }
+[[ $2 =~ ^[1-9][0-9]*$ ]] || { echo "Error: '$2' is not a positive integer" >&2; exit 3; }
+total=$(wc -l < "$1")
+parts=$(( (total + $2 - 1) / $2 ))
+for ((k = 1; k <= parts; k++)); do
+  if [[ -e $1.part$k ]]; then echo "Error: $1.part$k already exists" >&2; exit 4; fi
+done
+for ((k = 1; k <= parts; k++)); do
+  a=$(( (k - 1) * $2 + 1 ))
+  sed -n "${a},$((a + $2 - 1))p" "$1" > "$1.part$k"
+  echo "Created $1.part$k"
+done
+echo "Created $parts parts"

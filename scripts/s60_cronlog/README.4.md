@@ -1,0 +1,1 @@
+`cronlog.sh -u USER LOG` prints only the **commands** that `USER` ran, one per line (what is inside `CMD (...)`, in log order), then `Jobs: N` with the count for that user. `-u` needs a user and the log (otherwise the usage error); the log checks are the same.

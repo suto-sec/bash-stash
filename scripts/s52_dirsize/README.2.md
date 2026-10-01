@@ -1,0 +1,1 @@
+With **no arguments**: error message **and the correct usage** on standard error, exit **1**. An argument that is not an existing directory prints an error with its name on standard error and is skipped (the others are still processed); if any was skipped the exit code is **2** at the end.
