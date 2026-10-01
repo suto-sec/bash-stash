@@ -81,7 +81,7 @@ const Theory = (() => {
   const q_lang = () => lang === 'en' ? '' : `?lang=${lang}`;
   // static text in index.html that belongs to Theory
   function applyStatic() {
-    $('#theory-lang-value').textContent = T('langName');
+    Seg.set('lang', lang);
     $('#theory-home-title').textContent = T('homeTitle');
     $('#theory-quizzes-title').textContent = T('quizzesTitle');
     $('#theory-home-intro').textContent = T('homeIntro');
@@ -108,7 +108,7 @@ const Theory = (() => {
       await open(cid, qid);
     }
   }
-  $('#theory-lang-row').onclick = () => setLang(lang === 'en' ? 'es' : 'en');
+  Seg.on('lang', v => { if (v !== lang) setLang(v); });
   let index = [];          // light index with per-question status (from /api/theory)
   const cache = {};        // collection id -> full collection (questions, answers, explanations)
   let view = null;         // the question currently shown: { cid, item, handle, checked }

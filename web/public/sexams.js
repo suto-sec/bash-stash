@@ -72,15 +72,12 @@ const SExams = (() => {
 
   // ---------------------------------------------------------------- setting (⚙ menu)
   const getCheck = () => { try { return localStorage.getItem('sxCheck') === 'any' ? 'any' : 'submit'; } catch { return 'submit'; } };
-  function syncSettingsUI() {
-    const v = $('#sx-check-value');
-    if (v) v.textContent = getCheck() === 'any' ? 'Any time' : 'Only on submit';
-  }
-  $('#sx-check-row').onclick = () => {
-    try { localStorage.setItem('sxCheck', getCheck() === 'any' ? 'submit' : 'any'); } catch { /* private mode */ }
+  function syncSettingsUI() { Seg.set('sxcheck', getCheck()); }
+  Seg.on('sxcheck', v => {
+    try { localStorage.setItem('sxCheck', v === 'any' ? 'any' : 'submit'); } catch { /* private mode */ }
     syncSettingsUI();
     if (cur && cur.phase === 'intro' && !cur.d.attempt) render(true);   // an attempt in progress keeps the setting it started with
-  };
+  });
   syncSettingsUI();
 
   // ---------------------------------------------------------------- data
