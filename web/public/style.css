@@ -661,4 +661,6 @@ body.script-run #new-attempt-btn { display: none; }
 .sc-step-title { margin-left: 8px; color: var(--muted); font-size: 13px; }
 .sidebar.script-mode #search, .sidebar.script-mode .sidebar-tools { display: none; }
 .stars { color: var(--warn); letter-spacing: 1px; }
-#scripts-group { margin-left: 6px; }
+/* the "Group by" row lines up with the tier titles and cards below it */
+.home-groupby { display: block; max-width: 1100px; margin: 0 auto -18px; color: var(--muted); }
+#scripts-group { margin-left: 8px; }
