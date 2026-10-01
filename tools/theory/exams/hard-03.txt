@@ -1,0 +1,101 @@
+@@exam hard-03 | Hard exam 3
+@@tier hard
+@@about
+Ten single-choice questions with traps: subshells, startup files, operator precedence in `find`, directories that decide who may delete, a delimiter with a space and patterns that match nothing.
+
+@@q single | Inside the parentheses
+@@topic jobs-procs
+A shell has `PWD=/tmp` and runs:
+```
+x=1
+( x=2; cd /; echo "$x $PWD" )
+echo "$x $PWD"
+```
+What does it print?
+(-) `2 /` and `2 /` :: The parentheses start a subshell: its changes do not reach the parent shell.
+(-) `1 /tmp` and `1 /tmp` :: Inside the subshell `x` is 2 and the directory is `/`.
+(-) `2 /` and `2 /tmp` :: The variable is not changed in the parent either.
+(+) `2 /` and `1 /tmp` :: The subshell sees its own values; afterwards the parent still has `x=1` and `/tmp`.
+
+@@q single | Where a variable lives
+@@topic expansion-vars
+You append `export P=1` to your `~/.bashrc`, and nothing else. Which command prints `1`?
+(-) `echo $P` in the terminal that was already open, right now. :: That shell read `.bashrc` when it started, before the edit.
+(-) `bash -c 'echo $P'` run in the terminal that was already open. :: The child inherits only what the open shell exported, and it never got `P`.
+(-) `echo $P` in a new terminal opened by another user. :: Each user reads their own `~/.bashrc`; this one belongs to you.
+(+) `echo $P` in a new terminal that you open yourself. :: A new interactive bash reads your `~/.bashrc`, which now sets `P`.
+
+@@q single | The right file for each setting
+@@topic users-sessions
+`ana`, a normal user, wants an alias only for herself. The administrator, root, wants a variable defined for every user at login. Which pair of files is correct?
+(-) ana edits `/etc/profile`; root edits `/etc/profile`. :: ana cannot write `/etc/profile`, and it would affect all users.
+(+) ana edits `~/.bashrc`; root edits `/etc/profile`. :: The personal file is in the home of the user; the one for everybody is under `/etc`.
+(-) ana edits `~/.bashrc`; root edits `/root/.bashrc`. :: The file in `/root` configures only the user root.
+(-) ana edits `/etc/bash.bashrc`; root edits `~/.profile`. :: The roles are reversed: the general file is under `/etc`, and `~/.profile` is a personal one.
+
+@@q single | A star that is only a star
+@@topic grep-regex
+`f` contains the lines `a*b`, `aab` and `ab`. Which command prints only `a*b`?
+(-) `grep 'a*b' f` :: The `*` repeats the `a`, so it matches `ab` and `aab` as well, and even `a*b` (through its final `b`).
+(+) `grep 'a\*b' f` :: The backslash turns the star into an ordinary character.
+(-) `grep 'a.b' f` :: The dot matches any one character: it matches `a*b` and `aab`.
+(-) `grep -E 'a+b' f` :: It matches one or more `a` followed by `b`: `aab` and `ab`.
+
+@@q single | Who may delete
+@@topic permissions
+The directory `dd` has mode `rwxrwxrwx`. Inside is `dd/f`, owned by root with mode `---------`. A normal user runs `rm -f dd/f`. What happens?
+(-) It fails with `Permission denied`, because the file has no permissions at all. :: Deleting removes an entry of the directory; the file's own bits are not checked.
+(-) It fails, because the file belongs to root and only the owner can delete it. :: Without the sticky bit, the permissions of the directory decide.
+(+) The file is deleted, because the user has `w` and `x` on the directory. :: Removing a name needs `w` and `x` on the directory containing it.
+(-) The content of the file is emptied but the file remains. :: `rm` unlinks the name; it does not truncate the file.
+
+@@q single | Precedence in find
+@@topic find
+In the current directory there are the files `a.log` and `b.txt`, the directory `c.txt` and the directory `dir.log`. What does `find . -name '*.log' -o -name '*.txt' -type f` print?
+(-) `./a.log` and `./b.txt` :: `-type f` applies only to the `*.txt` test, so the directory `dir.log` is also selected.
+(-) All four names, `./c.txt` included. :: `-type f` excludes the directory `c.txt`, which would be a `*.txt` match.
+(+) `./a.log`, `./dir.log` and `./b.txt` :: The tests join with an implicit AND that binds tighter than `-o`: it is `*.log` OR (`*.txt` AND file).
+(-) Nothing, because `-o` needs parentheses to work. :: `-o` works without them; the parentheses only change the grouping.
+
+@@q single | The delimiter with a space
+@@topic redirection-pipes
+`h.sh` contains these four lines, the third one starting with a space:
+```
+cat <<EOF
+hello
+ EOF
+echo after
+```
+What happens when it runs?
+(-) It prints `hello` and then `after`, as if the delimiter had been written correctly. :: The delimiter must appear alone at the start of the line; with a space it is not recognised.
+(-) It prints `hello`, then `EOF`, and then `after` on its own line, as separate commands. :: Those lines are still part of the text of the here-document, not commands.
+(+) It is not closed: bash warns about end-of-file, and `cat` prints `hello`, ` EOF` and `echo after`. :: The text continues to the end of the file, because ` EOF` is not the delimiter.
+(-) A syntax error stops the script before anything at all can be printed. :: Bash reads to the end of the file and only emits a warning.
+
+@@q single | Free space and used space
+@@topic files-fs
+You want to know how much free space the partition mounted on `/backup` has, and how much the directory `/backup/2024` takes. Which pair of commands does that?
+(-) `du -sh /backup` for the free space and `df -h /backup/2024` for the size of the directory. :: `du` measures what files use, not what is free; `df` reports whole filesystems, not directories.
+(-) `ls -l /backup` for the free space and `ls -lh /backup/2024` for the size of the directory. :: `ls` shows the size of each entry, not the free space or the total of a directory tree.
+(+) `df -h /backup` for the free space and `du -sh /backup/2024` for the size of the directory. :: `df` reports free and used space of the filesystem; `du -s` adds up the files below a directory.
+(-) `df -h /backup/2024` for both, because it reports the directory and its partition. :: `df` gives the figures of the whole filesystem; it cannot tell how much that one directory occupies.
+
+@@q single | The biggest files
+@@topic filters
+Which pipeline prints the five largest files of the directory, using the size in the fifth column of `ls -l`?
+(-) `ls -l | sort -n | head -n 5` :: `-n` compares the beginning of each line, which is the mode string, not the size.
+(-) `ls -l | sort -k5 -n | head -n 5` :: It sorts by size, but in ascending order, so these are the smallest.
+(-) `ls -l | head -n 5 | sort -k5 -n -r` :: It sorts only the first five lines of the listing; the order of the biggest ones is lost.
+(+) `ls -l | sort -k5 -n -r | head -n 5` :: Sort by the fifth field, numerically and in reverse, then keep the first five.
+
+@@q single | Splitting the list
+@@topic scripts
+The directory has two files, `b.txt` and `my file.txt` (the second has a space in its name). What do these two loops print?
+```
+n=0; for f in $(ls *.txt); do n=$((n+1)); done; echo $n
+n=0; for f in *.txt; do n=$((n+1)); done; echo $n
+```
+(-) `2` and `2` :: The first loop gets the output of `ls` as plain text, and the shell splits it at the space.
+(-) `3` and `3` :: In the second loop the pattern expands to two names, and a name with a space stays as one word.
+(-) `2` and `3` :: It is the other way round: the second loop is the safe one.
+(+) `3` and `2` :: `$(ls *.txt)` is split at blanks into `b.txt`, `my` and `file.txt`; the glob in the second loop gives exactly the two real names.

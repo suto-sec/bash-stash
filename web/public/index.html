@@ -81,7 +81,18 @@
           <span class="settings-row-label">English / Español</span>
           <span class="settings-row-value" id="theory-lang-value">English</span>
         </button>
-        <p class="settings-note">Only affects the <strong>Theory</strong> quizzes: their home-page section and cards, categories, questions and explanations. Exercises, scripts and the rest of the app stay in English.</p>
+        <p class="settings-note">Only affects the <strong>Theory</strong> quizzes and practice exams: their home-page sections and cards, categories, questions and explanations. Exercises, scripts and the rest of the app stay in English.</p>
+        <div class="layout-menu-sep"></div>
+        <div class="layout-menu-label">Practice exams</div>
+        <button class="settings-row" id="exam-feedback-row" role="menuitemradio">
+          <span class="settings-row-label">Validation</span>
+          <span class="settings-row-value" id="exam-feedback-value">After each question</span>
+        </button>
+        <label class="settings-row settings-row-check" id="exam-back-row">
+          <span class="settings-row-label">Allow going back</span>
+          <input type="checkbox" id="exam-back">
+        </label>
+        <p class="settings-note"><strong>After each question</strong> is for practice: each answer is explained and locked. <strong>At the end</strong> resembles the exam: nothing is revealed until you finish. <strong>Allow going back</strong> is independent: off means strictly sequential (a question is final once you move on). An attempt in progress is kept, and keeps the settings it started with.</p>
       </div>
     </div>
   </header>
@@ -119,6 +130,10 @@
         </div>
         <div id="th-feedback" class="th-feedback hidden" aria-live="polite"></div>
       </div>
+    </main>
+
+    <main class="theory-main hidden" id="exam-main" aria-label="Practice exam">
+      <div class="theory-scroll" id="exam-scroll"><div id="exam-view"></div></div>
     </main>
 
     <main class="main" id="main" data-layout="default">
@@ -235,6 +250,9 @@
       <h2 class="home-section-title" id="theory-quizzes-title">Quizzes</h2>
       <p class="home-intro" id="theory-home-intro">Interactive quizzes on the concepts behind the commands: single and multiple choice, fill in the blank, ordering, matching and sorting. Every answer gets instant feedback explaining why each option is right or wrong. Pick a collection to browse its questions in the sidebar.</p>
       <div class="track-grid" id="theory-grid"></div>
+      <h2 class="home-section-title" id="theory-exams-title">Practice exams</h2>
+      <p class="home-intro" id="theory-exams-intro"></p>
+      <div id="exams-grid"></div>
     </div>
     </div>
   </div>
@@ -291,5 +309,6 @@
   <script src="/glossary.js"></script>
   <script src="/app.js"></script>
   <script src="/theory.js"></script>
+  <script src="/exams.js"></script>
 </body>
 </html>

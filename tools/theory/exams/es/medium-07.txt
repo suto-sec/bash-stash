@@ -1,0 +1,90 @@
+@@exam medium-07 | Examen medio 7
+@@about
+Diez preguntas de respuesta única que combinan dos datos o piden seguir dos o tres pasos: bucles sobre argumentos, puntos escapados, ficheros de arranque, enlaces y permisos, `&&` y `||`, y here-documents.
+
+@@q single | Un bucle for sin lista
+`loop.sh` contiene `for v; do echo "<$v>"; done`. ¿Qué imprime `bash loop.sh "a b" c`?
+(-) `<a>`, `<b>` y `<c>` en tres líneas :: Sin lista, `for` recorre los argumentos tal como se dieron, así que `a b` se mantiene junto.
+(+) `<a b>` y `<c>` en dos líneas :: `for v` sin `in` se ejecuta una vez por cada argumento del script.
+(-) `<a b c>` en una línea :: Eso es lo que daría una única cadena con todos los argumentos; el bucle se ejecuta una vez por argumento.
+(-) Un error de sintaxis, porque `for` necesita la palabra `in` y una lista. :: La forma sin lista es válida y usa los argumentos.
+
+@@q single | Un punto literal
+`v` contiene las líneas `1.5`, `125` y `1x5`. ¿Qué mandato imprime solo `1.5`?
+(-) `grep '1.5' v` :: El punto sin escapar coincide con cualquier carácter, así que coincide con las tres líneas.
+(+) `grep '1\.5' v` :: La barra invertida convierte el punto en un carácter normal.
+(-) `grep '1*5' v` :: `1*` es cero o más unos, así que cualquier línea que contenga un `5` coincide: las tres.
+(-) `grep -E '1+5' v` :: Busca uno o más unos seguidos de un 5, como `15` o `115`; ninguna línea lo tiene.
+
+@@q single | Editar .bashrc
+Añades la línea `alias ll='ls -l'` a `~/.bashrc` y, en el terminal que ya tenías abierto, escribes `ll`. ¿Qué ocurre?
+(-) Funciona al instante, porque bash vuelve a leer `.bashrc` antes de cada mandato. :: `.bashrc` se lee cuando arranca la shell.
+(+) `ll` no se encuentra en ese terminal; funcionará en un terminal nuevo, o tras `source ~/.bashrc`. :: El alias se crea cuando se lee el fichero, lo cual ocurrió antes de que lo editaras.
+(-) El alias funciona en todos los terminales, incluido este, pero solo tras reiniciar. :: Basta con una shell nueva; no hace falta reiniciar.
+(-) bash da un error, porque los alias no se pueden escribir en `.bashrc`. :: `.bashrc` es precisamente el sitio para los alias y variables que personalizan bash.
+
+@@q single | Permisos de un enlace simbólico
+¿Qué afirmación sobre un enlace simbólico y los permisos es FALSA?
+(-) `ls -l` muestra el propio enlace con el modo `lrwxrwxrwx`. :: Verdadero: todos sus bits están activos.
+(-) Lo que puedes hacer a través del enlace lo deciden los permisos del fichero al que apunta. :: Verdadero: el enlace no concede ni niega nada por sí mismo.
+(-) `chmod 600 link` cambia el modo del destino, no del enlace. :: Verdadero: `chmod` sigue el enlace.
+(+) Como el enlace muestra `rwxrwxrwx`, cualquiera puede leer un destino cuyo modo es `rw-------`. :: Falso: se aplican los permisos del destino, así que solo su dueño puede leerlo.
+
+@@q single | Cabecera de un script
+Un script debe empezar imprimiendo el nombre de la máquina, el directorio en el que se ejecuta y cuántos argumentos recibió. ¿Qué línea lo hace?
+(-) `echo "hostname pwd #"` :: Las palabras se imprimen como texto; no se ejecuta nada.
+(-) `echo '$(hostname) $PWD $#'` :: Las comillas simples bloquean las sustituciones y la variable, así que el texto se imprime tal cual.
+(+) `echo "$(hostname) $PWD $#"` :: La sustitución ejecuta `hostname`, `PWD` contiene el directorio actual y `$#` es el número de argumentos.
+(-) `echo $hostname $pwd $#` :: `$hostname` y `$pwd` son variables que no existen, así que solo aparece el número de argumentos.
+
+@@q single | Sistemas de init
+¿Qué afirmación sobre el proceso inicial y sus estilos es FALSA?
+(-) System V init fue el estándar en Linux durante muchos años. :: Verdadero: también lo usaron otros Unix como AIX y Solaris.
+(-) systemd es el proceso inicial en las versiones actuales de Ubuntu, Fedora y Debian. :: Verdadero.
+(-) systemd puede arrancar servicios en paralelo y reiniciar un servicio que ha muerto. :: Verdadero: gestiona las dependencias y vigila los servicios.
+(+) launchd es el proceso inicial de Ubuntu y Fedora. :: Falso: launchd es el de macOS.
+
+@@q single | Tamaño de un directorio
+¿Qué mandato imprime una única línea con el espacio total de disco que usa el directorio `projects` y todo lo que contiene, en una unidad legible?
+(-) `du -h projects` :: Imprime una línea por cada subdirectorio, no solo el total.
+(-) `df -h projects` :: Informa del espacio libre y usado del sistema de ficheros que contiene el directorio.
+(+) `du -sh projects` :: `-s` da solo el total y `-h` usa unidades como K, M y G.
+(-) `ls -lh projects` :: Lista los ficheros con sus tamaños individuales; no los suma.
+
+@@q single | El estado como condición
+`/nope` no existe y `/etc` sí. ¿Qué imprime esto?
+```
+if ls /nope 2> /dev/null; then echo A; else echo B; fi
+if ls /etc > /dev/null; then echo C; else echo D; fi
+```
+(-) `A` y `C` :: Ocultar el mensaje no cambia el estado: `ls /nope` sigue fallando, así que se ejecuta la rama `else`.
+(-) `B` y `D` :: `ls /etc` tiene éxito aunque su salida vaya a `/dev/null`.
+(+) `B` y `C` :: `if` mira el estado de salida: distinto de cero para `ls /nope` (así que `else`) y cero para `ls /etc` (así que `then`).
+(-) `A` y `D` :: Las dos ramas son lo contrario de lo que ocurre: el estado 0 es "verdadero" para `if`, y cualquier otro valor es "falso".
+
+@@q single | Una cadena de filtros
+¿Qué imprime esto?
+```
+printf 'b,2\na,1\nc,3\n' | sort | head -n 2 | cut -d, -f2
+```
+(-) `2` y `1` :: `sort` se ejecuta primero, así que el orden empieza por `a`.
+(-) `1`, `2` y `3` :: `head -n 2` se queda solo con dos líneas.
+(+) `1` y `2` :: Tras `sort` las líneas son `a,1`, `b,2` y `c,3`; `head` conserva las dos primeras y `cut` imprime su segundo campo.
+(-) `a` y `b` :: `-f2` selecciona el segundo campo, el número.
+
+@@q single | Here-documents
+¿Qué imprime esto?
+```
+n=4
+cat <<EOF
+n is $n
+EOF
+cat <<'EOF'
+n is $n
+EOF
+wc -w <<< "a b c"
+```
+(-) `n is 4`, `n is 4` y `3` :: Con el delimitador entre comillas (`'EOF'`) el texto se toma literalmente y `$n` no se expande.
+(-) `n is $n`, `n is $n` y `3` :: Con un delimitador sin comillas la shell expande `$n` en el texto.
+(-) `n is 4`, `n is $n` y `1` :: `<<<` da a `wc` la cadena `a b c`, que tiene tres palabras.
+(+) `n is 4`, `n is $n` y `3` :: `EOF` sin comillas expande la variable, `'EOF'` con comillas no, y el here-string tiene tres palabras.

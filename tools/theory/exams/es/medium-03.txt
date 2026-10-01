@@ -1,0 +1,73 @@
+@@exam medium-03 | Examen medio 3
+@@about
+Diez preguntas de respuesta única que combinan dos datos o piden seguir dos o tres pasos: visores de ficheros, alternativas, edad de los ficheros, enlaces que sobreviven, zombis y comodines.
+
+@@q single | Mostrar ficheros
+¿Qué afirmación sobre `cat`, `tac` y `nl` es FALSA?
+(-) `cat a b` imprime el contenido de `a` seguido del contenido de `b`. :: Verdadero: `cat` concatena.
+(-) `cat -n f` numera todas las líneas de `f`, también las que están en blanco. :: Verdadero: `-n` numera todas las líneas.
+(-) Por defecto `nl f` deja sin número las líneas en blanco. :: Verdadero: `nl` numera solo las líneas que tienen texto, salvo que se le indique otra cosa.
+(+) `tac f` imprime cada línea escrita al revés, carácter a carácter. :: Falso: `tac` invierte el orden de las líneas, la última primero; las líneas en sí no cambian.
+
+@@q single | cat o dog
+`names` tiene las líneas `cat`, `dog`, `catdog`, `the cat dog` y `bird`. ¿Qué mandato imprime las cuatro primeras líneas, las que contienen `cat` o `dog`?
+(-) `grep 'cat|dog' names` :: En una expresión regular básica el `|` es un carácter normal: solo coincidiría una línea con el texto `cat|dog`.
+(-) `grep -E 'cat dog' names` :: Necesita `cat`, un espacio y `dog` juntos: solo coincide la línea `the cat dog`.
+(-) `grep -E '(cat)(dog)' names` :: Dos grupos seguidos significan `catdog`: solo coincide esa línea.
+(+) `grep -E 'cat|dog' names` :: Con `-E` el `|` separa alternativas, así que una línea coincide si contiene cualquiera de las dos palabras.
+
+@@q single | Números o texto
+`a=5` y `b=05`. ¿Qué afirmación es VERDADERA?
+(-) Tanto `[ $a -eq $b ]` como `[ "$a" = "$b" ]` tienen éxito, porque las dos variables tienen el mismo valor. :: Son el mismo número, pero no el mismo texto.
+(-) Tanto `[ $a -eq $b ]` como `[ "$a" = "$b" ]` fallan, porque `05` no es un número válido. :: Un cero a la izquierda se acepta: se lee como el número 5.
+(-) `[ "$a" = "$b" ]` tiene éxito y `[ $a -eq $b ]` falla. :: Es al revés.
+(+) `[ $a -eq $b ]` tiene éxito y `[ "$a" = "$b" ]` falla. :: `-eq` compara números (5 y 5); `=` compara las cadenas `5` y `05`, que son distintas.
+
+@@q single | Edad de los ficheros
+En un directorio vacío, `a`, `b` y `c` se modificaron por última vez hace 1, 5 y 10 días. ¿Qué imprime `find . -type f -mtime +3`?
+(-) `./a` :: El fichero `a` se modificó hace 1 día, así que no tiene más de 3 días.
+(-) `./c` :: `+3` significa más de 3 días, así que `b` (5 días) también se incluye.
+(+) `./b` y `./c` :: `-mtime +3` selecciona los ficheros modificados hace más de 3 días.
+(-) `./a`, `./b` y `./c` :: `a` solo tiene un día y no pasa la prueba.
+
+@@q single | Qué sobrevive a rm
+`orig` contiene `x`. Ejecutas `ln orig h`, `ln -s orig s`, `cp orig c` y después `rm orig`. ¿Qué afirmación es VERDADERA?
+(-) `cat h` y `cat s` imprimen los dos `x`, porque ambos son enlaces a `orig`. :: Un enlace simbólico guarda la ruta `orig`, que ya no existe.
+(-) Solo `cat h` imprime `x`, porque `c` es solo una copia del nombre de `orig`. :: `cp` hace un fichero independiente con su propio contenido, así que `c` también conserva `x`.
+(+) `cat h` y `cat c` imprimen `x`, mientras que `cat s` da error ("No such file"). :: El enlace duro mantiene vivo el i-nodo, la copia es un fichero aparte y el enlace simbólico apunta a un nombre que ha desaparecido.
+(-) `cat s` y `cat c` imprimen `x`, mientras que `cat h` falla. :: `h` comparte el i-nodo de `orig`, y `rm` solo elimina un nombre.
+
+@@q single | Cambiar el dueño
+`ana` (que no es root) es la dueña de `g`. Ejecuta `chmod 600 g; chown root g; chmod 644 g`. ¿Cuál es el resultado?
+(-) Los tres funcionan y el fichero acaba siendo de root con modo `rw-r--r--`. :: Un usuario normal no puede regalar un fichero.
+(-) `chmod 600 g` funciona, pero los otros dos fallan porque el fichero pertenece a root. :: Es `chown root g` el que falla, así que el fichero sigue siendo de ana.
+(+) `chown root g` falla ("Operation not permitted"); el fichero sigue siendo de ana, con modo `rw-r--r--`. :: Solo root puede cambiar el dueño; el dueño puede cambiar el modo, así que los dos `chmod` funcionan.
+(-) `chmod 600 g` falla, porque solo root puede cambiar modos. :: El dueño de un fichero puede cambiar su modo.
+
+@@q single | La Z en ps
+En la salida de `ps aux` un proceso tiene el estado `Z`. ¿Qué afirmación es VERDADERA?
+(-) Se está ejecutando y usando la CPU en este momento. :: Ese sería `R`.
+(-) Espera a un dispositivo y no se le puede interrumpir, y `kill -9` lo eliminará. :: Ese es el estado `D`, y un zombi ignora `kill` de todos modos.
+(+) Ha terminado, pero su padre todavía no ha recogido su estado de salida. :: Es un zombi: el proceso ya no existe, solo queda su entrada en la tabla de procesos.
+(-) Está dormido hasta que ocurra algún evento, como pulsar una tecla. :: Ese es `S`.
+
+@@q single | Descartar solo los errores
+`/etc/hostname` existe y `/nope` no. ¿Qué imprime `ls /nope /etc/hostname 2> /dev/null; echo $?`?
+(-) `/etc/hostname` y luego `0` :: `ls` sigue saliendo con un estado de error: el fichero que falta se comunicó, aunque el mensaje se descartara.
+(+) `/etc/hostname` y luego `2` :: El mensaje de error fue a `/dev/null`, pero el estado de salida de `ls` es 2.
+(-) El mensaje de error, `/etc/hostname` y luego `2` :: El mensaje de error se redirigió, así que no aparece.
+(-) Solo `2` :: El listado de `/etc/hostname` es stdout, que no se redirigió.
+
+@@q single | Pertenencia a un grupo
+`/etc/group` tiene las líneas `dev:x:1005:ana,luis` y `ops:x:1006:`, y `/etc/passwd` tiene `eva:x:2001:1006:Eva Gil:/home/eva:/bin/bash`. ¿Qué afirmación es FALSA?
+(-) `ana` es miembro del grupo `dev`, ya que su nombre está en la lista. :: Verdadero: su nombre está en la lista de miembros.
+(-) El GID del grupo `dev` es 1005, el tercer campo de su línea. :: Verdadero: el tercer campo es el GID.
+(-) Todos los usuarios del sistema pueden leer el fichero `/etc/group`. :: Verdadero: es un fichero plano accesible a todos (a diferencia de `/etc/shadow`).
+(+) `eva` no está en `ops`, pues su lista de miembros está vacía. :: Falso: su grupo primario en `/etc/passwd` es 1006, que es `ops`; los miembros primarios no se listan en `/etc/group`.
+
+@@q single | Elegir un patrón
+El directorio contiene `a1.txt`, `a2.txt`, `a10.txt`, `b1.txt`, `A1.txt` y `notes`. ¿Qué mandato lista exactamente `a1.txt` y `a2.txt`?
+(-) `ls a*.txt` :: `*` también coincide con `10`: lista `a10.txt`, `a1.txt` y `a2.txt`.
+(-) `ls ?1.txt` :: Cualquier carácter seguido de `1.txt`: `a1.txt`, `A1.txt` y `b1.txt`.
+(-) `ls [ab]?.txt` :: También coincide con `b1.txt`.
+(+) `ls a?.txt` :: `a`, exactamente un carácter y después `.txt`: `a1.txt` y `a2.txt`.

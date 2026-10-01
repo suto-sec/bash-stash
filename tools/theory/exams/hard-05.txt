@@ -1,0 +1,84 @@
+@@exam hard-05 | Hard exam 5
+@@tier hard
+@@about
+Ten single-choice questions with traps: signals that only reach the foreground, status of pipelines, alternations without `-E`, units without a letter, aliases that children do not inherit and scripts you can execute but not read.
+
+@@q single | Ctrl+C at an empty prompt
+@@topic jobs-procs
+You run `sleep 100 &` and then, at the empty prompt, press Ctrl+C. What does `jobs` show afterwards?
+(-) Nothing: Ctrl+C terminated the job. :: Ctrl+C is sent to the foreground; the background job is not affected.
+(-) The job as stopped, as if you had pressed Ctrl+Z. :: Nothing suspended it either.
+(+) The job still running. :: The keyboard signals go only to the foreground process, and at an empty prompt there is none, so `sleep` carries on.
+(-) The job as done, because Ctrl+C makes the shell wait for it. :: Ctrl+C does not make the shell wait for anything.
+
+@@q single | Two words in a read
+@@topic scripts
+What does `echo "one two three" | { read a b; echo "$a|$b"; }` print?
+(-) `one|two` :: The last variable of `read` receives the whole remaining text, not just one word.
+(-) `one two three|` :: The first variable takes only the first word.
+(+) `one|two three` :: `read` splits the line into fields and gives the rest of the line to the last variable.
+(-) It waits for the user to type, because `read` always reads from the keyboard. :: `read` reads from stdin, which here is the pipe.
+
+@@q single | Status of a pipeline and of a subshell
+@@topic redirection-pipes
+What do `false | true; echo $?` and `(exit 3); echo $?` print?
+(-) `1` and `0` :: The status of a pipeline is that of its last command, and `exit 3` ends the subshell with status 3.
+(+) `0` and `3` :: `true` is the last command of the pipeline; the subshell exits with 3 and `$?` reports it.
+(-) `0` and `0` :: `exit` inside the parentheses ends only the subshell, but its status is not lost.
+(-) `1` and `3` :: `false` is not the last command, so its status does not count.
+
+@@q single | Alternatives in a recursive search
+@@topic grep-regex
+A student wants the lines that contain `foo` or `bar` in all the files below `dir`, and types `grep -r 'foo|bar' dir`. It prints nothing although `dir/f1` contains `foo here`. What is wrong?
+(-) `-r` needs the name of the directory to end with a slash, as in `dir/`. :: It works without it.
+(-) Patterns can only be read from a pattern file that is given with the option `-f`. :: A pattern on the command line is fine.
+(-) `-r` cannot be combined with a regular expression, only with fixed words. :: It searches the files below the directory using the same patterns.
+(+) A basic regular expression treats `|` as plain text; `-E` is needed. :: Without `-E`, `foo|bar` is the literal text `foo|bar`, which appears nowhere.
+
+@@q single | Two steps up and one down
+@@topic files-fs
+Linux has a single directory tree. Starting in any directory, you run `cd /usr/local/bin`, then `cd ../../lib`, then `cd ..`, and `pwd`. What is printed?
+(-) `/usr/local` :: The second `cd` goes up two levels, to `/usr`, and then into `lib`; the last `cd ..` goes up once more.
+(+) `/usr` :: `../../lib` from `/usr/local/bin` is `/usr/lib`; the last `cd ..` goes back to `/usr`.
+(-) `/` :: `/` is the root: `/usr` is one level below it, which is where the last `cd ..` ends.
+(-) `/usr/lib` :: The last `cd ..` leaves `/usr/lib`.
+
+@@q single | Size without a unit
+@@topic find
+A student wants the files larger than 1000 bytes and types `find . -size +1000`. A file of 2000 bytes is not listed, but one of 600000 bytes is. What is wrong?
+(-) `+` selects the smaller files, so the two signs have been swapped by mistake. :: `+` means larger than.
+(+) With no letter the unit is a 512-byte block; it needs `+1000c`. :: `+1000` means more than 1000 blocks, about half a megabyte.
+(-) `-size` is a test that works only with directories, not with regular files. :: It works on any file.
+(-) The test needs a file name as well, for example `-name '*'`, in order to work. :: Tests combine freely; no name is required.
+
+@@q single | What the shell does
+@@topic shell-help
+Which statement about the shell is TRUE?
+(-) `cd` is an external program, `/bin/cd`, which the shell starts in a child process. :: `cd` is a builtin: it has to change the directory of the shell itself.
+(-) `powershell.exe` is one of the usual shells of the Unix-like systems such as Linux. :: It belongs to Microsoft Windows.
+(+) It starts an external command as a new process and, without `&`, waits for it. :: Read, parse, run, wait and show the prompt: that is the cycle of the shell.
+(-) The shell is the graphical interface that sits between the user and the kernel of the system. :: It is a text interface.
+
+@@q single | Users and groups in sequence
+@@topic users-sessions
+On a Debian-like system, the group `dev` is created with `addgroup dev` and gets GID 1005. Then root runs `adduser ana dev`, `adduser luis dev` and `deluser ana dev`. What does `grep '^dev:' /etc/group` print?
+(-) `dev:x:1005:ana,luis` :: `deluser ana dev` took ana out of the group again.
+(-) `dev:x:1005:` :: Only ana was removed; luis is still a member.
+(+) `dev:x:1005:luis` :: `adduser user group` adds a member and `deluser user group` removes one, editing the last field of the line.
+(-) Nothing, because `deluser` removes the group when a member is taken out. :: With two arguments `deluser` only removes the user from the group.
+
+@@q single | Executable but unreadable
+@@topic permissions
+`ana` owns the script `s.sh` (a correct bash script) with mode `--x------`. She runs `./s.sh` and then `bash s.sh`. What happens?
+(-) Both work, because she is the owner and has `x`. :: To run a script, the interpreter has to read it.
+(-) `./s.sh` works and `bash s.sh` fails, because only the second one needs to read the file. :: `./s.sh` needs to read the file as well: the shell opens it to run its commands.
+(-) `./s.sh` fails, but `bash s.sh` works, because `bash` does not need the `x` bit. :: `bash s.sh` needs `r`, which is missing too.
+(+) Both fail with `Permission denied`. :: A script needs `r` to be read, and `./` also needs `x`; the file only has `x`.
+
+@@q single | Aliases and child shells
+@@topic expansion-vars
+At her prompt, ana defines `alias ll='ls -l'`. Then she runs `bash -c ll`. What happens?
+(-) It lists the current directory in long format. :: The alias exists only in the shell where it was typed.
+(+) It fails with "ll: command not found". :: The new bash is a child process and it does not inherit the aliases of its parent.
+(-) It prints the text `ls -l`. :: Aliases are expanded, not printed; and none exists in the child.
+(-) It works only if `ll` had been exported with `export ll`. :: `export` applies to variables and functions, not to aliases.

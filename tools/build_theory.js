@@ -20,6 +20,17 @@
 //   {{answer ;; alt}} in the text        fill: a blank with its accepted answers
 //   (x) wrong answer :: why not          fill: tempting wrong answers and why they fail
 //   @@note                               optional closing takeaway (markdown, until next @@)
+//
+// Practice exams (tools/theory/exams/<id>.txt, translations in exams/es/): one set per file, built into
+// theory/exams/<id>.json (and theory/exams/es/<id>.json). Same question syntax, with these differences:
+//   @@exam <tier>-NN | <title>           first line; the id must be easy-NN, medium-NN or hard-NN and equal the file name
+//   @@tier easy|medium|hard              required in the English file (copied into translations)
+//   no @@group; exactly 10 questions, each `single` with exactly 4 options and one (+)
+//   @@topic <topic>                      required in every English question (see EXAM_TOPICS below)
+//   (+!) / (-!)                          an option that is always shown last (e.g. "None of the above"); at most one, written last
+// usage: node tools/build_theory.js exams                      every exam file (and nothing else)
+//        node tools/build_theory.js tools/theory/exams/easy-01.txt [...]   only these (an exams/es file also parses its English one)
+//        node tools/build_theory.js                             collections and exams
 'use strict';
 const fs = require('fs');
 const path = require('path');
@@ -29,6 +40,13 @@ const SRC = path.join(ROOT, 'tools/theory');
 const OUT = path.join(ROOT, 'theory');
 const LANGS = ['es'];
 const TYPES = ['single', 'multi', 'fill', 'order', 'match', 'sort'];
+const EXAM_SRC = path.join(SRC, 'exams');
+const EXAM_OUT = path.join(OUT, 'exams');
+const EXAM_TIERS = ['easy', 'medium', 'hard'];
+const EXAM_SIZE = 10;
+// every exam question names the T1 topic it belongs to: this is what lets us check coverage across all sets
+const EXAM_TOPICS = ['shell-help', 'jobs-procs', 'files-fs', 'permissions', 'filters', 'grep-regex', 'find',
+  'expansion-vars', 'redirection-pipes', 'scripts', 'users-sessions', 'boot-systemd', 'logs-cron'];
 const errors = [];
 let curFile = '', curLine = 0;
 const err = msg => errors.push(`${curFile}:${curLine}: ${msg}`);
@@ -51,6 +69,7 @@ function finishQuestion(q, col) {
   }
   const need = (cond, msg) => { if (!cond) err(`"${q.title}": ${msg}`); };
   need(q.text.trim(), 'empty question text');
+  const exam = col.kind === 'exam';
   if (t === 'single' || t === 'multi') {
     const ok = q.options.filter(o => o.ok).length, bad = q.options.length - ok;
     need(t === 'single' ? ok === 1 : ok >= 2, t === 'single' ? 'needs exactly one (+) option' : 'needs at least two (+) options');
@@ -58,7 +77,18 @@ function finishQuestion(q, col) {
     need(q.options.length >= 3 && q.options.length <= 7, 'use 3 to 7 options');
     for (const o of q.options) need(o.why, `option "${o.t}" has no explanation (:: ...)`);
     need(new Set(q.options.map(o => o.t)).size === q.options.length, 'duplicate option text');
-    q.options.forEach(o => { if (/^(both|all|none|neither)\b.*(above|these)|\b[a-d]\)\s*(and|&)/i.test(o.t)) err(`"${q.title}": positional option "${o.t}" (options are shuffled)`); });
+    q.options.forEach(o => { if (!o.pin && /^(both|all|none|neither)\b.*(above|these)|\b[a-d]\)\s*(and|&)/i.test(o.t)) err(`"${q.title}": positional option "${o.t}" (options are shuffled; pin it with (+!) / (-!) to keep it last)`); });
+    const pins = q.options.filter(o => o.pin);
+    if (!exam) need(!pins.length, 'pinned options (+!) / (-!) are only for exam files');
+    else {
+      need(t === 'single', 'exam questions must be single choice');
+      need(q.options.length === 4, `exam questions need exactly 4 options (has ${q.options.length})`);
+      need(pins.length <= 1, 'at most one pinned option');
+      need(!pins.length || q.options[q.options.length - 1].pin, 'the pinned option must be written last');
+      if (!col.lang) need(EXAM_TOPICS.includes(q.topic), `needs "@@topic <one of: ${EXAM_TOPICS.join(', ')}>"`);
+    }
+  } else if (exam) {
+    err(`"${q.title}": exam questions must be single choice`);
   } else if (t === 'fill') {
     need(q.blanks.length >= 1, 'needs at least one {{blank}}');
     q.blanks.forEach((b, i) => need(b.answers.length && b.answers.every(a => a), `blank ${i + 1} has an empty answer`));
@@ -89,7 +119,7 @@ function finishQuestion(q, col) {
 function parse(file, lang) {
   curFile = (lang ? lang + '/' : '') + path.basename(file);
   const lines = fs.readFileSync(file, 'utf8').split('\n');
-  const col = { id: '', title: '', about: '', groups: [], ids: new Set(), cur: null, lang };
+  const col = { id: '', title: '', about: '', groups: [], ids: new Set(), cur: null, lang, kind: 'collection', tier: '' };
   let q = null, section = null, lastItem = null;
   const addText = (obj, key, line) => { obj[key] = obj[key] ? obj[key] + '\n' + line : line; };
   for (let i = 0; i < lines.length; i++) {
@@ -98,8 +128,16 @@ function parse(file, lang) {
     let m;
     if (/^#/.test(line) && !q) continue; // comments between questions
     if ((m = line.match(/^@@collection\s+(\S+)\s*\|\s*(.+)$/))) { col.id = m[1]; col.title = m[2].trim(); section = null; continue; }
+    if ((m = line.match(/^@@exam\s+(\S+)\s*\|\s*(.+)$/))) {   // an exam is one flat list: a single implicit group
+      col.id = m[1]; col.title = m[2].trim(); col.kind = 'exam'; section = null;
+      col.cur = { id: 'questions', title: 'Questions', questions: [] };
+      col.groups.push(col.cur); continue;
+    }
+    if ((m = line.match(/^@@tier\s+(\w+)\s*$/))) { col.tier = m[1]; continue; }
+    if ((m = line.match(/^@@topic\s+(\S+)\s*$/)) && q) { q.topic = m[1]; continue; }
     if (/^@@about\s*$/.test(line)) { section = 'about'; continue; }
     if ((m = line.match(/^@@group\s+(.+)$/))) {
+      if (col.kind === 'exam') { err('exam files have no @@group'); continue; }
       finishQuestion(q, col); q = null; section = null;
       col.cur = { id: slug(m[1]), title: m[1].trim(), questions: [] };
       col.groups.push(col.cur); continue;
@@ -128,14 +166,15 @@ function parse(file, lang) {
       }
     }
     // option lines
-    if ((m = line.match(/^\(([+\->=x]|[^)\n]{1,40})\)\s+(.*)$/)) && section !== 'note' && (q.type === 'sort' || m[1].length === 1)) {
+    if ((m = line.match(/^\(([+\->=x]|[^)\n]{1,40})\)\s+(.*)$/)) && section !== 'note' && (q.type === 'sort' || m[1].length === 1 || /^[+-]!$/.test(m[1]))) {
       const tag = m[1], body = m[2];
       section = 'items';
       const [head, why] = splitWhy(body);
       const t = q.type;
       if (t === 'single' || t === 'multi') {
-        if (tag !== '+' && tag !== '-') { err(`bad option tag "(${tag})"`); continue; }
-        lastItem = { t: head, ok: tag === '+', why };
+        if (!/^[+-]!?$/.test(tag)) { err(`bad option tag "(${tag})"`); continue; }
+        lastItem = { t: head, ok: tag[0] === '+', why };
+        if (tag.endsWith('!')) lastItem.pin = true;
         q.options.push(lastItem);
       } else if (t === 'fill') {
         if (tag !== 'x') { err('fill questions only take (x) lines'); continue; }
@@ -174,7 +213,7 @@ function parse(file, lang) {
     for (const k of ['options', 'blanks', 'wrong', 'items', 'pairs', 'extras', 'buckets']) if (!qu[k].length) delete qu[k];
     if (!qu.note) delete qu.note;
   }
-  return { id: col.id, title: col.title, about: col.about.trim(), groups: col.groups };
+  return { id: col.id, title: col.title, about: col.about.trim(), kind: col.kind, tier: col.tier, groups: col.groups };
 }
 
 // Soft lint (warning only): in a single-choice question the right option should not be conspicuously
@@ -194,6 +233,8 @@ function lengthWarnings(c) {
 function align(tr, en, file) {
   curFile = file; curLine = 1;
   const where = (g, k) => `group ${g + 1} ("${en.groups[g].title}"), question ${k + 1}`;
+  tr.tier = en.tier;
+  if (tr.kind !== en.kind) return err(`${tr.kind} file for a ${en.kind}`);
   if (tr.groups.length !== en.groups.length) return err(`${tr.groups.length} groups, English has ${en.groups.length}`);
   tr.groups.forEach((g, gi) => {
     const eg = en.groups[gi];
@@ -202,10 +243,12 @@ function align(tr, en, file) {
     g.questions.forEach((q, k) => {
       const e = eg.questions[k], bad = msg => err(`${where(gi, k)} "${e.title}": ${msg}`);
       q.id = e.id;
+      if (e.topic) q.topic = e.topic;
       if (q.type !== e.type) return bad(`type ${q.type}, English is ${e.type}`);
       const len = key => (q[key] || []).length === (e[key] || []).length || bad(`${key}: ${(q[key] || []).length} vs ${(e[key] || []).length} in English`);
       if (q.type === 'single' || q.type === 'multi') {
         if (len('options') === true && q.options.some((o, j) => o.ok !== e.options[j].ok)) bad('the right options are not in the same positions as in English');
+        if (len('options') === true && q.options.some((o, j) => !!o.pin !== !!e.options[j].pin)) bad('the pinned option (+! / -!) is not in the same position as in English');
       } else if (q.type === 'fill') len('blanks');
       else if (q.type === 'order') len('items');
       else if (q.type === 'match') { len('pairs'); len('extras'); }
@@ -218,27 +261,15 @@ function align(tr, en, file) {
 }
 
 const args = process.argv.slice(2);
+const isUnder = (f, dir) => path.resolve(f).startsWith(dir + path.sep);
+const examArgs = args.filter(a => isUnder(a, EXAM_SRC));
+const collArgs = args.filter(a => a !== 'exams' && !isUnder(a, EXAM_SRC));
+const wantColls = !args.length || collArgs.length > 0;
+const wantExams = !args.length || args.includes('exams') || examArgs.length > 0;
 const langOf = f => { const d = path.basename(path.dirname(path.resolve(f))); return LANGS.includes(d) ? d : null; };
-const enFiles = fs.readdirSync(SRC).filter(f => f.endsWith('.txt')).sort().map(f => path.join(SRC, f));
-const trFiles = LANGS.flatMap(l => { try { return fs.readdirSync(path.join(SRC, l)).filter(f => f.endsWith('.txt')).sort().map(f => path.join(SRC, l, f)); } catch { return []; } });
-const wanted = args.length ? new Set(args.map(a => path.resolve(a))) : null;
+const listTxt = dir => { try { return fs.readdirSync(dir).filter(f => f.endsWith('.txt')).sort().map(f => path.join(dir, f)); } catch { return []; } };
 const out = [];
-const english = {};
-for (const f of enFiles) {   // English is always parsed: translations are checked against it
-  const c = parse(f);
-  english[c.id] = c;
-  if (wanted && !wanted.has(path.resolve(f))) continue;
-  out.push({ c, dir: OUT });
-  report(c, '');
-}
-for (const f of trFiles) {
-  if (wanted && !wanted.has(path.resolve(f))) continue;
-  const lang = langOf(f), c = parse(f, lang);
-  if (!english[c.id]) { curFile = lang + '/' + path.basename(f); curLine = 1; err(`no English collection "${c.id}"`); continue; }
-  align(c, english[c.id], lang + '/' + path.basename(f));
-  out.push({ c, dir: path.join(OUT, lang) });
-  report(c, lang + '/');
-}
+
 function report(c, prefix) {
   const n = c.groups.reduce((s, g) => s + g.questions.length, 0);
   const kinds = {};
@@ -246,6 +277,111 @@ function report(c, prefix) {
   console.log(`${prefix}${c.id}: ${n} questions in ${c.groups.length} groups  ${JSON.stringify(kinds)}`);
   for (const w of lengthWarnings(c)) console.warn('  warning: ' + w);
 }
+
+const collOut = c => ({ id: c.id, title: c.title, about: c.about, groups: c.groups });   // same JSON shape as before exams existed
+function buildCollections() {
+  const wanted = collArgs.length ? new Set(collArgs.map(a => path.resolve(a))) : null;
+  const english = {};
+  for (const f of listTxt(SRC)) {   // English is always parsed: translations are checked against it
+    const c = parse(f);
+    english[c.id] = c;
+    if (wanted && !wanted.has(path.resolve(f))) continue;
+    out.push({ c: collOut(c), dir: OUT });
+    report(c, '');
+  }
+  for (const f of LANGS.flatMap(l => listTxt(path.join(SRC, l)))) {
+    if (wanted && !wanted.has(path.resolve(f))) continue;
+    const lang = langOf(f), c = parse(f, lang);
+    if (!english[c.id]) { curFile = lang + '/' + path.basename(f); curLine = 1; err(`no English collection "${c.id}"`); continue; }
+    align(c, english[c.id], lang + '/' + path.basename(f));
+    out.push({ c: collOut(c), dir: path.join(OUT, lang) });
+    report(c, lang + '/');
+  }
+}
+
+// Practice exams: only the files asked for are parsed (plus the English file behind a translation), so
+// several people / agents can each build their own sets while others are half written.
+function checkExam(c, file) {
+  curFile = path.basename(file); curLine = 1;
+  const base = path.basename(file, '.txt');
+  if (c.kind !== 'exam') return err('first line must be "@@exam <id> | <title>"');
+  if (!/^(easy|medium|hard)-\d\d$/.test(c.id)) err(`exam id "${c.id}" must look like easy-01, medium-12, hard-07`);
+  if (c.id !== base) err(`exam id "${c.id}" must equal the file name "${base}"`);
+  if (!EXAM_TIERS.includes(c.tier)) err(`@@tier must be one of ${EXAM_TIERS.join(', ')}`);
+  else if (!c.id.startsWith(c.tier + '-')) err(`@@tier ${c.tier} does not match the id "${c.id}"`);
+  const qs = c.groups[0] ? c.groups[0].questions : [];
+  if (qs.length !== EXAM_SIZE) err(`an exam has exactly ${EXAM_SIZE} questions (has ${qs.length})`);
+  if (BLUEPRINT) {
+    const bp = BLUEPRINT[c.id];
+    if (!bp) err(`"${c.id}" is not in blueprint.json (node tools/exam_blueprint.js)`);
+    else qs.forEach((q, i) => { if (bp[i] && q.topic !== bp[i].topic) err(`question ${i + 1} must be about "${bp[i].topic}" (blueprint), not "${q.topic}"`); });
+  }
+  const perTopic = {};
+  for (const q of qs) perTopic[q.topic] = (perTopic[q.topic] || 0) + 1;
+  if (Object.keys(perTopic).length < 7) err(`questions should span at least 7 topics (spans ${Object.keys(perTopic).length})`);
+  for (const [t, n] of Object.entries(perTopic)) if (n > 2) err(`topic "${t}" has ${n} questions; at most 2 per exam`);
+  const stems = new Set();
+  for (const q of qs) {
+    const k = q.text.replace(/\s+/g, ' ').toLowerCase();
+    if (stems.has(k)) err(`duplicate question text: "${q.title}"`);
+    stems.add(k);
+  }
+}
+// tools/theory/exams/blueprint.json (tools/exam_blueprint.js) assigns every question slot of every set a topic
+let BLUEPRINT = null;
+try { BLUEPRINT = JSON.parse(fs.readFileSync(path.join(EXAM_SRC, 'blueprint.json'), 'utf8')).sets; } catch { /* no blueprint: only the generic rules apply */ }
+const examOut = c => ({ id: c.id, title: c.title, about: c.about, tier: c.tier, questions: c.groups[0].questions });
+
+function buildExams() {
+  const wanted = examArgs.length && !args.includes('exams') ? new Set(examArgs.map(a => path.resolve(a))) : null;
+  for (const w of wanted || []) if (!fs.existsSync(w)) { curFile = path.relative(ROOT, w); curLine = 1; err('no such file'); }
+  const parsed = new Map();   // English exams, parsed once
+  const parseEn = f => {
+    f = path.resolve(f);
+    if (!parsed.has(f)) { const c = parse(f); checkExam(c, f); parsed.set(f, c); }
+    return parsed.get(f);
+  };
+  for (const f of listTxt(EXAM_SRC)) {
+    if (wanted && !wanted.has(path.resolve(f))) continue;
+    const c = parseEn(f);
+    out.push({ c: examOut(c), dir: EXAM_OUT });
+    report(c, '');
+  }
+  for (const f of LANGS.flatMap(l => listTxt(path.join(EXAM_SRC, l)))) {
+    if (wanted && !wanted.has(path.resolve(f))) continue;
+    const lang = langOf(f), name = lang + '/' + path.basename(f), enFile = path.join(EXAM_SRC, path.basename(f));
+    if (!fs.existsSync(enFile)) { curFile = name; curLine = 1; err('no English exam file with this name'); continue; }
+    const en = parseEn(enFile), c = parse(f, lang);
+    curFile = name; curLine = 1;
+    if (c.id !== en.id) err(`exam id "${c.id}" must equal the English one "${en.id}"`);
+    align(c, en, name);
+    out.push({ c: examOut(c), dir: path.join(EXAM_OUT, lang) });
+    report(c, lang + '/');
+  }
+  if (!wanted) coverage(parsed);
+}
+
+// Full exam build: how many questions each topic has per tier (the blueprint check), and cross-set duplicates.
+function coverage(parsed) {
+  const grid = {}, stems = new Map();
+  for (const [file, c] of parsed) {
+    for (const q of c.groups[0] ? c.groups[0].questions : []) {
+      (grid[q.topic] = grid[q.topic] || {})[c.tier] = ((grid[q.topic] || {})[c.tier] || 0) + 1;
+      const k = q.text.replace(/\s+/g, ' ').toLowerCase();
+      if (stems.has(k)) { curFile = path.basename(file); curLine = 1; err(`question text also used in ${stems.get(k)}: "${q.title}"`); }
+      else stems.set(k, path.basename(file));
+    }
+  }
+  if (!parsed.size) return;
+  console.log('\nexam coverage (questions per topic and tier):');
+  for (const t of EXAM_TOPICS) {
+    const g = grid[t] || {};
+    console.log(`  ${t.padEnd(18)}${EXAM_TIERS.map(x => `${x} ${String(g[x] || 0).padStart(3)}`).join('   ')}`);
+  }
+}
+
+if (wantColls) buildCollections();
+if (wantExams) buildExams();
 if (errors.length) { console.error('\n' + errors.join('\n')); console.error(`\n${errors.length} problem(s), nothing written`); process.exit(1); }
 for (const { c, dir } of out) {
   fs.mkdirSync(dir, { recursive: true });

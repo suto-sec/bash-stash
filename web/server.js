@@ -149,6 +149,99 @@ function writeTheoryProgress(cid, prog) {
   fs.renameSync(file + '.tmp', file);
 }
 
+// ------------------------------------------------------------------ practice exams
+// Sets of 10 single-choice questions compiled from tools/theory/exams/*.txt into theory/exams/<id>.json
+// (translations in theory/exams/<lang>/, same question ids and option order). They are graded here: the
+// browser sends which option (index in the source order) was picked for each question, the server
+// recomputes the score from the answer key and stores every finished attempt in
+// .progress/exams/<id>.json (an array, oldest first). Exams do not touch the theory-question progress.
+const EXAMS = path.join(THEORY, 'exams');
+const EXAM_PROGRESS = path.join(PROGRESS, 'exams');
+const EXAM_PASS = 5;            // pass line, out of 10
+const EXAM_MAX_ATTEMPTS = 200;  // kept per set (oldest dropped)
+const EXAM_TIER_ORDER = ['easy', 'medium', 'hard'];
+function loadExam(id, lang) {
+  if (!SAFE_ID.test(id)) return null;
+  const dirs = THEORY_LANGS.includes(lang) ? [path.join(EXAMS, lang), EXAMS] : [EXAMS];
+  for (const d of dirs) {
+    try { return JSON.parse(fs.readFileSync(path.join(d, id + '.json'), 'utf8')); } catch { /* try the next */ }
+  }
+  return null;
+}
+function examAttempts(id) {
+  try { const a = JSON.parse(fs.readFileSync(path.join(EXAM_PROGRESS, id + '.json'), 'utf8')); return Array.isArray(a) ? a : []; }
+  catch { return []; }
+}
+function writeExamAttempts(id, list) {
+  fs.mkdirSync(EXAM_PROGRESS, { recursive: true });
+  const file = path.join(EXAM_PROGRESS, id + '.json');
+  fs.writeFileSync(file + '.tmp', JSON.stringify(list));
+  fs.renameSync(file + '.tmp', file);
+}
+// An attempt in progress is kept (one per set) in .progress/exams/<id>.draft.json so it can be resumed or discarded.
+const draftFile = id => path.join(EXAM_PROGRESS, id + '.draft.json');
+function readDraft(exam) {
+  try {
+    const d = JSON.parse(fs.readFileSync(draftFile(exam.id), 'utf8'));
+    // a draft written for different questions (the set was edited since) is useless
+    return JSON.stringify(d.qids) === JSON.stringify(exam.questions.map(q => q.id)) ? d : null;
+  } catch { return null; }
+}
+function cleanDraft(exam, b) {
+  const n = exam.questions.length;
+  if (!b || typeof b !== 'object') return null;
+  const per = (a, ok) => Array.isArray(a) && a.length === n && a.every(ok);
+  const perm = (a, len) => Array.isArray(a) && a.length === len && [...a].sort((x, y) => x - y).every((v, i) => v === i);
+  const st = b.settings && typeof b.settings === 'object' ? b.settings : {};
+  const feedback = st.feedback === 'each' ? 'each' : 'end';
+  const when = Date.parse(b.startedAt);
+  if (!per(b.order, (o, i) => perm(o, exam.questions[i].options.length))) return null;
+  if (!per(b.answers, (a, i) => a === null || (Number.isInteger(a) && a >= 0 && a < exam.questions[i].options.length))) return null;
+  if (!per(b.revealed, v => typeof v === 'boolean') || !per(b.locked, v => typeof v === 'boolean')) return null;
+  if (!Number.isInteger(b.pos) || b.pos < 0 || b.pos >= n) return null;
+  return { qids: exam.questions.map(q => q.id), startedAt: new Date(Number.isNaN(when) ? Date.now() : when).toISOString(),
+    savedAt: new Date().toISOString(), settings: { feedback, back: st.back === true },
+    pos: b.pos, order: b.order, answers: b.answers, revealed: b.revealed, locked: b.locked };
+}
+function deleteDraft(id) { try { fs.unlinkSync(draftFile(id)); } catch { /* none */ } }
+function examIndex(lang) {
+  let files = [];
+  try { files = fs.readdirSync(EXAMS).filter(f => f.endsWith('.json')).map(f => f.slice(0, -5)); } catch { /* no exams yet */ }
+  const rank = e => EXAM_TIER_ORDER.indexOf(e.tier) * 1000 + (parseInt(e.id.split('-')[1], 10) || 0);
+  return files.map(id => loadExam(id, lang)).filter(Boolean).sort((a, b) => rank(a) - rank(b)).map(e => {
+    const at = examAttempts(e.id), last = at[at.length - 1];
+    return { id: e.id, title: e.title, about: e.about, tier: e.tier, count: e.questions.length,
+      attempts: at.length, best: at.length ? Math.max(...at.map(a => a.score)) : null,
+      last: last ? { n: last.n, score: last.score, total: last.total, finishedAt: last.finishedAt } : null,
+      pass: EXAM_PASS,
+      draft: (d => d ? { pos: d.pos, total: e.questions.length, answered: d.answers.filter(a => a !== null).length, savedAt: d.savedAt } : null)(readDraft(e)) };
+  });
+}
+// builds the stored attempt from what the browser sent; never trusts a score it sends
+function gradeAttempt(exam, body, prev) {
+  const sent = new Map((Array.isArray(body.answers) ? body.answers : []).map(a => [a && a.q, a && a.pick]));
+  const answers = exam.questions.map(q => {
+    const pick = sent.get(q.id);
+    const key = q.options.findIndex(o => o.ok);
+    const valid = Number.isInteger(pick) && pick >= 0 && pick < q.options.length;
+    return { q: q.id, pick: valid ? pick : null, ok: valid && pick === key };
+  });
+  const score = answers.filter(a => a.ok).length;
+  const when = v => { const t = Date.parse(v); return Number.isNaN(t) ? Date.now() : t; };
+  const started = when(body.startedAt), finished = Math.max(started, when(body.finishedAt));
+  const st = body.settings && typeof body.settings === 'object' ? body.settings : {};
+  const feedback = st.feedback === 'each' ? 'each' : 'end';
+  return {
+    n: prev.reduce((m, a) => Math.max(m, a.n || 0), 0) + 1,
+    startedAt: new Date(started).toISOString(), finishedAt: new Date(finished).toISOString(),
+    seconds: Math.round((finished - started) / 1000),
+    score, total: exam.questions.length, pass: score >= EXAM_PASS,
+    settings: { feedback, back: st.back === true },
+    lang: THEORY_LANGS.includes(body.lang) ? body.lang : 'en',
+    answers,
+  };
+}
+
 // ------------------------------------------------------------------ practice fixture ("play")
 // exercises/<id>/ only holds README.md, check.sh and answer.sh — the actual files a script
 // needs to read (created by the checker's setup()) live nowhere on disk until built. So that a
@@ -290,6 +383,40 @@ async function api(req, res, url) {
       prog[parts[3]] = cur;
       writeTheoryProgress(col.id, prog);
       return send(res, 200, { status: questionStatus(cur) });
+    }
+    return send(res, 404, { error: 'unknown endpoint' });
+  }
+
+  if (parts[1] === 'exams') {
+    const lang = url.searchParams.get('lang');
+    if (req.method === 'GET' && !parts[2]) return send(res, 200, examIndex(lang));
+    const exam = parts[2] ? loadExam(parts[2], lang) : null;
+    if (!exam) return send(res, 404, { error: 'no such exam' });
+    if (req.method === 'GET' && !parts[3]) return send(res, 200, exam);
+    if (parts[3] === 'attempts' && req.method === 'GET') return send(res, 200, examAttempts(exam.id));
+    if (parts[3] === 'attempts' && req.method === 'POST') {
+      const body = await readBody(req);
+      const key = loadExam(exam.id) || exam;   // the answer key never depends on the language
+      const prev = examAttempts(exam.id);
+      const attempt = gradeAttempt(key, body || {}, prev);
+      writeExamAttempts(exam.id, [...prev, attempt].slice(-EXAM_MAX_ATTEMPTS));
+      deleteDraft(exam.id);                      // a finished attempt is no longer "in progress"
+      return send(res, 200, attempt);
+    }
+    if (parts[3] === 'draft' && req.method === 'GET') return send(res, 200, readDraft(loadExam(exam.id) || exam));
+    if (parts[3] === 'draft' && req.method === 'POST') {
+      const key = loadExam(exam.id) || exam;
+      if (parts[4] === 'delete') { deleteDraft(exam.id); return send(res, 200, { ok: true }); }
+      const d = cleanDraft(key, await readBody(req));
+      if (!d) return send(res, 400, { error: 'invalid draft' });
+      fs.mkdirSync(EXAM_PROGRESS, { recursive: true });
+      fs.writeFileSync(draftFile(exam.id) + '.tmp', JSON.stringify(d));
+      fs.renameSync(draftFile(exam.id) + '.tmp', draftFile(exam.id));
+      return send(res, 200, { ok: true });
+    }
+    if (parts[3] === 'reset' && req.method === 'POST') {
+      try { fs.unlinkSync(path.join(EXAM_PROGRESS, exam.id + '.json')); } catch { /* nothing stored */ }
+      return send(res, 200, { ok: true });
     }
     return send(res, 404, { error: 'unknown endpoint' });
   }

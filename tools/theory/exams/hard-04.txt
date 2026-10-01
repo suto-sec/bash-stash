@@ -1,0 +1,94 @@
+@@exam hard-04 | Hard exam 4
+@@tier hard
+@@about
+Ten single-choice questions with traps: patterns that expand too early, counts that are not what they seem, inverted loop conditions, redirections that run without privileges and background groups.
+
+@@q single | Expanding in two steps
+@@topic expansion-vars
+`a.txt` and `b.txt` are the only files in the directory. What does `f='*.txt'; echo $f; echo "$f"; echo '$f'` print?
+(-) `a.txt b.txt`, `a.txt b.txt` and `$f` :: Double quotes stop the pattern expansion as well, not only the splitting.
+(-) `*.txt`, `*.txt` and `$f` :: Assigning the value does not keep the star from the pattern expansion of the unquoted `echo $f`.
+(-) `a.txt b.txt`, `*.txt` and `*.txt` :: Single quotes block the variable too, so the third word is `$f`.
+(+) `a.txt b.txt`, `*.txt` and `$f` :: The unquoted `$f` is replaced and then its pattern is expanded; the double quotes keep the text of the variable; the single quotes keep `$f` itself.
+
+@@q single | Names of the files
+@@topic grep-regex
+A student wants to print just the names of the `.log` files that contain the word `error`, and runs `grep -c error *.log`. With `a.log` having two matching lines and `b.log` none, what is wrong?
+(-) Nothing is wrong: the output is just the name `a.log`, the only file with matches. :: `-c` does not select files; it prints a count.
+(+) It prints `a.log:2` and `b.log:0`: a count per file, even without matches. :: `-l` is the option that lists only the names of files that contain a match.
+(-) It prints the two matching lines of `a.log`, because `-c` stands for "contents". :: `-c` means count.
+(-) It fails, because `-c` cannot be used with several files. :: With several files it prefixes each count with the file name.
+
+@@q single | The unquoted pattern
+@@topic find
+The current directory has `a.txt` and `c.txt`, and a subdirectory `sub` with `b.txt`. What happens with `find . -name *.txt`, written without quotes?
+(-) It lists `./a.txt`, `./c.txt` and `./sub/b.txt`. :: The shell expands `*.txt` before `find` runs, so `find` does not receive the pattern.
+(-) It lists only `./a.txt` and `./c.txt`, the files of the current directory. :: `-name` would then get two arguments: that is not what happens.
+(+) It fails: `find . -name a.txt c.txt` has an extra path after the expression. :: With two matches in the current directory the shell passes two names, and `find` complains that paths must precede the expression.
+(-) It lists only `./sub/b.txt`, because the other two files were already expanded. :: Expansion does not remove files from the search.
+
+@@q single | Counting without a final newline
+@@topic filters
+`nf` was created with `printf 'one two\nthree'`, so its last line has no newline at the end. What does `wc -l -w -c nf` report for lines, words and bytes?
+(-) `2 3 14` :: `wc -l` counts newline characters, and there is only one; and the file has 13 bytes, not 14.
+(-) `2 3 13` :: `-l` counts newline characters, not lines of text: the last line is not terminated.
+(+) `1 3 13` :: One newline, three words (`one`, `two`, `three`) and 13 bytes (7 + 1 + 5).
+(-) `1 2 13` :: `one two` is two words, and `three` is a third one.
+
+@@q single | A countdown that never counts
+@@topic scripts
+This script should print `3`, `2`, `1` and stop:
+```
+n=3
+while [ $n -eq 0 ]
+do echo $n; n=$((n-1))
+done
+```
+What is wrong?
+(-) It runs forever, because `n` is never compared with 3. :: It does not even enter the loop.
+(-) It prints `3`, `2`, `1` and `0`, because the test is made after the body. :: `while` tests before the body.
+(-) It is a syntax error: `do` must be on the same line as `while`. :: The layout is valid; a newline can precede `do`.
+(+) The condition is inverted: the loop runs only while `n` equals 0, so the body never runs. :: It needs `[ $n -ne 0 ]` with `while`, or `until [ $n -eq 0 ]`.
+
+@@q single | Distinct colours
+@@topic redirection-pipes
+What does this print?
+```
+printf 'Red\nred\nBLUE\nblue\nred\n' | tr 'A-Z' 'a-z' | sort -u | wc -l
+```
+(-) `5` :: `sort -u` removes the repeated lines before `wc` counts them.
+(-) `4` :: That would be the result without the `tr`: `Red`, `red`, `BLUE` and `blue` are four different lines.
+(+) `2` :: `tr` turns everything into lower case, so there are only `red` and `blue`; `sort -u` keeps one of each.
+(-) `3` :: There are only two different words once the case is the same.
+
+@@q single | What gzip leaves
+@@topic files-fs
+`report.txt` exists. You run `gzip report.txt` and then `ls`. What does `ls` show?
+(-) `report.txt` and `report.txt.gz` :: `gzip` replaces the file with its compressed version unless it is told to keep the original.
+(+) Only `report.txt.gz` :: The compressed file takes the place of the original; `gunzip` would restore `report.txt` and remove the `.gz`.
+(-) Only `report.txt`, because `gzip` compresses in place and keeps the name. :: The result has the extension `.gz`.
+(-) `report.tgz`, as `gzip` always archives and compresses. :: `.tgz` is what `tar` with `z` creates; `gzip` only compresses one file.
+
+@@q single | Execute only for the others
+@@topic permissions
+`ls -ld dd` shows `drwxr-x--x 2 ana dev 4096 Mar 3 10:00 dd`, and `dd/f` has mode `rw-r--r--`. A user who is neither ana nor in `dev` runs `ls dd` and then `cat dd/f`. What happens?
+(-) Both work, because `f` is readable by everybody. :: Listing the directory needs `r` on it, which the others do not have.
+(-) Both fail, because the others have no `r` on the directory. :: Reading `f` through the path only needs `x` on the directory.
+(+) `ls dd` fails with `Permission denied`, but `cat dd/f` prints the file. :: `x` allows traversing the directory to a name that is already known; without `r` the names cannot be listed.
+(-) `ls dd` works, but `cat dd/f` fails, because `x` on a directory means execute. :: It is the other way round: `x` allows crossing it and `r` is what lists it.
+
+@@q single | sudo and the redirection
+@@topic users-sessions
+A normal user, who is allowed to use `sudo`, runs `sudo echo hi > /etc/zz`. What happens?
+(-) The file `/etc/zz` is created containing `hi`, because `sudo` gives root rights to the whole line. :: `sudo` only affects the command that follows it, `echo`.
+(+) The shell reports `Permission denied`, because the redirection is done by the user's shell, not by root. :: `echo` is not the problem: the `> /etc/zz` is opened by the shell before `sudo` runs; `echo hi | sudo tee /etc/zz` would work.
+(-) `sudo` asks for the password and then writes the file. :: The failure happens before `sudo` has a chance to write anything.
+(-) The text `hi` is printed on the screen and the file is created empty. :: The file cannot be created at all by a normal user.
+
+@@q single | Background of a group
+@@topic jobs-procs
+You run `(sleep 2; echo A) & echo B` at the prompt. What do you see?
+(-) `A` after two seconds, and then `B`. :: `echo B` is not part of the group that was sent to the background.
+(-) Only `B`, because the background group is killed when the line ends. :: A background group goes on running, and prints its output when it finishes.
+(+) `B` at once, and `A` about two seconds later. :: The `&` applies to the parenthesised group only; the shell continues with `echo B` immediately.
+(-) `A` and `B` at once, because `sleep` is not waited for when it runs in a group. :: The `sleep` happens inside the group, before its `echo A`, which comes two seconds later.

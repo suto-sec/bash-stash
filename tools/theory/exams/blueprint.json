@@ -1,0 +1,1323 @@
+{
+ "setsPerTier": 7,
+ "questionsPerSet": 10,
+ "topicQuota": {
+  "files-fs": 8,
+  "expansion-vars": 7,
+  "scripts": 7,
+  "jobs-procs": 6,
+  "redirection-pipes": 6,
+  "permissions": 6,
+  "filters": 6,
+  "shell-help": 5,
+  "grep-regex": 5,
+  "users-sessions": 5,
+  "boot-systemd": 4,
+  "find": 3,
+  "logs-cron": 2
+ },
+ "sets": {
+  "easy-01": [
+   {
+    "n": 1,
+    "topic": "boot-systemd",
+    "sub": "order of the boot sequence",
+    "style": "which statement is FALSE"
+   },
+   {
+    "n": 2,
+    "topic": "jobs-procs",
+    "sub": "foreground vs background and the & operator",
+    "style": "definition / concept recall"
+   },
+   {
+    "n": 3,
+    "topic": "filters",
+    "sub": "wc and its options",
+    "style": "definition / concept recall"
+   },
+   {
+    "n": 4,
+    "topic": "files-fs",
+    "sub": "absolute vs relative paths, ., .., ~, $HOME, cd and pwd",
+    "style": "which statement is TRUE"
+   },
+   {
+    "n": 5,
+    "topic": "expansion-vars",
+    "sub": "order of evaluation of a command line (tokens, alias, variables, wildcards, redirections)",
+    "style": "what does this single command print or do"
+   },
+   {
+    "n": 6,
+    "topic": "scripts",
+    "sub": "shebang and execute permission",
+    "style": "which command / option does X"
+   },
+   {
+    "n": 7,
+    "topic": "users-sessions",
+    "sub": "root: UID 0, why not to work as root",
+    "style": "which statement is TRUE"
+   },
+   {
+    "n": 8,
+    "topic": "files-fs",
+    "sub": "ls options (-a -l -R -i -d) and hidden files",
+    "style": "which command / option does X"
+   },
+   {
+    "n": 9,
+    "topic": "permissions",
+    "sub": "reading the ls -l mode string (type, owner, group, others)",
+    "style": "which statement is FALSE"
+   },
+   {
+    "n": 10,
+    "topic": "shell-help",
+    "sub": "what a shell is and the read-evaluate loop",
+    "style": "what does this single command print or do"
+   }
+  ],
+  "easy-02": [
+   {
+    "n": 1,
+    "topic": "permissions",
+    "sub": "what r, w, x mean on a regular file",
+    "style": "what does this single command print or do"
+   },
+   {
+    "n": 2,
+    "topic": "shell-help",
+    "sub": "builtin vs external commands, type / which / whereis",
+    "style": "which statement is FALSE"
+   },
+   {
+    "n": 3,
+    "topic": "users-sessions",
+    "sub": "adduser, deluser, addgroup, delgroup",
+    "style": "which command / option does X"
+   },
+   {
+    "n": 4,
+    "topic": "expansion-vars",
+    "sub": "alias and unalias",
+    "style": "which statement is TRUE"
+   },
+   {
+    "n": 5,
+    "topic": "filters",
+    "sub": "cut: -d, -f, -c",
+    "style": "which statement is FALSE"
+   },
+   {
+    "n": 6,
+    "topic": "boot-systemd",
+    "sub": "BIOS vs UEFI and Secure Boot",
+    "style": "definition / concept recall"
+   },
+   {
+    "n": 7,
+    "topic": "redirection-pipes",
+    "sub": "stdin, stdout, stderr and their defaults",
+    "style": "definition / concept recall"
+   },
+   {
+    "n": 8,
+    "topic": "files-fs",
+    "sub": "mkdir -p and rmdir (empty directories only)",
+    "style": "which command / option does X"
+   },
+   {
+    "n": 9,
+    "topic": "files-fs",
+    "sub": "cp options (-r -u -a -i) and what happens to the destination",
+    "style": "what does this single command print or do"
+   },
+   {
+    "n": 10,
+    "topic": "scripts",
+    "sub": "running a script: ./s, bash s, source / . s - which shell, which directory, which variables survive",
+    "style": "which statement is TRUE"
+   }
+  ],
+  "easy-03": [
+   {
+    "n": 1,
+    "topic": "users-sessions",
+    "sub": "su, su - and sudo: differences",
+    "style": "which command / option does X"
+   },
+   {
+    "n": 2,
+    "topic": "scripts",
+    "sub": "finding a script through the PATH",
+    "style": "definition / concept recall"
+   },
+   {
+    "n": 3,
+    "topic": "filters",
+    "sub": "head and tail, including -n and -n+p",
+    "style": "which command / option does X"
+   },
+   {
+    "n": 4,
+    "topic": "permissions",
+    "sub": "what r, w, x mean on a directory",
+    "style": "which statement is TRUE"
+   },
+   {
+    "n": 5,
+    "topic": "expansion-vars",
+    "sub": "assigning variables (no spaces) and $VAR vs ${VAR}",
+    "style": "what does this single command print or do"
+   },
+   {
+    "n": 6,
+    "topic": "redirection-pipes",
+    "sub": "> vs >> and what happens to an existing file",
+    "style": "which statement is TRUE"
+   },
+   {
+    "n": 7,
+    "topic": "boot-systemd",
+    "sub": "MBR vs GPT",
+    "style": "what does this single command print or do"
+   },
+   {
+    "n": 8,
+    "topic": "jobs-procs",
+    "sub": "Ctrl+C vs Ctrl+Z (terminate vs suspend)",
+    "style": "definition / concept recall"
+   },
+   {
+    "n": 9,
+    "topic": "shell-help",
+    "sub": "the PATH and invoking an executable by path",
+    "style": "which statement is FALSE"
+   },
+   {
+    "n": 10,
+    "topic": "files-fs",
+    "sub": "mv: rename vs move, destination is an existing directory",
+    "style": "which statement is FALSE"
+   }
+  ],
+  "easy-04": [
+   {
+    "n": 1,
+    "topic": "find",
+    "sub": "-name (quoting the pattern) and -type",
+    "style": "which command / option does X"
+   },
+   {
+    "n": 2,
+    "topic": "filters",
+    "sub": "sort options: -r -u -n -t -k",
+    "style": "which command / option does X"
+   },
+   {
+    "n": 3,
+    "topic": "permissions",
+    "sub": "chmod symbolic mode (u g o a, + - =)",
+    "style": "definition / concept recall"
+   },
+   {
+    "n": 4,
+    "topic": "jobs-procs",
+    "sub": "jobs, bg and fg and job numbers",
+    "style": "which statement is TRUE"
+   },
+   {
+    "n": 5,
+    "topic": "redirection-pipes",
+    "sub": "< and commands that read stdin vs files",
+    "style": "which statement is FALSE"
+   },
+   {
+    "n": 6,
+    "topic": "files-fs",
+    "sub": "rm -r -f -i and removing directories",
+    "style": "which statement is FALSE"
+   },
+   {
+    "n": 7,
+    "topic": "users-sessions",
+    "sub": "/etc/sudoers entries (user, %group, NOPASSWD, aliases)",
+    "style": "which statement is TRUE"
+   },
+   {
+    "n": 8,
+    "topic": "grep-regex",
+    "sub": "grep options -c -i -v -n -l",
+    "style": "what does this single command print or do"
+   },
+   {
+    "n": 9,
+    "topic": "scripts",
+    "sub": "positional parameters $0 $1 $#",
+    "style": "what does this single command print or do"
+   },
+   {
+    "n": 10,
+    "topic": "expansion-vars",
+    "sub": "export, env, printenv, unset: what children inherit",
+    "style": "definition / concept recall"
+   }
+  ],
+  "easy-05": [
+   {
+    "n": 1,
+    "topic": "find",
+    "sub": "-size with units and +/-",
+    "style": "which command / option does X"
+   },
+   {
+    "n": 2,
+    "topic": "permissions",
+    "sub": "chmod octal mode",
+    "style": "which statement is TRUE"
+   },
+   {
+    "n": 3,
+    "topic": "redirection-pipes",
+    "sub": "2> and redirecting only errors",
+    "style": "which statement is FALSE"
+   },
+   {
+    "n": 4,
+    "topic": "shell-help",
+    "sub": "man sections and man N name",
+    "style": "definition / concept recall"
+   },
+   {
+    "n": 5,
+    "topic": "jobs-procs",
+    "sub": "ps: default columns and common options (-e -l -a, aux, a x u f r t)",
+    "style": "which command / option does X"
+   },
+   {
+    "n": 6,
+    "topic": "expansion-vars",
+    "sub": "predefined variables HOME PATH HOSTNAME and which",
+    "style": "what does this single command print or do"
+   },
+   {
+    "n": 7,
+    "topic": "files-fs",
+    "sub": "touch (create / change times) and mktemp",
+    "style": "which statement is FALSE"
+   },
+   {
+    "n": 8,
+    "topic": "grep-regex",
+    "sub": "grep -r / -E / -f and the egrep / fgrep names",
+    "style": "definition / concept recall"
+   },
+   {
+    "n": 9,
+    "topic": "scripts",
+    "sub": "$* vs $@ and \"$@\"",
+    "style": "what does this single command print or do"
+   },
+   {
+    "n": 10,
+    "topic": "users-sessions",
+    "sub": "/etc/passwd fields",
+    "style": "which statement is TRUE"
+   }
+  ],
+  "easy-06": [
+   {
+    "n": 1,
+    "topic": "filters",
+    "sub": "tr: translate and delete characters",
+    "style": "what does this single command print or do"
+   },
+   {
+    "n": 2,
+    "topic": "boot-systemd",
+    "sub": "boot loader: first and second stage",
+    "style": "which command / option does X"
+   },
+   {
+    "n": 3,
+    "topic": "jobs-procs",
+    "sub": "PIDs: sequential assignment, limit, PID 1",
+    "style": "definition / concept recall"
+   },
+   {
+    "n": 4,
+    "topic": "files-fs",
+    "sub": "hard links: link count, shared inode, surviving deletion",
+    "style": "which command / option does X"
+   },
+   {
+    "n": 5,
+    "topic": "redirection-pipes",
+    "sub": "2>&1 and &> and why the order of redirections matters",
+    "style": "which statement is TRUE"
+   },
+   {
+    "n": 6,
+    "topic": "logs-cron",
+    "sub": "what /var/log/auth.log records",
+    "style": "what does this single command print or do"
+   },
+   {
+    "n": 7,
+    "topic": "shell-help",
+    "sub": "whatis, apropos, man -k",
+    "style": "definition / concept recall"
+   },
+   {
+    "n": 8,
+    "topic": "expansion-vars",
+    "sub": "arithmetic: expr, bc, $(( )) and variables as strings",
+    "style": "which statement is FALSE"
+   },
+   {
+    "n": 9,
+    "topic": "grep-regex",
+    "sub": "BRE: . ^ $ and anchors",
+    "style": "which statement is TRUE"
+   },
+   {
+    "n": 10,
+    "topic": "scripts",
+    "sub": "$? and exit codes, exit n",
+    "style": "which statement is FALSE"
+   }
+  ],
+  "easy-07": [
+   {
+    "n": 1,
+    "topic": "find",
+    "sub": "-perm: exact, any (/), all (-)",
+    "style": "what does this single command print or do"
+   },
+   {
+    "n": 2,
+    "topic": "scripts",
+    "sub": "test / [ ] with numbers (-eq -ne -lt -le -gt -ge)",
+    "style": "which statement is FALSE"
+   },
+   {
+    "n": 3,
+    "topic": "grep-regex",
+    "sub": "BRE: * and character classes [abc] [^abc] [a-z]",
+    "style": "definition / concept recall"
+   },
+   {
+    "n": 4,
+    "topic": "logs-cron",
+    "sub": "extracting information from a log with grep / tail / wc / sort",
+    "style": "which command / option does X"
+   },
+   {
+    "n": 5,
+    "topic": "filters",
+    "sub": "sed s///, the g flag and d",
+    "style": "which statement is FALSE"
+   },
+   {
+    "n": 6,
+    "topic": "permissions",
+    "sub": "umask: computing the permissions of new files and directories",
+    "style": "which command / option does X"
+   },
+   {
+    "n": 7,
+    "topic": "expansion-vars",
+    "sub": "wildcards * ? [list] [!list] [range] and who expands them",
+    "style": "which statement is TRUE"
+   },
+   {
+    "n": 8,
+    "topic": "grep-regex",
+    "sub": "ERE: + ? | and groups",
+    "style": "what does this single command print or do"
+   },
+   {
+    "n": 9,
+    "topic": "redirection-pipes",
+    "sub": "/dev/null",
+    "style": "which statement is TRUE"
+   },
+   {
+    "n": 10,
+    "topic": "jobs-procs",
+    "sub": "process types: interactive, batch, daemon",
+    "style": "definition / concept recall"
+   }
+  ],
+  "hard-01": [
+   {
+    "n": 1,
+    "topic": "expansion-vars",
+    "sub": "quoting: double quotes, single quotes, backslash",
+    "style": "scenario combining two concepts"
+   },
+   {
+    "n": 2,
+    "topic": "users-sessions",
+    "sub": "sessions: tty, pts/N, :0 and what who shows",
+    "style": "multi-step trace with a twist"
+   },
+   {
+    "n": 3,
+    "topic": "permissions",
+    "sub": "execute permission and scripts",
+    "style": "multi-step trace with a twist"
+   },
+   {
+    "n": 4,
+    "topic": "files-fs",
+    "sub": "symbolic links: contents, broken links, ln -s argument order",
+    "style": "subtle option / syntax trap"
+   },
+   {
+    "n": 5,
+    "topic": "filters",
+    "sub": "od, cmp, diff",
+    "style": "find what is wrong with this line / script"
+   },
+   {
+    "n": 6,
+    "topic": "jobs-procs",
+    "sub": "pstree and the parent/child tree",
+    "style": "edge case (existing file, empty input, spaces, order of redirections)"
+   },
+   {
+    "n": 7,
+    "topic": "shell-help",
+    "sub": "exit status as true/false",
+    "style": "edge case (existing file, empty input, spaces, order of redirections)"
+   },
+   {
+    "n": 8,
+    "topic": "files-fs",
+    "sub": "inodes: what a directory entry and an inode each hold",
+    "style": "subtle option / syntax trap"
+   },
+   {
+    "n": 9,
+    "topic": "boot-systemd",
+    "sub": "systemd units, targets and cgroups",
+    "style": "find what is wrong with this line / script"
+   },
+   {
+    "n": 10,
+    "topic": "scripts",
+    "sub": "if / elif / else structure and its syntax",
+    "style": "scenario combining two concepts"
+   }
+  ],
+  "hard-02": [
+   {
+    "n": 1,
+    "topic": "jobs-procs",
+    "sub": "kill: signals, kill -l, SIGTERM vs SIGKILL (-9)",
+    "style": "find what is wrong with this line / script"
+   },
+   {
+    "n": 2,
+    "topic": "filters",
+    "sub": "which tools are filters (stdin to stdout) and which are not",
+    "style": "subtle option / syntax trap"
+   },
+   {
+    "n": 3,
+    "topic": "redirection-pipes",
+    "sub": "xargs vs command substitution for commands that take arguments, not stdin",
+    "style": "edge case (existing file, empty input, spaces, order of redirections)"
+   },
+   {
+    "n": 4,
+    "topic": "shell-help",
+    "sub": "several commands per line (;) and line continuation",
+    "style": "scenario combining two concepts"
+   },
+   {
+    "n": 5,
+    "topic": "expansion-vars",
+    "sub": "echo options and escapes (-e, \\n, \\t)",
+    "style": "find what is wrong with this line / script"
+   },
+   {
+    "n": 6,
+    "topic": "files-fs",
+    "sub": "mount / umount: what is hidden by a mount point",
+    "style": "subtle option / syntax trap"
+   },
+   {
+    "n": 7,
+    "topic": "scripts",
+    "sub": "case patterns and ;;",
+    "style": "edge case (existing file, empty input, spaces, order of redirections)"
+   },
+   {
+    "n": 8,
+    "topic": "boot-systemd",
+    "sub": "runlevels vs targets, systemctl get-default / isolate",
+    "style": "multi-step trace with a twist"
+   },
+   {
+    "n": 9,
+    "topic": "permissions",
+    "sub": "permissions of symbolic links",
+    "style": "multi-step trace with a twist"
+   },
+   {
+    "n": 10,
+    "topic": "users-sessions",
+    "sub": "whoami, id, groups, who, w, last",
+    "style": "scenario combining two concepts"
+   }
+  ],
+  "hard-03": [
+   {
+    "n": 1,
+    "topic": "jobs-procs",
+    "sub": "builtin vs external commands and what a subshell is",
+    "style": "multi-step trace with a twist"
+   },
+   {
+    "n": 2,
+    "topic": "expansion-vars",
+    "sub": "startup files: .bashrc, /etc/profile, what they customize",
+    "style": "multi-step trace with a twist"
+   },
+   {
+    "n": 3,
+    "topic": "users-sessions",
+    "sub": "login configuration files (/etc/profile, ~/.profile, ~/.bashrc)",
+    "style": "subtle option / syntax trap"
+   },
+   {
+    "n": 4,
+    "topic": "grep-regex",
+    "sub": "escaping special characters",
+    "style": "edge case (existing file, empty input, spaces, order of redirections)"
+   },
+   {
+    "n": 5,
+    "topic": "permissions",
+    "sub": "permissions needed to delete, rename or create inside a directory",
+    "style": "subtle option / syntax trap"
+   },
+   {
+    "n": 6,
+    "topic": "find",
+    "sub": "combining tests (implicit AND, -o)",
+    "style": "scenario combining two concepts"
+   },
+   {
+    "n": 7,
+    "topic": "redirection-pipes",
+    "sub": "here-document and here-string",
+    "style": "find what is wrong with this line / script"
+   },
+   {
+    "n": 8,
+    "topic": "files-fs",
+    "sub": "df and du (-h -s depth) and what each measures",
+    "style": "scenario combining two concepts"
+   },
+   {
+    "n": 9,
+    "topic": "filters",
+    "sub": "combining two filters for a typical task",
+    "style": "find what is wrong with this line / script"
+   },
+   {
+    "n": 10,
+    "topic": "scripts",
+    "sub": "for loops: for v, for v in list, globs, seq, brace ranges",
+    "style": "edge case (existing file, empty input, spaces, order of redirections)"
+   }
+  ],
+  "hard-04": [
+   {
+    "n": 1,
+    "topic": "expansion-vars",
+    "sub": "order of evaluation of a command line (tokens, alias, variables, wildcards, redirections)",
+    "style": "subtle option / syntax trap"
+   },
+   {
+    "n": 2,
+    "topic": "grep-regex",
+    "sub": "grep options -c -i -v -n -l",
+    "style": "find what is wrong with this line / script"
+   },
+   {
+    "n": 3,
+    "topic": "find",
+    "sub": "-name (quoting the pattern) and -type",
+    "style": "multi-step trace with a twist"
+   },
+   {
+    "n": 4,
+    "topic": "filters",
+    "sub": "wc and its options",
+    "style": "scenario combining two concepts"
+   },
+   {
+    "n": 5,
+    "topic": "scripts",
+    "sub": "while and until",
+    "style": "find what is wrong with this line / script"
+   },
+   {
+    "n": 6,
+    "topic": "redirection-pipes",
+    "sub": "building multi-stage pipelines from filters",
+    "style": "multi-step trace with a twist"
+   },
+   {
+    "n": 7,
+    "topic": "files-fs",
+    "sub": "tar: c x t z v f, and archive vs compression (gzip, compress)",
+    "style": "edge case (existing file, empty input, spaces, order of redirections)"
+   },
+   {
+    "n": 8,
+    "topic": "permissions",
+    "sub": "reading the ls -l mode string (type, owner, group, others)",
+    "style": "scenario combining two concepts"
+   },
+   {
+    "n": 9,
+    "topic": "users-sessions",
+    "sub": "root: UID 0, why not to work as root",
+    "style": "subtle option / syntax trap"
+   },
+   {
+    "n": 10,
+    "topic": "jobs-procs",
+    "sub": "foreground vs background and the & operator",
+    "style": "edge case (existing file, empty input, spaces, order of redirections)"
+   }
+  ],
+  "hard-05": [
+   {
+    "n": 1,
+    "topic": "jobs-procs",
+    "sub": "Ctrl+C vs Ctrl+Z (terminate vs suspend)",
+    "style": "edge case (existing file, empty input, spaces, order of redirections)"
+   },
+   {
+    "n": 2,
+    "topic": "scripts",
+    "sub": "read (-p -t) and interactive scripts",
+    "style": "scenario combining two concepts"
+   },
+   {
+    "n": 3,
+    "topic": "redirection-pipes",
+    "sub": "exit status of a pipeline and subshell grouping",
+    "style": "subtle option / syntax trap"
+   },
+   {
+    "n": 4,
+    "topic": "grep-regex",
+    "sub": "grep -r / -E / -f and the egrep / fgrep names",
+    "style": "find what is wrong with this line / script"
+   },
+   {
+    "n": 5,
+    "topic": "files-fs",
+    "sub": "tree and the single Linux directory tree",
+    "style": "multi-step trace with a twist"
+   },
+   {
+    "n": 6,
+    "topic": "find",
+    "sub": "-size with units and +/-",
+    "style": "find what is wrong with this line / script"
+   },
+   {
+    "n": 7,
+    "topic": "shell-help",
+    "sub": "what a shell is and the read-evaluate loop",
+    "style": "subtle option / syntax trap"
+   },
+   {
+    "n": 8,
+    "topic": "users-sessions",
+    "sub": "adduser, deluser, addgroup, delgroup",
+    "style": "multi-step trace with a twist"
+   },
+   {
+    "n": 9,
+    "topic": "permissions",
+    "sub": "what r, w, x mean on a regular file",
+    "style": "edge case (existing file, empty input, spaces, order of redirections)"
+   },
+   {
+    "n": 10,
+    "topic": "expansion-vars",
+    "sub": "alias and unalias",
+    "style": "scenario combining two concepts"
+   }
+  ],
+  "hard-06": [
+   {
+    "n": 1,
+    "topic": "scripts",
+    "sub": "functions: parameters, return vs exit, scope",
+    "style": "scenario combining two concepts"
+   },
+   {
+    "n": 2,
+    "topic": "redirection-pipes",
+    "sub": "stdin, stdout, stderr and their defaults",
+    "style": "edge case (existing file, empty input, spaces, order of redirections)"
+   },
+   {
+    "n": 3,
+    "topic": "jobs-procs",
+    "sub": "jobs, bg and fg and job numbers",
+    "style": "edge case (existing file, empty input, spaces, order of redirections)"
+   },
+   {
+    "n": 4,
+    "topic": "expansion-vars",
+    "sub": "assigning variables (no spaces) and $VAR vs ${VAR}",
+    "style": "multi-step trace with a twist"
+   },
+   {
+    "n": 5,
+    "topic": "files-fs",
+    "sub": "case sensitivity and file names",
+    "style": "find what is wrong with this line / script"
+   },
+   {
+    "n": 6,
+    "topic": "filters",
+    "sub": "cut: -d, -f, -c",
+    "style": "subtle option / syntax trap"
+   },
+   {
+    "n": 7,
+    "topic": "logs-cron",
+    "sub": "cron schedule fields and common schedules",
+    "style": "subtle option / syntax trap"
+   },
+   {
+    "n": 8,
+    "topic": "shell-help",
+    "sub": "builtin vs external commands, type / which / whereis",
+    "style": "scenario combining two concepts"
+   },
+   {
+    "n": 9,
+    "topic": "grep-regex",
+    "sub": "BRE: . ^ $ and anchors",
+    "style": "find what is wrong with this line / script"
+   },
+   {
+    "n": 10,
+    "topic": "boot-systemd",
+    "sub": "systemctl start stop restart enable disable status",
+    "style": "multi-step trace with a twist"
+   }
+  ],
+  "hard-07": [
+   {
+    "n": 1,
+    "topic": "expansion-vars",
+    "sub": "export, env, printenv, unset: what children inherit",
+    "style": "multi-step trace with a twist"
+   },
+   {
+    "n": 2,
+    "topic": "scripts",
+    "sub": "shift, comments and multi-line commands",
+    "style": "subtle option / syntax trap"
+   },
+   {
+    "n": 3,
+    "topic": "files-fs",
+    "sub": "absolute vs relative paths, ., .., ~, $HOME, cd and pwd",
+    "style": "find what is wrong with this line / script"
+   },
+   {
+    "n": 4,
+    "topic": "logs-cron",
+    "sub": "crontab -e / -l and where cron output goes",
+    "style": "scenario combining two concepts"
+   },
+   {
+    "n": 5,
+    "topic": "shell-help",
+    "sub": "the PATH and invoking an executable by path",
+    "style": "edge case (existing file, empty input, spaces, order of redirections)"
+   },
+   {
+    "n": 6,
+    "topic": "grep-regex",
+    "sub": "BRE: * and character classes [abc] [^abc] [a-z]",
+    "style": "edge case (existing file, empty input, spaces, order of redirections)"
+   },
+   {
+    "n": 7,
+    "topic": "redirection-pipes",
+    "sub": "> vs >> and what happens to an existing file",
+    "style": "multi-step trace with a twist"
+   },
+   {
+    "n": 8,
+    "topic": "boot-systemd",
+    "sub": "shutdown options and the shutdown sequence (SIGTERM then SIGKILL)",
+    "style": "find what is wrong with this line / script"
+   },
+   {
+    "n": 9,
+    "topic": "filters",
+    "sub": "head and tail, including -n and -n+p",
+    "style": "scenario combining two concepts"
+   },
+   {
+    "n": 10,
+    "topic": "permissions",
+    "sub": "what r, w, x mean on a directory",
+    "style": "subtle option / syntax trap"
+   }
+  ],
+  "medium-01": [
+   {
+    "n": 1,
+    "topic": "permissions",
+    "sub": "chmod octal mode",
+    "style": "which statement is FALSE"
+   },
+   {
+    "n": 2,
+    "topic": "filters",
+    "sub": "tr: translate and delete characters",
+    "style": "scenario: what happens when ..."
+   },
+   {
+    "n": 3,
+    "topic": "users-sessions",
+    "sub": "/etc/passwd fields",
+    "style": "trace the output of a short command or pipeline"
+   },
+   {
+    "n": 4,
+    "topic": "boot-systemd",
+    "sub": "GRUB files: /boot/grub, grub.cfg, /etc/default/grub, update-grub",
+    "style": "which command achieves this task"
+   },
+   {
+    "n": 5,
+    "topic": "expansion-vars",
+    "sub": "predefined variables HOME PATH HOSTNAME and which",
+    "style": "which command achieves this task"
+   },
+   {
+    "n": 6,
+    "topic": "shell-help",
+    "sub": "whatis, apropos, man -k",
+    "style": "which statement is FALSE"
+   },
+   {
+    "n": 7,
+    "topic": "jobs-procs",
+    "sub": "PIDs: sequential assignment, limit, PID 1",
+    "style": "trace the output of a short command or pipeline"
+   },
+   {
+    "n": 8,
+    "topic": "scripts",
+    "sub": "$* vs $@ and \"$@\"",
+    "style": "compare two similar commands / options"
+   },
+   {
+    "n": 9,
+    "topic": "files-fs",
+    "sub": "mv: rename vs move, destination is an existing directory",
+    "style": "scenario: what happens when ..."
+   },
+   {
+    "n": 10,
+    "topic": "files-fs",
+    "sub": "rm -r -f -i and removing directories",
+    "style": "compare two similar commands / options"
+   }
+  ],
+  "medium-02": [
+   {
+    "n": 1,
+    "topic": "scripts",
+    "sub": "$? and exit codes, exit n",
+    "style": "which command achieves this task"
+   },
+   {
+    "n": 2,
+    "topic": "users-sessions",
+    "sub": "/etc/shadow and its permissions",
+    "style": "which command achieves this task"
+   },
+   {
+    "n": 3,
+    "topic": "shell-help",
+    "sub": "less key bindings",
+    "style": "scenario: what happens when ..."
+   },
+   {
+    "n": 4,
+    "topic": "filters",
+    "sub": "sed s///, the g flag and d",
+    "style": "trace the output of a short command or pipeline"
+   },
+   {
+    "n": 5,
+    "topic": "boot-systemd",
+    "sub": "the GRUB command line and chain loading",
+    "style": "compare two similar commands / options"
+   },
+   {
+    "n": 6,
+    "topic": "redirection-pipes",
+    "sub": "2>&1 and &> and why the order of redirections matters",
+    "style": "trace the output of a short command or pipeline"
+   },
+   {
+    "n": 7,
+    "topic": "permissions",
+    "sub": "umask: computing the permissions of new files and directories",
+    "style": "which statement is FALSE"
+   },
+   {
+    "n": 8,
+    "topic": "jobs-procs",
+    "sub": "process types: interactive, batch, daemon",
+    "style": "which statement is FALSE"
+   },
+   {
+    "n": 9,
+    "topic": "files-fs",
+    "sub": "touch (create / change times) and mktemp",
+    "style": "compare two similar commands / options"
+   },
+   {
+    "n": 10,
+    "topic": "expansion-vars",
+    "sub": "arithmetic: expr, bc, $(( )) and variables as strings",
+    "style": "scenario: what happens when ..."
+   }
+  ],
+  "medium-03": [
+   {
+    "n": 1,
+    "topic": "filters",
+    "sub": "cat, tac, nl, more, less: showing files",
+    "style": "which statement is FALSE"
+   },
+   {
+    "n": 2,
+    "topic": "grep-regex",
+    "sub": "ERE: + ? | and groups",
+    "style": "which command achieves this task"
+   },
+   {
+    "n": 3,
+    "topic": "scripts",
+    "sub": "test / [ ] with numbers (-eq -ne -lt -le -gt -ge)",
+    "style": "compare two similar commands / options"
+   },
+   {
+    "n": 4,
+    "topic": "find",
+    "sub": "-mtime / -atime / -ctime",
+    "style": "trace the output of a short command or pipeline"
+   },
+   {
+    "n": 5,
+    "topic": "files-fs",
+    "sub": "hard links: link count, shared inode, surviving deletion",
+    "style": "compare two similar commands / options"
+   },
+   {
+    "n": 6,
+    "topic": "permissions",
+    "sub": "chown and chgrp, and who may change owner or mode",
+    "style": "trace the output of a short command or pipeline"
+   },
+   {
+    "n": 7,
+    "topic": "jobs-procs",
+    "sub": "process state codes R S T D Z",
+    "style": "scenario: what happens when ..."
+   },
+   {
+    "n": 8,
+    "topic": "redirection-pipes",
+    "sub": "/dev/null",
+    "style": "scenario: what happens when ..."
+   },
+   {
+    "n": 9,
+    "topic": "users-sessions",
+    "sub": "/etc/group and membership",
+    "style": "which statement is FALSE"
+   },
+   {
+    "n": 10,
+    "topic": "expansion-vars",
+    "sub": "wildcards * ? [list] [!list] [range] and who expands them",
+    "style": "which command achieves this task"
+   }
+  ],
+  "medium-04": [
+   {
+    "n": 1,
+    "topic": "permissions",
+    "sub": "the special status of root regarding permissions",
+    "style": "scenario: what happens when ..."
+   },
+   {
+    "n": 2,
+    "topic": "find",
+    "sub": "-maxdepth",
+    "style": "trace the output of a short command or pipeline"
+   },
+   {
+    "n": 3,
+    "topic": "scripts",
+    "sub": "test with strings (-z -n = !=) and files (-e -f -d -s)",
+    "style": "scenario: what happens when ..."
+   },
+   {
+    "n": 4,
+    "topic": "redirection-pipes",
+    "sub": "pipes: what flows from one command to the next",
+    "style": "compare two similar commands / options"
+   },
+   {
+    "n": 5,
+    "topic": "users-sessions",
+    "sub": "passwd options (-l -u -e)",
+    "style": "which command achieves this task"
+   },
+   {
+    "n": 6,
+    "topic": "jobs-procs",
+    "sub": "top: sorting, refresh, interaction",
+    "style": "which command achieves this task"
+   },
+   {
+    "n": 7,
+    "topic": "grep-regex",
+    "sub": "word boundaries and matching whole words",
+    "style": "compare two similar commands / options"
+   },
+   {
+    "n": 8,
+    "topic": "files-fs",
+    "sub": "symbolic links: contents, broken links, ln -s argument order",
+    "style": "trace the output of a short command or pipeline"
+   },
+   {
+    "n": 9,
+    "topic": "expansion-vars",
+    "sub": "command substitution $( ) and backticks",
+    "style": "which statement is FALSE"
+   },
+   {
+    "n": 10,
+    "topic": "filters",
+    "sub": "tee, paste, split",
+    "style": "which statement is FALSE"
+   }
+  ],
+  "medium-05": [
+   {
+    "n": 1,
+    "topic": "jobs-procs",
+    "sub": "pstree and the parent/child tree",
+    "style": "compare two similar commands / options"
+   },
+   {
+    "n": 2,
+    "topic": "grep-regex",
+    "sub": "globs vs regular expressions (the same symbol, different meaning)",
+    "style": "scenario: what happens when ..."
+   },
+   {
+    "n": 3,
+    "topic": "expansion-vars",
+    "sub": "quoting: double quotes, single quotes, backslash",
+    "style": "trace the output of a short command or pipeline"
+   },
+   {
+    "n": 4,
+    "topic": "users-sessions",
+    "sub": "sessions: tty, pts/N, :0 and what who shows",
+    "style": "which command achieves this task"
+   },
+   {
+    "n": 5,
+    "topic": "files-fs",
+    "sub": "inodes: what a directory entry and an inode each hold",
+    "style": "trace the output of a short command or pipeline"
+   },
+   {
+    "n": 6,
+    "topic": "redirection-pipes",
+    "sub": "tee and splitting an output",
+    "style": "which statement is FALSE"
+   },
+   {
+    "n": 7,
+    "topic": "shell-help",
+    "sub": "info structure and keys (n p u l t q)",
+    "style": "compare two similar commands / options"
+   },
+   {
+    "n": 8,
+    "topic": "permissions",
+    "sub": "execute permission and scripts",
+    "style": "which command achieves this task"
+   },
+   {
+    "n": 9,
+    "topic": "find",
+    "sub": "-exec ... {} ; and -delete",
+    "style": "scenario: what happens when ..."
+   },
+   {
+    "n": 10,
+    "topic": "scripts",
+    "sub": "if / elif / else structure and its syntax",
+    "style": "which statement is FALSE"
+   }
+  ],
+  "medium-06": [
+   {
+    "n": 1,
+    "topic": "expansion-vars",
+    "sub": "echo options and escapes (-e, \\n, \\t)",
+    "style": "compare two similar commands / options"
+   },
+   {
+    "n": 2,
+    "topic": "redirection-pipes",
+    "sub": "xargs vs command substitution for commands that take arguments, not stdin",
+    "style": "which command achieves this task"
+   },
+   {
+    "n": 3,
+    "topic": "grep-regex",
+    "sub": "interpreting a regex on a word list",
+    "style": "compare two similar commands / options"
+   },
+   {
+    "n": 4,
+    "topic": "files-fs",
+    "sub": "mount / umount: what is hidden by a mount point",
+    "style": "scenario: what happens when ..."
+   },
+   {
+    "n": 5,
+    "topic": "shell-help",
+    "sub": "command line editing and history (Tab, Ctrl+A / E / R, arrows)",
+    "style": "which statement is FALSE"
+   },
+   {
+    "n": 6,
+    "topic": "boot-systemd",
+    "sub": "what the kernel does at start, initrd and PID 0 / PID 1",
+    "style": "which statement is FALSE"
+   },
+   {
+    "n": 7,
+    "topic": "logs-cron",
+    "sub": "argument checking and exit codes in a log-analysis script",
+    "style": "trace the output of a short command or pipeline"
+   },
+   {
+    "n": 8,
+    "topic": "filters",
+    "sub": "od, cmp, diff",
+    "style": "which command achieves this task"
+   },
+   {
+    "n": 9,
+    "topic": "scripts",
+    "sub": "case patterns and ;;",
+    "style": "scenario: what happens when ..."
+   },
+   {
+    "n": 10,
+    "topic": "jobs-procs",
+    "sub": "kill: signals, kill -l, SIGTERM vs SIGKILL (-9)",
+    "style": "trace the output of a short command or pipeline"
+   }
+  ],
+  "medium-07": [
+   {
+    "n": 1,
+    "topic": "scripts",
+    "sub": "for loops: for v, for v in list, globs, seq, brace ranges",
+    "style": "scenario: what happens when ..."
+   },
+   {
+    "n": 2,
+    "topic": "grep-regex",
+    "sub": "escaping special characters",
+    "style": "which command achieves this task"
+   },
+   {
+    "n": 3,
+    "topic": "expansion-vars",
+    "sub": "startup files: .bashrc, /etc/profile, what they customize",
+    "style": "scenario: what happens when ..."
+   },
+   {
+    "n": 4,
+    "topic": "permissions",
+    "sub": "permissions of symbolic links",
+    "style": "which statement is FALSE"
+   },
+   {
+    "n": 5,
+    "topic": "logs-cron",
+    "sub": "printing user, date and shell version in a script",
+    "style": "compare two similar commands / options"
+   },
+   {
+    "n": 6,
+    "topic": "boot-systemd",
+    "sub": "init styles: SysV, systemd, launchd, BSD",
+    "style": "which statement is FALSE"
+   },
+   {
+    "n": 7,
+    "topic": "files-fs",
+    "sub": "df and du (-h -s depth) and what each measures",
+    "style": "which command achieves this task"
+   },
+   {
+    "n": 8,
+    "topic": "shell-help",
+    "sub": "exit status as true/false",
+    "style": "compare two similar commands / options"
+   },
+   {
+    "n": 9,
+    "topic": "filters",
+    "sub": "which tools are filters (stdin to stdout) and which are not",
+    "style": "trace the output of a short command or pipeline"
+   },
+   {
+    "n": 10,
+    "topic": "redirection-pipes",
+    "sub": "here-document and here-string",
+    "style": "trace the output of a short command or pipeline"
+   }
+  ]
+ }
+}

@@ -11,6 +11,7 @@ const state = {
   track: 'full',    // 'full' | 'minimal' | 'intermediate' | 'complete'
   introCategory: null, // topic id (e.g. '06') while browsing that category's Introduction refreshers
   theory: null,     // Theory collection id while browsing quizzes (sidebar + main panel switch to them)
+  exam: null,       // practice exam id while one is open (its own panel + a sidebar listing its questions)
 };
 try { state.track = localStorage.getItem('track') || 'full'; } catch { /* private mode */ }
 if (state.track === 'complete') state.track = 'full'; // "Complete" was dropped as a choice — identical to Full anyway
@@ -101,11 +102,13 @@ async function loadIndex() {
   state.index = await (await fetch('/api/index')).json();
   state.flat = state.index.flatMap(t => t.exercises);
   await Theory.load();
+  await Exams.load();
   renderSidebar();
 }
 
 function renderSidebar() {
   if (state.theory) return Theory.renderSidebar();
+  if (state.exam) return Exams.renderSidebar();
   const q = $('#search').value.trim().toLowerCase();
   const hidePassed = $('#hide-passed').checked;
   const openTopics = new Set([...document.querySelectorAll('#topics .topic[open]')].map(d => d.dataset.topic));
@@ -242,7 +245,7 @@ async function runCheck() {
 $('#check-btn').onclick = runCheck;
 $('#result-close').onclick = () => $('#result').classList.add('hidden');
 document.addEventListener('keydown', ev => {
-  if (state.theory) return; // the quiz view has its own keys (theory.js)
+  if (state.theory || state.exam) return; // the quiz and exam views have their own keys (theory.js, exams.js)
   if ((ev.ctrlKey || ev.metaKey) && ev.key === 'Enter') { ev.preventDefault(); runCheck(); }
 });
 
@@ -779,6 +782,12 @@ document.addEventListener('click', ev => {
 const TRACK_LABELS = { minimal: 'Minimal', intermediate: 'Intermediate', complete: 'Complete' };
 function updateTrackBadge() {
   const badge = $('#track-badge');
+  if (state.exam) {
+    const e = Exams.entry(state.exam);
+    badge.textContent = Exams.t('badge') + (e ? e.title : state.exam);
+    badge.classList.remove('hidden');
+    return;
+  }
   if (state.theory) {
     const c = Theory.collection(state.theory);
     badge.textContent = Theory.t('badge') + (c ? c.title : state.theory);
@@ -814,7 +823,9 @@ function renderHomePage() {
   $('#intro-all-card').classList.toggle('current', state.introCategory === 'all');
   renderIntroGrid();
   Theory.renderHomeGrid();
+  Exams.renderHomeGrid();
   renderHomeNav();
+  Exams.refresh();
 }
 
 // Left navigation of the home page. It is the exercise sidebar (same markup and classes) as a tree:
@@ -822,7 +833,7 @@ function renderHomePage() {
 //   Introduction -> category -> exercise
 //   Quizzes    -> collection -> group -> question
 // Every entry that has contents shows an arrow (click it to open/close) and its name (click it to go there).
-const HOME_SECTIONS = [['tracks', 'home-sec-tracks', 'home-grp-exercises'], ['intro', 'home-sec-intro', 'home-grp-exercises'], ['quizzes', 'theory-quizzes-title', 'theory-home-title']];
+const HOME_SECTIONS = [['tracks', 'home-sec-tracks', 'home-grp-exercises'], ['intro', 'home-sec-intro', 'home-grp-exercises'], ['quizzes', 'theory-quizzes-title', 'theory-home-title'], ['exams', 'theory-exams-title', 'theory-home-title']];
 const lsGet = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) || d; } catch { return d; } };
 const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* private mode */ } };
 function saveHomeNavState() {   // after a user action; ignored while a search forces everything open
@@ -861,7 +872,12 @@ function homeTree() {
   const quizzes = Theory.list().map(c => group(`quiz:${c.id}`, c.title, c.title, `quiz:${c.id}`, state.theory === c.id,
     c.groups.map(g => group(`quizgroup:${c.id}:${g.id}`, g.title, g.title, `quizgroup:${c.id}:${g.id}`, false,
       g.questions.map(q => leaf(q.title, q.title, `quizq:${c.id}:${q.id}`, !!cur && cur.cid === c.id && cur.qid === q.id, q.status))))));
-  return { tracks, intro: [introAll, ...introCats], quizzes };
+  const examTiers = ['easy', 'medium', 'hard'].filter(t => Exams.list().some(e => e.tier === t)).map(t => {
+    const lab = Exams.tierLabel(t);
+    return group(`examtier:${t}`, lab, lab, `examtier:${t}`, false,
+      Exams.list().filter(e => e.tier === t).map(e => leaf(e.title, `${e.title} ${lab}`, `exam:${e.id}`, state.exam === e.id, Exams.statusOf(e))));
+  });
+  return { tracks, intro: [introAll, ...introCats], quizzes, exams: examTiers };
 }
 function renderHomeNav() {
   const nav = $('#home-topics');
@@ -937,6 +953,12 @@ function homeGo(go) {
     const c = Theory.collection(a), g = c.groups.find(x => x.id === b);
     Theory.go(a, (g.questions.find(x => x.status !== 'pass') || g.questions[0]).id);
   } else if (act === 'quizq') Theory.go(a, b);
+  else if (act === 'exam') Exams.go(a);
+  else if (act === 'examtier') {
+    const es = Exams.list().filter(e => e.tier === a);
+    const next = es.find(e => Exams.statusOf(e) !== 'pass') || es[0];
+    if (next) Exams.go(next.id);
+  }
 }
 $('#home-body').addEventListener('scroll', syncHomeNav);
 $('#home-search').oninput = renderHomeNav;
@@ -995,6 +1017,7 @@ function renderIntroGrid() {
 // `exId` (optional) opens that exercise instead of the first one not passed yet
 function selectIntroCategory(id, exId) {
   state.theory = null;
+  state.exam = null;
   state.introCategory = id;
   try { localStorage.setItem('introCategory', id); } catch { /* private mode */ }
   updateTrackBadge();
@@ -1006,6 +1029,7 @@ function selectIntroCategory(id, exId) {
 function selectTrack(track, exId) {
   state.track = track;
   state.theory = null;
+  state.exam = null;
   state.introCategory = null;
   try { localStorage.setItem('track', state.track); localStorage.removeItem('introCategory'); } catch { /* private mode */ }
   updateTrackBadge();
@@ -1047,6 +1071,7 @@ function showHomePage(show) {
   if (show) renderHomePage();
 }
 function route() {
+  if (!Exams.allowRoute(location.hash)) return;   // leaving a running exam attempt asks first
   const refCmd = location.hash.match(/^#\/reference\/cmd\/([^/]+)$/);
   const refTopic = location.hash.match(/^#\/reference\/topic\/([^/]+)$/);
   if (location.hash === '#/reference' || refCmd || refTopic) {
@@ -1062,6 +1087,12 @@ function route() {
   showReferencePage(false);
   if (location.hash === '#/home') { showHomePage(true); return; }
   showHomePage(false);
+  const exm = location.hash.match(/^#\/exam\/([\w-]+)(?:\/attempt\/(\d+))?$/);
+  if (exm) {
+    if (!$('#theory-main').classList.contains('hidden')) Theory.hide();
+    return Exams.open(exm[1], exm[2]);
+  }
+  if (state.exam || Exams.visible()) { state.exam = null; Exams.hide(); updateTrackBadge(); renderSidebar(); }
   const th = location.hash.match(/^#\/theory\/([\w-]+)(?:\/([\w-]*))?$/);
   if (th) return Theory.open(th[1], th[2]);
   // leaving the quiz view: back to the exercise panels. Checked on the panel itself, since picking a

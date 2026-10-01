@@ -98,6 +98,7 @@ const Theory = (() => {
     await load();
     applyStatic();
     renderHomeGrid();
+    if (typeof Exams !== 'undefined') await Exams.onLang();
     if (typeof renderHomeNav === 'function') renderHomeNav();
     if (typeof updateTrackBadge === 'function') updateTrackBadge();
     if (state.theory && view && !$('#theory-main').classList.contains('hidden')) {

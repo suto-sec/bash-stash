@@ -149,12 +149,31 @@ The quizzes are available in **English and Spanish**: Settings (⚙) → *Theory
 affects the Theory section (its home-page cards, categories, questions and explanations); exercises and
 the rest of the app stay in English. Progress is shared between the two languages.
 
+## Practice exams
+
+Under **Theory → Practice exams** on the home page there are mock exams of 10 single-choice questions (4 options, 1 point each, no
+penalty), in three tiers: easy, medium and hard. Two settings (⚙ → *Practice exams*) decide how an attempt behaves:
+
+| validation | meaning |
+|------------|---------|
+| after each question | practice: each answer is checked and explained at once, and an answered question is locked |
+| at the end | exam experience: nothing is revealed until you finish; answers can be changed while the exam is open |
+
+**Allow going back** is independent of the validation mode. Off means strictly sequential (a question is final once you move on, closest
+to the real exam); on lets you return to earlier questions (with validation after each question that means re-reading their explanations).
+An attempt in progress is saved as you go and keeps the settings it started with: leave whenever you like and resume it (or discard it) from the exam's overview. Each finished attempt is stored in
+the history of its set (date and time, score out of 10, duration, mode) and can be reviewed afterwards, with every option explained.
+The score is recomputed by the server; the pass line is 5/10. Exams are available in English and Spanish (same Theory language
+switch) and, like the quizzes, do not count towards the exercise totals. History is in `.progress/exams/<id>.json`.
+Sources: `tools/theory/exams/*.txt`, built by `node tools/build_theory.js exams` (see `tools/EXAMS_AUTHORING.md`).
+
 ## For maintenance
 
 - `tools/src/*.txt` — source of every exercise (statement + checker spec + solution);
   `tools/build.sh` regenerates `exercises/` and `solutions/` (never overwrites your answers).
 - `lib/engine.sh` — the checker (spec format documented at the top).
 - `tools/theory/*.txt` + `node tools/build_theory.js` — theory quiz sources and their compiler/validator (writes `theory/*.json`).
+- `tools/theory/exams/` + `node tools/build_theory.js exams` — practice exams; `node tools/exam_blueprint.js` (coverage matrix) and `node tools/exam_check.js` (near-duplicate check).
 - `tools/validate.sh [ids]` (inside the lab) — proves every reference passes and an empty answer fails.
 - `container/` — image definition (users, fake logs, sessions, code-server).
 - `web/` — web UI: `server.js` (Node: API, terminal over websocket, proxy to code-server) and `public/`.

@@ -1,0 +1,73 @@
+@@exam easy-05 | Examen fácil 5
+@@about
+Diez preguntas de respuesta única sobre lo básico: un concepto en cada una, con las típicas opciones parecidas.
+
+@@q single | Buscar por tamaño
+¿Qué mandato encuentra los ficheros de `/var` que ocupan más de 10 megabytes?
+(-) `find /var -size 10M` :: Sin signo el tamaño debe ser exactamente 10 M (redondeado hacia arriba), no mayor.
+(-) `find /var -size -10M` :: `-` significa menor que 10 M.
+(+) `find /var -size +10M` :: `+` significa mayor que, y la letra `M` da la unidad en megabytes.
+(-) `find /var -size +10` :: Sin letra la unidad es un bloque de 512 bytes, así que encuentra ficheros de más de unos 5 KB.
+
+@@q single | Modos en octal
+¿Qué afirmación sobre `chmod 640 notes.txt` es VERDADERA?
+(-) El dueño solo puede leer; el grupo puede leer y escribir; los otros no pueden hacer nada. :: Dígito a dígito: 6 es `rw-` (dueño), 4 es `r--` (grupo), 0 es `---` (otros).
+(-) El dueño y el grupo pueden leer y escribir; los otros pueden leer. :: Eso sería `chmod 664`.
+(+) El dueño puede leer y escribir; el grupo solo puede leer; los otros no tienen permisos. :: 6 = 4+2 = `rw-`, 4 = `r--`, 0 = `---`.
+(-) El dueño puede leer, escribir y ejecutar; el grupo puede leer; los otros no pueden hacer nada. :: El bit `x` vale 1; haría falta un 7 para el dueño.
+
+@@q single | Redirigir solo los errores
+¿Qué afirmación sobre `command 2> err.txt` es FALSA?
+(-) Los mensajes de error de `command` van a `err.txt` en lugar de a la pantalla. :: Verdadero: `2` es el descriptor de fichero de stderr.
+(-) La salida normal de `command` sigue apareciendo en la pantalla. :: Verdadero: solo se redirigió stderr.
+(+) Si `command` no imprime ningún error, `err.txt` queda intacto. :: Falso: `2>` crea o vacía el fichero antes de ejecutar el mandato, aunque no se escriba nada en él.
+(-) `command 2>> err.txt` añade los errores al final del fichero en lugar de sustituirlo. :: Verdadero: `>>` añade.
+
+@@q single | Secciones del manual
+¿Qué mandato muestra la página del manual de `printf` de la sección 3, la biblioteca de C, en lugar del mandato de la shell de la sección 1?
+(-) `man printf` :: Muestra la primera página que encuentra, normalmente la de la sección 1.
+(-) `man printf 3` :: La sección va antes del nombre; aquí `man` buscaría también una página llamada `3`.
+(+) `man 3 printf` :: `man sección nombre` selecciona la sección.
+(-) `man -3 printf` :: `-3` no es una opción de `man`; la sección se da como un número simple.
+
+@@q single | Todos los procesos
+¿Qué mandato lista los procesos de todos los usuarios, incluyendo el nombre de usuario de cada uno?
+(-) `ps` :: Por defecto muestra solo los procesos del terminal y el usuario actuales.
+(-) `ps -l` :: `-l` da un formato largo, pero sigue siendo para los procesos del terminal actual.
+(+) `ps aux` :: `a` muestra los procesos de otros usuarios, `x` también los que no tienen terminal y `u` el usuario.
+(-) `ps -a` :: `-a` muestra los procesos asociados a un terminal, sin la columna del usuario.
+
+@@q single | HOME después de cd
+El usuario `ana` ejecuta `cd /tmp` y después `echo $HOME`. ¿Qué se imprime?
+(-) `/tmp` :: `HOME` no sigue al directorio actual.
+(-) `/` :: `HOME` no es el directorio raíz.
+(+) `/home/ana` :: `HOME` es el directorio inicial del usuario y no cambia cuando cambias de directorio.
+(-) Una línea vacía, porque `HOME` solo está definida en el directorio donde empezó la sesión. :: Es una variable del entorno, definida estés donde estés.
+
+@@q single | touch y mktemp
+¿Qué afirmación sobre `touch` y `mktemp` es FALSA?
+(-) `touch new.txt` crea un fichero vacío si `new.txt` no existe. :: Verdadero.
+(-) `touch old.txt` sobre un fichero existente cambia su fecha de modificación. :: Verdadero: es lo que sugiere el nombre.
+(+) `touch old.txt` vacía un fichero existente antes de actualizar su fecha. :: Falso: `touch` nunca cambia el contenido de un fichero.
+(-) `mktemp` crea un fichero temporal vacío con nombre aleatorio en `/tmp` e imprime su nombre. :: Verdadero: por ejemplo `/tmp/tmp.XXXXXXXXXX` con caracteres aleatorios.
+
+@@q single | egrep
+¿Qué diferencia hay entre `egrep` y `grep`?
+(+) `egrep` es `grep -E`: lee expresiones regulares extendidas, donde `+`, `?`, `|` y `( )` son especiales. :: Es un atajo para la opción.
+(-) `egrep` también busca dentro de los subdirectorios, lo que `grep` nunca hace por sí mismo. :: Eso es `grep -r` (o `rgrep`).
+(-) `egrep` ignora la diferencia entre mayúsculas y minúsculas, algo que `grep` no puede hacer. :: Eso es `grep -i`.
+(-) `egrep` lee solo lo que llega por una tubería, mientras que `grep` lee solo de ficheros con nombre. :: Ambos leen los ficheros dados o, sin ficheros, la entrada estándar.
+
+@@q single | Una palabra o varias
+`a.sh` contiene `for a in "$*"; do echo "[$a]"; done`. ¿Qué imprime `bash a.sh "x y" z`?
+(-) `[x y]` y `[z]` en dos líneas :: Eso es lo que daría `"$@"`, que conserva cada argumento.
+(-) `[x]`, `[y]` y `[z]` en tres líneas :: Ese es el resultado de `$*` sin comillas.
+(+) `[x y z]` en una línea :: `"$*"` une todos los argumentos en una sola cadena, así que el bucle se ejecuta una vez.
+(-) Nada, porque `$*` solo funciona fuera de un bucle. :: `$*` se puede usar en cualquier parte de un script.
+
+@@q single | Campos de passwd
+Una línea de `/etc/passwd` es `ana:x:1001:100:Ana Ruiz:/home/ana:/bin/bash`. ¿Qué afirmación es VERDADERA?
+(-) El UID es 100 y el GID primario es 1001. :: Los campos van en el orden UID y luego GID.
+(-) La `x` es la contraseña de ana en texto plano. :: La `x` solo indica que la contraseña se guarda en otro sitio, en `/etc/shadow`.
+(-) Su directorio home es `/bin/bash` y su shell es `/home/ana`. :: El home es el sexto campo y la shell el séptimo.
+(+) El UID es 1001, el GID primario es 100 y la shell de login es `/bin/bash`. :: Tercer, cuarto y último campo.

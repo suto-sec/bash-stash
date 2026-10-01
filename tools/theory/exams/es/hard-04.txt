@@ -1,0 +1,83 @@
+@@exam hard-04 | Examen difícil 4
+@@about
+Diez preguntas de respuesta única con trampas: patrones que se expanden demasiado pronto, recuentos que no son lo que parecen, condiciones de bucle invertidas, redirecciones que se ejecutan sin privilegios y grupos en segundo plano.
+
+@@q single | Expandir en dos pasos
+`a.txt` y `b.txt` son los únicos ficheros del directorio. ¿Qué imprime `f='*.txt'; echo $f; echo "$f"; echo '$f'`?
+(-) `a.txt b.txt`, `a.txt b.txt` y `$f` :: Las comillas dobles también impiden la expansión del patrón, no solo la división.
+(-) `*.txt`, `*.txt` y `$f` :: Asignar el valor no evita la expansión del patrón en el `echo $f` sin comillas.
+(-) `a.txt b.txt`, `*.txt` y `*.txt` :: Las comillas simples bloquean también la variable, así que la tercera palabra es `$f`.
+(+) `a.txt b.txt`, `*.txt` y `$f` :: El `$f` sin comillas se sustituye y después se expande su patrón; las comillas dobles conservan el texto de la variable; las simples conservan el propio `$f`.
+
+@@q single | Nombres de los ficheros
+Un estudiante quiere imprimir solo los nombres de los ficheros `.log` que contienen la palabra `error`, y ejecuta `grep -c error *.log`. Con `a.log` teniendo dos líneas que coinciden y `b.log` ninguna, ¿qué está mal?
+(-) Nada está mal: la salida es solo el nombre `a.log`, el único fichero con coincidencias. :: `-c` no selecciona ficheros; imprime una cuenta.
+(+) Imprime `a.log:2` y `b.log:0`: una cuenta por fichero, incluso sin coincidencias. :: `-l` es la opción que lista solo los nombres de los ficheros que contienen una coincidencia.
+(-) Imprime las dos líneas que coinciden de `a.log`, porque `-c` significa "contenido". :: `-c` significa cuenta.
+(-) Falla, porque `-c` no se puede usar con varios ficheros. :: Con varios ficheros antepone el nombre del fichero a cada cuenta.
+
+@@q single | El patrón sin comillas
+El directorio actual tiene `a.txt` y `c.txt`, y un subdirectorio `sub` con `b.txt`. ¿Qué ocurre con `find . -name *.txt`, escrito sin comillas?
+(-) Lista `./a.txt`, `./c.txt` y `./sub/b.txt`. :: La shell expande `*.txt` antes de que `find` se ejecute, así que `find` no recibe el patrón.
+(-) Lista solo `./a.txt` y `./c.txt`, los ficheros del directorio actual. :: `-name` recibiría entonces dos argumentos: no es lo que ocurre.
+(+) Falla: `find . -name a.txt c.txt` tiene una ruta de más después de la expresión. :: Con dos coincidencias en el directorio actual la shell pasa dos nombres, y `find` se queja de que las rutas deben ir antes de la expresión.
+(-) Lista solo `./sub/b.txt`, porque los otros dos ficheros ya se expandieron. :: La expansión no quita ficheros de la búsqueda.
+
+@@q single | Contar sin salto de línea final
+`nf` se creó con `printf 'one two\nthree'`, así que su última línea no acaba en salto de línea. ¿Qué indica `wc -l -w -c nf` para líneas, palabras y bytes?
+(-) `2 3 14` :: `wc -l` cuenta caracteres de salto de línea, y solo hay uno; y el fichero tiene 13 bytes, no 14.
+(-) `2 3 13` :: `-l` cuenta saltos de línea, no líneas de texto: la última línea no está terminada.
+(+) `1 3 13` :: Un salto de línea, tres palabras (`one`, `two`, `three`) y 13 bytes (7 + 1 + 5).
+(-) `1 2 13` :: `one two` son dos palabras, y `three` es una tercera.
+
+@@q single | Una cuenta atrás que no cuenta
+Este script debería imprimir `3`, `2`, `1` y parar:
+```
+n=3
+while [ $n -eq 0 ]
+do echo $n; n=$((n-1))
+done
+```
+¿Qué está mal?
+(-) Se ejecuta para siempre, porque `n` nunca llega a compararse con el valor inicial 3. :: Ni siquiera entra en el bucle.
+(-) Imprime `3`, `2`, `1` y también `0`, porque la prueba se hace después del cuerpo. :: `while` prueba antes del cuerpo.
+(-) Es un error de sintaxis: `do` debería ir en la misma línea que el `while`. :: El formato es válido; un salto de línea puede preceder a `do`.
+(+) La condición está invertida: solo se entra mientras `n` vale 0, así que el cuerpo nunca corre. :: Con `while` hace falta `[ $n -ne 0 ]`, o bien `until [ $n -eq 0 ]`.
+
+@@q single | Colores distintos
+¿Qué imprime esto?
+```
+printf 'Red\nred\nBLUE\nblue\nred\n' | tr 'A-Z' 'a-z' | sort -u | wc -l
+```
+(-) `5` :: `sort -u` elimina las líneas repetidas antes de que `wc` las cuente.
+(-) `4` :: Ese sería el resultado sin el `tr`: `Red`, `red`, `BLUE` y `blue` son cuatro líneas distintas.
+(+) `2` :: `tr` pasa todo a minúsculas, así que solo hay `red` y `blue`; `sort -u` conserva una de cada.
+(-) `3` :: Solo hay dos palabras distintas una vez igualadas las mayúsculas.
+
+@@q single | Lo que deja gzip
+`report.txt` existe. Ejecutas `gzip report.txt` y después `ls`. ¿Qué muestra `ls`?
+(-) `report.txt` y `report.txt.gz` :: `gzip` sustituye el fichero por su versión comprimida salvo que se le diga que conserve el original.
+(+) Solo `report.txt.gz` :: El fichero comprimido ocupa el lugar del original; `gunzip` restauraría `report.txt` y eliminaría el `.gz`.
+(-) Solo `report.txt`, porque `gzip` comprime en el sitio y conserva el nombre. :: El resultado tiene la extensión `.gz`.
+(-) `report.tgz`, porque `gzip` siempre archiva y comprime. :: `.tgz` es lo que crea `tar` con `z`; `gzip` solo comprime un fichero.
+
+@@q single | Solo ejecución para los otros
+`ls -ld dd` muestra `drwxr-x--x 2 ana dev 4096 Mar 3 10:00 dd`, y `dd/f` tiene el modo `rw-r--r--`. Un usuario que no es ana ni está en `dev` ejecuta `ls dd` y después `cat dd/f`. ¿Qué ocurre?
+(-) Ambos funcionan, porque `f` es legible por todos. :: Listar el directorio necesita `r` en él, que los otros no tienen.
+(-) Ambos fallan, porque los otros no tienen `r` en el directorio. :: Leer `f` a través de la ruta solo necesita `x` en el directorio.
+(+) `ls dd` falla con `Permission denied`, pero `cat dd/f` imprime el fichero. :: `x` permite atravesar el directorio hacia un nombre que ya se conoce; sin `r` no se pueden listar los nombres.
+(-) `ls dd` funciona, pero `cat dd/f` falla, porque `x` en un directorio significa ejecutar. :: Es al revés: `x` permite cruzarlo y `r` es lo que lo lista.
+
+@@q single | sudo y la redirección
+Un usuario normal, al que se le permite usar `sudo`, ejecuta `sudo echo hi > /etc/zz`. ¿Qué ocurre?
+(-) El fichero `/etc/zz` se crea con `hi`, porque `sudo` da derechos de root a toda la línea. :: `sudo` solo afecta al mandato que le sigue, `echo`.
+(+) La shell informa de `Permission denied`, porque la redirección la hace la shell del usuario, no root. :: `echo` no es el problema: el `> /etc/zz` lo abre la shell antes de que se ejecute `sudo`; `echo hi | sudo tee /etc/zz` sí funcionaría.
+(-) `sudo` pide la contraseña y después escribe el fichero. :: El fallo ocurre antes de que `sudo` tenga ocasión de escribir nada.
+(-) El texto `hi` se imprime en pantalla y el fichero se crea vacío. :: Un usuario normal no puede crear el fichero en absoluto.
+
+@@q single | Segundo plano de un grupo
+Ejecutas `(sleep 2; echo A) & echo B` en el prompt. ¿Qué ves?
+(-) `A` tras dos segundos, y después `B`. :: `echo B` no forma parte del grupo que se envió a segundo plano.
+(-) Solo `B`, porque el grupo en segundo plano se mata cuando termina la línea. :: Un grupo en segundo plano sigue ejecutándose, e imprime su salida cuando termina.
+(+) `B` de inmediato, y `A` unos dos segundos después. :: El `&` se aplica solo al grupo entre paréntesis; la shell continúa de inmediato con `echo B`.
+(-) `A` y `B` de inmediato, porque `sleep` no se espera cuando se ejecuta en un grupo. :: El `sleep` ocurre dentro del grupo, antes de su `echo A`, que llega dos segundos después.

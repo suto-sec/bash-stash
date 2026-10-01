@@ -59,3 +59,8 @@ and the items in the same buckets. The compiler checks all of this and copies th
 English file, so a learner's progress is shared between languages. Translate titles, text, options,
 explanations, notes and bucket names; keep commands, options and code in backticks unchanged. A
 collection without a translation falls back to English.
+
+## Practice exams
+
+Sets of 10 single-choice questions with their own compile rules (exactly 4 options, a topic per question, pinned "none of the other
+options" answers `(+!)` / `(-!)`, a per-slot blueprint) live in `tools/theory/exams/`. See `EXAMS_AUTHORING.md`.
