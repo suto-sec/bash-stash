@@ -38,6 +38,7 @@ const Theory = (() => {
       dropHere: 'drop here', unmatched: 'Not matched to anything', items: 'Items', allPlaced: 'all placed',
       placedDetail: (g, n) => `${g} of ${n} placed right`, youPut: 'you put:', nothing: 'nothing',
       decoy: '✘ Decoy', putUnder: 'you put it under', why: 'Why',
+      expandAll: 'Expand all', collapseAll: 'Collapse all',
     },
     es: {
       type: { single: 'Respuesta única', multi: 'Respuesta múltiple · marca todas las correctas', fill: 'Rellena los huecos',
@@ -69,6 +70,7 @@ const Theory = (() => {
       dropHere: 'suelta aquí', unmatched: 'Sin emparejar', items: 'Elementos', allPlaced: 'todo colocado',
       placedDetail: (g, n) => `${g} de ${n} bien colocados`, youPut: 'pusiste:', nothing: 'nada',
       decoy: '✘ Señuelo', putUnder: 'lo pusiste en', why: 'Por qué',
+      expandAll: 'Desplegar todo', collapseAll: 'Plegar todo',
     },
   };
   let lang = 'en';
@@ -171,6 +173,8 @@ const Theory = (() => {
     const r = $('#th-reset'); if (r) r.classList.add('hidden');
     document.querySelector('.overall').title = 'exercises passed';
     $('#search').placeholder = 'Search id, title or command…';
+    $('#expand-all-btn').textContent = STR.en.expandAll;   // shared with the exercise sidebar: back to English
+    $('#collapse-all-btn').textContent = STR.en.collapseAll;
     // the terminal was hidden while the quiz was up: let it re-measure itself
     requestAnimationFrame(() => { if (typeof fit !== 'undefined' && fit) try { fit.fit(); } catch { /* hidden */ } });
   }
@@ -223,6 +227,8 @@ const Theory = (() => {
     if (!c) return;
     ensureResetButton();
     $('#search').placeholder = T('search');
+    $('#expand-all-btn').textContent = T('expandAll');
+    $('#collapse-all-btn').textContent = T('collapseAll');
     document.querySelector('.overall').title = T('overall');
     const q = $('#search').value.trim().toLowerCase();
     const hidePassed = $('#hide-passed').checked;

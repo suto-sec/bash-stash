@@ -142,6 +142,10 @@ collection) and do not count towards the exercise totals. They are a separate pi
 sources in `tools/theory/*.txt` (format in `tools/THEORY_AUTHORING.md`), compiled by
 `node tools/build_theory.js` into `theory/*.json`; nothing under `exercises/` or `solutions/` is involved.
 
+The quizzes are available in **English and Spanish**: Settings (⚙) → *Theory language*. The switch only
+affects the Theory section (its home-page cards, categories, questions and explanations); exercises and
+the rest of the app stay in English. Progress is shared between the two languages.
+
 ## For maintenance
 
 - `tools/src/*.txt` — source of every exercise (statement + checker spec + solution);
