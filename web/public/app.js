@@ -233,6 +233,7 @@ async function runCheck() {
   const file = state.activeVSCodeFile && state.activeVSCodeFile !== canonical ? state.activeVSCodeFile : null;
   $('#result-title').textContent = file ? `Checking ${file}…` : `Checking ${state.current.id}…`;
   body.innerHTML = '';
+  if (typeof NewUser !== 'undefined') NewUser.clear();
   const url = `/api/check/${state.current.id}` + (file ? `?file=${encodeURIComponent(file)}` : '');
   const res = await CheckView.run(url, body);
   const code = res.code;
@@ -242,6 +243,7 @@ async function runCheck() {
   $('#result-title').textContent = (ok ? '✔ Passed' : notAttempted ? 'Not attempted yet' : '✘ Not yet') + suffix;
   const exId = state.current.id;
   CheckView.show(body, res, { play: c => tryCase(`/api/play/${exId}?seed=${c.seed}`, c, file) });
+  if (typeof NewUser !== 'undefined' && !file) NewUser.afterCheck({ ok, kind: 'ex', id: exId, code });
   try {
     await loadIndex();
     const e = state.flat.find(x => x.id === state.current.id);

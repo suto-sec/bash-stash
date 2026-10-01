@@ -84,6 +84,8 @@
           <div class="seg" role="radiogroup" data-key="modetab"><button role="radio" data-v="new">New tab</button><button role="radio" data-v="same">This tab</button></div>
           <small class="set-hint">After Alt+G: home, reference, tracks, scripts… Next/previous stay in this tab.</small></div>
         <button class="set-btn" id="shortcuts-row">Show all shortcuts</button>
+        <div class="set-group">Help</div>
+        <button class="set-btn set-btn-first" id="tour-row" title="Shows where everything is on the exercise screen">Take the tour of the exercise screen</button>
       </div>
     </div>
   </header>
@@ -165,6 +167,7 @@
             <div id="result" class="result hidden" aria-live="polite">
               <div class="result-head"><span id="result-title">Result</span><button id="result-close" class="icon-btn" aria-label="Close">✕</button></div>
               <div id="result-body" class="result-body"></div>
+              <div id="nu-slot"></div>
             </div>
             <article id="readme" class="readme"></article>
           </section>
@@ -339,5 +342,6 @@
   <script src="/sexams.js"></script>
   <script src="/keys.js"></script>
   <script src="/home.js"></script>
+  <script src="/newuser.js"></script>
 </body>
 </html>

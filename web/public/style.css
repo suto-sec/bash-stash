@@ -810,3 +810,32 @@ kbd { font: 11px ui-monospace, Menlo, monospace; padding: 1px 5px; border: 1px s
 .home-tier-title::before { content: '▾'; display: inline-block; width: 1em; color: var(--muted); font-size: .8em; }
 .home-tier-title.folded::before { content: '▸'; }
 .track-grid.home-folded { display: none; }
+
+/* first minutes: suggested path, start card, tour, what next (newuser.js) */
+.home-roadmap { max-width: 1100px; margin: 0 auto 30px; }
+.hr-title { font-weight: 700; margin-bottom: 8px; }
+.home-roadmap ol { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; }
+.home-roadmap button { width: 100%; height: 100%; text-align: left; display: grid; grid-template-columns: 26px 1fr auto; gap: 2px 8px; align-items: center; padding: 10px 12px; border-radius: 10px; background: var(--panel); }
+.hr-n { grid-row: span 2; width: 24px; height: 24px; border-radius: 50%; border: 1px solid var(--border); display: inline-flex; align-items: center; justify-content: center; font-size: 12px; color: var(--muted); }
+.hr-name { font-weight: 600; font-size: 13.5px; }
+.hr-count { font-size: 12px; color: var(--muted); }
+.hr-hint { grid-column: 2 / span 2; font-size: 11.5px; color: var(--muted); }
+.home-roadmap button.current { border-color: var(--accent); }
+.home-roadmap button.current .hr-n { background: var(--accent); border-color: var(--accent); color: #fff; }
+.home-roadmap button.done .hr-n { color: var(--accent); border-color: var(--accent); }
+.home-start { max-width: 1100px; margin: 0 auto 30px; padding: 20px 24px; border: 1px solid var(--accent); border-radius: 12px; background: var(--panel); }
+.home-start h2 { margin: 0 0 10px; font-size: 20px; }
+.home-start ol { margin: 0 0 14px; padding-left: 22px; display: grid; gap: 6px; }
+.hs-actions { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; }
+.linklike { background: none; border: none; color: var(--muted); text-decoration: underline; cursor: pointer; padding: 4px 2px; }
+.linklike:hover { color: var(--text); }
+.tour-ring { position: fixed; z-index: 300; border-radius: 8px; border: 2px solid var(--accent); box-shadow: 0 0 0 9999px rgba(0,0,0,.55); pointer-events: none; transition: all .2s; }
+.tour-card { position: fixed; z-index: 301; box-sizing: border-box; padding: 14px 16px; background: var(--panel); border: 1px solid var(--accent); border-radius: 10px; box-shadow: 0 10px 34px rgba(0,0,0,.5); font-size: 13.5px; }
+.tour-card p { margin: 4px 0 12px; line-height: 1.45; }
+.tour-count { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+.tour-btns { display: flex; align-items: center; gap: 8px; }
+.tour-btns .spacer { flex: 1; }
+.tour-offer { position: fixed; right: 18px; bottom: 18px; z-index: 250; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; max-width: 420px; padding: 12px 16px; background: var(--panel); border: 1px solid var(--accent); border-radius: 10px; box-shadow: 0 8px 28px rgba(0,0,0,.45); font-size: 13.5px; }
+#nu-slot:empty { display: none; }
+.nu-box { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 0 12px 12px; padding: 10px 12px; border-radius: 8px; background: var(--panel-2); border: 1px solid var(--border); font-size: 13px; }
+.nu-help { border-color: var(--warn); }
