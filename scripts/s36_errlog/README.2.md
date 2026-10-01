@@ -1,0 +1,1 @@
+Also **save** those lines, as they are, in the file `$HOME/reports/errors.txt` (the directory `$HOME/reports` already exists in this step; the file is replaced if it exists). The output is now `Saved N errors to <full path of the file>`.

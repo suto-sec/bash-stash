@@ -1,0 +1,1 @@
+`DST/.last` is a marker file. If it **exists**, copy only the files of `SRC` that are **newer than the marker** (`[[ $f -nt $2/.last ]]`). When the run ends, create or refresh the marker (`touch "$2/.last"`), whether anything was copied or not.

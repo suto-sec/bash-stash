@@ -1,0 +1,31 @@
+{
+ "id": "s40",
+ "slug": "backup2",
+ "title": "An incremental backup",
+ "script": "backup2.sh",
+ "cmds": "find -type f, mkdir -p, cp, ${var#prefix}, test -nt, touch",
+ "level": 4,
+ "tags": [
+  "copy and move",
+  "find",
+  "files"
+ ],
+ "steps": [
+  {
+   "n": 1,
+   "title": "Copy the whole tree"
+  },
+  {
+   "n": 2,
+   "title": "Only what changed"
+  },
+  {
+   "n": 3,
+   "title": "Check both directories"
+  },
+  {
+   "n": 4,
+   "title": "Failures and a summary"
+  }
+ ]
+}

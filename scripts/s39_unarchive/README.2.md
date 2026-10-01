@@ -1,0 +1,1 @@
+If `DEST` does not exist, create it and print exactly `Directory DEST created` (with `DEST` as it was given) before the `Extracted` line. `DEST` becomes optional: by default it is `extracted` (in the current directory).

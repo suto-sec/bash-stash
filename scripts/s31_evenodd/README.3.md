@@ -1,0 +1,1 @@
+Accept **one or more** numbers (none: usage error, exit 1). Print one line for each, then a summary line `even: E, odd: O`. If **any** argument is not a non-negative integer, print the error (that includes it) on standard error, exit **2**, and print nothing on standard output: check all of them first.

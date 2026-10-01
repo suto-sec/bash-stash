@@ -1,0 +1,31 @@
+{
+ "id": "s33",
+ "slug": "menu",
+ "title": "A tiny command menu",
+ "script": "menu.sh",
+ "cmds": "case, ${#var}, tr, shift, exit codes",
+ "level": 2,
+ "tags": [
+  "case",
+  "arguments",
+  "text"
+ ],
+ "steps": [
+  {
+   "n": 1,
+   "title": "One command"
+  },
+  {
+   "n": 2,
+   "title": "More commands"
+  },
+  {
+   "n": 3,
+   "title": "Unknown commands"
+  },
+  {
+   "n": 4,
+   "title": "The text is required"
+  }
+ ]
+}

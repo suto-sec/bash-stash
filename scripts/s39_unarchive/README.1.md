@@ -1,0 +1,1 @@
+Write `unarchive.sh ARCHIVE DEST`. It extracts the gzip tar archive `ARCHIVE` into the existing directory `DEST` and prints `Extracted N entries`, where N is the number of entries the archive lists (`tar tzf archive | wc -l`: files and directories).

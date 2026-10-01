@@ -1,0 +1,35 @@
+{
+ "id": "s42",
+ "slug": "cleanup",
+ "title": "A careful temp-file cleaner",
+ "script": "cleanup.sh",
+ "cmds": "find -mtime -name -o, rm, getopts-style option loop, shift, counters, exit codes",
+ "level": 5,
+ "tags": [
+  "find",
+  "files",
+  "exit codes"
+ ],
+ "steps": [
+  {
+   "n": 1,
+   "title": "Find the old temp files"
+  },
+  {
+   "n": 2,
+   "title": "Remove them"
+  },
+  {
+   "n": 3,
+   "title": "A dry run"
+  },
+  {
+   "n": 4,
+   "title": "Choose the age"
+  },
+  {
+   "n": 5,
+   "title": "Checks and a final exit code"
+  }
+ ]
+}

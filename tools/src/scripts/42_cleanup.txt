@@ -1,0 +1,124 @@
+@@script s42 | cleanup | A careful temp-file cleaner | cleanup.sh
+@@level 5
+@@tags find, files, exit codes
+@@cmds find -mtime -name -o, rm, getopts-style option loop, shift, counters, exit codes
+@@fixture
+setup() {
+  mkdir -p tmp/sub tmp/ro "my tmp" empty
+  local n=0 f
+  for f in tmp/a.tmp tmp/b.tmp "tmp/c~" tmp/sub/d.tmp tmp/sub/e~ "my tmp/two words.tmp" tmp/ro/stuck.tmp; do echo "$f" > "$f"; touch -d "30 days ago" "$f"; done
+  for f in tmp/new.tmp tmp/sub/recent~; do echo "$f" > "$f"; touch -d "1 day ago" "$f"; done
+  for f in tmp/keep.txt tmp/sub/notes.md "my tmp/data.csv"; do echo "$f" > "$f"; touch -d "60 days ago" "$f"; done
+  touch -d "10 days ago" tmp/mid.tmp; echo m > tmp/mid.tmp; touch -d "10 days ago" tmp/mid.tmp
+  chmod 555 tmp/ro; echo x > notadir.txt
+}
+usage_ok() { [[ $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* || $ERR == *cleanup.sh* ]]; }
+@@step 1 | Find the old temp files
+@@readme
+Write `cleanup.sh DIR`. It prints the path (as `find` shows it) of every **regular file** below `DIR` whose name ends in `.tmp` or in `~` **and** that was last modified **more than 7 days ago**. The order does not matter.
+
+`find DIR -type f \( -name "*.tmp" -o -name "*~" \) -mtime +7`.
+@@check
+SORT_OUTPUT=1
+ARGS=('tmp' '"my tmp"' 'empty')
+COMPARE="stdout exit"
+@@solution
+#!/bin/bash
+find "$1" -type f \( -name "*.tmp" -o -name "*~" \) -mtime +7
+@@step 2 | Remove them
+@@readme
+Remove those files, printing `removed PATH` for each, and finish with `Removed N files` (N = how many). A file that cannot be removed (it is in a read-only directory) prints `could not remove PATH` on standard error and does not count. Exit code 0 anyway.
+@@check
+SORT_OUTPUT=1
+ARGS=('tmp' '"my tmp"' 'empty')
+COMPARE="stdout exit errmsg files"
+@@solution
+#!/bin/bash
+n=0
+while IFS= read -r -d '' f; do
+  if rm -- "$f" 2>/dev/null; then echo "removed $f"; n=$((n + 1)); else echo "could not remove $f" >&2; fi
+done < <(find "$1" -type f \( -name "*.tmp" -o -name "*~" \) -mtime +7 -print0)
+echo "Removed $n files"
+@@step 3 | A dry run
+@@readme
+If the **first** argument is `-n`, do not remove anything: print `would remove PATH` for each file and finish with `Would remove N files`. (`-n` is followed by `DIR`.)
+@@check
+SORT_OUTPUT=1
+ARGS=('tmp' '-n tmp' '-n "my tmp"' '-n empty' 'empty')
+COMPARE="stdout exit errmsg files"
+@@solution
+#!/bin/bash
+dry=
+if [[ $1 == -n ]]; then dry=1; shift; fi
+n=0
+while IFS= read -r -d '' f; do
+  if [[ -n $dry ]]; then echo "would remove $f"; n=$((n + 1))
+  elif rm -- "$f" 2>/dev/null; then echo "removed $f"; n=$((n + 1))
+  else echo "could not remove $f" >&2; fi
+done < <(find "$1" -type f \( -name "*.tmp" -o -name "*~" \) -mtime +7 -print0)
+if [[ -n $dry ]]; then echo "Would remove $n files"; else echo "Removed $n files"; fi
+@@step 4 | Choose the age
+@@readme
+Options come before `DIR`, in any order: `-n` (dry run) and `-d DAYS` (the age limit instead of 7: files modified **more than DAYS days** ago). `DAYS` must be a positive integer, otherwise an error message that includes it and exit code **4**; an option that is neither `-n` nor `-d` → error message that includes it, exit code **5**. Options are processed left to right: the first error wins.
+@@check
+SORT_OUTPUT=1
+ARGS=('tmp' '-d 20 tmp' '-n -d 5 tmp' '-d 5 -n tmp' '-d 100 tmp' '-d x tmp' '-d 0 tmp' '-x tmp' '-n -x tmp' '-d x -x tmp' '-d 5 "my tmp"')
+COMPARE="stdout exit errmsg files"
+extra_check() {
+  [[ $REF_CODE == 4 ]] && mentions "$(eval "set -- $CASE"; while [[ $1 == -* ]]; do [[ $1 == -d ]] && { echo "$2"; break; }; shift; done)"
+  [[ $REF_CODE == 5 ]] && mentions "-x"
+}
+@@solution
+#!/bin/bash
+dry= days=7
+while [[ $1 == -* ]]; do
+  case $1 in
+    -n) dry=1; shift ;;
+    -d)
+      [[ $2 =~ ^[1-9][0-9]*$ ]] || { echo "Error: '$2' is not a positive integer" >&2; exit 4; }
+      days=$2; shift 2 ;;
+    *) echo "Error: unknown option '$1'" >&2; exit 5 ;;
+  esac
+done
+n=0
+while IFS= read -r -d '' f; do
+  if [[ -n $dry ]]; then echo "would remove $f"; n=$((n + 1))
+  elif rm -- "$f" 2>/dev/null; then echo "removed $f"; n=$((n + 1))
+  else echo "could not remove $f" >&2; fi
+done < <(find "$1" -type f \( -name "*.tmp" -o -name "*~" \) -mtime +"$days" -print0)
+if [[ -n $dry ]]; then echo "Would remove $n files"; else echo "Removed $n files"; fi
+@@step 5 | Checks and a final exit code
+@@readme
+After the options, exactly **one** argument (`DIR`) must remain: otherwise error message **and the correct usage**, exit **1**. Then `DIR` must exist (error with its name, exit **2**) and be a directory (error with its name, exit **3**). The option errors (4 and 5) still come first. Finally, if at least one file could not be removed, exit with code **6** after the summary (a dry run never fails).
+@@check
+SORT_OUTPUT=1
+ARGS=('tmp' '-n tmp' '"my tmp"' '-d 20 empty' '' '-n' 'tmp empty' 'nothing' 'notadir.txt' '-d x nothing' '-x' '-d' '-d 5 -n tmp' '-n nothing')
+COMPARE="stdout exit errmsg files"
+extra_check() {
+  [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }
+  [[ $REF_CODE == [23] ]] && mentions "$(eval "set -- $CASE"; while [[ $1 == -* ]]; do [[ $1 == -d ]] && shift; shift; done; echo "$1")"
+  [[ $REF_CODE == 4 ]] && mentions "$(eval "set -- $CASE"; while [[ $1 == -* ]]; do [[ $1 == -d ]] && { echo "$2"; break; }; shift; done)"
+}
+@@solution
+#!/bin/bash
+dry= days=7
+while [[ $1 == -* ]]; do
+  case $1 in
+    -n) dry=1; shift ;;
+    -d)
+      [[ $2 =~ ^[1-9][0-9]*$ ]] || { echo "Error: '$2' is not a positive integer" >&2; exit 4; }
+      days=$2; shift 2 ;;
+    *) echo "Error: unknown option '$1'" >&2; exit 5 ;;
+  esac
+done
+if (( $# != 1 )); then echo "Error: exactly one directory is needed" >&2; echo "Usage: $0 [-n] [-d DAYS] dir" >&2; exit 1; fi
+[[ -e $1 ]] || { echo "Error: $1 does not exist" >&2; exit 2; }
+[[ -d $1 ]] || { echo "Error: $1 is not a directory" >&2; exit 3; }
+n=0 bad=0
+while IFS= read -r -d '' f; do
+  if [[ -n $dry ]]; then echo "would remove $f"; n=$((n + 1))
+  elif rm -- "$f" 2>/dev/null; then echo "removed $f"; n=$((n + 1))
+  else echo "could not remove $f" >&2; bad=1; fi
+done < <(find "$1" -type f \( -name "*.tmp" -o -name "*~" \) -mtime +"$days" -print0)
+if [[ -n $dry ]]; then echo "Would remove $n files"; else echo "Removed $n files"; fi
+(( bad == 0 )) || exit 6

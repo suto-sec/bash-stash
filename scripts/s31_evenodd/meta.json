@@ -1,0 +1,27 @@
+{
+ "id": "s31",
+ "slug": "evenodd",
+ "title": "Even or odd",
+ "script": "evenodd.sh",
+ "cmds": "if, arithmetic $(( )) %, [[ =~ ]], exit codes",
+ "level": 1,
+ "tags": [
+  "tests",
+  "arithmetic",
+  "arguments"
+ ],
+ "steps": [
+  {
+   "n": 1,
+   "title": "One number"
+  },
+  {
+   "n": 2,
+   "title": "Check the argument"
+  },
+  {
+   "n": 3,
+   "title": "Many numbers and a summary"
+  }
+ ]
+}

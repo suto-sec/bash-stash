@@ -1,0 +1,27 @@
+{
+ "id": "s37",
+ "slug": "bytype",
+ "title": "Counting files by type",
+ "script": "bytype.sh",
+ "cmds": "for, case, test -f, arithmetic $(( )), exit codes",
+ "level": 3,
+ "tags": [
+  "files",
+  "case",
+  "arithmetic"
+ ],
+ "steps": [
+  {
+   "n": 1,
+   "title": "Four kinds"
+  },
+  {
+   "n": 2,
+   "title": "Check the directory"
+  },
+  {
+   "n": 3,
+   "title": "Percentages"
+  }
+ ]
+}

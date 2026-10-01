@@ -1,0 +1,1 @@
+If `DEST` already exists and is **not empty**, extract nothing: print an error message that includes `DEST` on standard error and exit with code **4**. An existing **empty** directory is fine. (`ls -A dir` lists hidden entries too, and prints nothing for an empty directory.)

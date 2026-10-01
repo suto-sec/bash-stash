@@ -1,0 +1,1 @@
+If the **first** argument is `-r`, print the others **in reverse order** but keeping the positions they have in the original order: `echoargs.sh -r red green blue` prints `3: blue`, `2: green`, `1: red`. `-r` with nothing after it is the usage error (exit 1).

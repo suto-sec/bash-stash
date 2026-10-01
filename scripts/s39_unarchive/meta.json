@@ -1,0 +1,31 @@
+{
+ "id": "s39",
+ "slug": "unarchive",
+ "title": "Extracting an archive",
+ "script": "unarchive.sh",
+ "cmds": "tar xzf -C, tar tzf, mkdir -p, test -d, exit codes",
+ "level": 4,
+ "tags": [
+  "archives",
+  "files",
+  "exit codes"
+ ],
+ "steps": [
+  {
+   "n": 1,
+   "title": "Extract into a directory"
+  },
+  {
+   "n": 2,
+   "title": "Create the directory"
+  },
+  {
+   "n": 3,
+   "title": "Check the archive"
+  },
+  {
+   "n": 4,
+   "title": "Never mix with old files"
+  }
+ ]
+}

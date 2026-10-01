@@ -1,0 +1,100 @@
+@@script s37 | bytype | Counting files by type | bytype.sh
+@@level 3
+@@tags files, case, arithmetic
+@@cmds for, case, test -f, arithmetic $(( )), exit codes
+@@fixture
+setup() {
+  mkdir -p mixed empty onlydirs/sub; local n
+  for n in a.txt b.md c.txt run.sh prog.c tool.py x.png y.jpg z.jpg data.csv archive.tgz "two words.txt" LICENSE; do echo "$n" > "mixed/$n"; done
+  echo h > mixed/.hidden.txt; mkdir mixed/sub.txt; echo x > notadir.txt
+}
+usage_ok() { [[ $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* || $ERR == *bytype.sh* ]]; }
+@@step 1 | Four kinds
+@@readme
+Write `bytype.sh DIR`. It looks at the **regular files directly inside** `DIR` (hidden files are not listed by `*`, and directories do not count) and prints four lines, always in this order:
+
+```
+text: 4      (.txt and .md)
+code: 3      (.c, .sh and .py)
+image: 3     (.png and .jpg)
+other: 2     (anything else)
+```
+@@check
+ARGS=('mixed' 'empty' 'onlydirs')
+COMPARE="stdout exit"
+@@solution
+#!/bin/bash
+text=0 code=0 image=0 other=0
+for f in "$1"/*; do
+  [[ -f $f ]] || continue
+  case $f in
+    *.txt|*.md) text=$((text + 1)) ;;
+    *.c|*.sh|*.py) code=$((code + 1)) ;;
+    *.png|*.jpg) image=$((image + 1)) ;;
+    *) other=$((other + 1)) ;;
+  esac
+done
+echo "text: $text"
+echo "code: $code"
+echo "image: $image"
+echo "other: $other"
+@@step 2 | Check the directory
+@@readme
+Checks, in this order: not exactly one argument → error message **and the correct usage**, exit **1**; `DIR` does not exist → error with its name, exit **2**; not a directory → error with its name, exit **3**.
+@@check
+ARGS=('mixed' 'empty' '' 'mixed empty' 'nothing' 'notadir.txt')
+COMPARE="stdout exit errmsg"
+extra_check() {
+  [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }
+  [[ $REF_CODE == [23] ]] && mentions "$(eval "set -- $CASE"; echo "$1")"
+}
+@@solution
+#!/bin/bash
+if (( $# != 1 )); then echo "Error: one directory is needed" >&2; echo "Usage: $0 dir" >&2; exit 1; fi
+[[ -e $1 ]] || { echo "Error: $1 does not exist" >&2; exit 2; }
+[[ -d $1 ]] || { echo "Error: $1 is not a directory" >&2; exit 3; }
+text=0 code=0 image=0 other=0
+for f in "$1"/*; do
+  [[ -f $f ]] || continue
+  case $f in
+    *.txt|*.md) text=$((text + 1)) ;;
+    *.c|*.sh|*.py) code=$((code + 1)) ;;
+    *.png|*.jpg) image=$((image + 1)) ;;
+    *) other=$((other + 1)) ;;
+  esac
+done
+echo "text: $text"
+echo "code: $code"
+echo "image: $image"
+echo "other: $other"
+@@step 3 | Percentages
+@@readme
+Add the percentage of the total to each line: `text: 4 (33%)`. The percentage is `100 * count / total` with integer division (rounded down); with no files at all every line shows `(0%)`.
+@@check
+ARGS=('mixed' 'empty' 'onlydirs' '' 'nothing' 'notadir.txt')
+COMPARE="stdout exit errmsg"
+extra_check() {
+  [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }
+  [[ $REF_CODE == [23] ]] && mentions "$(eval "set -- $CASE"; echo "$1")"
+}
+@@solution
+#!/bin/bash
+if (( $# != 1 )); then echo "Error: one directory is needed" >&2; echo "Usage: $0 dir" >&2; exit 1; fi
+[[ -e $1 ]] || { echo "Error: $1 does not exist" >&2; exit 2; }
+[[ -d $1 ]] || { echo "Error: $1 is not a directory" >&2; exit 3; }
+text=0 code=0 image=0 other=0
+for f in "$1"/*; do
+  [[ -f $f ]] || continue
+  case $f in
+    *.txt|*.md) text=$((text + 1)) ;;
+    *.c|*.sh|*.py) code=$((code + 1)) ;;
+    *.png|*.jpg) image=$((image + 1)) ;;
+    *) other=$((other + 1)) ;;
+  esac
+done
+total=$((text + code + image + other))
+pct() { if (( total )); then echo $((100 * $1 / total)); else echo 0; fi; }
+echo "text: $text ($(pct $text)%)"
+echo "code: $code ($(pct $code)%)"
+echo "image: $image ($(pct $image)%)"
+echo "other: $other ($(pct $other)%)"

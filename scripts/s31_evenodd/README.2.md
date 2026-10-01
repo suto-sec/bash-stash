@@ -1,0 +1,1 @@
+Exactly one argument is required (otherwise: error message **and the correct usage** on standard error, exit **1**) and it must be a non-negative integer (digits only; otherwise an error that includes it, exit **2**).

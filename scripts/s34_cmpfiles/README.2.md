@@ -1,0 +1,1 @@
+Checks, in this order (errors on standard error, nothing on standard output): not exactly two arguments → error message **and the correct usage**, exit **1**; the first argument is not a regular file → error with its name, exit **2**; the same for the second argument.
