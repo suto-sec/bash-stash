@@ -1,0 +1,84 @@
+@@exam easy-14 | Easy exam 14
+@@tier easy
+@@about
+Ten single-choice questions on the basics: init systems, functions, standard streams, absolute paths, escaping in grep, job control, variable names, the mode string, crontab fields and chaining commands.
+
+@@q single | Init systems
+@@topic boot-systemd
+Which statement about init systems is TRUE?
+(+) `launchd` is the init system of macOS. :: Linux distributions mostly use `systemd`, older ones used SysV `init`, and macOS uses `launchd`.
+(-) `systemd` is the init system of macOS. :: `systemd` is the standard on Linux; macOS uses `launchd`.
+(-) SysV `init` describes the services as unit files and starts them in parallel. :: Unit files are a `systemd` idea; SysV init runs the scripts of `/etc/init.d` in order, by runlevel.
+(-) The BSD systems use `systemd` as their init by default. :: The BSDs have their own, simpler init.
+
+@@q single | A function with a parameter
+@@topic scripts
+A script contains `greet() { echo "Hi $1"; }` followed by the two lines `greet Ana` and `greet`. What does it print?
+(+) `Hi Ana` and then `Hi ` :: Inside the function `$1` is its first argument; in the second call there is none, so `$1` is empty.
+(-) `Hi Ana` twice :: The second call has no argument: `$1` does not keep the value of the first call.
+(-) `Hi Ana` and then an error, because the function needs an argument. :: Bash does not check arguments: a missing one is just empty.
+(-) Nothing, because the function is defined but never called. :: The two following lines are the calls.
+
+@@q single | The three streams
+@@topic redirection-pipes
+Which line gives the standard streams with their numbers and their defaults?
+(+) stdin is 0 (the keyboard), stdout is 1 (the screen) and stderr is 2 (the screen). :: In `2> errors.txt` the number 2 selects the standard error.
+(-) stdin is 1 (the keyboard), stdout is 2 (the screen) and stderr is 3 (the screen). :: The numbering starts at 0.
+(-) stdin is 0 (the screen), stdout is 1 (the keyboard) and stderr is 2 (a log file). :: The input comes from the keyboard and both outputs go to the screen by default.
+(-) stdin is 2 (the keyboard), stdout is 1 (the screen) and stderr is 0 (the screen). :: The numbers of stdin and stderr are swapped.
+
+@@q single | What makes a path absolute
+@@topic files-fs
+Which statement defines an absolute path?
+(+) A path that starts at the root directory, so it begins with `/`. :: It means the same wherever you are, for example `/etc/passwd`.
+(-) A path that starts at the current directory, such as `./notes`. :: That is a relative path.
+(-) A path that has no `..` in it. :: `docs/notes` has none and is still relative; `/home/../etc` has one and is still absolute.
+(-) A path of more than one component, such as `docs/notes`. :: The number of components is irrelevant: what matters is the first `/`.
+
+@@q single | Escaping a dot
+@@topic grep-regex
+The file has the lines `axb` and `a.b`. Which statement about searching for a literal dot is FALSE?
+(-) `grep 'a\.b' file` prints only `a.b`. :: True: inside quotes the backslash reaches `grep`, which then reads the dot as an ordinary character.
+(-) `grep -F a.b file` prints only `a.b`. :: True: `-F` treats the pattern as a fixed string, with no special characters.
+(-) `grep 'a[.]b' file` prints only `a.b`. :: True: inside brackets the dot is an ordinary character.
+(+) `grep a\.b file`, without quotes, prints only `a.b`. :: False: the shell removes the backslash first, so `grep` receives `a.b` and prints both lines.
+
+@@q single | Suspending a job
+@@topic jobs-procs
+Which statement about `Ctrl+C` and `Ctrl+Z` is FALSE?
+(-) `Ctrl+C` sends `SIGINT` to the foreground job, which normally ends. :: True.
+(-) `Ctrl+Z` stops the foreground job and gives the prompt back. :: True: the job is suspended, not finished.
+(-) A job stopped with `Ctrl+Z` can be resumed with `fg` or `bg`. :: True: `fg` in the foreground and `bg` in the background.
+(+) A job stopped with `Ctrl+Z` is terminated, and its memory is freed. :: False: it stays in memory in the stopped state until it is resumed or killed.
+
+@@q single | Spaces around the equals sign
+@@topic expansion-vars
+You type `count = 5` in bash. What happens?
+(+) The shell tries to run a command called `count` with the arguments `=` and `5`, and answers "command not found". :: In an assignment there must be no spaces around `=`.
+(-) The variable `count` is set to `5`. :: That is what `count=5`, with no spaces, does.
+(-) The variable `count` is set to the string ` 5`, with a leading space. :: The shell does not treat the line as an assignment at all.
+(-) The shell prints `5`, the value of the assignment. :: Assignments print nothing in the shell.
+
+@@q single | The mode string
+@@topic permissions
+Which command prints the mode string, such as `-rw-r--r--`, of the file `notes.txt`?
+(+) `ls -l notes.txt` :: The long format starts with the type and the permissions of owner, group and others.
+(-) `ls notes.txt` :: It prints only the name of the file.
+(-) `ls -i notes.txt` :: It prints the inode number followed by the name.
+(-) `cat -l notes.txt` :: `cat` shows the content of the file and has no `-l` option.
+
+@@q single | A crontab line
+@@topic logs-cron
+Which statement about the crontab line `30 3 * * 1-5 /usr/bin/backup` is TRUE?
+(+) The command runs at 03:30 from Monday to Friday. :: The fields are minute, hour, day of the month, month and day of the week.
+(-) The command runs at 03:30 on the days 1 to 5 of every month. :: The range `1-5` is in the fifth field, which is the day of the week.
+(-) The command runs every 30 minutes during the hours 3 to 5. :: `30` is the minute field and `3` the hour field; they are not intervals.
+(-) The command runs at 30:03 every weekday. :: Hours go from 0 to 23 and minutes from 0 to 59.
+
+@@q single | Running a command only after another
+@@topic shell-help
+Which line creates the directory `d` and goes into it only if the creation succeeded?
+(+) `mkdir d && cd d` :: `&&` runs the second command only when the first one ends with status 0.
+(-) `mkdir d ; cd d` :: `;` runs `cd` whatever happened to `mkdir`.
+(-) `mkdir d || cd d` :: `||` runs `cd` only when `mkdir` failed.
+(-) `mkdir d & cd d` :: `&` runs `mkdir` in the background, so `cd` may run before the directory exists.
