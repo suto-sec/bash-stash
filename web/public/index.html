@@ -183,7 +183,14 @@
       <div class="spacer"></div>
     </div>
     <div class="home-layout">
-    <nav class="home-nav" id="home-nav" aria-label="Home sections"></nav>
+    <aside class="sidebar" id="home-nav">
+      <input id="home-search" type="search" placeholder="Search…" autocomplete="off">
+      <div class="sidebar-tools">
+        <button id="home-expand-btn" class="small" title="Open every section">Expand all</button>
+        <button id="home-collapse-btn" class="small" title="Close every section">Collapse all</button>
+      </div>
+      <nav id="home-topics" aria-label="Home sections"></nav>
+    </aside>
     <div class="home-body" id="home-body">
       <h1 class="home-group-title" id="home-grp-exercises">Scripting exercises</h1>
       <h2 class="home-section-title" id="home-sec-tracks">Tracks</h2>

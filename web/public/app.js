@@ -108,7 +108,7 @@ function renderSidebar() {
   if (state.theory) return Theory.renderSidebar();
   const q = $('#search').value.trim().toLowerCase();
   const hidePassed = $('#hide-passed').checked;
-  const openTopics = new Set([...document.querySelectorAll('.topic[open]')].map(d => d.dataset.topic));
+  const openTopics = new Set([...document.querySelectorAll('#topics .topic[open]')].map(d => d.dataset.topic));
   const cur = state.current && state.current.id;
   const nav = $('#topics');
   nav.innerHTML = '';
@@ -145,8 +145,8 @@ function renderSidebar() {
 }
 $('#search').oninput = renderSidebar;
 $('#hide-passed').onchange = renderSidebar;
-$('#expand-all-btn').onclick = () => document.querySelectorAll('.topic').forEach(d => { d.open = true; });
-$('#collapse-all-btn').onclick = () => document.querySelectorAll('.topic').forEach(d => { d.open = false; });
+$('#expand-all-btn').onclick = () => document.querySelectorAll('#topics .topic').forEach(d => { d.open = true; });
+$('#collapse-all-btn').onclick = () => document.querySelectorAll('#topics .topic').forEach(d => { d.open = false; });
 
 // ------------------------------------------------------------------ exercise view
 async function openExercise(id) {
@@ -810,69 +810,112 @@ function renderHomePage() {
     el.textContent = `${done}/${total} exercises`;
   }
   $('[data-count="intro-all"]').textContent = `${introDone}/${introTotal} exercises`;
-  for (const el of document.querySelectorAll('#track-grid .track-card')) el.classList.toggle('current', !state.introCategory && el.dataset.track === state.track);
+  for (const el of document.querySelectorAll('#track-grid .track-card')) el.classList.toggle('current', !state.theory && !state.introCategory && el.dataset.track === state.track);
   $('#intro-all-card').classList.toggle('current', state.introCategory === 'all');
   renderIntroGrid();
   Theory.renderHomeGrid();
   renderHomeNav();
 }
 
-// Left navigation of the home page: group labels and section titles scroll the page to that part; the items
-// underneath pick a track / intro category / quiz collection directly (they click the matching card).
+// Left navigation of the home page. It is the exercise sidebar (same markup, same classes): sections are
+// `details.topic`, entries are `a.ex-item`. Clicking an entry clicks the matching card (so it does exactly what the
+// card does); clicking a section title or a group label also scrolls the page to that part.
+const HOME_PARTS = [  // [group heading id, section id, key, section heading id, card selector]
+  ['home-grp-exercises', 'tracks', 'home-sec-tracks', '#track-grid .track-card'],
+  ['home-grp-exercises', 'intro', 'home-sec-intro', '#intro-all-card, #intro-grid .track-card'],
+  ['theory-home-title', 'quizzes', 'theory-quizzes-title', '#theory-grid .track-card'],
+];
+function homeNavClosed() {
+  try { return new Set(JSON.parse(localStorage.getItem('homeNavClosed') || '[]')); } catch { return new Set(); }
+}
+function saveHomeNavClosed() {   // called after a user action; ignored while a search forces sections open
+  if ($('#home-search').value.trim()) return;
+  const closed = [...document.querySelectorAll('#home-topics .topic')].filter(d => !d.open).map(d => d.dataset.sec);
+  try { localStorage.setItem('homeNavClosed', JSON.stringify(closed)); } catch { /* private mode */ }
+}
 function renderHomeNav() {
-  const nav = $('#home-nav');
+  const nav = $('#home-topics');
   if (!nav) return;
-  let closed = [];
-  try { closed = JSON.parse(localStorage.getItem('homeNavClosed') || '[]'); } catch { /* private mode */ }
-  const open = new Map([...nav.querySelectorAll('details')].map(d => [d.dataset.sec, d.open]));
-  closed.forEach(id => { if (!open.has(id)) open.set(id, false); });
-  const items = (sel, cur) => [...document.querySelectorAll(sel)].map(card => {
-    const title = card.querySelector('.track-card-title').textContent;
-    const m = (card.querySelector('.track-card-count').textContent.match(/^\d+\/\d+/) || [''])[0];
-    const key = card.dataset.track || card.dataset.introTopic || card.dataset.theory || 'all';
-    return `<button class="hn-item${card.classList.contains('current') ? ' current' : ''}" data-pick="${esc(sel)}" data-key="${esc(key)}">
-      <span class="hn-name">${esc(title)}</span><span class="hn-count">${m}</span></button>`;
-  }).join('');
-  const section = (id, target, label, body) => `<details class="hn-section" data-sec="${id}" data-scroll="${target}"${open.get(id) === false ? '' : ' open'}>
-    <summary>${esc(label)}</summary>${body}</details>`;
-  nav.innerHTML =
-    `<button class="hn-group" data-scroll="home-grp-exercises">${esc($('#home-grp-exercises').textContent)}</button>` +
-    section('tracks', 'home-sec-tracks', $('#home-sec-tracks').textContent, items('#track-grid .track-card')) +
-    section('intro', 'home-sec-intro', $('#home-sec-intro').textContent,
-      items('#intro-all-card') + items('#intro-grid .track-card')) +
-    `<button class="hn-group" data-scroll="theory-home-title">${esc($('#theory-home-title').textContent)}</button>` +
-    section('quizzes', 'theory-quizzes-title', $('#theory-quizzes-title').textContent, items('#theory-grid .track-card'));
+  const q = $('#home-search').value.trim().toLowerCase();
+  const closed = homeNavClosed();
+  let html = '', lastGroup = null;
+  for (const [grp, sec, headId, sel] of HOME_PARTS) {
+    const cards = [...document.querySelectorAll(sel)];
+    const rows = cards.map(card => {
+      const key = card.dataset.track || card.dataset.introTopic || card.dataset.theory || 'all';
+      const [, done, total] = (card.querySelector('.track-card-count').textContent.match(/^(\d+)\/(\d+)/) || [0, 0, 0]).map(Number);
+      const full = card.querySelector('.track-card-title').textContent;
+      const m = full.match(/^(\d{2}) · (.*)$/);       // intro categories: "01 · Echo..." -> id + name
+      return { card, key, done, total, id: m ? m[1] : '', name: m ? m[2] : full };
+    }).filter(r => !q || `${r.id} ${r.name}`.toLowerCase().includes(q));
+    if (!rows.length) continue;
+    if (grp !== lastGroup) {
+      html += `<button class="home-group-label" data-scroll="${grp}">${esc($('#' + grp).textContent)}</button>`;
+      lastGroup = grp;
+    }
+    // the cards of a section are not all additive (a track contains the smaller ones), so only intro/quizzes sum up
+    const additive = sec !== 'tracks';
+    const items = additive && sec === 'intro' ? rows.filter(r => r.key !== 'all') : rows;
+    const done = additive ? items.reduce((n, r) => n + r.done, 0) : 0, total = additive ? items.reduce((n, r) => n + r.total, 0) : 0;
+    html += `<details class="topic" data-sec="${sec}" data-scroll="${headId}"${q || !closed.has(sec) ? ' open' : ''}>
+      <summary><span class="t-name">${esc($('#' + headId).textContent)}</span>${additive ? `<span class="t-count">${done}/${total}</span>` : ''}</summary>
+      ${additive ? `<div class="t-bar"><div style="width:${total ? 100 * done / total : 0}%"></div></div>` : ''}` +
+      rows.map(r => {
+        const st = r.total && r.done === r.total ? 'pass' : r.done ? 'attempted' : 'new';
+        return `<a class="ex-item${r.card.classList.contains('current') ? ' current' : ''}" href="#" data-pick="${esc(sel)}" data-key="${esc(r.key)}" title="${esc(r.name)}">
+          <span class="dot ${st}">${STATUS[st].dot}</span>${r.id ? `<span class="ex-id">${r.id}</span>` : ''}<span class="ex-name">${esc(r.name)}</span>
+          <span class="t-count">${r.done}/${r.total}</span></a>`;
+      }).join('') + '</details>';
+  }
+  nav.innerHTML = html || '<p class="home-intro" style="margin:16px">Nothing matches.</p>';
+  syncHomeNav.last = null;
   syncHomeNav();
 }
 function syncHomeNav() {
-  const body = $('#home-body'), nav = $('#home-nav');
+  const body = $('#home-body'), nav = $('#home-topics');
   if (!body || !nav) return;
   const at = id => $('#' + id).offsetTop;
   const y = body.scrollTop + 120;
-  const groups = ['home-grp-exercises', 'theory-home-title'], secs = { tracks: 'home-sec-tracks', intro: 'home-sec-intro', quizzes: 'theory-quizzes-title' };
-  const g = at(groups[1]) <= y ? 1 : 0;
-  nav.querySelectorAll('.hn-group').forEach((b, i) => b.classList.toggle('active', i === g));
   let cur = null;
-  for (const [k, id] of Object.entries(secs)) if (at(id) <= y) cur = k;
-  nav.querySelectorAll('details').forEach(d => d.classList.toggle('active', d.dataset.sec === cur));
-  // keep the highlighted section visible in the nav as the page scrolls (only when it changes)
+  for (const [, sec, headId] of HOME_PARTS) if (at(headId) <= y) cur = sec;
+  const g = at('theory-home-title') <= y ? 'theory-home-title' : 'home-grp-exercises';
+  nav.querySelectorAll('.home-group-label').forEach(b => b.classList.toggle('active', b.dataset.scroll === g));
+  nav.querySelectorAll('.topic').forEach(d => d.classList.toggle('active', d.dataset.sec === cur));
+  // keep the highlighted section visible in the sidebar as the page scrolls (only when it changes)
   const key = g + ':' + cur;
   if (key !== syncHomeNav.last) {
     syncHomeNav.last = key;
-    const el = nav.querySelector('details.active > summary') || nav.querySelectorAll('.hn-group')[g];
+    const el = nav.querySelector('.topic.active > summary') || nav.querySelector('.home-group-label.active');
     if (el) el.scrollIntoView({ block: 'nearest' });
   }
 }
 $('#home-body').addEventListener('scroll', syncHomeNav);
-// remember which sections the learner folded (the nav is long; folding "Introduction" keeps Theory in view)
-$('#home-nav').addEventListener('toggle', ev => {
-  const d = ev.target; if (!d.dataset || !d.dataset.sec) return;
-  let closed = [];
-  try { closed = JSON.parse(localStorage.getItem('homeNavClosed') || '[]'); } catch { /* private mode */ }
-  closed = closed.filter(x => x !== d.dataset.sec);
-  if (!d.open) closed.push(d.dataset.sec);
-  try { localStorage.setItem('homeNavClosed', JSON.stringify(closed)); } catch { /* private mode */ }
-}, true);
+$('#home-search').oninput = renderHomeNav;
+$('#home-expand-btn').onclick = () => {
+  document.querySelectorAll('#home-topics .topic').forEach(d => { d.open = true; });
+  saveHomeNavClosed();
+};
+$('#home-collapse-btn').onclick = () => {
+  document.querySelectorAll('#home-topics .topic').forEach(d => { d.open = false; });
+  saveHomeNavClosed();
+};
+$('#home-topics').addEventListener('click', ev => {
+  const pick = ev.target.closest('.ex-item');
+  if (pick) {
+    ev.preventDefault();
+    const card = [...document.querySelectorAll(pick.dataset.pick)].find(c => (c.dataset.track || c.dataset.introTopic || c.dataset.theory || 'all') === pick.dataset.key);
+    if (card) card.click();
+    return;
+  }
+  const head = ev.target.closest('summary, .home-group-label');
+  if (!head) return;
+  const owner = head.closest('[data-scroll]') || head;
+  const target = $('#' + owner.dataset.scroll);
+  // a section that is about to open also comes into view; closing it only folds the list
+  const opening = head.tagName === 'SUMMARY' && !owner.open;
+  if (head.tagName === 'SUMMARY') setTimeout(saveHomeNavClosed, 0);   // the <details> toggles after this handler
+  if ((opening || head.tagName !== 'SUMMARY') && target) target.scrollIntoView({ block: 'start' });
+});
 $('#home-nav').addEventListener('click', ev => {
   const pick = ev.target.closest('.hn-item');
   if (pick) {
