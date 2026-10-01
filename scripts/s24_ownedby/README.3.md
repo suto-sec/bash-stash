@@ -1,0 +1,1 @@
+After the directory checks, make sure the user exists (`id -u USER` fails otherwise): if not, print an error message that includes the name on standard error and exit with code **4**; `find -user` would complain and print nothing useful.

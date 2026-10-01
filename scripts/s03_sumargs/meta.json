@@ -4,7 +4,12 @@
  "title": "Adding the arguments",
  "script": "sumargs.sh",
  "cmds": "for, arithmetic $(( )), test, regular expressions [[ =~ ]]",
- "group": "First steps",
+ "level": 2,
+ "tags": [
+  "arguments",
+  "loops",
+  "arithmetic"
+ ],
  "steps": [
   {
    "n": 1,

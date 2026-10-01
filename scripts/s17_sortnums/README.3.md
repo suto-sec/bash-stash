@@ -1,0 +1,1 @@
+Checks, in this order: not exactly one argument → error message **and the correct usage**, exit **1**; not a readable regular file → error with its name, exit **2**; the file is empty → error message, exit **3**.

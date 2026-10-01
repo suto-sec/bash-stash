@@ -4,7 +4,11 @@
  "title": "What is this path?",
  "script": "kind.sh",
  "cmds": "test -f -d -e, echo, exit codes",
- "group": "First steps",
+ "level": 1,
+ "tags": [
+  "tests",
+  "exit codes"
+ ],
  "steps": [
   {
    "n": 1,

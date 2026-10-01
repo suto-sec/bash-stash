@@ -1,4 +1,6 @@
 @@script s05 | ext | What kind of file name? | ext.sh
+@@level 2
+@@tags case, loops, text
 @@cmds case, for, arithmetic, ${var,,}
 @@fixture
 setup() { :; }

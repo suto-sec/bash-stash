@@ -1,0 +1,1 @@
+Write `syncnew.sh SRC DST`. It copies every **regular file directly inside** `SRC` into the existing directory `DST` (overwriting), and prints `copied NAME` for each. Subdirectories are ignored. Names may contain spaces; the order of the lines does not matter.

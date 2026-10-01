@@ -1,0 +1,72 @@
+@@script s20 | emptyfinder | Empty files and directories | emptyfinder.sh
+@@level 3
+@@tags find, files, exit codes
+@@cmds find -empty -type f -type d, while read, test, exit codes
+@@fixture
+setup() {
+  mkdir -p tree/a/deep tree/b tree/full "my tree/empty dir" none
+  : > tree/zero.txt; : > tree/a/nothing.log; echo data > tree/full/data.txt; echo d > tree/b/b.txt; : > "my tree/blank file"
+  echo x > "my tree/has data"; echo x > notadir.txt
+}
+usage_ok() { [[ $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* || $ERR == *emptyfinder.sh* ]]; }
+@@step 1 | Empty files
+@@readme
+Write `emptyfinder.sh DIR`. It prints the path of every **empty regular file** (size 0) anywhere below `DIR`, as `find` shows it. The order does not matter. Names may contain spaces.
+
+`find DIR -type f -empty`.
+@@check
+SORT_OUTPUT=1
+ARGS=('tree' '"my tree"' 'none')
+COMPARE="stdout exit"
+@@solution
+#!/bin/bash
+find "$1" -type f -empty
+@@step 2 | And empty directories
+@@readme
+Empty **directories** count too. Print each path preceded by its kind: `file: PATH` or `dir: PATH`.
+@@check
+SORT_OUTPUT=1
+ARGS=('tree' '"my tree"' 'none')
+COMPARE="stdout exit"
+@@solution
+#!/bin/bash
+find "$1" -type f -empty | sed 's/^/file: /'
+find "$1" -type d -empty | sed 's/^/dir: /'
+@@step 3 | Check the directory
+@@readme
+Checks, in this order: not exactly one argument → error message **and the correct usage**, exit **1**; `DIR` does not exist → error with its name, exit **2**; not a directory → error with its name, exit **3**. Nothing on standard output in those cases.
+@@check
+SORT_OUTPUT=1
+ARGS=('tree' '"my tree"' '' 'tree none' 'nothing' 'notadir.txt')
+COMPARE="stdout exit errmsg"
+extra_check() {
+  [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }
+  [[ $REF_CODE == [23] ]] && mentions "$(eval "set -- $CASE"; echo "$1")"
+}
+@@solution
+#!/bin/bash
+if (( $# != 1 )); then echo "Error: one directory is needed" >&2; echo "Usage: $0 dir" >&2; exit 1; fi
+[[ -e $1 ]] || { echo "Error: $1 does not exist" >&2; exit 2; }
+[[ -d $1 ]] || { echo "Error: $1 is not a directory" >&2; exit 3; }
+find "$1" -type f -empty | sed 's/^/file: /'
+find "$1" -type d -empty | sed 's/^/dir: /'
+@@step 4 | A summary
+@@readme
+Finish with `Empty items: N` (files and directories together). `DIR` itself counts if it is an empty directory.
+@@check
+SORT_OUTPUT=1
+ARGS=('tree' '"my tree"' 'none' 'nothing' '' 'notadir.txt')
+COMPARE="stdout exit errmsg"
+extra_check() {
+  [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }
+  [[ $REF_CODE == [23] ]] && mentions "$(eval "set -- $CASE"; echo "$1")"
+}
+@@solution
+#!/bin/bash
+if (( $# != 1 )); then echo "Error: one directory is needed" >&2; echo "Usage: $0 dir" >&2; exit 1; fi
+[[ -e $1 ]] || { echo "Error: $1 does not exist" >&2; exit 2; }
+[[ -d $1 ]] || { echo "Error: $1 is not a directory" >&2; exit 3; }
+n=0
+while IFS= read -r p; do echo "file: $p"; n=$((n + 1)); done < <(find "$1" -type f -empty)
+while IFS= read -r p; do echo "dir: $p"; n=$((n + 1)); done < <(find "$1" -type d -empty)
+echo "Empty items: $n"

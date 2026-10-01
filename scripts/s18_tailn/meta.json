@@ -1,0 +1,31 @@
+{
+ "id": "s18",
+ "slug": "tailn",
+ "title": "The last lines",
+ "script": "tailn.sh",
+ "cmds": "tail -n, test, regular expressions [[ =~ ]], exit codes",
+ "level": 3,
+ "tags": [
+  "text",
+  "files",
+  "arguments"
+ ],
+ "steps": [
+  {
+   "n": 1,
+   "title": "The last five"
+  },
+  {
+   "n": 2,
+   "title": "Check the file"
+  },
+  {
+   "n": 3,
+   "title": "Your own N"
+  },
+  {
+   "n": 4,
+   "title": "A header line"
+  }
+ ]
+}

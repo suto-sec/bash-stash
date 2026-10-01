@@ -1,0 +1,1 @@
+An optional second argument is the directory to search instead of `.`. It must exist (otherwise error with its name, exit **3**) and be a directory (otherwise error with its name, exit **3** too). One or two arguments are valid; the number checks come before the directory checks.

@@ -1,0 +1,26 @@
+{
+ "id": "s06",
+ "slug": "countdown",
+ "title": "Countdown",
+ "script": "countdown.sh",
+ "cmds": "while, arithmetic $(( )), test, exit codes",
+ "level": 1,
+ "tags": [
+  "loops",
+  "arguments"
+ ],
+ "steps": [
+  {
+   "n": 1,
+   "title": "Count down"
+  },
+  {
+   "n": 2,
+   "title": "Check the argument"
+  },
+  {
+   "n": 3,
+   "title": "Count in steps"
+  }
+ ]
+}

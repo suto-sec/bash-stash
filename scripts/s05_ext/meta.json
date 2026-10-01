@@ -4,7 +4,12 @@
  "title": "What kind of file name?",
  "script": "ext.sh",
  "cmds": "case, for, arithmetic, ${var,,}",
- "group": "First steps",
+ "level": 2,
+ "tags": [
+  "case",
+  "loops",
+  "text"
+ ],
  "steps": [
   {
    "n": 1,

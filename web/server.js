@@ -381,14 +381,14 @@ function scIndex() {
   try { dirs = fs.readdirSync(SC).filter(n => /^s\d\d_/.test(n)).sort(); } catch { /* none yet */ }
   return dirs.map(n => scMeta(n.slice(0, 3))).filter(Boolean).map(m => {
     const passed = scPassed(m.id);
-    return { id: m.id, slug: m.slug, title: m.title, script: m.script, cmds: m.cmds, group: m.group, steps: m.steps, passed, status: scStatus(m, passed) };
+    return { id: m.id, slug: m.slug, title: m.title, script: m.script, cmds: m.cmds, level: m.level, tags: m.tags, steps: m.steps, passed, status: scStatus(m, passed) };
   });
 }
 function scDetail(m) {
   const passed = scPassed(m.id);
   const steps = m.steps.map(st => ({ ...st, readme: fs.readFileSync(path.join(m.dir, `README.${st.n}.md`), 'utf8') }));
   const current = (steps.find(st => !passed.includes(st.n)) || steps[steps.length - 1]).n;
-  return { id: m.id, title: m.title, script: m.script, cmds: m.cmds, group: m.group, steps, passed, current, status: scStatus(m, passed),
+  return { id: m.id, title: m.title, script: m.script, cmds: m.cmds, level: m.level, tags: m.tags, steps, passed, current, status: scStatus(m, passed),
     answer: scEnsure(m), playDir: scPlay(m) };
 }
 function scSolution(m, n) {

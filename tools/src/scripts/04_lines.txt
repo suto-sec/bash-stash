@@ -1,4 +1,6 @@
 @@script s04 | lines | Counting lines | lines.sh
+@@level 2
+@@tags files, arguments, loops
 @@cmds wc, test -f -r, for, exit codes, getopts / case on $1
 @@fixture
 setup() {

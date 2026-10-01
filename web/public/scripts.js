@@ -18,20 +18,42 @@ const Scripts = (() => {
   const entry = id => index.find(e => e.id === id);
   const statusOf = e => e.status;
   async function refresh() { await load(); renderHomeGrid(); }
+  // ---------------------------------------------------------------- grouping (dropdown, remembered)
+  const MODES = { stars: 'Difficulty', topic: 'Topic', steps: 'Number of steps', progress: 'Progress' };
+  const getMode = () => { try { const m = localStorage.getItem('scriptGroup'); return MODES[m] ? m : 'stars'; } catch { return 'stars'; } };
+  const stars = n => '★'.repeat(n) + '☆'.repeat(5 - n);
+  function groups() {       // [{ key, label, items }], items are index entries; "topic" lists a script under each of its tags
+    const mode = getMode();
+    const by = (keys, labelOf, pick) => keys.map(k => ({ key: String(k), label: labelOf(k), items: index.filter(e => pick(e, k)) })).filter(g => g.items.length);
+    if (mode === 'stars') return by([1, 2, 3, 4, 5], stars, (e, k) => e.level === k);
+    if (mode === 'topic') return by([...new Set(index.flatMap(e => e.tags))].sort(), t => t[0].toUpperCase() + t.slice(1), (e, k) => e.tags.includes(k));
+    if (mode === 'steps') return by(['short', 'medium', 'long'], k => ({ short: 'Short (2-3 steps)', medium: 'Medium (4-5 steps)', long: 'Long (6+ steps)' })[k],
+      (e, k) => (e.steps.length <= 3 ? 'short' : e.steps.length <= 5 ? 'medium' : 'long') === k);
+    return by(['inprogress', 'new', 'pass'], k => ({ inprogress: 'In progress', new: 'Not started', pass: 'Done' })[k],
+      (e, k) => (e.status === 'attempted' ? 'inprogress' : e.status) === k);
+  }
+  const doneCount = () => index.filter(e => e.status === 'pass').length;
+  function applyMode() {    // after the dropdown changed: every view that lists the scripts
+    renderHomeGrid();
+    if (typeof renderHomeNav === 'function') renderHomeNav();
+    if (cur && state.script) renderSidebar();
+  }
+  $('#scripts-group').onchange = ev => { try { localStorage.setItem('scriptGroup', ev.target.value); } catch { /* private mode */ } applyMode(); };
   const go = (id, step) => { location.hash = `#/script/${id}${step ? '/' + step : ''}`; };
 
   // ---------------------------------------------------------------- home grid
   function renderHomeGrid() {
     const grid = $('#scripts-grid');
     if (!index.length) { grid.innerHTML = '<p class="home-intro">No scripts built yet (run <code>node tools/build_scripts.js</code>).</p>'; return; }
-    const groups = [...new Set(index.map(e => e.group))];
-    grid.innerHTML = groups.map(g => {
-      const es = index.filter(e => e.group === g);
+    $('#scripts-group').value = getMode();
+    grid.innerHTML = groups().map(g => {
+      const es = g.items;
       const card = e => `<button class="track-card exam-card${state.script === e.id ? ' current' : ''}" data-script="${esc(e.id)}">
         <div class="track-card-title">${num(e.id)} · ${esc(e.title)}</div>
-        <div class="track-card-desc"><code>${esc(e.script)}</code> · ${e.steps.length} steps</div>
+        <div class="track-card-desc"><span class="stars">${stars(e.level)}</span> · <code>${esc(e.script)}</code> · ${e.steps.length} steps</div>
+        <div class="track-card-desc">${e.tags.map(esc).join(' · ')}</div>
         <div class="track-card-count"><span class="${e.status === 'pass' ? 'exam-best good' : ''}">${e.passed.length}/${e.steps.length} steps passed</span></div></button>`;
-      return `<h3 class="home-tier-title">${esc(g)} <span>${es.filter(e => e.status === 'pass').length}/${es.length} done</span></h3>
+      return `<h3 class="home-tier-title">${esc(g.label)} <span>${es.filter(e => e.status === 'pass').length}/${es.length} done</span></h3>
         <div class="track-grid exam-grid">${es.map(card).join('')}</div>`;
     }).join('');
   }
@@ -51,7 +73,7 @@ const Scripts = (() => {
     const sameScript = cur && cur.id === id && state.script === id;
     cur = { id, d, step };
     state.script = id; state.theory = null; state.exam = null; state.sexam = null;
-    state.current = { id, sc: true, title: `${num(id)} · ${d.title}`, level: 0, cmds: d.cmds, status: d.status, topic: d.group,
+    state.current = { id, sc: true, title: `${num(id)} · ${d.title}`, level: 0, cmds: d.cmds, status: d.status, topic: d.tags.join(', '),
       dir: d.playDir || d.answer.replace(/\/[^/]*$/, ''), playDir: d.playDir, answer: d.answer, readme: '' };
     document.body.classList.add('script-run');
     $('#exam-main').classList.add('hidden');
@@ -70,9 +92,9 @@ const Scripts = (() => {
   }
   function fillStatement() {
     const { d, step } = cur, st = d.steps.find(s => s.n === step);
-    $('#ex-topic').textContent = `Scripts · ${d.group}`;
+    $('#ex-topic').textContent = `Scripts · ${d.tags.join(', ')}`;
     $('#ex-title').textContent = `${num(d.id)} · ${d.title}`;
-    $('#ex-level').textContent = `Step ${step} of ${d.steps.length}`;
+    $('#ex-level').textContent = stars(d.level);
     $('#ex-cmds').textContent = d.cmds;
     const b = $('#ex-status');
     b.className = 'badge ' + d.status; b.textContent = STATUS[d.status].label;
@@ -173,10 +195,9 @@ const Scripts = (() => {
     const nav = $('#topics');
     if (!cur) return;
     document.querySelector('.overall').title = 'exercises passed (scripts have their own counter)';
-    const groups = [...new Set(index.map(e => e.group))];
-    nav.innerHTML = groups.map(g => {
-      const es = index.filter(e => e.group === g), done = es.filter(e => e.status === 'pass').length;
-      return `<details class="topic" open><summary><span class="t-name">${esc(g)}</span><span class="t-count">${done}/${es.length}</span></summary>
+    nav.innerHTML = groups().map(g => {
+      const es = g.items, done = es.filter(e => e.status === 'pass').length;
+      return `<details class="topic" open><summary><span class="t-name">${esc(g.label)}</span><span class="t-count">${done}/${es.length}</span></summary>
         ${es.map(e => `<a class="ex-item${e.id === cur.id ? ' current' : ''}" href="#/script/${e.id}" title="${esc(e.title)}">
           <span class="dot ${e.status}">${STATUS[e.status].dot}</span><span class="ex-id">${num(e.id)}</span><span class="ex-name">${esc(e.title)}</span>
           <span class="t-count">${e.passed.length}/${e.steps.length}</span></a>`).join('')}</details>`;
@@ -188,5 +209,5 @@ const Scripts = (() => {
     document.querySelector('.overall').title = 'exercises passed';
   }
 
-  return { load, list, entry, statusOf, open, go, refresh, renderHomeGrid, renderSidebar, runCheck, showSolution, resetFixture, neighbour, leave, current: () => cur };
+  return { groups, doneCount, stars, load, list, entry, statusOf, open, go, refresh, renderHomeGrid, renderSidebar, runCheck, showSolution, resetFixture, neighbour, leave, current: () => cur };
 })();

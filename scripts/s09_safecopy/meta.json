@@ -1,0 +1,31 @@
+{
+ "id": "s09",
+ "slug": "safecopy",
+ "title": "Copy without overwriting",
+ "script": "safecopy.sh",
+ "cmds": "cp, test -f -d -e, basename, exit codes",
+ "level": 2,
+ "tags": [
+  "files",
+  "copy and move",
+  "exit codes"
+ ],
+ "steps": [
+  {
+   "n": 1,
+   "title": "Copy a file"
+  },
+  {
+   "n": 2,
+   "title": "Check the arguments"
+  },
+  {
+   "n": 3,
+   "title": "Into a directory"
+  },
+  {
+   "n": 4,
+   "title": "Never overwrite"
+  }
+ ]
+}

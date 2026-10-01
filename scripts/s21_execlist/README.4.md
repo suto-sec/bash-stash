@@ -1,0 +1,1 @@
+Count the files copied **successfully** (some may be unreadable: `cp` fails and they do not count) and finish with `Copied N files`. A file that fails prints `could not copy PATH` on standard error. Exit code 0 anyway.

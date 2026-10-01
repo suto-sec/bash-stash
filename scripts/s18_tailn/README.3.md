@@ -1,0 +1,1 @@
+An optional second argument `N` replaces the 5. It must be a positive integer (digits only, at least 1): otherwise an error message that includes it and exit code **3**. One or two arguments are valid. The file checks come first.

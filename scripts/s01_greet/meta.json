@@ -4,7 +4,11 @@
  "title": "A friendly greeting",
  "script": "greet.sh",
  "cmds": "echo, test, exit codes",
- "group": "First steps",
+ "level": 1,
+ "tags": [
+  "arguments",
+  "exit codes"
+ ],
  "steps": [
   {
    "n": 1,

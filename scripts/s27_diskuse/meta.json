@@ -1,0 +1,31 @@
+{
+ "id": "s27",
+ "slug": "diskuse",
+ "title": "Space used per directory",
+ "script": "diskuse.sh",
+ "cmds": "du -sb, cut, sort -k -n -r, for, test, exit codes",
+ "level": 3,
+ "tags": [
+  "files",
+  "text",
+  "pipes"
+ ],
+ "steps": [
+  {
+   "n": 1,
+   "title": "Size of each subdirectory"
+  },
+  {
+   "n": 2,
+   "title": "Biggest first"
+  },
+  {
+   "n": 3,
+   "title": "Check the directory"
+  },
+  {
+   "n": 4,
+   "title": "A total"
+  }
+ ]
+}

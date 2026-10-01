@@ -1,0 +1,1 @@
+The directory may now contain upper-case names, spaces and subdirectories (`mixed` in the fixture has all three). The behaviour is the same, but test it on `mixed` too. If a lower-case name **already exists** (`Report.doc` and `report.doc`), do not overwrite it: print `skipped NAME` on standard error and do not count the file.

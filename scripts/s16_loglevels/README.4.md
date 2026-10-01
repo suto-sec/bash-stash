@@ -1,0 +1,1 @@
+`loglevels.sh -l LEVEL FILE` prints, instead of the counts, the **lines** of that level (as they are in the file). `LEVEL` must be `INFO`, `WARN` or `ERROR`; otherwise an error message that includes it and exit code **3**. All the earlier checks still apply (`-l` needs exactly `LEVEL` and `FILE` after it).

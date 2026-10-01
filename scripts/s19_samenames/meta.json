@@ -1,0 +1,27 @@
+{
+ "id": "s19",
+ "slug": "samenames",
+ "title": "Names in both directories",
+ "script": "samenames.sh",
+ "cmds": "for, test -f -e -d, basename, counters",
+ "level": 3,
+ "tags": [
+  "files",
+  "loops",
+  "exit codes"
+ ],
+ "steps": [
+  {
+   "n": 1,
+   "title": "Common names"
+  },
+  {
+   "n": 2,
+   "title": "How many"
+  },
+  {
+   "n": 3,
+   "title": "Check both directories"
+  }
+ ]
+}

@@ -1,0 +1,31 @@
+{
+ "id": "s13",
+ "slug": "lowernames",
+ "title": "Lower-case file names",
+ "script": "lowernames.sh",
+ "cmds": "mv, tr / ${var,,}, test, for, counters",
+ "level": 3,
+ "tags": [
+  "files",
+  "copy and move",
+  "exit codes"
+ ],
+ "steps": [
+  {
+   "n": 1,
+   "title": "Rename to lower case"
+  },
+  {
+   "n": 2,
+   "title": "Mixed directory"
+  },
+  {
+   "n": 3,
+   "title": "Check the directory"
+  },
+  {
+   "n": 4,
+   "title": "Exit code for skipped files"
+  }
+ ]
+}

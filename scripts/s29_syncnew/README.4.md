@@ -1,0 +1,1 @@
+A copy that fails (for instance an unreadable source) prints `could not copy NAME` on standard error and does not count. Finish with `Copied N files` (successes only) and, if at least one copy failed, with exit code **4**.

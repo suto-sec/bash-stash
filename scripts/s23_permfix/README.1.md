@@ -1,0 +1,1 @@
+A script should have mode `755`. Write `permfix.sh DIR`: it prints the path (as `find` shows it) of every **regular file** below `DIR` whose name ends in `.sh` and whose mode is **not** `755` (`stat -c %a file` prints the mode in octal). The order does not matter.

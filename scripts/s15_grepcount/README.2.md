@@ -1,0 +1,1 @@
+`grepcount.sh WORD FILE...` takes **one or more files** after the word and prints one `FILE: N` line each. With fewer than two arguments (no file): error message **and the correct usage**, exit **1**.

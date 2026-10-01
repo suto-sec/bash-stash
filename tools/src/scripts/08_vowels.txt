@@ -1,0 +1,55 @@
+@@script s08 | vowels | Counting vowels | vowels.sh
+@@level 2
+@@tags text, arguments, pipes
+@@cmds tr, wc, echo, for, exit codes
+@@fixture
+setup() { :; }
+usage_ok() { [[ $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* || $ERR == *vowels.sh* ]]; }
+@@step 1 | Vowels of a word
+@@readme
+Write `vowels.sh TEXT`. It prints how many vowels (`a e i o u`, upper or lower case) the text has: `vowels.sh Banana` prints `3`.
+
+`tr -cd 'aeiouAEIOU'` keeps only the vowels (`-d` deletes, `-c` complements the set) and `wc -c` counts what is left. The text may contain spaces when quoted.
+@@check
+ARGS=('Banana' 'rhythm' 'AEIOU' '"hello big world"' 'xyz123')
+COMPARE="stdout exit"
+@@solution
+#!/bin/bash
+echo "$1" | tr -cd 'aeiouAEIOU' | wc -c
+@@step 2 | Exactly one text
+@@readme
+With no argument, or with more than one, print an error message **and the correct usage** on standard error and exit with code **1**.
+@@check
+ARGS=('Banana' '"hello big world"' '' 'one two' 'a b c')
+COMPARE="stdout exit errmsg"
+extra_check() { [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }; }
+@@solution
+#!/bin/bash
+if (( $# != 1 )); then
+  echo "Error: exactly one text is needed" >&2
+  echo "Usage: $0 text" >&2
+  exit 1
+fi
+echo "$1" | tr -cd 'aeiouAEIOU' | wc -c
+@@step 3 | Many texts and a total
+@@readme
+Now one **or more** texts are accepted (none is still the usage error, exit 1). Print one `text: N` line for each, and, when more than one text was given, a last line `total: T` with the sum.
+@@check
+ARGS=('Banana' 'Banana rhythm AEIOU' '"hello big world" xyz' '' 'a e')
+COMPARE="stdout exit errmsg"
+extra_check() { [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }; }
+@@solution
+#!/bin/bash
+if (( $# == 0 )); then
+  echo "Error: at least one text is needed" >&2
+  echo "Usage: $0 text..." >&2
+  exit 1
+fi
+total=0
+for t in "$@"; do
+  n=$(echo "$t" | tr -cd 'aeiouAEIOU' | wc -c)
+  echo "$t: $n"
+  total=$((total + n))
+done
+(( $# > 1 )) && echo "total: $total"
+exit 0

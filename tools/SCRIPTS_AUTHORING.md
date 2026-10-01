@@ -33,20 +33,10 @@ Close to the exam (s21–s30): 21 execlist (find -perm, copy to a directory) · 
 27 diskuse (du per subdirectory, sorted) · 28 totals (CSV totals per category) · 29 syncnew (copy newer files, count) · 30 publish
 (capstone: validate, create the destination with a message, copy the matching files, count the successes, exit codes).
 
-## Planned next (decided with the user, NOT built yet)
+## Stars, tags and grouping (built)
 
-Status: the engine, builder, validator, API and UI exist; scripts s01–s05 are written (19 steps, all validated). Still to do:
-
-1. **Write the remaining 25 scripts** (s06–s30) in batches, easy ones first; the user reviews each batch.
-2. **Stars.** Every script gets an authored difficulty, `@@level 1-5` (the same ★ scale as the exercises): roughly s01–s08 1–2★,
-   s09–s20 2–3★, s21–s30 3–5★. Show the stars on the cards, in the sidebar and in `#ex-level` of the statement header.
-3. **Tags.** Every script gets 1–3 topic tags (`@@tags a, b`) from a fixed vocabulary validated by the builder: arguments, exit codes, tests,
-   loops, case, arithmetic, files, text, find, copy and move, permissions, archives, logs, pipes. Grouping by tag lists a script under
-   each of its tags (so it can appear several times there); the Scripts counter still counts every script once.
-4. **Grouping dropdown** on the Scripts section of the home page: Difficulty (stars, the default) · Topic (tags) · Number of steps
-   (short 2–3, medium 4–5, long 6+) · Progress (not started, in progress, done). It drives the home grid, the home sidebar tree and
-   the sidebar inside a script, and is remembered in `localStorage`. This replaces the fixed "First steps / Files and text / Close to
-   the exam" groups (the `group` field of meta.json, set by number in `tools/build_scripts.js`).
-5. Implementation notes: builder `@@level` / `@@tags` -> meta.json `level`, `tags`; `/api/scripts` returns them instead of `group`;
-   one `Scripts.groups(mode)` shared by the grid, `homeTree()` (keys `scriptgroup:<key>`) and the script-mode sidebar; the section count
-   in `renderHomeNav` must use the unique scripts, not the sum of the groups.
+Every script has `@@level 1-5` (the same ★ scale as the exercises) and `@@tags` (1-3 from the vocabulary in `tools/build_scripts.js`: arguments,
+exit codes, tests, loops, case, arithmetic, files, text, find, copy and move, permissions, archives, logs, pipes). The Scripts section of the home
+page has a dropdown that groups them by Difficulty (default), Topic (a script appears under each of its tags), Number of steps or Progress; the
+choice (`localStorage` `scriptGroup`) drives the home grid, the home sidebar tree and the sidebar inside a script. The Scripts counter counts
+each script once. All 30 scripts (s01-s30, 4 / 9 / 11 / 5 / 1 scripts at 1-5 stars) are written and pass `tools/validate_scripts.sh`.

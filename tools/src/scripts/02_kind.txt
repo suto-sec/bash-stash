@@ -1,4 +1,6 @@
 @@script s02 | kind | What is this path? | kind.sh
+@@level 1
+@@tags tests, exit codes
 @@cmds test -f -d -e, echo, exit codes
 @@fixture
 setup() {

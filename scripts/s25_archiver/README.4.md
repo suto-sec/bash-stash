@@ -1,0 +1,1 @@
+If `$HOME/archives/NAME.tgz` **already exists**, do not touch it: print an error message that includes its path on standard error and exit with code **4** (the directory message, if the directory had to be created, is not an issue here: it exists by then).

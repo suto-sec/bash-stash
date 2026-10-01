@@ -1,4 +1,6 @@
 @@script s01 | greet | A friendly greeting | greet.sh
+@@level 1
+@@tags arguments, exit codes
 @@cmds echo, test, exit codes
 @@fixture
 setup() { :; }

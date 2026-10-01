@@ -4,7 +4,12 @@
  "title": "Counting lines",
  "script": "lines.sh",
  "cmds": "wc, test -f -r, for, exit codes, getopts / case on $1",
- "group": "First steps",
+ "level": 2,
+ "tags": [
+  "files",
+  "arguments",
+  "loops"
+ ],
  "steps": [
   {
    "n": 1,

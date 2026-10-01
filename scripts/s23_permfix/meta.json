@@ -1,0 +1,31 @@
+{
+ "id": "s23",
+ "slug": "permfix",
+ "title": "Fixing script permissions",
+ "script": "permfix.sh",
+ "cmds": "find -name, stat -c %a, chmod, while read, counters",
+ "level": 3,
+ "tags": [
+  "permissions",
+  "find",
+  "files"
+ ],
+ "steps": [
+  {
+   "n": 1,
+   "title": "Which scripts are wrong"
+  },
+  {
+   "n": 2,
+   "title": "Fix them"
+  },
+  {
+   "n": 3,
+   "title": "Check the directory"
+  },
+  {
+   "n": 4,
+   "title": "Summary"
+  }
+ ]
+}

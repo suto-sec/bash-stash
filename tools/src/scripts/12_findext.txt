@@ -1,0 +1,74 @@
+@@script s12 | findext | Find by extension | findext.sh
+@@level 2
+@@tags find, files, arguments
+@@cmds find -type f -name, test, exit codes
+@@fixture
+setup() {
+  mkdir -p proj/src/deep proj/docs "my dir" empty; local i
+  for i in 1 2 3; do echo "$i" > "proj/$(word)$i.txt"; echo "$i" > "proj/src/$(word)$i.c"; done
+  echo a > proj/docs/readme.txt; echo b > proj/src/deep/note.txt; echo c > "my dir/two words.txt"; echo d > proj/x.TXT
+  echo x > notadir.txt
+}
+usage_ok() { [[ $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* || $ERR == *findext.sh* ]]; }
+@@step 1 | Search the current directory
+@@readme
+Write `findext.sh EXT`. It prints the path (as `find` shows it, starting with `./`) of every **regular file**, at any depth below the **current directory**, whose name ends in `.EXT`: `findext.sh txt` lists the `.txt` files. The order does not matter and `x.TXT` does not match `txt`.
+
+`find . -type f -name "*.$1"` does it.
+@@check
+SORT_OUTPUT=1
+ARGS=('txt' 'c' 'TXT' 'zzz')
+COMPARE="stdout exit"
+@@solution
+#!/bin/bash
+find . -type f -name "*.$1"
+@@step 2 | Another directory
+@@readme
+An optional second argument is the directory to search instead of the current one (`findext.sh txt proj`); the paths start with that directory as given.
+@@check
+SORT_OUTPUT=1
+ARGS=('txt' 'txt proj' 'c proj/src' 'txt "my dir"' 'txt empty' '"txt" "$W/proj"')
+COMPARE="stdout exit"
+@@solution
+#!/bin/bash
+find "${2:-.}" -type f -name "*.$1"
+@@step 3 | Errors
+@@readme
+Checks, in this order: not one or two arguments → error message **and the correct usage**, exit **1**; the directory does not exist → error with its name, exit **2**; it exists but is not a directory → error with its name, exit **3**.
+@@check
+SORT_OUTPUT=1
+ARGS=('txt' 'txt proj' '' 'txt proj extra' 'txt nothing' 'txt notadir.txt')
+COMPARE="stdout exit errmsg"
+extra_check() {
+  [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }
+  [[ $REF_CODE == [23] ]] && mentions "$(eval "set -- $CASE"; echo "$2")"
+}
+@@solution
+#!/bin/bash
+if (( $# < 1 || $# > 2 )); then echo "Error: wrong number of arguments" >&2; echo "Usage: $0 ext [dir]" >&2; exit 1; fi
+dir=${2:-.}
+[[ -e $dir ]] || { echo "Error: $dir does not exist" >&2; exit 2; }
+[[ -d $dir ]] || { echo "Error: $dir is not a directory" >&2; exit 3; }
+find "$dir" -type f -name "*.$1"
+@@step 4 | Count them
+@@readme
+After the paths print `Found N files`.
+@@check
+SORT_OUTPUT=1
+ARGS=('txt' 'c proj' 'zzz' 'txt "my dir"' '' 'txt nothing')
+COMPARE="stdout exit errmsg"
+extra_check() {
+  [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }
+  [[ $REF_CODE == [23] ]] && mentions "$(eval "set -- $CASE"; echo "$2")"
+}
+@@solution
+#!/bin/bash
+if (( $# < 1 || $# > 2 )); then echo "Error: wrong number of arguments" >&2; echo "Usage: $0 ext [dir]" >&2; exit 1; fi
+dir=${2:-.}
+[[ -e $dir ]] || { echo "Error: $dir does not exist" >&2; exit 2; }
+[[ -d $dir ]] || { echo "Error: $dir is not a directory" >&2; exit 3; }
+n=0
+while IFS= read -r f; do
+  echo "$f"; n=$((n + 1))
+done < <(find "$dir" -type f -name "*.$1")
+echo "Found $n files"

@@ -1,0 +1,1 @@
+Write `publish.sh DIR`. It prints the path (as `find` shows it) of every **regular file** below `DIR`, at any depth, whose name ends in `.conf` (a directory called `dir.conf` does not count). The order does not matter.

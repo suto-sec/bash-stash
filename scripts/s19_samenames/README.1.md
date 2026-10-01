@@ -1,0 +1,1 @@
+Write `samenames.sh DIR1 DIR2`. It prints, one per line, the **names** of the regular files directly inside `DIR1` that also exist as regular files in `DIR2` (no subdirectories; the order does not matter). Names may contain spaces.

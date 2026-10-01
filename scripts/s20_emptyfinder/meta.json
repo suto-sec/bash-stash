@@ -1,0 +1,31 @@
+{
+ "id": "s20",
+ "slug": "emptyfinder",
+ "title": "Empty files and directories",
+ "script": "emptyfinder.sh",
+ "cmds": "find -empty -type f -type d, while read, test, exit codes",
+ "level": 3,
+ "tags": [
+  "find",
+  "files",
+  "exit codes"
+ ],
+ "steps": [
+  {
+   "n": 1,
+   "title": "Empty files"
+  },
+  {
+   "n": 2,
+   "title": "And empty directories"
+  },
+  {
+   "n": 3,
+   "title": "Check the directory"
+  },
+  {
+   "n": 4,
+   "title": "A summary"
+  }
+ ]
+}
