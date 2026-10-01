@@ -29,7 +29,7 @@ LAB=${LAB:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}
 SBROOT=${SBROOT:-/tmp/lab-$(id -u)}
 SB=$SBROOT/sb
 RES=$SBROOT/res
-PROGRESS=$LAB/.progress
+PROGRESS=${LAB_PROGRESS:-$LAB/.progress}   # LAB_PROGRESS: a scratch dir for tests, so they never touch real progress
 
 if [[ -t 1 || -n ${LAB_COLOR:-} ]]; then R=$'\e[31m' G=$'\e[32m' Y=$'\e[33m' B=$'\e[1m' D=$'\e[2m' N=$'\e[0m'; else R= G= Y= B= D= N=; fi
 
@@ -42,12 +42,20 @@ lab_lock() { mkdir -p "$SBROOT"; exec 9>"$SBROOT.lock"; flock 9; }
 ex_dir() { # id or id prefix -> exercise dir
   local id=$1 m
   m=( "$LAB"/exercises/*/"$id"_* )
+  # practice-exam scripts (easy-01, medium-02, ...) live apart from the tracks, in script-exams/
+  [[ $id =~ ^(easy|medium|hard)-[0-9]+$ ]] && m=( "$LAB"/script-exams/"$id"_* )
+  # Scripts (s01, s01.2 = its step 2): one script built in steps, each step validated; see tools/SCRIPTS_AUTHORING.md
+  [[ $id =~ ^s[0-9]{2}(\.[0-9]+)?$ ]] && { id=${id%%.*}; m=( "$LAB"/scripts/"$id"_* ); }
   [[ -d ${m[0]} ]] || die "No exercise with id '$id'"
   (( ${#m[@]} == 1 )) || die "Ambiguous id '$id'"
   echo "${m[0]}"
 }
 ex_id()   { local b; b=$(basename "$1"); echo "${b%%_*}"; }
-ex_sol()  { local d=$1 t; t=$(basename "$(dirname "$d")"); echo "$LAB/solutions/$t/$(basename "$d")"; }
+ex_sol()  { local d=$1 t; t=$(basename "$(dirname "$d")")
+  if [[ $t == scripts ]]; then echo "$LAB/solutions/scripts/$(basename "$d")/${STEP:-$(sc_last_step "$d")}"; else echo "$LAB/solutions/$t/$(basename "$d")"; fi; }
+sc_last_step() { local f n=0 k; for f in "$1"/check.*.sh; do k=${f##*/check.}; k=${k%.sh}; (( k > n )) && n=$k; done; echo "$n"; }   # highest step of a script dir
+sc_passed()    { [[ -f $PROGRESS/scripts/$1.steps ]] && sort -un "$PROGRESS/scripts/$1.steps"; }                              # step numbers passed
+sc_current()   { local d=$1 id n last; id=$(ex_id "$d"); last=$(sc_last_step "$d"); for ((n=1; n<=last; n++)); do sc_passed "$id" | grep -qx "$n" || { echo "$n"; return; }; done; echo "$last"; }
 all_ex()  { printf '%s\n' "$LAB"/exercises/*/[0-9]*_* ; }
 
 attempted() { # file -> true if it has something besides comments/blank lines
@@ -85,10 +93,10 @@ reset_sb() {
 
 load_spec() { # dir
   TYPE=script SCRIPT_NAME=script.sh COMPARE="stdout exit" SORT_OUTPUT= SEEDS=3 TIMEOUT=10 RUN_AS_ROOT=
-  ARGS=("") ENV=()
+  ARGS=("") ENV=() OBJECTIVES=() CASE_OBJ=()
   unset -f setup input filter extra_check capture
   setup() { :; }
-  source "$1/check.sh"
+  if [[ $1 == */scripts/* ]]; then source "$1/check.${STEP:-$(sc_last_step "$1")}.sh"; else source "$1/check.sh"; fi
 }
 
 prepare() { # seed
@@ -188,11 +196,13 @@ show_diff() { # label expected got
 fail() { FAILS+=("$*"); }
 
 check_script() { # dir answer -> 0 pass
-  local dir=$1 answer=$2 sol seed c ncase=0 bad=0
+  local dir=$1 answer=$2 sol seed c ncase=0 bad=0 ci
+  # practice exams only record, per objective, how many cases passed (see grade_exam); the output below is unchanged
   sol="$(ex_sol "$dir").sh"; [[ -f $sol ]] || die "missing reference solution $sol"
   for ((seed=1; seed<=SEEDS; seed++)); do
+    ci=-1
     for c in "${ARGS[@]}"; do
-      ncase=$((ncase+1))
+      ncase=$((ncase+1)); ci=$((ci+1))
       run_side ref "$sol" "$((seed*7919))" "$c"
       run_side usr "$answer" "$((seed*7919))" "$c"
       FAILS=()
@@ -210,6 +220,13 @@ check_script() { # dir answer -> 0 pass
       if [[ $COMPARE == *files* ]] && ! cmp -s "$RES/ref/fs" "$RES/usr/fs"; then fail "resulting files differ"; detail+=(fs); fi
       if declare -F capture >/dev/null && ! cmp -s "$RES/ref/capture" "$RES/usr/capture"; then fail "resulting state differs"; detail+=(capture); fi
       declare -F extra_check >/dev/null && extra_check
+      if (( ${#OBJECTIVES[@]} )); then
+        local ob=${CASE_OBJ[ci]:-}
+        if [[ -n $ob ]]; then
+          GR_N[$ob]=$(( ${GR_N[$ob]:-0} + 1 ))
+          (( ${#FAILS[@]} )) || GR_P[$ob]=$(( ${GR_P[$ob]:-0} + 1 ))
+        fi
+      fi
       if (( ${#FAILS[@]} )); then
         bad=$((bad+1))
         if (( bad <= 2 )); then
@@ -258,13 +275,19 @@ check_one() { # id [answer-file] -> 0 pass, 1 fail, 3 not attempted
   local dir answer id rc
   dir=$(ex_dir "$1") || exit 2
   id=$(ex_id "$dir")
+  local is_script=; [[ $dir == */scripts/* ]] && is_script=1
+  if [[ -n $is_script ]]; then [[ $1 == *.* ]] && STEP=${1#*.}; STEP=${STEP:-$(sc_current "$dir")}; fi
   load_spec "$dir"
-  if [[ $TYPE == quiz ]]; then answer=${2:-$dir/answer.txt}; else answer=${2:-$dir/answer.sh}; fi
-  echo "${B}[$id]${N} $(head -1 "$dir/README.md" | sed 's/^# *//')"
+  if [[ -n $is_script ]]; then answer=${2:-$PROGRESS/scripts/$id/$SCRIPT_NAME}
+  elif [[ $TYPE == quiz ]]; then answer=${2:-$dir/answer.txt}; else answer=${2:-$dir/answer.sh}; fi
+  if [[ -n $is_script ]]; then echo "${B}[$id step $STEP]${N} $(basename "$dir" | cut -d_ -f2-)"
+  else echo "${B}[$id]${N} $(head -1 "$dir/README.md" | sed 's/^# *//')"; fi
   if ! attempted "$answer"; then echo "  ${Y}·${N} not attempted (edit ${answer#$LAB/})"; return 3; fi
   if [[ $TYPE == quiz ]]; then check_quiz "$dir" "$answer"; else check_script "$dir" "$answer"; fi
   rc=$?
-  if [[ -z ${2:-} ]]; then
+  if [[ -z ${2:-} && -n $is_script ]]; then
+    (( rc == 0 )) && { mkdir -p "$PROGRESS/scripts"; echo "$STEP" >> "$PROGRESS/scripts/$id.steps"; }   # a passed step stays passed
+  elif [[ -z ${2:-} && $dir != */script-exams/* ]]; then
     mkdir -p "$PROGRESS"
     if (( rc == 0 )); then echo pass > "$PROGRESS/$id"; else rm -f "$PROGRESS/$id"; fi
   fi
@@ -279,9 +302,10 @@ play() { # id [seed] -> build fixture in ~/play/<id>
   rng_seed "$seed"
   ( cd "$P/work" && export HOME=$P/home W=$P/work H=$P/home && umask 022 && SEED=$seed && setup ) >/dev/null
   local ansfile=$dir/answer.sh; [[ $TYPE == quiz ]] && ansfile=$dir/answer.txt
+  [[ $dir == */scripts/* ]] && ansfile=$PROGRESS/scripts/$id/$SCRIPT_NAME
   ln -sf "$ansfile" "$P/work/$(basename "$ansfile")"
   [[ $TYPE != quiz && $SCRIPT_NAME != script.sh ]] && ln -sf "$ansfile" "$P/work/$SCRIPT_NAME"
-  ln -sf "$dir/README.md" "$P/work/README.md"
+  [[ $dir == */scripts/* ]] || ln -sf "$dir/README.md" "$P/work/README.md"
   echo "Fixture for $id (seed $seed) created:"
   echo "  work dir: $P/work"
   echo "  home dir: $P/home   (the checker runs your script with HOME set to this)"
@@ -296,4 +320,28 @@ play() { # id [seed] -> build fixture in ~/play/<id>
   fi
   (( ${#ARGS[@]} > 1 )) || [[ -n ${ARGS[0]} ]] && echo "  test cases (ARGS) used by the checker: $(printf '[%s] ' "${ARGS[@]}")"
   true
+}
+
+# ---------------------------------------------------------------- practice exams
+declare -A GR_N=() GR_P=()
+grade_exam() { # id answer-file -> stdout: "OBJ|id|label|points|passed|cases|earned" lines, "SCORE|earned|total", "---", then the checker's report
+  local dir id answer=$2 tmp line oid label pts n p e tot=0 sum=0
+  dir=$(ex_dir "$1") || exit 2
+  id=$(ex_id "$dir")
+  load_spec "$dir"
+  (( ${#OBJECTIVES[@]} )) || die "$id has no OBJECTIVES"
+  GR_N=() GR_P=()
+  tmp=$(mktemp)
+  LAB_COLOR= check_script "$dir" "$answer" > "$tmp" 2>&1
+  for line in "${OBJECTIVES[@]}"; do
+    IFS='|' read -r oid label pts <<< "$line"
+    n=${GR_N[$oid]:-0} p=${GR_P[$oid]:-0}
+    e=$(awk -v p="$p" -v n="$n" -v w="$pts" 'BEGIN { printf "%.2f", (n ? w * p / n : 0) }')
+    echo "OBJ|$oid|$label|$pts|$p|$n|$e"
+    sum=$(awk -v a="$sum" -v b="$e" 'BEGIN { printf "%.2f", a + b }'); tot=$((tot + pts))
+  done
+  echo "SCORE|$sum|$tot"
+  echo "---"
+  sed 's/\x1b\[[0-9;]*m//g' "$tmp"
+  rm -f "$tmp"
 }

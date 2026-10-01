@@ -1,0 +1,105 @@
+@@sexam easy-01 | newest | The newest file | El fichero más reciente
+@@script newest.sh
+@@cmds ls -t / find, stat, test, exit codes
+@@objectives
+args | Argument checking and error messages | Comprobación de argumentos y mensajes de error | 3
+core | Finding and printing the newest file | Encontrar e imprimir el fichero más reciente | 4
+edge | Special cases (spaces, hidden files, no files) | Casos especiales (espacios, ocultos, sin ficheros) | 3
+@@readme en
+Write a shell script called `newest.sh` that takes one optional argument:
+
+```
+newest.sh [directory]
+```
+
+The script prints the **most recently modified regular file** that is directly inside `directory` (do not enter subdirectories; hidden files count; directories are not files), in this exact format:
+
+```
+<name> (<N> bytes)
+```
+
+where `<name>` is the file name without its directory and `<N>` its size in bytes.
+
+- If more than one argument is given, print an error message **and the correct usage** on standard error and exit with code **1**.
+- If `directory` does not exist, print an error message that includes the name on standard error and exit with code **2**.
+- If `directory` exists but is not a directory, print an error message that includes the name on standard error and exit with code **3**.
+- If no argument is given, use the current directory.
+- If the directory has no regular files, print an error message on standard error and exit with code **4**.
+- File names may contain spaces.
+
+Don't forget:
+- Argument checking and error messages (3 points).
+- Finding the newest file and printing it in the exact format (4 points).
+- Special cases: spaces in names, hidden files, a directory that is newer than every file, a directory without files (3 points).
+@@readme es
+Escribe un script de shell llamado `newest.sh` que admita un argumento opcional:
+
+```
+newest.sh [directorio]
+```
+
+El script imprime el **fichero regular modificado más recientemente** que esté directamente dentro de `directorio` (no se entra en subdirectorios; los ficheros ocultos cuentan; los directorios no son ficheros), con este formato exacto:
+
+```
+<nombre> (<N> bytes)
+```
+
+donde `<nombre>` es el nombre del fichero sin su directorio y `<N>` su tamaño en bytes.
+
+- Si se pasa más de un argumento, escribe por la salida de error un mensaje de error **y el uso correcto** y termina con código **1**.
+- Si `directorio` no existe, escribe por la salida de error un mensaje que incluya el nombre y termina con código **2**.
+- Si `directorio` existe pero no es un directorio, escribe por la salida de error un mensaje que incluya el nombre y termina con código **3**.
+- Si no se pasa ningún argumento, se usa el directorio actual.
+- Si el directorio no tiene ningún fichero regular, escribe un mensaje de error por la salida de error y termina con código **4**.
+- Los nombres de fichero pueden contener espacios.
+
+No olvides:
+- Comprobación de argumentos y mensajes de error (3 puntos).
+- Encontrar el fichero más reciente e imprimirlo con el formato exacto (4 puntos).
+- Casos especiales: espacios en los nombres, ficheros ocultos, un directorio más reciente que todos los ficheros, un directorio sin ficheros (3 puntos).
+@@check
+SEEDS=2
+COMPARE="stdout exit errmsg"
+setup() {
+  local i f off n=0
+  mkdir -p docs/sub "mixed dir" onlydirs/a onlydirs/b empty
+  off=$(rand 5)
+  for i in 1 2 3 4 5; do
+    n=$((n + 1)); f="docs/$(word)$n.txt"
+    head -c "$(randr 1 300)" /dev/zero | tr '\0' 'x' > "$f"
+    touch -d "@$((1700000000 + (((i + off) % 5) + 1) * 86400 + $(rand 3600)))" "$f"
+  done
+  touch -d "@1600000000" docs/sub
+  for f in "a file.txt" "b file.log" ".hidden one" "plain.txt"; do
+    head -c "$(randr 1 200)" /dev/zero | tr '\0' 'y' > "mixed dir/$f"
+  done
+  touch -d "@1700100000" "mixed dir/a file.txt" "mixed dir/b file.log" "mixed dir/plain.txt"
+  touch -d "@1700200000" "mixed dir/.hidden one"            # the newest file is hidden and has spaces
+  mkdir "mixed dir/new sub"; touch -d "@1700250000" "mixed dir/new sub"   # a directory newer than every file
+  touch -d "@1700300000" "mixed dir"
+  touch -d "@1700400000" onlydirs/a
+  for f in top1.txt top2.txt .top3; do head -c "$(randr 1 50)" /dev/zero | tr '\0' 'z' > "$f"; done
+  touch -d "@1700010000" top1.txt top2.txt; touch -d "@1700020000" .top3
+  echo x > notadir.txt
+}
+ARGS=('docs' '"$W/docs"' 'docs/' '' '"mixed dir"' 'onlydirs' 'empty' 'nodir' 'notadir.txt' 'docs docs' '"mixed dir" extra arg')
+CASE_OBJ=(core core core core edge edge edge args args args args)
+extra_check() {
+  if [[ $REF_CODE == [123] ]]; then
+    [[ $REF_CODE == [23] ]] && mentions "$(eval "set -- $CASE"; echo "$1")"
+    [[ $REF_CODE == 1 ]] && { [[ $ERR == *newest.sh* || $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* ]] || fail "the usage message should show how to call the script"; }
+  fi
+}
+@@solution
+#!/bin/bash
+usage() { echo "Usage: $0 [directory]" >&2; }
+if (( $# > 1 )); then echo "Error: too many arguments" >&2; usage; exit 1; fi
+dir=${1:-.}
+[[ -e $dir ]] || { echo "Error: $dir does not exist" >&2; exit 2; }
+[[ -d $dir ]] || { echo "Error: $dir is not a directory" >&2; exit 3; }
+newest=
+while IFS= read -r -d '' f; do
+  if [[ -z $newest || $f -nt $newest ]]; then newest=$f; fi
+done < <(find "$dir" -maxdepth 1 -type f -print0)
+[[ -n $newest ]] || { echo "Error: no regular files in $dir" >&2; exit 4; }
+echo "$(basename "$newest") ($(stat -c %s "$newest") bytes)"

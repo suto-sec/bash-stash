@@ -1,0 +1,38 @@
+{
+ "id": "easy-01",
+ "slug": "newest",
+ "tier": "easy",
+ "title": {
+  "en": "The newest file",
+  "es": "El fichero más reciente"
+ },
+ "script": "newest.sh",
+ "cmds": "ls -t / find, stat, test, exit codes",
+ "objectives": [
+  {
+   "id": "args",
+   "label": {
+    "en": "Argument checking and error messages",
+    "es": "Comprobación de argumentos y mensajes de error"
+   },
+   "points": 3
+  },
+  {
+   "id": "core",
+   "label": {
+    "en": "Finding and printing the newest file",
+    "es": "Encontrar e imprimir el fichero más reciente"
+   },
+   "points": 4
+  },
+  {
+   "id": "edge",
+   "label": {
+    "en": "Special cases (spaces, hidden files, no files)",
+    "es": "Casos especiales (espacios, ocultos, sin ficheros)"
+   },
+   "points": 3
+  }
+ ],
+ "total": 10
+}

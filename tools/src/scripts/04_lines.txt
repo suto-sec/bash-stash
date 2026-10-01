@@ -1,0 +1,114 @@
+@@script s04 | lines | Counting lines | lines.sh
+@@cmds wc, test -f -r, for, exit codes, getopts / case on $1
+@@fixture
+setup() {
+  local i
+  for ((i = 0; i < $(randr 2 9); i++)); do echo "alpha $(word) $i"; done > a.txt
+  for ((i = 0; i < $(randr 3 12); i++)); do echo "beta $(words 3) $i"; done > b.txt
+  : > empty.txt
+  for ((i = 0; i < $(randr 1 5); i++)); do echo "gamma $(word) $i"; done > "my file.txt"
+  printf 'locked\n' > locked.txt; chmod 000 locked.txt
+  mkdir adir
+}
+@@step 1 | Lines of one file
+@@readme
+Write `lines.sh FILE`. It prints the file name, a colon, a space and the number of lines of the file:
+
+```
+notes.txt: 7
+```
+
+`wc -l < file` prints just the number of lines. File names may contain spaces. Use `play s04` to get the files the checker uses.
+@@check
+ARGS=('a.txt' 'b.txt' 'empty.txt' '"my file.txt"')
+COMPARE="stdout exit"
+@@solution
+#!/bin/bash
+f=$1
+echo "$f: $(wc -l < "$f")"
+@@step 2 | Check the file
+@@readme
+Add the error handling, checked in this order:
+
+1. Not exactly one argument: error message **and the correct usage** on standard error, exit code **1**.
+2. The argument does not exist or is not a regular file (a directory, for instance): error message that includes its name, exit code **2**.
+3. The file exists but is not readable: error message that includes its name, exit code **3**.
+
+Errors go to standard error and nothing is printed on standard output.
+@@check
+ARGS=('a.txt' 'b.txt' 'empty.txt' '"my file.txt"' '' 'a.txt b.txt' 'nothing.txt' 'adir' 'locked.txt')
+COMPARE="stdout exit errmsg"
+extra_check() {
+  [[ $REF_CODE == [23] ]] && mentions "$(eval "set -- $CASE"; echo "$1")"
+  [[ $REF_CODE == 1 ]] && { [[ $ERR == *lines.sh* || $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* ]] || fail "the message should show the correct usage"; }
+}
+@@solution
+#!/bin/bash
+if (( $# != 1 )); then
+  echo "Error: exactly one file is needed" >&2
+  echo "Usage: $0 file" >&2
+  exit 1
+fi
+f=$1
+if [[ ! -f $f ]]; then echo "Error: $f is not a regular file" >&2; exit 2; fi
+if [[ ! -r $f ]]; then echo "Error: cannot read $f" >&2; exit 3; fi
+echo "$f: $(wc -l < "$f")"
+@@step 3 | Many files
+@@readme
+The script now accepts **one or more** files (no file at all is still the usage error, code 1). It prints one `file: N` line for each, in the order given. When more than one file is given, add a final line `total: T` with the sum of all the line counts.
+
+If one of the files has a problem (it is not a regular file, or not readable), print the error message on standard error, **skip it and go on** with the others, and finish with exit code **2** after printing everything else. The `total:` line counts only the files that were read, and is printed only if more than one file was given and at least one of them was read.
+@@check
+ARGS=('a.txt' 'a.txt b.txt' 'a.txt "my file.txt" empty.txt' '' 'nothing.txt' 'a.txt nothing.txt b.txt' 'adir a.txt' 'locked.txt a.txt' 'nothing.txt adir')
+COMPARE="stdout exit errmsg"
+extra_check() {
+  [[ $REF_CODE == 1 ]] && { [[ $ERR == *lines.sh* || $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* ]] || fail "the message should show the correct usage"; }
+  [[ $REF_CODE == 2 ]] && { local f; for f in $(eval "set -- $CASE"; for a in "$@"; do [[ -f $a && -r $a ]] || echo "${a// /_}"; done); do mentions "${f//_/ }"; done; }
+}
+@@solution
+#!/bin/bash
+if (( $# == 0 )); then
+  echo "Error: at least one file is needed" >&2
+  echo "Usage: $0 file..." >&2
+  exit 1
+fi
+total=0 bad=0 good=0
+for f in "$@"; do
+  if [[ ! -f $f ]]; then echo "Error: $f is not a regular file" >&2; bad=1; continue; fi
+  if [[ ! -r $f ]]; then echo "Error: cannot read $f" >&2; bad=1; continue; fi
+  n=$(wc -l < "$f")
+  echo "$f: $n"
+  total=$((total + n)); good=$((good + 1))
+done
+(( $# > 1 )) && (( good > 0 )) && echo "total: $total"
+(( bad == 0 )) || exit 2
+@@step 4 | Words instead of lines
+@@readme
+If the **first** argument is `-w`, the script counts **words** instead of lines (`wc -w`) and prints `file: W`; the `total:` line then adds the words. Every other behaviour stays the same, and `-w` alone (no file after it) is the usage error with code 1.
+
+An argument is an option only in first position: in `lines.sh a.txt -w` the `-w` is just a file name that does not exist.
+@@check
+ARGS=('a.txt' 'a.txt b.txt' '-w a.txt' '-w a.txt b.txt "my file.txt"' '-w' '' '-w nothing.txt' 'a.txt -w' '-w locked.txt a.txt')
+COMPARE="stdout exit errmsg"
+extra_check() {
+  [[ $REF_CODE == 1 ]] && { [[ $ERR == *lines.sh* || $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* ]] || fail "the message should show the correct usage"; }
+}
+@@solution
+#!/bin/bash
+opt=-l
+if [[ $1 == -w ]]; then opt=-w; shift; fi
+if (( $# == 0 )); then
+  echo "Error: at least one file is needed" >&2
+  echo "Usage: $0 [-w] file..." >&2
+  exit 1
+fi
+total=0 bad=0 good=0
+for f in "$@"; do
+  if [[ ! -f $f ]]; then echo "Error: $f is not a regular file" >&2; bad=1; continue; fi
+  if [[ ! -r $f ]]; then echo "Error: cannot read $f" >&2; bad=1; continue; fi
+  n=$(wc $opt < "$f")
+  echo "$f: $n"
+  total=$((total + n)); good=$((good + 1))
+done
+(( $# > 1 )) && (( good > 0 )) && echo "total: $total"
+(( bad == 0 )) || exit 2

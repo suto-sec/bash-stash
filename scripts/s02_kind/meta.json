@@ -1,0 +1,26 @@
+{
+ "id": "s02",
+ "slug": "kind",
+ "title": "What is this path?",
+ "script": "kind.sh",
+ "cmds": "test -f -d -e, echo, exit codes",
+ "group": "First steps",
+ "steps": [
+  {
+   "n": 1,
+   "title": "File or directory"
+  },
+  {
+   "n": 2,
+   "title": "A missing path is an error"
+  },
+  {
+   "n": 3,
+   "title": "Exactly one argument"
+  },
+  {
+   "n": 4,
+   "title": "Something else"
+  }
+ ]
+}

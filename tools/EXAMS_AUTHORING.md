@@ -75,3 +75,36 @@ Topics: `shell-help`, `jobs-procs`, `files-fs`, `permissions`, `filters`, `grep-
 4. Duplicates: `node tools/exam_check.js tools/theory/exams/<id>.txt` must report 0 too close. Rewrite what it flags (and look at the warnings).
 5. Write `tools/theory/exams/es/<id>.txt` and build it: `node tools/build_theory.js tools/theory/exams/es/<id>.txt`.
 6. Do not touch other files, do not commit.
+
+# Script practice exams
+
+Besides the theory sets there are **script practice exams**: one bash script each, graded out of 10 by objectives, shown under *Coding exercises → Practice exams* on the home page. 7 per tier (`easy-01 … easy-07`, `medium-…`, `hard-…`). They are a different thing from the
+theory sets (own sources, API `/api/sexams`, routes `#/sexam/…` and storage `.progress/script-exams/`), even though the ids look alike.
+
+Calibration (an authoring choice: the real October duration is not known). The June exam's first exercise (`deploy_bins.sh`, 3 of 10 points in a
+100-minute exam, i.e. about 25 minutes of work; it is exercise 1801 of the tracks) is the reference:
+
+| tier | what the script asks | about |
+|------|----------------------|-------|
+| easy | optional argument, 2–3 validated error paths with exit codes and stderr messages, one simple core task, a few special cases | 10–15 min |
+| medium | the June scope: argument errors with distinct codes and a usage message, a default, parsing or `find` plus sorting/arithmetic, a summary, special cases | 25 min |
+| hard | medium plus interacting traps: side effects with a message, collisions, files that cannot be processed (count + final exit code), names with spaces, ordering rules | 35–40 min |
+
+Sources are `tools/src/script-exams/<id>.txt` (format in `tools/build_script_exams.js`); `node tools/build_script_exams.js` writes
+`script-exams/<id>_<slug>/{README.md,README.es.md,check.sh,meta.json}` and `solutions/script-exams/<id>_<slug>.sh`. Statements are bilingual
+(Theory language toggle). Rules:
+
+- Original scenarios; do not reuse or paraphrase the course exams, and check `tools/src/18_exam*.txt` so a track exercise is not posed again.
+- The statement ends with a "Don't forget" list whose items are the objectives and their points (the points add up to 10).
+- `@@check` is a normal checker spec (`lib/engine.sh`) plus `CASE_OBJ=( ... )`: one objective id per `ARGS` entry. A case that fails
+  anything (stdout, exit code, stderr presence, files) loses its objective's share: points = weight × passed cases / cases of that objective.
+  Isolate objectives with the fixture (a directory per behaviour) and with state prepared inside the case string (`'dups $(pre_q)'`,
+  where `pre_q` is a function of the spec), so a wrong implementation of one feature does not fail every case.
+- Every ARGS case must expect observable output, or a do-nothing script would pass it.
+- Deterministic fixtures: use `rand`/`pick`/`word`, fixed `touch -d "@epoch"` times, never `$RANDOM` or wall-clock times.
+- Add `tools/src/script-exams/partials/<id>.<name>.sh` with a first line `# expect: LOW..HIGH`: a plausible partial solution (for instance
+  correct core logic without argument checks) whose score range is asserted.
+- Run `./lab tools/validate_script_exams.sh` inside a lab instance: the reference must score 10, a do-nothing script at most 0.5, and each
+  partial its expected range. Also run `./lab tools/validate.sh` after touching `lib/engine.sh` (grading is additive; the checker output is unchanged).
+- Tests of the web UI must use a scratch progress directory: `LAB_PROGRESS=/tmp/scratch node web/server.js` (the engine honours it too),
+  never the real `.progress`.
