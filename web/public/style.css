@@ -261,12 +261,12 @@ dialog::backdrop { background: rgba(0,0,0,.5); }
 .layout.sidebar-collapsed .sidebar-toggle .arrow, .home-layout.sidebar-collapsed .sidebar-toggle .arrow { transform: rotate(180deg); }
 
 /* ---------- reference & layout buttons (topbar) ---------- */
-#reference-btn, #layout-btn {
+#reference-btn, #home-reference-btn, #layout-btn {
   text-decoration: none; display: inline-flex; align-items: center; gap: 4px;
   background: var(--panel-2); border: 1px solid var(--border); border-radius: 6px;
   padding: 5px 12px; color: var(--text); font-size: 14px; cursor: pointer; line-height: 1.3;
 }
-#reference-btn:hover, #layout-btn:hover { border-color: var(--muted); color: var(--text); }
+#reference-btn:hover, #home-reference-btn:hover, #layout-btn:hover { border-color: var(--muted); color: var(--text); }
 #layout-btn::after { content: '▾'; font-size: 9px; color: var(--muted); margin-left: 2px; }
 .layout-picker { position: relative; }
 .layout-menu {
@@ -648,6 +648,8 @@ body.sexam-run #cd-btn, body.sexam-run #new-attempt-btn, body.sexam-run #sidebar
 .sx-fold summary { cursor: pointer; font-weight: 600; margin-bottom: 6px; }
 .sx-pre { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; overflow: auto; max-height: 460px; font-size: 12.5px; white-space: pre; }
 body.sexam-strict #reference-btn { display: none; }
+/* the quizzes and theory exams have no commands to look up and no panels to arrange */
+body.theory-view #reference-btn, body.theory-view #layout-picker { display: none; }
 
 /* ---- scripts (one script built up in steps) */
 .sc-only { display: none; }

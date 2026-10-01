@@ -1115,6 +1115,7 @@ function showHomePage(show) {
 }
 function route() {
   if (!Exams.allowRoute(location.hash)) return;   // leaving a running exam attempt asks first
+  document.body.classList.toggle('theory-view', /^#\/(theory|exam)\//.test(location.hash));   // top bar: no Reference / Layout in the quizzes and theory exams
   const refCmd = location.hash.match(/^#\/reference\/cmd\/([^/]+)$/);
   const refTopic = location.hash.match(/^#\/reference\/topic\/([^/]+)$/);
   if (location.hash === '#/reference' || refCmd || refTopic) {
