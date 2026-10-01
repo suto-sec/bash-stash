@@ -54,7 +54,7 @@ Which statement about `Ctrl+C` and `Ctrl+Z` is FALSE?
 @@q single | Spaces around the equals sign
 @@topic expansion-vars
 You type `count = 5` in bash. What happens?
-(+) The shell tries to run a command called `count` with the arguments `=` and `5`, and answers "command not found". :: In an assignment there must be no spaces around `=`.
+(+) It looks for a command called `count` and answers "command not found". :: In an assignment there must be no spaces around `=`.
 (-) The variable `count` is set to `5`. :: That is what `count=5`, with no spaces, does.
 (-) The variable `count` is set to the string ` 5`, with a leading space. :: The shell does not treat the line as an assignment at all.
 (-) The shell prints `5`, the value of the assignment. :: Assignments print nothing in the shell.
