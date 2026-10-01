@@ -1,0 +1,1 @@
+An optional second argument `MAX` says how far the table goes (default 10): `table.sh 3 4` prints `3 x 1 = 3` ... `3 x 4 = 12`. `MAX` must be a positive integer (error message that includes it, exit **2**). One or two arguments are accepted; anything else is the usage error.

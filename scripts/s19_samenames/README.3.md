@@ -1,0 +1,1 @@
+Checks, in this order: not exactly two arguments → error message **and the correct usage**, exit **1**; the **first** argument is checked fully (does not exist → error with its name, exit **2**; not a directory → error with its name, exit **3**) and then the second one in the same way.

@@ -1,0 +1,1 @@
+Only the newest copies are kept: an optional second argument `KEEP` (default **3**) is the highest number a copy may have. Before shifting, delete every `FILE.N` with `N >= KEEP`, so after the rotation the numbered copies are `FILE.1` to `FILE.KEEP`. `KEEP` is a positive integer.

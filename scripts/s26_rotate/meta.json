@@ -1,0 +1,31 @@
+{
+ "id": "s26",
+ "slug": "rotate",
+ "title": "Rotating a log",
+ "script": "rotate.sh",
+ "cmds": "cp, mv, rm -f, for ((;;)), test -e, exit codes",
+ "level": 4,
+ "tags": [
+  "files",
+  "copy and move",
+  "loops"
+ ],
+ "steps": [
+  {
+   "n": 1,
+   "title": "One copy"
+  },
+  {
+   "n": 2,
+   "title": "Shift the older copies"
+  },
+  {
+   "n": 3,
+   "title": "Keep only a few"
+  },
+  {
+   "n": 4,
+   "title": "Check the arguments"
+  }
+ ]
+}

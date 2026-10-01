@@ -1,0 +1,1 @@
+An optional second argument is the **step**: `countdown.sh 10 3` prints `10`, `7`, `4`, `1` and `Liftoff!`. The default step is 1, and the numbers stay above 0. The step must also be a positive integer (error message that includes it, exit code **2**); with more than two arguments or none, the usage error (code 1).

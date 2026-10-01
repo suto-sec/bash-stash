@@ -1,0 +1,69 @@
+@@script s19 | samenames | Names in both directories | samenames.sh
+@@level 3
+@@tags files, loops, exit codes
+@@cmds for, test -f -e -d, basename, counters
+@@fixture
+setup() {
+  mkdir -p left right empty; local n
+  for n in alpha bravo "two words" charlie; do echo l > "left/$n.txt"; done
+  for n in bravo "two words" delta echo; do echo r > "right/$n.txt"; done
+  echo x > left/only_left; mkdir left/sub right/sub; echo z > left/sub/inner.txt; echo x > right/charlie.txt
+  echo x > notadir.txt
+}
+usage_ok() { [[ $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* || $ERR == *samenames.sh* ]]; }
+@@step 1 | Common names
+@@readme
+Write `samenames.sh DIR1 DIR2`. It prints, one per line, the **names** of the regular files directly inside `DIR1` that also exist as regular files in `DIR2` (no subdirectories; the order does not matter). Names may contain spaces.
+@@check
+SORT_OUTPUT=1
+ARGS=('left right' 'right left' 'left empty' 'left left')
+COMPARE="stdout exit"
+@@solution
+#!/bin/bash
+for f in "$1"/*; do
+  [[ -f $f ]] || continue
+  name=$(basename "$f")
+  [[ -f $2/$name ]] && echo "$name"
+done
+exit 0
+@@step 2 | How many
+@@readme
+After the names print `Common: N` (N = how many names were printed).
+@@check
+SORT_OUTPUT=1
+ARGS=('left right' 'right left' 'left empty' 'empty left')
+COMPARE="stdout exit"
+@@solution
+#!/bin/bash
+n=0
+for f in "$1"/*; do
+  [[ -f $f ]] || continue
+  name=$(basename "$f")
+  if [[ -f $2/$name ]]; then echo "$name"; n=$((n + 1)); fi
+done
+echo "Common: $n"
+@@step 3 | Check both directories
+@@readme
+Checks, in this order: not exactly two arguments → error message **and the correct usage**, exit **1**; the **first** argument is checked fully (does not exist → error with its name, exit **2**; not a directory → error with its name, exit **3**) and then the second one in the same way.
+@@check
+SORT_OUTPUT=1
+ARGS=('left right' 'right left' '' 'left' 'left right empty' 'nothing right' 'notadir.txt right' 'left nothing' 'left notadir.txt' 'nothing notadir.txt')
+COMPARE="stdout exit errmsg"
+extra_check() {
+  [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }
+  if [[ $REF_CODE == [23] ]]; then local a; a=$(eval "set -- $CASE"; [[ -d $W/$1 ]] && echo "$2" || echo "$1"); mentions "$a"; fi
+}
+@@solution
+#!/bin/bash
+if (( $# != 2 )); then echo "Error: two directories are needed" >&2; echo "Usage: $0 dir1 dir2" >&2; exit 1; fi
+for d in "$1" "$2"; do
+  [[ -e $d ]] || { echo "Error: $d does not exist" >&2; exit 2; }
+  [[ -d $d ]] || { echo "Error: $d is not a directory" >&2; exit 3; }
+done
+n=0
+for f in "$1"/*; do
+  [[ -f $f ]] || continue
+  name=$(basename "$f")
+  if [[ -f $2/$name ]]; then echo "$name"; n=$((n + 1)); fi
+done
+echo "Common: $n"

@@ -1,4 +1,6 @@
 @@script s03 | sumargs | Adding the arguments | sumargs.sh
+@@level 2
+@@tags arguments, loops, arithmetic
 @@cmds for, arithmetic $(( )), test, regular expressions [[ =~ ]]
 @@fixture
 setup() { :; }

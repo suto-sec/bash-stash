@@ -1,0 +1,31 @@
+{
+ "id": "s12",
+ "slug": "findext",
+ "title": "Find by extension",
+ "script": "findext.sh",
+ "cmds": "find -type f -name, test, exit codes",
+ "level": 2,
+ "tags": [
+  "find",
+  "files",
+  "arguments"
+ ],
+ "steps": [
+  {
+   "n": 1,
+   "title": "Search the current directory"
+  },
+  {
+   "n": 2,
+   "title": "Another directory"
+  },
+  {
+   "n": 3,
+   "title": "Errors"
+  },
+  {
+   "n": 4,
+   "title": "Count them"
+  }
+ ]
+}

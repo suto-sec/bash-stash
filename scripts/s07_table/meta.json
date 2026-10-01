@@ -1,0 +1,27 @@
+{
+ "id": "s07",
+ "slug": "table",
+ "title": "Multiplication table",
+ "script": "table.sh",
+ "cmds": "for, arithmetic $(( )), printf, exit codes",
+ "level": 1,
+ "tags": [
+  "loops",
+  "arithmetic",
+  "arguments"
+ ],
+ "steps": [
+  {
+   "n": 1,
+   "title": "One table"
+  },
+  {
+   "n": 2,
+   "title": "Check the argument"
+  },
+  {
+   "n": 3,
+   "title": "How far"
+  }
+ ]
+}

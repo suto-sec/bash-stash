@@ -1,0 +1,88 @@
+@@script s21 | execlist | Executable scripts | execlist.sh
+@@level 3
+@@tags find, permissions, copy and move
+@@cmds find -type f -perm /111 -name, mkdir -p, cp, while read, counters
+@@fixture
+setup() {
+  mkdir -p proj/src/deep "my proj" empty; local i n=0
+  for d in proj proj/src proj/src/deep "my proj"; do
+    for i in 1 2 3; do n=$((n + 1)); f="$d/$(word)$n$(pick .sh .sh .txt .bin)"; echo "echo $n" > "$f"; chmod "$(pick 755 644 700 744 600 611)" "$f"; done
+  done
+  echo "echo l" > proj/locked.sh; chmod 100 proj/locked.sh
+  echo x > notadir.txt
+}
+usage_ok() { [[ $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* || $ERR == *execlist.sh* ]]; }
+pre_bin() { mkdir -p "$H/bin"; }
+@@step 1 | List the executable scripts
+@@readme
+Write `execlist.sh DIR`. It prints the path (as `find` shows it) of every **regular file** below `DIR` (any depth) whose name ends in `.sh` and that has **some execute permission** (for the owner, the group or the others). The order does not matter.
+
+`find DIR -type f -name "*.sh" -perm /111`.
+@@check
+SORT_OUTPUT=1
+ARGS=('proj' '"my proj"' 'empty')
+COMPARE="stdout exit"
+@@solution
+#!/bin/bash
+find "$1" -type f -name "*.sh" -perm /111
+@@step 2 | Optional directory and errors
+@@readme
+`DIR` is now optional (default: the current directory). Checks: more than one argument → error message **and the correct usage**, exit **1**; `DIR` does not exist → error with its name, exit **2**; not a directory → error with its name, exit **3**.
+@@check
+SORT_OUTPUT=1
+ARGS=('proj' '' '"my proj"' 'proj empty' 'nothing' 'notadir.txt' 'empty')
+COMPARE="stdout exit errmsg"
+extra_check() {
+  [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }
+  [[ $REF_CODE == [23] ]] && mentions "$(eval "set -- $CASE"; echo "$1")"
+}
+@@solution
+#!/bin/bash
+if (( $# > 1 )); then echo "Error: too many arguments" >&2; echo "Usage: $0 [dir]" >&2; exit 1; fi
+dir=${1:-.}
+[[ -e $dir ]] || { echo "Error: $dir does not exist" >&2; exit 2; }
+[[ -d $dir ]] || { echo "Error: $dir is not a directory" >&2; exit 3; }
+find "$dir" -type f -name "*.sh" -perm /111
+@@step 3 | Copy them to ~/bin
+@@readme
+Instead of printing the paths, **copy** every one of those files to `$HOME/bin` (a file that is already there is overwritten). If `$HOME/bin` does not exist, create it first and print on standard output exactly `Directory <full path> created`. Names may contain spaces.
+@@check
+ARGS=('proj' 'proj $(pre_bin)' '"my proj"' '' 'empty $(pre_bin)' 'nothing' '')
+COMPARE="stdout exit errmsg files"
+extra_check() {
+  [[ $REF_CODE == [23] ]] && mentions "$(eval "set -- $CASE"; echo "$1")"
+}
+@@solution
+#!/bin/bash
+if (( $# > 1 )); then echo "Error: too many arguments" >&2; echo "Usage: $0 [dir]" >&2; exit 1; fi
+dir=${1:-.}
+[[ -e $dir ]] || { echo "Error: $dir does not exist" >&2; exit 2; }
+[[ -d $dir ]] || { echo "Error: $dir is not a directory" >&2; exit 3; }
+dest=$HOME/bin
+if [[ ! -d $dest ]]; then mkdir -p "$dest"; echo "Directory $dest created"; fi
+while IFS= read -r -d '' f; do
+  cp -- "$f" "$dest/"
+done < <(find "$dir" -type f -name "*.sh" -perm /111 -print0)
+@@step 4 | Count the copies
+@@readme
+Count the files copied **successfully** (some may be unreadable: `cp` fails and they do not count) and finish with `Copied N files`. A file that fails prints `could not copy PATH` on standard error. Exit code 0 anyway.
+@@check
+ARGS=('proj' 'proj $(pre_bin)' '"my proj" $(pre_bin)' 'empty' 'nothing' 'notadir.txt' 'proj extra')
+COMPARE="stdout exit errmsg files"
+extra_check() {
+  [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }
+  [[ $REF_CODE == [23] ]] && mentions "$(eval "set -- $CASE"; echo "$1")"
+}
+@@solution
+#!/bin/bash
+if (( $# > 1 )); then echo "Error: too many arguments" >&2; echo "Usage: $0 [dir]" >&2; exit 1; fi
+dir=${1:-.}
+[[ -e $dir ]] || { echo "Error: $dir does not exist" >&2; exit 2; }
+[[ -d $dir ]] || { echo "Error: $dir is not a directory" >&2; exit 3; }
+dest=$HOME/bin
+if [[ ! -d $dest ]]; then mkdir -p "$dest"; echo "Directory $dest created"; fi
+n=0
+while IFS= read -r -d '' f; do
+  if cp -- "$f" "$dest/" 2>/dev/null; then n=$((n + 1)); else echo "could not copy $f" >&2; fi
+done < <(find "$dir" -type f -name "*.sh" -perm /111 -print0)
+echo "Copied $n files"

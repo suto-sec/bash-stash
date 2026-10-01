@@ -1,0 +1,1 @@
+Write `oldfiles.sh DAYS`. It prints the path (as `find` shows it) of every **regular file** below the **current directory** that was last modified **more than `DAYS` days ago** (`find . -type f -mtime +DAYS`). The order does not matter.

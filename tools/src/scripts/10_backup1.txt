@@ -1,0 +1,88 @@
+@@script s10 | backup1 | A small backup | backup1.sh
+@@level 2
+@@tags files, copy and move, exit codes
+@@cmds cp, mkdir -p, test, for, counters
+@@fixture
+setup() {
+  echo "a" > a.txt; echo "bb" > b.txt; echo "two words" > "my file.txt"; mkdir docs; echo n > docs/n.txt
+  echo "locked" > locked.txt; chmod 000 locked.txt
+}
+usage_ok() { [[ $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* || $ERR == *backup1.sh* ]]; }
+pre_b() { mkdir -p "$H/backup"; }
+@@step 1 | Copy into ~/backup
+@@readme
+Write `backup1.sh FILE`. It copies `FILE` into the directory `$HOME/backup` (which already exists in this step) and prints `Copied 1 files`.
+
+Yes, the word is always `files`: the final message of the exam scripts never changes with the count.
+@@check
+ARGS=('a.txt $(pre_b)' '"my file.txt" $(pre_b)' 'b.txt $(pre_b)')
+COMPARE="stdout exit files"
+@@solution
+#!/bin/bash
+cp -- "$1" "$HOME/backup/"
+echo "Copied 1 files"
+@@step 2 | Create the directory if needed
+@@readme
+If `$HOME/backup` does not exist, create it first and print on standard output exactly `Directory <full path> created` (the full path is `$HOME/backup`) before the `Copied` line.
+@@check
+ARGS=('a.txt $(pre_b)' 'a.txt' '"my file.txt"' 'b.txt $(pre_b)')
+COMPARE="stdout exit files"
+@@solution
+#!/bin/bash
+dest=$HOME/backup
+if [[ ! -d $dest ]]; then
+  mkdir -p "$dest"
+  echo "Directory $dest created"
+fi
+cp -- "$1" "$dest/"
+echo "Copied 1 files"
+@@step 3 | Many files, count the successes
+@@readme
+Accept **one or more** files. Copy each one; a file that is not a regular file, or that cannot be copied (for example because it is unreadable), prints `could not copy NAME` on standard error and does not count. Finally print `Copied N files` with the number of successes. Exit code **0** whatever happens to the individual files.
+@@check
+ARGS=('a.txt $(pre_b)' 'a.txt b.txt' 'a.txt "my file.txt" b.txt $(pre_b)' 'nothing.txt a.txt' 'docs a.txt' 'locked.txt a.txt' 'locked.txt')
+COMPARE="stdout exit errmsg files"
+@@solution
+#!/bin/bash
+dest=$HOME/backup
+if [[ ! -d $dest ]]; then
+  mkdir -p "$dest"
+  echo "Directory $dest created"
+fi
+n=0
+for f in "$@"; do
+  if [[ -f $f ]] && cp -- "$f" "$dest/" 2>/dev/null; then
+    n=$((n + 1))
+  else
+    echo "could not copy $f" >&2
+  fi
+done
+echo "Copied $n files"
+@@step 4 | No files, wrong usage
+@@readme
+With **no arguments**, print an error message **and the correct usage** on standard error and exit with code **1**, before creating anything.
+@@check
+ARGS=('' 'a.txt $(pre_b)' 'a.txt b.txt' '"my file.txt" nothing.txt' 'locked.txt a.txt $(pre_b)')
+COMPARE="stdout exit errmsg files"
+extra_check() { [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }; }
+@@solution
+#!/bin/bash
+if (( $# == 0 )); then
+  echo "Error: at least one file is needed" >&2
+  echo "Usage: $0 file..." >&2
+  exit 1
+fi
+dest=$HOME/backup
+if [[ ! -d $dest ]]; then
+  mkdir -p "$dest"
+  echo "Directory $dest created"
+fi
+n=0
+for f in "$@"; do
+  if [[ -f $f ]] && cp -- "$f" "$dest/" 2>/dev/null; then
+    n=$((n + 1))
+  else
+    echo "could not copy $f" >&2
+  fi
+done
+echo "Copied $n files"

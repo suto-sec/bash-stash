@@ -1,0 +1,1 @@
+Instead of printing, **move** those files to `$HOME/old` (a file already there with the same name is overwritten). If `$HOME/old` does not exist, create it and print exactly `Directory <full path> created` first. Names may contain spaces.

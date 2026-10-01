@@ -1,0 +1,1 @@
+Accept **one or more** files. Copy each one; a file that is not a regular file, or that cannot be copied (for example because it is unreadable), prints `could not copy NAME` on standard error and does not count. Finally print `Copied N files` with the number of successes. Exit code **0** whatever happens to the individual files.

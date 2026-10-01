@@ -1,0 +1,1 @@
+If a file with the same name already exists in `$HOME/publish` and is **newer** than the source file (`[[ $dest -nt $src ]]`), keep it: print `skipped NAME` on standard error (just the file name), do not copy it, do not count it, and it does not make the exit code 4. Everything else stays as in step 4.

@@ -909,9 +909,9 @@ function homeTree() {
     return group(`sexamtier:${t}`, lab, lab, `sexamtier:${t}`, false,
       SExams.list().filter(e => e.tier === t).map(e => leaf(e.title, `${e.title} ${lab}`, `sexam:${e.id}`, state.sexam === e.id, SExams.statusOf(e))));
   });
-  const scriptGroups = [...new Set(Scripts.list().map(e => e.group))].map(g =>
-    group(`scriptgroup:${g}`, g, g, `scriptgroup:${g}`, false,
-      Scripts.list().filter(e => e.group === g).map(e => leaf(e.title, `${e.id} ${e.title} ${e.cmds}`, `script:${e.id}`, state.script === e.id, e.status, e.id.slice(1)))));
+  const scriptGroups = Scripts.groups().map(g =>
+    group(`scriptgroup:${g.key}`, g.label, g.label, `scriptgroup:${g.key}`, false,
+      g.items.map(e => leaf(e.title, `${e.id} ${e.title} ${e.cmds} ${e.tags.join(' ')}`, `script:${e.id}`, state.script === e.id, e.status, e.id.slice(1)))));
   return { tracks, intro: [introAll, ...introCats], scripts: scriptGroups, sexams: sexamTiers, quizzes, exams: examTiers };
 }
 function renderHomeNav() {
@@ -944,7 +944,7 @@ function renderHomeNav() {
     if (!items) continue;
     if (grp !== lastGroup) { html += `<button class="home-group-label" data-scroll="${grp}">${esc($('#' + grp).textContent)}</button>`; lastGroup = grp; }
     // section count: the 17 intro categories / the 13 quizzes (tracks contain each other, so they show none)
-    const counted = sec === 'intro' ? tree[sec].filter(n => n.kids) : tree[sec];
+    const counted = sec === 'intro' ? tree[sec].filter(n => n.kids) : sec === 'scripts' ? [{ done: Scripts.doneCount(), total: Scripts.list().length }] : tree[sec];
     const done = sec === 'tracks' ? 0 : sum2(counted, 'done'), total = sec === 'tracks' ? 0 : sum2(counted, 'total');
     html += `<details class="topic" data-sec="${sec}" data-scroll="${headId}"${q || !closed.has(sec) ? ' open' : ''}>
       <summary><span class="t-name">${esc($('#' + headId).textContent)}</span>${sec === 'tracks' ? '' : `<span class="t-count">${done}/${total}</span>`}</summary>
@@ -990,7 +990,7 @@ function homeGo(go) {
   } else if (act === 'quizq') Theory.go(a, b);
   else if (act === 'script') { const e = Scripts.entry(a); Scripts.go(a, e ? (e.steps.find(s => !e.passed.includes(s.n)) || e.steps[0]).n : 1); }
   else if (act === 'scriptgroup') {
-    const es = Scripts.list().filter(e => e.group === a), next = es.find(e => e.status !== 'pass') || es[0];
+    const es = (Scripts.groups().find(g => g.key === a) || { items: [] }).items, next = es.find(e => e.status !== 'pass') || es[0];
     if (next) Scripts.go(next.id, (next.steps.find(s => !next.passed.includes(s.n)) || next.steps[0]).n);
   }
   else if (act === 'sexam') SExams.go(a);

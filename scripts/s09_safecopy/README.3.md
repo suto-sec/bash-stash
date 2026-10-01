@@ -1,0 +1,1 @@
+If `DEST` is an existing **directory**, the file is copied inside it with its own name, and the message shows the final path: `safecopy.sh a.txt out` prints `Copied a.txt to out/a.txt`. (If `DEST` ends with a slash, do not print a double slash: `out/` also gives `out/a.txt`.)

@@ -1,0 +1,31 @@
+{
+ "id": "s16",
+ "slug": "loglevels",
+ "title": "Counting log levels",
+ "script": "loglevels.sh",
+ "cmds": "grep -c, grep, for, case, exit codes",
+ "level": 3,
+ "tags": [
+  "logs",
+  "text",
+  "exit codes"
+ ],
+ "steps": [
+  {
+   "n": 1,
+   "title": "The errors"
+  },
+  {
+   "n": 2,
+   "title": "Every level"
+  },
+  {
+   "n": 3,
+   "title": "Check the file"
+  },
+  {
+   "n": 4,
+   "title": "Show one level"
+  }
+ ]
+}

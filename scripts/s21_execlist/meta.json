@@ -1,0 +1,31 @@
+{
+ "id": "s21",
+ "slug": "execlist",
+ "title": "Executable scripts",
+ "script": "execlist.sh",
+ "cmds": "find -type f -perm /111 -name, mkdir -p, cp, while read, counters",
+ "level": 3,
+ "tags": [
+  "find",
+  "permissions",
+  "copy and move"
+ ],
+ "steps": [
+  {
+   "n": 1,
+   "title": "List the executable scripts"
+  },
+  {
+   "n": 2,
+   "title": "Optional directory and errors"
+  },
+  {
+   "n": 3,
+   "title": "Copy them to ~/bin"
+  },
+  {
+   "n": 4,
+   "title": "Count the copies"
+  }
+ ]
+}

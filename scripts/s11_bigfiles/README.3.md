@@ -1,0 +1,1 @@
+An optional second argument `BYTES` replaces the 100-byte limit (`bigfiles.sh data 300`). It must be a non-negative integer (digits only): otherwise an error message that includes it and exit code **4**. One or two arguments are valid; anything else is the usage error (code 1). The directory checks come before the limit check.

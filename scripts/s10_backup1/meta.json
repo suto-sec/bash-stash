@@ -1,0 +1,31 @@
+{
+ "id": "s10",
+ "slug": "backup1",
+ "title": "A small backup",
+ "script": "backup1.sh",
+ "cmds": "cp, mkdir -p, test, for, counters",
+ "level": 2,
+ "tags": [
+  "files",
+  "copy and move",
+  "exit codes"
+ ],
+ "steps": [
+  {
+   "n": 1,
+   "title": "Copy into ~/backup"
+  },
+  {
+   "n": 2,
+   "title": "Create the directory if needed"
+  },
+  {
+   "n": 3,
+   "title": "Many files, count the successes"
+  },
+  {
+   "n": 4,
+   "title": "No files, wrong usage"
+  }
+ ]
+}

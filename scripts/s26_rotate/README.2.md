@@ -1,0 +1,1 @@
+Older copies must not be lost: before copying, `FILE.1` becomes `FILE.2`, `FILE.2` becomes `FILE.3`, and so on for as many numbered copies as exist (start from the **highest** one, or they overwrite each other). Then `FILE` is copied to `FILE.1` and emptied as before.

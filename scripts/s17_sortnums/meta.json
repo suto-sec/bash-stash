@@ -1,0 +1,31 @@
+{
+ "id": "s17",
+ "slug": "sortnums",
+ "title": "Sorting numbers",
+ "script": "sortnums.sh",
+ "cmds": "sort -n -r, head, tail, test, exit codes",
+ "level": 3,
+ "tags": [
+  "text",
+  "pipes",
+  "files"
+ ],
+ "steps": [
+  {
+   "n": 1,
+   "title": "Sort them"
+  },
+  {
+   "n": 2,
+   "title": "Smallest and largest"
+  },
+  {
+   "n": 3,
+   "title": "Check the file"
+  },
+  {
+   "n": 4,
+   "title": "Descending"
+  }
+ ]
+}

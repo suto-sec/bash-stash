@@ -1,0 +1,1 @@
+If the **first** argument is `-i`, the search ignores upper/lower case (`grep -i`) and the word and files follow (`grepcount.sh -i error a.log`). Everything else stays the same; `-i` with fewer than two more arguments is the usage error.

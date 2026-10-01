@@ -1,0 +1,27 @@
+{
+ "id": "s08",
+ "slug": "vowels",
+ "title": "Counting vowels",
+ "script": "vowels.sh",
+ "cmds": "tr, wc, echo, for, exit codes",
+ "level": 2,
+ "tags": [
+  "text",
+  "arguments",
+  "pipes"
+ ],
+ "steps": [
+  {
+   "n": 1,
+   "title": "Vowels of a word"
+  },
+  {
+   "n": 2,
+   "title": "Exactly one text"
+  },
+  {
+   "n": 3,
+   "title": "Many texts and a total"
+  }
+ ]
+}

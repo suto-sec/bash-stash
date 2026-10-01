@@ -1,0 +1,35 @@
+{
+ "id": "s30",
+ "slug": "publish",
+ "title": "Publishing configuration files",
+ "script": "publish.sh",
+ "cmds": "find -name -type f, test, mkdir -p, cp, while read -d '', counters, exit codes",
+ "level": 5,
+ "tags": [
+  "find",
+  "copy and move",
+  "exit codes"
+ ],
+ "steps": [
+  {
+   "n": 1,
+   "title": "Find the configuration files"
+  },
+  {
+   "n": 2,
+   "title": "The usual checks"
+  },
+  {
+   "n": 3,
+   "title": "Copy to ~/publish"
+  },
+  {
+   "n": 4,
+   "title": "Count and report failures"
+  },
+  {
+   "n": 5,
+   "title": "Never replace a newer file"
+  }
+ ]
+}

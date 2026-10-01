@@ -4,6 +4,8 @@
 //   solutions/scripts/<id>_<slug>/<n>.sh        (reference code of the script as it is at step n)
 // Source format (details in tools/SCRIPTS_AUTHORING.md):
 //   @@script s01 | slug | Title | script.sh
+//   @@level 1                 difficulty, 1-5 stars (the same scale as the exercises)
+//   @@tags arguments, loops   1-3 topics (see TAGS below)
 //   @@cmds echo, test, ...
 //   @@fixture                  optional: setup() and helpers shared by every step (prepended to each step's checker)
 //   @@step 1 | Step title
@@ -19,19 +21,20 @@ const ROOT = path.join(__dirname, '..');
 const SRC = path.join(__dirname, 'src/scripts');
 const OUT = path.join(ROOT, 'scripts');
 const SOL = path.join(ROOT, 'solutions/scripts');
-// sidebar / home groups, by script number
-const GROUPS = [[1, 8, 'First steps'], [9, 20, 'Files and text'], [21, 30, 'Close to the exam']];
-const groupOf = n => (GROUPS.find(g => n >= g[0] && n <= g[1]) || [0, 0, 'More'])[2];
+// the tags a script may carry (1-3 each); the home page can group the scripts by them
+const TAGS = ['arguments', 'exit codes', 'tests', 'loops', 'case', 'arithmetic', 'files', 'text', 'find', 'copy and move', 'permissions', 'archives', 'logs', 'pipes'];
 
 function parse(file) {
   const lines = fs.readFileSync(file, 'utf8').split('\n');
-  const o = { cmds: '', fixture: [], steps: [] };
+  const o = { cmds: '', level: 0, tags: [], fixture: [], steps: [] };
   let sec = null, step = null;
   const fail = (n, m) => { throw new Error(`${path.basename(file)}${n == null ? '' : ':' + (n + 1)}: ${m}`); };
   lines.forEach((l, n) => {
     let m;
     if ((m = l.match(/^@@script\s+(s\d\d)\s*\|\s*([\w-]+)\s*\|\s*(.+?)\s*\|\s*(\S+\.sh)\s*$/))) { Object.assign(o, { id: m[1], slug: m[2], title: m[3], script: m[4] }); sec = null; return; }
     if ((m = l.match(/^@@cmds\s+(.*)$/))) { o.cmds = m[1].trim(); return; }
+    if ((m = l.match(/^@@level\s+([1-5])\s*$/))) { o.level = +m[1]; return; }
+    if ((m = l.match(/^@@tags\s+(.+)$/))) { o.tags = m[1].split(',').map(t => t.trim()); return; }
     if (/^@@fixture\s*$/.test(l)) { sec = 'fixture'; return; }
     if ((m = l.match(/^@@step\s+(\d+)\s*\|\s*(.+?)\s*$/))) {
       if (+m[1] !== o.steps.length + 1) fail(n, `steps must be numbered 1, 2, 3... (got ${m[1]})`);
@@ -46,6 +49,8 @@ function parse(file) {
   if (!o.id) fail(null, 'missing @@script line');
   if (path.basename(file) !== `${o.id.slice(1)}_${o.slug}.txt`) fail(null, `file name must be ${o.id.slice(1)}_${o.slug}.txt`);
   if (!o.steps.length) fail(null, 'no steps');
+  if (!o.level) fail(null, 'missing @@level 1-5');
+  if (!o.tags.length || o.tags.length > 3 || o.tags.some(t => !TAGS.includes(t))) fail(null, `@@tags needs 1-3 of: ${TAGS.join(', ')}`);
   for (const s of o.steps) {
     if (!s.readme.join('').trim() || !s.solution.join('').trim() || !/^\s*ARGS=\(/m.test(s.check.join('\n'))) fail(null, `step ${s.n} needs @@readme, @@solution and a @@check that defines ARGS=( ... )`);
   }
@@ -61,8 +66,7 @@ function write(file, text, mode) {
 function build(o) {
   const dir = path.join(OUT, `${o.id}_${o.slug}`), sol = path.join(SOL, `${o.id}_${o.slug}`);
   fs.rmSync(dir, { recursive: true, force: true }); fs.rmSync(sol, { recursive: true, force: true });
-  const group = groupOf(+o.id.slice(1));
-  write(path.join(dir, 'meta.json'), JSON.stringify({ id: o.id, slug: o.slug, title: o.title, script: o.script, cmds: o.cmds, group,
+  write(path.join(dir, 'meta.json'), JSON.stringify({ id: o.id, slug: o.slug, title: o.title, script: o.script, cmds: o.cmds, level: o.level, tags: o.tags,
     steps: o.steps.map(s => ({ n: s.n, title: s.title })) }, null, 1) + '\n');
   for (const s of o.steps) {
     write(path.join(dir, `README.${s.n}.md`), s.readme.join('\n').trim() + '\n');

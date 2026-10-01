@@ -1,0 +1,1 @@
+If the amount of a line is not a non-negative integer (digits only), print `Error: line N: bad amount 'X'` on standard error (`N` is the line number in the file, blank lines included) and exit with code **3**, **before printing anything on standard output**: check the whole file first.

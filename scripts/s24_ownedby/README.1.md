@@ -1,0 +1,1 @@
+Write `ownedby.sh USER DIR`. It prints the path (as `find` shows it) of every **regular file** below `DIR` that belongs to the user `USER` (`find DIR -type f -user USER`). The order does not matter. In the checker the files belong to `alumno`, and `root` owns none of them.

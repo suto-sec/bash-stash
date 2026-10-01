@@ -1,0 +1,31 @@
+{
+ "id": "s11",
+ "slug": "bigfiles",
+ "title": "Files above a size",
+ "script": "bigfiles.sh",
+ "cmds": "stat -c %s, for, test, arithmetic, exit codes",
+ "level": 2,
+ "tags": [
+  "files",
+  "arguments",
+  "exit codes"
+ ],
+ "steps": [
+  {
+   "n": 1,
+   "title": "Bigger than 100 bytes"
+  },
+  {
+   "n": 2,
+   "title": "Check the directory"
+  },
+  {
+   "n": 3,
+   "title": "Your own limit"
+  },
+  {
+   "n": 4,
+   "title": "Count them"
+  }
+ ]
+}

@@ -1,0 +1,1 @@
+Count the files copied **successfully** and finish with `Published N files`. A file that cannot be copied (unreadable) prints `could not copy PATH` on standard error and does not count; if at least one failed, exit with code **4** after the summary (otherwise 0).

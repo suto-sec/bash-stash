@@ -1,0 +1,35 @@
+{
+ "id": "s22",
+ "slug": "oldfiles",
+ "title": "Moving old files away",
+ "script": "oldfiles.sh",
+ "cmds": "find -mtime, mv, mkdir -p, while read, counters",
+ "level": 4,
+ "tags": [
+  "find",
+  "copy and move",
+  "exit codes"
+ ],
+ "steps": [
+  {
+   "n": 1,
+   "title": "List the old files"
+  },
+  {
+   "n": 2,
+   "title": "Check DAYS"
+  },
+  {
+   "n": 3,
+   "title": "Another directory"
+  },
+  {
+   "n": 4,
+   "title": "Move them to ~/old"
+  },
+  {
+   "n": 5,
+   "title": "Count what moved"
+  }
+ ]
+}

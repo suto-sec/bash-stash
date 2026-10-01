@@ -1,0 +1,1 @@
+Instead of printing the paths, **copy** every one of those files to `$HOME/bin` (a file that is already there is overwritten). If `$HOME/bin` does not exist, create it first and print on standard output exactly `Directory <full path> created`. Names may contain spaces.

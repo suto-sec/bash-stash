@@ -1,0 +1,31 @@
+{
+ "id": "s14",
+ "slug": "userinfo",
+ "title": "Looking up a user",
+ "script": "userinfo.sh",
+ "cmds": "grep, cut -d: -f, test, exit codes",
+ "level": 2,
+ "tags": [
+  "text",
+  "files",
+  "exit codes"
+ ],
+ "steps": [
+  {
+   "n": 1,
+   "title": "The home directory"
+  },
+  {
+   "n": 2,
+   "title": "More fields"
+  },
+  {
+   "n": 3,
+   "title": "Check the arguments and the file"
+  },
+  {
+   "n": 4,
+   "title": "An unknown user"
+  }
+ ]
+}

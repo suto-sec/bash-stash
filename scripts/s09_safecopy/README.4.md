@@ -1,0 +1,1 @@
+If the final destination **already exists**, do not touch it: print an error message that includes its path on standard error and exit with code **3**, with nothing copied and nothing printed on standard output.

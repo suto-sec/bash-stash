@@ -1,0 +1,100 @@
+@@script s22 | oldfiles | Moving old files away | oldfiles.sh
+@@level 4
+@@tags find, copy and move, exit codes
+@@cmds find -mtime, mv, mkdir -p, while read, counters
+@@fixture
+setup() {
+  mkdir -p logs/sub "my logs" empty; local i
+  for i in 1 2 3 4 5; do echo "$i" > "logs/$(word)$i.log"; touch -d "$(randr 1 40) days ago" "logs/$(word)$i.log" 2>/dev/null; done
+  echo old > logs/ancient.log; touch -d "400 days ago" logs/ancient.log
+  echo new > logs/today.log; echo mid > logs/sub/mid.log; touch -d "20 days ago" logs/sub/mid.log
+  echo s > "my logs/two words.log"; touch -d "90 days ago" "my logs/two words.log"; echo x > notadir.txt
+}
+usage_ok() { [[ $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* || $ERR == *oldfiles.sh* ]]; }
+pre_old() { mkdir -p "$H/old"; }
+@@step 1 | List the old files
+@@readme
+Write `oldfiles.sh DAYS`. It prints the path (as `find` shows it) of every **regular file** below the **current directory** that was last modified **more than `DAYS` days ago** (`find . -type f -mtime +DAYS`). The order does not matter.
+@@check
+SORT_OUTPUT=1
+ARGS=('30' '10' '365' '0')
+COMPARE="stdout exit"
+@@solution
+#!/bin/bash
+find . -type f -mtime +"$1"
+@@step 2 | Check DAYS
+@@readme
+Exactly one argument is needed (otherwise: error message **and the correct usage**, exit **1**) and it must be a non-negative integer (otherwise: error that includes it, exit **2**).
+@@check
+SORT_OUTPUT=1
+ARGS=('30' '0' '365' '' '1 2' 'abc' '-3' '2.5')
+COMPARE="stdout exit errmsg"
+extra_check() {
+  [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }
+  [[ $REF_CODE == 2 ]] && mentions "$(eval "set -- $CASE"; echo "$1")"
+}
+@@solution
+#!/bin/bash
+if (( $# != 1 )); then echo "Error: one number of days is needed" >&2; echo "Usage: $0 days" >&2; exit 1; fi
+[[ $1 =~ ^[0-9]+$ ]] || { echo "Error: '$1' is not a number of days" >&2; exit 2; }
+find . -type f -mtime +"$1"
+@@step 3 | Another directory
+@@readme
+An optional second argument is the directory to search instead of `.`. It must exist (otherwise error with its name, exit **3**) and be a directory (otherwise error with its name, exit **3** too). One or two arguments are valid; the number checks come before the directory checks.
+@@check
+SORT_OUTPUT=1
+ARGS=('30' '30 logs' '10 "my logs"' '365 empty' '' '1 2 3' 'abc logs' '30 nothing' '30 notadir.txt' 'abc nothing')
+COMPARE="stdout exit errmsg"
+extra_check() {
+  [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }
+  [[ $REF_CODE == 2 ]] && mentions "$(eval "set -- $CASE"; echo "$1")"
+  [[ $REF_CODE == 3 ]] && mentions "$(eval "set -- $CASE"; echo "$2")"
+}
+@@solution
+#!/bin/bash
+if (( $# < 1 || $# > 2 )); then echo "Error: wrong number of arguments" >&2; echo "Usage: $0 days [dir]" >&2; exit 1; fi
+[[ $1 =~ ^[0-9]+$ ]] || { echo "Error: '$1' is not a number of days" >&2; exit 2; }
+dir=${2:-.}
+[[ -d $dir ]] || { echo "Error: $dir is not a directory" >&2; exit 3; }
+find "$dir" -type f -mtime +"$1"
+@@step 4 | Move them to ~/old
+@@readme
+Instead of printing, **move** those files to `$HOME/old` (a file already there with the same name is overwritten). If `$HOME/old` does not exist, create it and print exactly `Directory <full path> created` first. Names may contain spaces.
+@@check
+ARGS=('30 logs' '30 logs $(pre_old)' '10 "my logs"' '365 empty' '0 logs $(pre_old)')
+COMPARE="stdout exit errmsg files"
+@@solution
+#!/bin/bash
+if (( $# < 1 || $# > 2 )); then echo "Error: wrong number of arguments" >&2; echo "Usage: $0 days [dir]" >&2; exit 1; fi
+[[ $1 =~ ^[0-9]+$ ]] || { echo "Error: '$1' is not a number of days" >&2; exit 2; }
+dir=${2:-.}
+[[ -d $dir ]] || { echo "Error: $dir is not a directory" >&2; exit 3; }
+dest=$HOME/old
+if [[ ! -d $dest ]]; then mkdir -p "$dest"; echo "Directory $dest created"; fi
+while IFS= read -r -d '' f; do
+  mv -f -- "$f" "$dest/"
+done < <(find "$dir" -type f -mtime +"$1" -print0)
+@@step 5 | Count what moved
+@@readme
+Finish with `Moved N files`, counting only the files moved successfully; a failed one prints `could not move PATH` on standard error. Everything else stays as before.
+@@check
+ARGS=('30 logs' '30 logs $(pre_old)' '10 "my logs"' '365 empty' '0 logs' '' 'abc' '30 nothing' '30 notadir.txt')
+COMPARE="stdout exit errmsg files"
+extra_check() {
+  [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }
+  [[ $REF_CODE == 2 ]] && mentions "$(eval "set -- $CASE"; echo "$1")"
+  [[ $REF_CODE == 3 ]] && mentions "$(eval "set -- $CASE"; echo "$2")"
+}
+@@solution
+#!/bin/bash
+if (( $# < 1 || $# > 2 )); then echo "Error: wrong number of arguments" >&2; echo "Usage: $0 days [dir]" >&2; exit 1; fi
+[[ $1 =~ ^[0-9]+$ ]] || { echo "Error: '$1' is not a number of days" >&2; exit 2; }
+dir=${2:-.}
+[[ -d $dir ]] || { echo "Error: $dir is not a directory" >&2; exit 3; }
+dest=$HOME/old
+if [[ ! -d $dest ]]; then mkdir -p "$dest"; echo "Directory $dest created"; fi
+n=0
+while IFS= read -r -d '' f; do
+  if mv -f -- "$f" "$dest/" 2>/dev/null; then n=$((n + 1)); else echo "could not move $f" >&2; fi
+done < <(find "$dir" -type f -mtime +"$1" -print0)
+echo "Moved $n files"

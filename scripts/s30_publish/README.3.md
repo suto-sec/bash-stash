@@ -1,0 +1,1 @@
+Instead of printing the paths, **copy** the files to `$HOME/publish` (a file with the same name already there is overwritten). If `$HOME/publish` does not exist, create it and print exactly `Directory <full path> created` first. All the `.conf` names in the checker are different.
