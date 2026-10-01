@@ -7,6 +7,7 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 const { spawn, execFileSync } = require('child_process');
 const { WebSocketServer } = require('ws');
 const pty = require('node-pty');
@@ -418,6 +419,62 @@ function ensurePlay(ex) {
   return fs.existsSync(dir) ? dir : null;
 }
 
+// ------------------------------------------------------------------ checker runs
+// The checker's text is streamed as it runs. LAB_REPORT also makes the engine dump the raw data of the first
+// failing cases (lib/engine.sh: report_case); once it exits that is parsed and appended as one "\x1e<json>"
+// line before the "[exit N]" trailer, which the page turns into its side-by-side diff and hints.
+function parseReport(file) {
+  const rows = fs.readFileSync(file, 'utf8').split('\n');
+  const txt = b => Buffer.from(b || '', 'base64').toString('utf8');
+  const list = b => { const a = txt(b).split('\0'); a.pop(); return a; };
+  const cases = [], sum = {};
+  let cur = {};
+  for (const row of rows) {
+    if (row === '--') { cases.push(cur); cur = {}; continue; }
+    const t = row.indexOf('\t');
+    if (t < 0) continue;
+    const k = row.slice(0, t), v = row.slice(t + 1);
+    if (k === 'summary') sum.line = txt(v);
+    else if (k === 'sb') sum.sb = txt(v);
+    else if (k === 'env') sum.env = list(v).filter(Boolean);
+    else if (k === 'root') sum.root = txt(v) === 'root';
+    else if (k === 'args' || k === 'fails') cur[k] = list(v);
+    else if (k === 'detail') cur.detail = txt(v).split(' ').filter(Boolean);
+    else if (k === 'seed' || k === 'index') cur[k] = Number(txt(v));
+    else if (k === 'ref_code' || k === 'usr_code') cur[k] = Number(txt(v));
+    else cur[k] = txt(v);
+  }
+  if (!sum.line) return null;      // the checker stopped early (setup error, quiz, ...): the text says why
+  const [ncase, bad, nargs, seeds, script, ...rest] = sum.line.split(' ');
+  return { cases, sb: sum.sb, env: sum.env || [], root: !!sum.root, ncase: Number(ncase), bad: Number(bad), nargs: Number(nargs), seeds: Number(seeds), script,
+           sorted: rest.includes('sorted'), compare: (rest.filter(x => x && x !== 'sorted').pop() || '').split(',') };
+}
+function streamCheck(res, args) {
+  res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' });
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'lab-report-')), file = path.join(tmp, 'r');
+  const p = spawn(path.join(LAB, 'bin/check'), args, { cwd: LAB, env: { ...process.env, LAB_COLOR: '1', LAB_REPORT: file } });
+  p.stdout.on('data', d => res.write(d));
+  p.stderr.on('data', d => res.write(d));
+  p.on('close', code => {
+    let rep = null;
+    try { rep = parseReport(file); } catch { /* no report: the text alone is shown */ }
+    fs.rmSync(tmp, { recursive: true, force: true });
+    if (rep) res.write('\n\x1e' + JSON.stringify(rep) + '\n');
+    res.end(`\n\x1b[2m[exit ${code}]\x1b[0m\n`);
+  });
+  res.on('close', () => { if (p.exitCode === null) p.kill(); }); // browser went away
+}
+// "Try with the test files": the fixture of one failing case (its seed), built apart from the practice
+// folder so nothing the learner has there is touched. Optional STEP for a script's step.
+function buildFailing(id, seed, step) {
+  const base = path.join(process.env.HOME || '/home/alumno', 'play', id + '-failing');
+  const env = { ...process.env, LAB_PLAY_DIR: base };
+  if (step) env.STEP = String(step);
+  execFileSync(path.join(LAB, 'bin/play'), [id, String(seed)], { cwd: LAB, stdio: 'ignore', env });
+  return { work: path.join(base, 'work'), home: path.join(base, 'home'), stdin: fs.existsSync(path.join(base, 'stdin.txt')) ? path.join(base, 'stdin.txt') : null };
+}
+const validSeed = v => /^\d{1,10}$/.test(v || '') ? Number(v) : null;
+
 // ------------------------------------------------------------------ multiple answer attempts
 // Alongside the canonical answer.sh/.txt (attempt "1", implicitly), an exercise directory may hold
 // extra attempts named answer2.sh, answer3.sh, ... — for keeping a previous solve around, or trying
@@ -587,13 +644,7 @@ async function api(req, res, url) {
     if (parts[3] === 'check' && req.method === 'POST') {
       if (!m.steps.some(st => st.n === step)) return send(res, 400, { error: 'no such step' });
       scEnsure(m);
-      res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' });
-      const p = spawn(path.join(LAB, 'bin/check'), [`${m.id}.${step}`], { cwd: LAB, env: { ...process.env, LAB_COLOR: '1' } });
-      p.stdout.on('data', d => res.write(d));
-      p.stderr.on('data', d => res.write(d));
-      p.on('close', code => res.end(`\n\x1b[2m[exit ${code}]\x1b[0m\n`));
-      res.on('close', () => { if (p.exitCode === null) p.kill(); });
-      return;
+      return streamCheck(res, [`${m.id}.${step}`]);
     }
     if (parts[3] === 'solution' && req.method === 'POST') {
       const content = m.steps.some(st => st.n === step) ? scSolution(m, step) : null;
@@ -612,6 +663,13 @@ async function api(req, res, url) {
       }
       fs.writeFileSync(f, text); fs.chmodSync(f, 0o755);
       return send(res, 200, { ok: true });
+    }
+    if (parts[3] === 'play' && req.method === 'POST') {
+      const seed = validSeed(url.searchParams.get('seed'));
+      if (seed == null || !m.steps.some(st => st.n === step)) return send(res, 400, { error: 'bad seed or step' });
+      scEnsure(m);
+      try { return send(res, 200, { ...buildFailing(m.id, seed, step), script: m.script }); }
+      catch (e) { return send(res, 500, { error: String(e) }); }
     }
     if (parts[3] === 'reset' && req.method === 'POST') {
       try { buildPlay(m.id); } catch (e) { return send(res, 500, { error: String(e) }); }
@@ -640,13 +698,7 @@ async function api(req, res, url) {
       const cur = sxCurrent(m.id);
       if (!cur) return send(res, 409, { error: 'no attempt in progress' });
       if (!cur.settings.checkAnytime) return send(res, 403, { error: 'this attempt grades only when you submit it' });
-      res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' });
-      const p = spawn(path.join(LAB, 'bin/check'), [m.id, path.join(sxWorkDir(m.id), m.script)], { cwd: LAB, env: { ...process.env, LAB_COLOR: '1' } });
-      p.stdout.on('data', d => res.write(d));
-      p.stderr.on('data', d => res.write(d));
-      p.on('close', code => res.end(`\n\x1b[2m[exit ${code}]\x1b[0m\n`));
-      res.on('close', () => { if (p.exitCode === null) p.kill(); });
-      return;
+      return streamCheck(res, [m.id, path.join(sxWorkDir(m.id), m.script)]);
     }
     if (parts[3] === 'submit' && req.method === 'POST') {
       const cur = sxCurrent(m.id);
@@ -682,7 +734,7 @@ async function api(req, res, url) {
   }
 
   const ex = parts[2] ? findExercise(parts[2]) : null;
-  if (['exercise', 'check', 'solution', 'reset', 'attempt'].includes(parts[1]) && !ex) return send(res, 404, { error: 'no such exercise' });
+  if (['exercise', 'check', 'solution', 'reset', 'attempt', 'play'].includes(parts[1]) && !ex) return send(res, 404, { error: 'no such exercise' });
 
   if (parts[1] === 'exercise' && req.method === 'GET') {
     const readme = stripCliFooter(fs.readFileSync(path.join(ex.dir, 'README.md'), 'utf8'));
@@ -697,6 +749,13 @@ async function api(req, res, url) {
     return send(res, 200, { playDir: playDirFor(ex.id) });
   }
 
+  if (parts[1] === 'play' && req.method === 'POST') {
+    const seed = validSeed(url.searchParams.get('seed'));
+    if (seed == null || ex.quiz) return send(res, 400, { error: 'bad seed' });
+    try { return send(res, 200, { ...buildFailing(ex.id, seed), script: 'answer.sh' }); }
+    catch (e) { return send(res, 500, { error: String(e) }); }
+  }
+
   if (parts[1] === 'attempt' && req.method === 'POST') {
     const body = await readBody(req);
     try { return send(res, 200, createAttempt(ex, body.from)); }
@@ -709,15 +768,7 @@ async function api(req, res, url) {
     const fileArg = url.searchParams.get('file');
     const args = [ex.id];
     if (isValidAttemptFile(ex, fileArg)) args.push(path.join(ex.dir, fileArg));
-    // stream the real checker's output (with ANSI colours) as it runs
-    res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store',
-                         'X-Content-Type-Options': 'nosniff' });
-    const p = spawn(path.join(LAB, 'bin/check'), args, { cwd: LAB, env: { ...process.env, LAB_COLOR: '1' } });
-    p.stdout.on('data', d => res.write(d));
-    p.stderr.on('data', d => res.write(d));
-    p.on('close', code => res.end(`\n\x1b[2m[exit ${code}]\x1b[0m\n`));
-    res.on('close', () => { if (p.exitCode === null) p.kill(); }); // browser went away
-    return;
+    return streamCheck(res, args);   // the real checker's output (ANSI colours) as it runs, then its report
   }
 
   if (parts[1] === 'solution' && req.method === 'POST') {

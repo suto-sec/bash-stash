@@ -195,6 +195,26 @@ show_diff() { # label expected got
 
 fail() { FAILS+=("$*"); }
 
+# LAB_REPORT=<file>: besides the text below, append the raw data of the first failing cases (the web UI turns
+# it into its side-by-side diff and hints). One "key<TAB>base64" line per field, "--" ends a case, a final
+# "summary" line. Unset (the default) none of this runs, so the practice-exam grader is untouched.
+report_field() { printf '%s\t%s\n' "$1" "$(head -c 20000 | base64 -w0)" >> "$LAB_REPORT"; }
+report_case() { # case-string seed index (reads the run in $RES, FAILS and detail from check_script)
+  local s=$RES/usr r=$RES/ref
+  printf '%s' "$1" | report_field case
+  printf '%s' "$2" | report_field seed
+  printf '%s' "$3" | report_field index
+  report_field args < "$s/args"; report_field stdin < "$s/stdin"
+  report_field ref_out < "$r/out.f"; report_field usr_out < "$s/out.f"
+  report_field ref_err < "$r/err"; report_field usr_err < "$s/err"
+  report_field ref_code < "$r/code"; report_field usr_code < "$s/code"
+  printf '%s ' "${detail[@]}" | report_field detail
+  printf '%s\0' "${FAILS[@]}" | report_field fails
+  if [[ $COMPARE == *files* ]]; then report_field ref_fs < "$r/fs"; report_field usr_fs < "$s/fs"; fi
+  if declare -F capture >/dev/null; then report_field ref_capture < "$r/capture"; report_field usr_capture < "$s/capture"; fi
+  echo -- >> "$LAB_REPORT"
+}
+
 check_script() { # dir answer -> 0 pass
   local dir=$1 answer=$2 sol seed c ncase=0 bad=0 ci
   # practice exams only record, per objective, how many cases passed (see grade_exam); the output below is unchanged
@@ -229,8 +249,9 @@ check_script() { # dir answer -> 0 pass
       fi
       if (( ${#FAILS[@]} )); then
         bad=$((bad+1))
+        [[ -n ${LAB_REPORT:-} ]] && (( bad <= 3 )) && report_case "$c" "$((seed*7919))" "$ci"
         if (( bad <= 2 )); then
-          echo "  ${R}✘${N} case: ${B}${c:-<no arguments>}${N}  ${D}(fixture seed $((seed*7919)) → play $(ex_id "$dir") $((seed*7919)))${N}"
+          echo "  ${R}✘${N} case: ${B}${c:-<no arguments>}${N}  ${D}(fixture seed $((seed*7919)))${N}"
           printf '    %s\n' "${FAILS[@]}"
           for d in "${detail[@]}"; do
             case $d in
@@ -246,6 +267,10 @@ check_script() { # dir answer -> 0 pass
     done
   done
   reset_sb
+  [[ -n ${LAB_REPORT:-} ]] && printf '%s' "$SB" | report_field sb
+  [[ -n ${LAB_REPORT:-} ]] && printf '%s\0' "${ENV[@]}" | report_field env
+  [[ -n ${LAB_REPORT:-} ]] && printf '%s' "${RUN_AS_ROOT:+root}" | report_field root
+  [[ -n ${LAB_REPORT:-} ]] && printf '%s' "$ncase $bad ${#ARGS[@]} $SEEDS $SCRIPT_NAME ${SORT_OUTPUT:+sorted} ${COMPARE// /,}" | report_field summary
   (( bad )) && { (( bad > 2 )) && echo "  ${D}... $bad of $ncase cases failed${N}"; return 1; }
   echo "  ${G}✔${N} $ncase/$ncase cases passed"
   return 0
@@ -297,7 +322,7 @@ check_one() { # id [answer-file] -> 0 pass, 1 fail, 3 not attempted
 play() { # id [seed] -> build fixture in ~/play/<id>
   local dir id seed=${2:-7919}
   dir=$(ex_dir "$1") || exit 2; id=$(ex_id "$dir"); load_spec "$dir"
-  local P=$HOME/play/$id
+  local P=${LAB_PLAY_DIR:-$HOME/play/$id}   # LAB_PLAY_DIR: the web UI builds a failing case apart from the practice folder
   chmod -R u+rwx "$P" 2>/dev/null; rm -rf "$P"; mkdir -p "$P/work" "$P/home"
   rng_seed "$seed"
   ( cd "$P/work" && export HOME=$P/home W=$P/work H=$P/home && umask 022 && SEED=$seed && setup ) >/dev/null

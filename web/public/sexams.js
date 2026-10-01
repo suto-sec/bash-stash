@@ -327,22 +327,10 @@ const SExams = (() => {
     btn.disabled = true; btn.textContent = T('checking');
     box.classList.remove('hidden', 'pass', 'fail');
     $('#result-title').textContent = T('checking');
-    let text = '';
-    try {
-      const r = await fetch(`/api/sexams/${cur.id}/check`, { method: 'POST' });
-      if (!r.ok) { text = (await r.json()).error || 'error'; body.textContent = text; box.classList.add('fail'); return; }
-      const reader = r.body.getReader(), dec = new TextDecoder();
-      for (;;) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        text += dec.decode(value, { stream: true });
-        body.innerHTML = ansiToHtml(text);
-      }
-    } catch (e) { text += `\n${e}`; body.textContent = text; }
-    const code = ([...text.matchAll(/\[exit (\d+)\]/g)].pop() || [])[1];
-    box.classList.add(code === '0' ? 'pass' : 'fail');
-    $('#result-title').textContent = code === '0' ? '✔ OK' : '✘';
-    body.innerHTML = ansiToHtml(text.replace(/\n?\x1b\[2m\[exit \d+\]\x1b\[0m\s*$/, ''));
+    const res = await CheckView.run(`/api/sexams/${cur.id}/check`, body);
+    box.classList.add(res.code === '0' ? 'pass' : 'fail');
+    $('#result-title').textContent = res.code === '0' ? '✔ OK' : '✘';
+    CheckView.show(body, res);
     btn.disabled = false; btn.textContent = T('check'); busy = false;
   };
 
