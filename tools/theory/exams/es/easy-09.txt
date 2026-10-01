@@ -1,0 +1,73 @@
+@@exam easy-09 | Examen fácil 9
+@@about
+Diez preguntas de respuesta única sobre lo básico: sintaxis de if, grupos, info, tee, la línea de mandatos de GRUB, puntos de montaje, comillas, herramientas de texto, propietarios y top.
+
+@@q single | Un if con varias ramas
+¿Qué `if` está escrito correctamente en bash?
+(+) `if [ "$n" -gt 0 ]; then echo pos; elif [ "$n" -lt 0 ]; then echo neg; else echo zero; fi` :: Cada test va seguido de `;` (o un salto de línea) antes de `then`, la rama adicional es `elif` y todo termina con `fi`.
+(-) `if [ "$n" -gt 0 ] then echo pos; else if [ "$n" -lt 0 ] then echo neg; fi` :: No hay `;` antes de `then`, así que la shell da un error de sintaxis cerca de `else`.
+(-) `if [ "$n" -gt 0 ]; then echo pos; elsif [ "$n" -lt 0 ]; then echo neg; fi` :: `elsif` no existe en bash; la palabra clave es `elif`.
+(-) `if ["$n" -gt 0]; then echo pos; elif ["$n" -lt 0]; then echo neg; fi` :: `[` es un mandato y necesita espacios alrededor: `["5"` se lee como un mandato desconocido llamado `[5`.
+
+@@q single | Miembros de un grupo
+¿Qué afirmación sobre `/etc/group` es FALSA?
+(-) Cada línea tiene cuatro campos separados por dos puntos: nombre del grupo, marcador de contraseña, GID y lista de miembros. :: Cierto: por ejemplo `devs:x:1004:luke,sally`.
+(-) Los miembros se escriben separados por comas. :: Cierto: `luke,sally,rmartin`.
+(-) Un usuario puede pertenecer a un grupo sin aparecer en su lista de miembros, si ese grupo es su grupo primario. :: Cierto: el grupo primario no se toma de esa lista.
+(+) El grupo primario de un usuario es aquel que lo lista como miembro en `/etc/group`. :: Falso: el grupo primario es el GID escrito en la línea del usuario en `/etc/passwd`; `/etc/group` lista los miembros suplementarios.
+
+@@q single | Moverse por info
+¿Qué afirmación sobre `info` es CIERTA?
+(+) `u` sube un nivel en el árbol de nodos y `l` vuelve al último nodo visitado. :: `info` organiza un manual como un árbol de nodos; `n`, `p`, `u` se mueven por él y `l` retrocede.
+(-) `n` y `p` desplazan el nodo actual una línea hacia abajo y hacia arriba. :: Saltan al nodo siguiente y al anterior; el desplazamiento se hace con la barra espaciadora y la tecla de retroceso.
+(-) `q` vuelve al nodo anterior; para salir de `info` se pulsa `x`. :: `q` es la tecla que sale de `info`.
+(-) `Tab` pasa a la página siguiente del nodo. :: `Tab` mueve el cursor al siguiente enlace (entrada de menú o referencia cruzada) del nodo.
+
+@@q single | Pantalla y fichero a la vez
+¿Qué mandato muestra la salida de `ls` en pantalla y además la guarda en `list.txt`?
+(+) `ls | tee list.txt` :: `tee` copia su entrada a su salida y al fichero.
+(-) `ls > list.txt` :: La salida va solo al fichero; no se muestra nada.
+(-) `ls | list.txt` :: La shell intenta ejecutar `list.txt` como mandato: «command not found».
+(-) `ls | cat > list.txt` :: `cat` solo reenvía los datos y el `>` los manda al fichero: nada llega a la pantalla.
+
+@@q single | chainloader en GRUB
+En la línea de mandatos de GRUB, ¿para qué sirve `chainloader +1`?
+(+) Para ceder el control al gestor de arranque de otra partición o sistema, en lugar de cargar un núcleo. :: Es el encadenamiento (chain loading): GRUB no carga un núcleo, sino que arranca el otro gestor de arranque.
+(-) Para cargar un núcleo Linux en memoria y pasarle los parámetros de la línea de mandatos. :: Eso se hace con `linux` (y `initrd` para el disco RAM inicial).
+(-) Para seleccionar la partición que contiene `/boot`. :: Eso se hace con `set root=...` (o `search`).
+(-) Para reconstruir `grub.cfg` a partir de los ficheros de `/etc/grub.d/`. :: Eso es `update-grub`, que se ejecuta desde una shell normal, no desde el prompt de GRUB.
+
+@@q single | Un punto de montaje con ficheros
+El directorio `/mnt/data` contiene el fichero `old.txt`. Montas sobre `/mnt/data` una partición que contiene `new.txt`. ¿Qué muestra `ls /mnt/data`?
+(+) Solo `new.txt`: `old.txt` queda oculto hasta que se desmonte la partición. :: Montar tapa el contenido anterior del punto de montaje; no se borra y reaparece tras `umount`.
+(-) Tanto `old.txt` como `new.txt`, mezclados en un único listado. :: Un montaje no mezcla directorios: sustituye lo que se ve en esa ruta.
+(-) Solo `old.txt`, hasta que vuelvas a hacer `cd` en el directorio. :: El montaje surte efecto de inmediato para todos.
+(-) Nada: el punto de montaje se vacía cuando se monta algo sobre él. :: Los ficheros no se borran; simplemente no se pueden alcanzar mientras dura el montaje.
+
+@@q single | Imprimir un dólar y comillas
+¿Qué mandato imprime exactamente `Cost: $5 "net"`?
+(+) `echo 'Cost: $5 "net"'` :: Las comillas simples mantienen todos los caracteres tal cual, comillas dobles y `$5` incluidos.
+(-) `echo "Cost: $5 "net""` :: Dentro de comillas dobles `$5` se expande (a nada) y las comillas alrededor de `net` solo cierran y reabren la cadena: imprime `Cost:  net`.
+(-) `echo Cost: $5 "net"` :: `$5` se expande a nada y las comillas desaparecen: imprime `Cost: net`.
+(-) `echo "Cost: $5 \"net\""` :: Los `\"` están bien, pero `$5` se sigue expandiendo: imprime `Cost:  "net"`.
+
+@@q single | Qué hace split
+¿Qué afirmación sobre `split` es FALSA?
+(-) Sin opciones corta la entrada en trozos de 1000 líneas. :: Cierto: 1000 líneas es el tamaño por defecto.
+(-) `split -b 1M big.bin` corta el fichero en trozos de un mebibyte. :: Cierto: `-b` fija el tamaño en bytes (con sufijos como K y M).
+(-) Si no se da prefijo, los trozos se llaman `xaa`, `xab`, `xac`... :: Cierto: el prefijo por defecto es `x`.
+(+) `split` borra el fichero original tras cortarlo. :: Falso: `split` solo lee el fichero; el original sigue ahí después.
+
+@@q single | Quién puede cambiar el propietario
+¿Qué afirmación sobre `chown` y `chgrp` es CIERTA?
+(+) Solo root puede regalar un fichero; el propietario puede cambiar su grupo, pero solo a un grupo al que pertenezca. :: Como usuario normal, `chown root file` falla con «Operation not permitted», y también `chgrp` con un grupo en el que no estás.
+(-) El propietario de un fichero puede dárselo a cualquier otro usuario existente del sistema con `chown`. :: Permitirlo dejaría esquivar las cuotas de disco, así que Linux lo restringe a root.
+(-) `chgrp` cambia los bits de permiso del grupo sobre un fichero. :: `chgrp` cambia qué grupo es el propietario del fichero; los bits se cambian con `chmod`.
+(-) `chown` solo se puede usar sobre directorios. :: Funciona sobre cualquier fichero.
+
+@@q single | Ordenar dentro de top
+Mientras `top` se está ejecutando pulsas `M` (mayúscula). ¿Qué ocurre?
+(+) La lista se ordena por uso de memoria. :: Dentro de `top`, `M` ordena por `%MEM`; `P` ordena por uso de CPU.
+(-) La lista se ordena por uso de CPU. :: Esa es la tecla `P`.
+(-) Un prompt pide el PID de un proceso para matarlo. :: Eso es `k`.
+(-) `top` termina. :: Eso es `q`.
