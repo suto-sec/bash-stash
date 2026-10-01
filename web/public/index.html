@@ -64,10 +64,16 @@
           <span class="settings-row-value" id="theme-row-value">Dark</span>
         </button>
         <div class="layout-menu-sep"></div>
-        <div class="layout-menu-label">Sidebar</div>
+        <div class="layout-menu-label">Exercise sidebar</div>
         <label class="settings-row settings-row-check">
           <span class="settings-row-label">Hide passed exercises</span>
           <input type="checkbox" id="hide-passed">
+        </label>
+        <div class="layout-menu-sep"></div>
+        <div class="layout-menu-label">Home sidebar</div>
+        <label class="settings-row settings-row-check">
+          <span class="settings-row-label">Hide passed exercises and questions</span>
+          <input type="checkbox" id="home-hide-passed">
         </label>
         <div class="layout-menu-sep"></div>
         <div class="layout-menu-label">Theory language</div>
@@ -177,10 +183,12 @@
   </div>
 
   <div class="home-page hidden" id="home-page">
-    <div class="ref-page-head">
+    <div class="ref-page-head" id="home-head">
+      <a href="#/home" class="brand" id="home-brand" title="Choose a collection or track"><span class="prompt">$_</span> bash stash</a>
       <a href="#/ex/" id="home-back" title="Back to exercises">← Exercises</a>
       <strong>Choose what to browse</strong>
       <div class="spacer"></div>
+      <div id="home-head-slot"></div>
     </div>
     <div class="home-layout" id="home-layout">
     <aside class="sidebar" id="home-nav">

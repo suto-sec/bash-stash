@@ -867,20 +867,21 @@ function renderHomeNav() {
   const nav = $('#home-topics');
   if (!nav || !state.index) return;
   const q = $('#home-search').value.trim().toLowerCase();
+  const hidePassed = $('#home-hide-passed').checked;
   const closed = new Set(lsGet('homeNavClosed', [])), openKeys = new Set(lsGet('homeNavOpen', []));
   const tree = homeTree();
   // a node is shown when it matches, or when one of its descendants does (an ancestor match shows all its contents)
   const node = (n, all, depth) => {
     const own = !q || all || n.search.includes(q);
     if (!n.kids) {
-      if (!own) return '';
+      if (!own || (hidePassed && n.status === 'pass')) return '';
       const st = n.status || 'new';
       return `<a class="ex-item d${depth}${n.current ? ' current' : ''}" href="#" data-go="${esc(n.go)}" title="${esc(n.label)}">
         <span class="dot ${st}">${STATUS[st].dot}</span>${n.idTag ? `<span class="ex-id">${esc(n.idTag)}</span>` : ''}<span class="ex-name">${esc(n.label)}</span>
         ${n.total > 1 ? `<span class="t-count">${n.done}/${n.total}</span>` : ''}</a>`;
     }
     const kids = n.kids.map(k => node(k, q ? own : false, depth + 1)).join('');
-    if (q && !own && !kids) return '';
+    if ((q && !own && !kids) || (hidePassed && !kids)) return '';   // nothing left to show under it
     return `<details class="topic entry d${depth}" data-key="${esc(n.key)}"${q || openKeys.has(n.key) ? ' open' : ''}>
       <summary class="${n.current ? 'current' : ''}" data-go="${esc(n.go)}" title="${esc(n.label)}"><span class="t-arrow" title="Show / hide the contents"></span>
         <span class="t-name">${esc(n.label)}</span><span class="t-count">${n.done}/${n.total}</span></summary>
@@ -939,6 +940,7 @@ function homeGo(go) {
 }
 $('#home-body').addEventListener('scroll', syncHomeNav);
 $('#home-search').oninput = renderHomeNav;
+$('#home-hide-passed').onchange = renderHomeNav;
 $('#home-expand-btn').onclick = () => { document.querySelectorAll('#home-topics details').forEach(d => { d.open = true; }); saveHomeNavState(); };
 $('#home-collapse-btn').onclick = () => { document.querySelectorAll('#home-topics details').forEach(d => { d.open = false; }); saveHomeNavState(); };
 $('#home-topics').addEventListener('click', ev => {
@@ -1038,6 +1040,10 @@ function showReferencePage(show) {
 function showHomePage(show) {
   document.querySelector('.layout').classList.toggle('hidden', show);
   $('#home-page').classList.toggle('hidden', !show);
+  // the home page covers the top bar: carry the settings button over to its own bar while it is shown
+  const picker = $('#settings-picker');
+  (show ? $('#home-head-slot') : document.querySelector('.topbar')).appendChild(picker);
+  if (!show) { $('#settings-menu').classList.add('hidden'); $('#settings-btn').setAttribute('aria-expanded', 'false'); }
   if (show) renderHomePage();
 }
 function route() {
