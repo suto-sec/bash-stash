@@ -1,0 +1,90 @@
+@@exam easy-03 | Easy exam 3
+@@tier easy
+@@about
+Ten single-choice questions on the basics: one concept each, with the classic look-alike options.
+
+@@q single | Becoming another user
+@@topic users-sessions
+Which command opens an interactive session as the user `ana`, loading her environment as in a new login?
+(-) `su ana` :: It opens a session as ana, but without the `-` it does not load her login environment (the current directory and most of your variables stay).
+(-) `su -c ls ana` :: `-c` runs a single command and returns; it is not an interactive session.
+(+) `su - ana` :: The `-` makes `su` load the environment of the user it switches to.
+(-) `sudo ana` :: `sudo` runs the command given as argument as another user; `ana` is not a command.
+
+@@q single | Script outside the PATH
+@@topic scripts
+You are in `/home/ana`. The script `backup.sh` has execute permission and is in `/home/ana/scripts`, a directory that is not in the `PATH`. Which command runs it?
+(-) `backup.sh` :: Without a slash the shell looks only in the `PATH`: "command not found".
+(-) `./backup.sh` :: `./` means the current directory, `/home/ana`, where the script is not: "No such file or directory".
+(+) `scripts/backup.sh` :: A relative path with a slash is used as it is, without searching the `PATH`.
+(-) `/scripts/backup.sh` :: It starts at the root of the tree: `/scripts` does not exist.
+
+@@q single | From line 3 onwards
+@@topic filters
+The file `f` has six lines, `a` to `f`, one per line. What does `tail -n+3 f` print?
+(-) `d`, `e`, `f` :: That is `tail -n 3 f`, the last three lines.
+(-) `a`, `b` :: `tail` never prints the beginning of a file; that would be `head -n 2 f`.
+(+) `c`, `d`, `e`, `f` :: `-n+3` means "from line 3 to the end".
+(-) `c` :: Only one line would be printed by `sed -n 3p f`; `tail -n+3` goes on to the end of the file.
+
+@@q single | Permissions on a directory
+@@topic permissions
+Which statement about the permissions of a directory is TRUE?
+(-) With `r` on a directory you can enter it with `cd`. :: Entering needs `x`; `r` is for listing the names.
+(-) With `x` on a directory you can list its names with `ls`. :: Listing the names needs `r`; `x` is for traversing it.
+(+) To create a new file inside a directory you need `w` on that directory. :: Creating or deleting entries changes the directory itself, which is what `w` controls.
+(-) With `w` on a directory you can read the contents of the files inside it. :: Reading a file depends on the permissions of the file; `w` on the directory is about its entries.
+
+@@q single | Variable with a digit
+@@topic expansion-vars
+After `n=3`, what does `echo $n0 ${n}0` print?
+(-) `30 30` :: Without braces the shell reads the name `n0`, not `n` followed by `0`.
+(+) `30` :: `$n0` is the variable `n0`, which is empty and disappears; `${n}0` is `3` followed by `0`.
+(-) `$n0 30` :: `$n0` is expanded, to nothing; only single quotes would print it literally.
+(-) `3 30` :: `$n0` is not `$n` followed by a `0`; it does not give `3`.
+
+@@q single | Overwrite and append
+@@topic redirection-pipes
+What does this print?
+```
+echo a > g
+echo b >> g
+echo c > g
+cat g
+```
+(-) `a`, `b`, `c` on three lines :: The last `>` truncates the file before writing.
+(-) `a` and `c` on two lines :: Only `>>` keeps what was there before, and the last command uses `>`.
+(+) `c` :: `>` empties `g` each time; the last command leaves only `c`.
+(-) `b` and `c` on two lines :: `echo c > g` removes the earlier lines, including `b`.
+
+@@q single | Partition table limits
+@@topic boot-systemd
+Which statement about MBR and GPT partition tables is TRUE?
+(-) MBR allows up to 128 primary partitions, while GPT allows only 4. :: The other way round.
+(+) GPT allows up to 128 primary partitions, while MBR allows only 4. :: One of the reasons GPT was created.
+(-) GPT works only with the legacy BIOS, and MBR only with UEFI. :: GPT goes with UEFI and MBR with the legacy BIOS.
+(-) MBR supports larger partitions than GPT, up to 256 TB. :: The limits are the other way round: about 2 TB for MBR and 256 TB for GPT.
+
+@@q single | Ctrl+Z
+@@topic jobs-procs
+`sleep 300` is running in the foreground and you press Ctrl+Z. What happens?
+(+) It is suspended, not finished: `jobs` lists it as stopped and `bg` or `fg` resumes it. :: Ctrl+Z only pauses the process and returns the prompt.
+(-) The process is terminated and removed from the system, exactly as with Ctrl+C. :: Ctrl+C aborts the command; Ctrl+Z only suspends it.
+(-) The process keeps running, but now in the background so the prompt is free. :: It is paused, not running; it needs `bg` to continue in the background.
+(-) The process is moved to the foreground of a new shell opened for it. :: Nothing is created: you get the prompt of the same shell back.
+
+@@q single | Finding commands
+@@topic shell-help
+Which statement about how the shell finds a command is FALSE?
+(-) A command typed with a slash in it, like `bin/tool`, is not searched in the `PATH`. :: True: it is used as a path.
+(-) `echo $PATH` prints the directories in which the shell searches, separated by `:`. :: True.
+(-) The shell goes through the directories of the `PATH` in order and runs the first match. :: True.
+(+) An executable in the current directory can always be run by typing just its name. :: False: the current directory is searched only if it is in the `PATH`; otherwise you need `./name`.
+
+@@q single | mv into a directory
+@@topic files-fs
+`notes` is a file and `docs` is an existing directory. Which statement about `mv notes docs` is FALSE?
+(-) The file `notes` ends up inside the directory as `docs/notes`. :: True: an existing directory as destination receives the file.
+(-) `notes` no longer exists in the current directory. :: True: `mv` moves, it does not copy.
+(+) The directory `docs` is replaced by a file called `docs`. :: False: `mv` never replaces a directory by a file; it moves the file inside it.
+(-) If `docs/notes` already existed, it would be overwritten. :: True: `mv` replaces a file of the same name without asking (unless `-i` is used).

@@ -1,0 +1,97 @@
+@@exam medium-06 | Medium exam 6
+@@tier medium
+@@about
+Ten single-choice questions that combine two facts or ask you to trace two or three steps: escapes, `xargs`, anchored patterns, mount points, signals, `case` and checking arguments.
+
+@@q single | Escapes in echo
+@@topic expansion-vars
+In bash, what do `echo 'a\tb'` and `echo -e 'a\tb'` print?
+(-) Both print `a`, a tab and `b`, because `\t` is always a tab. :: Without `-e`, `echo` prints the backslash and the `t` as they are.
+(-) Both print `a\tb`, because single quotes block every escape. :: The quotes are not what matters: `-e` makes `echo` interpret `\t`.
+(+) The first prints `a\tb`; the second prints `a`, a tab and `b`. :: `-e` turns on the interpretation of backslash escapes such as `\t` and `\n`.
+(-) The first prints `a`, a tab and `b`; the second prints `a\tb`. :: It is the other way round.
+
+@@q single | Arguments that are not stdin
+@@topic redirection-pipes
+You want to delete every file whose name ends in `~` under the current directory. Which command does it by sending the list of names that `find` prints to `rm`?
+(-) `find . -name '*~' | rm` :: `rm` takes the names as arguments and does not read stdin: it complains "missing operand".
+(-) `find . -name '*~' > rm` :: It writes the list into a file called `rm`; nothing is removed.
+(+) `find . -name '*~' | xargs rm` :: `xargs` reads the names from stdin and runs `rm` with them as arguments.
+(-) `rm | find . -name '*~'` :: The pipe goes in the wrong direction: `rm` would have to produce the names.
+
+@@q single | Patterns on a word list
+@@topic grep-regex
+`w` holds the words `cart`, `cat`, `coat`, `cot` and `ct`, one per line. Which command prints exactly `cat` and `cot`?
+(-) `grep '^c.*t$' w` :: `.*` is any number of characters, so it matches all five words.
+(-) `grep '^co*t$' w` :: `o*` repeats only the `o`: it matches `cot` and `ct`.
+(+) `grep '^c.t$' w` :: Exactly one character of any kind between `c` and `t`, in a line that starts and ends there.
+(-) `grep '^c.?t$' w` :: In a basic regular expression `?` is an ordinary character, so nothing matches.
+
+@@q single | Writing under a mount point
+@@topic files-fs
+`/data` holds the file `old.log`. You mount a disk that contains `new1` and `new2` on `/data`, then run `echo x > /data/new3`, and finally `umount /data`. What does `ls /data` show?
+(-) `old.log`, `new1`, `new2` and `new3` :: While the disk is mounted, `old.log` is hidden; and after `umount` the disk's files are gone from the tree.
+(-) `new1`, `new2` and `new3` :: Those files belong to the disk, which is no longer mounted.
+(+) `old.log` only :: Once unmounted, the original content reappears; `new3` was written on the disk, not in the directory underneath.
+(-) Nothing, because `umount` empties the directory. :: `umount` removes nothing; it only shows again what was under the mount point.
+
+@@q single | Editing the command line
+@@topic shell-help
+Which statement about editing and history in bash is FALSE?
+(-) `Tab` completes the name of a command or file. :: True.
+(-) `Ctrl+A` moves the cursor to the start of the line and `Ctrl+E` to the end. :: True.
+(-) The up arrow retrieves the previous command from the history. :: True.
+(+) `Ctrl+R` and a few characters finds the oldest command that contains them. :: False: it finds the most recent one, and pressing `Ctrl+R` again moves to the next most recent.
+
+@@q single | What the kernel does
+@@topic boot-systemd
+Which statement about what happens after the boot loader hands over the control is FALSE?
+(-) The kernel initialises memory management and the interrupt vector of the CPU. :: True: these are early tasks of the kernel.
+(-) The initrd is a temporary RAM disk with the drivers and tools needed to find the real root filesystem. :: True: it is used until the root filesystem can be mounted.
+(-) The kernel finally looks for the initial process and starts it with PID 1. :: True: it is the process that brings up the services.
+(+) The idle process, with PID 0, is the one that starts the services. :: False: PID 0 is the idle process of the kernel; the services are started by PID 1.
+
+@@q single | Checking the arguments
+@@topic logs-cron
+`need3.sh` contains:
+```
+if [ $# -ne 3 ]; then echo "usage: $0 src dst mode" >&2; exit 1; fi
+echo ok
+```
+You run `bash need3.sh onlyone 2> err.txt; echo "status=$?"; wc -l < err.txt`. What is printed on the screen?
+(-) `usage: need3.sh src dst mode`, then `status=1` and `0` :: The usage message was written to stderr, so it went into `err.txt` and not to the screen.
+(-) `ok`, then `status=0` and `0` :: One argument is not three: the test fails and the script ends before `echo ok`.
+(+) `status=1` and then `1` :: The message went to `err.txt` (one line), and the script ended with status 1.
+(-) `status=0` and then `1` :: `exit 1` sets the status of the script to 1.
+
+@@q single | Seeing the bytes
+@@topic filters
+Which command prints the content of the file `data` as hexadecimal values, one per byte?
+(-) `od -c data` :: `-c` shows the bytes as characters, with escapes such as `\n`.
+(+) `od -t x1 data` :: `-t x1` selects hexadecimal with one byte per value.
+(-) `cmp -l data other` :: It lists the bytes that differ between two files; it does not dump one.
+(-) `diff data other` :: It compares two text files line by line.
+
+@@q single | A case with patterns
+@@topic scripts
+`s.sh` contains:
+```
+case $1 in
+  a*) echo A ;;
+  b|c) echo BC ;;
+  *) echo other ;;
+esac
+```
+What do `bash s.sh abc`, `bash s.sh c` and `bash s.sh bc` print, in this order?
+(-) `A`, `BC`, `BC` :: `b|c` means exactly `b` or exactly `c`; `bc` is neither, so it falls to `*`.
+(-) `A`, `other`, `other` :: `c` is one of the alternatives of `b|c`.
+(+) `A`, `BC`, `other` :: `abc` matches `a*`, `c` matches `b|c`, and `bc` only matches `*`.
+(-) `other`, `BC`, `other` :: `abc` starts with `a`, so the first pattern matches.
+
+@@q single | A process that ignores TERM
+@@topic jobs-procs
+A script has been written to ignore SIGTERM and keep running. You run `kill 4321` on it, wait a second, and then run `kill -9 4321`. What happens?
+(-) The first `kill` ends it, and the second reports that the process does not exist. :: SIGTERM can be caught or ignored, and here it is ignored.
+(-) Both signals are ignored, because a process can ignore any signal. :: SIGKILL (9) cannot be caught or ignored.
+(+) It is still running after the first `kill`, and the second one ends it. :: `kill` sends SIGTERM (15) by default; `-9` sends SIGKILL, which the process cannot refuse.
+(-) The first `kill` stops it temporarily, and the second one makes it continue. :: Neither signal suspends it; the first has no visible effect.

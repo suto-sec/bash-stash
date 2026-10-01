@@ -1,0 +1,73 @@
+@@exam hard-05 | Examen difícil 5
+@@about
+Diez preguntas de respuesta única con trampas: señales que solo llegan al primer plano, estado de las tuberías, alternativas sin `-E`, unidades sin letra, alias que los hijos no heredan y scripts que puedes ejecutar pero no leer.
+
+@@q single | Ctrl+C en un prompt vacío
+Ejecutas `sleep 100 &` y luego, en el prompt vacío, pulsas Ctrl+C. ¿Qué muestra `jobs` después?
+(-) Nada: Ctrl+C terminó el trabajo. :: Ctrl+C se envía al primer plano; el trabajo en segundo plano no se ve afectado.
+(-) El trabajo como parado, como si hubieras pulsado Ctrl+Z. :: Tampoco lo suspendió nada.
+(+) El trabajo todavía en ejecución. :: Las señales del teclado solo van al proceso en primer plano, y en un prompt vacío no hay ninguno, así que `sleep` continúa.
+(-) El trabajo como terminado, porque Ctrl+C hace que la shell lo espere. :: Ctrl+C no hace que la shell espere a nada.
+
+@@q single | Dos palabras en un read
+¿Qué imprime `echo "one two three" | { read a b; echo "$a|$b"; }`?
+(-) `one|two` :: La última variable de `read` recibe todo el texto restante, no solo una palabra.
+(-) `one two three|` :: La primera variable toma solo la primera palabra.
+(+) `one|two three` :: `read` divide la línea en campos y da el resto de la línea a la última variable.
+(-) Espera a que el usuario escriba, porque `read` siempre lee del teclado. :: `read` lee de stdin, que aquí es la tubería.
+
+@@q single | Estado de una tubería y de una subshell
+¿Qué imprimen `false | true; echo $?` y `(exit 3); echo $?`?
+(-) `1` y `0` :: El estado de una tubería es el de su último mandato, y `exit 3` termina la subshell con estado 3.
+(+) `0` y `3` :: `true` es el último mandato de la tubería; la subshell sale con 3 y `$?` lo indica.
+(-) `0` y `0` :: `exit` dentro de los paréntesis termina solo la subshell, pero su estado no se pierde.
+(-) `1` y `3` :: `false` no es el último mandato, así que su estado no cuenta.
+
+@@q single | Alternativas en una búsqueda recursiva
+Un estudiante quiere las líneas que contienen `foo` o `bar` en todos los ficheros bajo `dir`, y escribe `grep -r 'foo|bar' dir`. No imprime nada aunque `dir/f1` contiene `foo here`. ¿Qué está mal?
+(-) `-r` necesita que el nombre del directorio acabe en barra, como en `dir/`. :: Funciona sin ella.
+(-) Los patrones solo se pueden leer de un fichero de patrones que se da con la opción `-f`. :: Un patrón en la línea de mandatos está bien.
+(-) `-r` no se puede combinar con una expresión regular, solo con palabras fijas. :: Busca en los ficheros bajo el directorio usando los mismos patrones.
+(+) Una expresión regular básica trata `|` como texto normal; hace falta `-E`. :: Sin `-E`, `foo|bar` es el texto literal `foo|bar`, que no aparece en ningún sitio.
+
+@@q single | Dos pasos arriba y uno abajo
+Linux tiene un único árbol de directorios. Empezando en cualquier directorio, ejecutas `cd /usr/local/bin`, luego `cd ../../lib`, luego `cd ..`, y `pwd`. ¿Qué se imprime?
+(-) `/usr/local` :: El segundo `cd` sube dos niveles, hasta `/usr`, y luego entra en `lib`; el último `cd ..` sube una vez más.
+(+) `/usr` :: `../../lib` desde `/usr/local/bin` es `/usr/lib`; el último `cd ..` vuelve a `/usr`.
+(-) `/` :: `/` es la raíz: `/usr` está un nivel por debajo, que es donde acaba el último `cd ..`.
+(-) `/usr/lib` :: El último `cd ..` sale de `/usr/lib`.
+
+@@q single | Tamaño sin unidad
+Un estudiante quiere los ficheros mayores de 1000 bytes y escribe `find . -size +1000`. Un fichero de 2000 bytes no aparece, pero uno de 600000 bytes sí. ¿Qué está mal?
+(-) `+` selecciona los ficheros menores, así que los dos signos se han cambiado por error. :: `+` significa mayor que.
+(+) Sin letra la unidad es un bloque de 512 bytes; necesita `+1000c`. :: `+1000` significa más de 1000 bloques, aproximadamente medio megabyte.
+(-) `-size` es una prueba que funciona solo con directorios, no con ficheros regulares. :: Funciona con cualquier fichero.
+(-) La prueba necesita también un nombre de fichero, por ejemplo `-name '*'`, para funcionar. :: Las pruebas se combinan libremente; no hace falta ningún nombre.
+
+@@q single | Lo que hace la shell
+¿Qué afirmación sobre la shell es VERDADERA?
+(-) `cd` es un programa externo, `/bin/cd`, que la shell arranca en un proceso hijo. :: `cd` es un mandato interno: tiene que cambiar el directorio de la propia shell.
+(-) `powershell.exe` es una de las shells habituales de los sistemas tipo Unix como Linux. :: Pertenece a Microsoft Windows.
+(+) Arranca un mandato externo como un proceso nuevo y, sin `&`, lo espera. :: Leer, analizar, ejecutar, esperar y mostrar el prompt: ese es el ciclo de la shell.
+(-) La shell es la interfaz gráfica que se sitúa entre el usuario y el kernel del sistema. :: Es una interfaz de texto.
+
+@@q single | Usuarios y grupos en secuencia
+En un sistema tipo Debian, el grupo `dev` se crea con `addgroup dev` y recibe el GID 1005. Después root ejecuta `adduser ana dev`, `adduser luis dev` y `deluser ana dev`. ¿Qué imprime `grep '^dev:' /etc/group`?
+(-) `dev:x:1005:ana,luis` :: `deluser ana dev` sacó a ana del grupo otra vez.
+(-) `dev:x:1005:` :: Solo se quitó a ana; luis sigue siendo miembro.
+(+) `dev:x:1005:luis` :: `adduser usuario grupo` añade un miembro y `deluser usuario grupo` quita uno, editando el último campo de la línea.
+(-) Nada, porque `deluser` elimina el grupo cuando se saca a un miembro. :: Con dos argumentos `deluser` solo quita al usuario del grupo.
+
+@@q single | Ejecutable pero ilegible
+`ana` es la dueña del script `s.sh` (un script de bash correcto) con modo `--x------`. Ejecuta `./s.sh` y después `bash s.sh`. ¿Qué ocurre?
+(-) Ambos funcionan, porque es la dueña y tiene `x`. :: Para ejecutar un script, el intérprete tiene que leerlo.
+(-) `./s.sh` funciona y `bash s.sh` falla, porque solo el segundo necesita leer el fichero. :: `./s.sh` también necesita leer el fichero: la shell lo abre para ejecutar sus mandatos.
+(-) `./s.sh` falla, pero `bash s.sh` funciona, porque `bash` no necesita el bit `x`. :: `bash s.sh` necesita `r`, que también falta.
+(+) Ambos fallan con `Permission denied`. :: Un script necesita `r` para leerse, y `./` necesita además `x`; el fichero solo tiene `x`.
+
+@@q single | Alias y shells hijas
+En su prompt, ana define `alias ll='ls -l'`. Después ejecuta `bash -c ll`. ¿Qué ocurre?
+(-) Lista el directorio actual en formato largo. :: El alias existe solo en la shell donde se escribió.
+(+) Falla con "ll: command not found". :: El nuevo bash es un proceso hijo y no hereda los alias de su padre.
+(-) Imprime el texto `ls -l`. :: Los alias se expanden, no se imprimen; y en el hijo no existe ninguno.
+(-) Funciona solo si `ll` se hubiera exportado con `export ll`. :: `export` se aplica a variables y funciones, no a alias.

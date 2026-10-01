@@ -1,0 +1,73 @@
+@@exam easy-04 | Examen fácil 4
+@@about
+Diez preguntas de respuesta única sobre lo básico: un concepto en cada una, con las típicas opciones parecidas.
+
+@@q single | Buscar ficheros regulares por nombre
+¿Qué mandato lista los ficheros regulares cuyo nombre acaba en `.conf` dentro de `/etc`?
+(-) `find -name "*.conf" /etc` :: El directorio de partida debe ir antes de las pruebas: `find` se queja de que "paths must precede expression".
+(-) `find /etc -type d -name "*.conf"` :: `-type d` selecciona directorios, no ficheros regulares.
+(+) `find /etc -type f -name "*.conf"` :: `-type f` se queda con los ficheros regulares y el patrón entre comillas lo interpreta el propio `find`.
+(-) `find /etc -f -name "*.conf"` :: `-f` no es una prueba de `find`; el tipo de fichero se selecciona con `-type`.
+
+@@q single | Orden numérico
+El fichero `nums` contiene las líneas `9`, `10` y `100`. ¿Qué mandato las imprime en el orden `9`, `10`, `100`?
+(-) `sort nums` :: El orden alfabético compara carácter a carácter: `10`, `100`, `9`.
+(+) `sort -n nums` :: `-n` compara las líneas como números.
+(-) `sort -r nums` :: `-r` invierte el orden alfabético: `9`, `100`, `10`.
+(-) `sort -u nums` :: `-u` elimina las líneas repetidas pero el orden sigue siendo alfabético: `10`, `100`, `9`.
+
+@@q single | Quitar permiso de escritura
+¿Qué hace `chmod go-w report.txt`?
+(-) Da permiso de escritura al grupo y a los otros. :: `-` quita permisos; `+` los añadiría.
+(-) Quita el permiso de escritura al dueño y al grupo. :: `g` y `o` son grupo y otros; el dueño es `u`.
+(+) Quita el permiso de escritura al grupo y a los otros. :: `go` selecciona esas dos clases, `-` quita y `w` es el permiso de escritura.
+(-) Deja los permisos del grupo y de los otros exactamente en solo escritura. :: Asignar un valor exacto usaría `=`.
+
+@@q single | Control de trabajos
+Has lanzado `sort bigfile` y lo has suspendido con Ctrl+Z; `jobs` lo muestra como el trabajo número 1. ¿Qué afirmación es VERDADERA?
+(-) `fg` vuelve a suspender el trabajo si se está ejecutando en segundo plano. :: `fg` trae un trabajo a primer plano; nunca lo suspende.
+(-) El número de trabajo 1 es el PID del proceso. :: El número de trabajo es un contador de la shell actual; el PID lo asigna el sistema.
+(+) `bg %1` lo reanuda y lo deja ejecutándose en segundo plano. :: `bg` reanuda un trabajo suspendido sin esperar a que termine.
+(-) `jobs` lista todos los procesos de todos los usuarios del sistema. :: `jobs` solo muestra los trabajos de la sesión de shell actual.
+
+@@q single | Mandatos que ignoran stdin
+¿Qué afirmación sobre la redirección de entrada con `<` es FALSA?
+(-) `wc -l < names.txt` imprime solo el número de líneas, sin el nombre del fichero. :: Verdadero: `wc` lee stdin y no conoce ningún nombre de fichero.
+(-) `sort < names.txt` da las mismas líneas que `sort names.txt`. :: Verdadero: ambos leen el fichero, uno por stdin y el otro por su nombre.
+(+) `ls < docs` lista el contenido del directorio `docs`. :: Falso: `ls` no lee stdin, así que lista el directorio actual y `docs` se ignora.
+(-) `cat < names.txt` muestra el fichero porque `cat` lee stdin cuando no recibe nombre de fichero. :: Verdadero: sin argumentos `cat` lee su entrada estándar.
+
+@@q single | Borrar con rm
+¿Qué afirmación sobre `rm` es FALSA?
+(-) `rm notes` sobre un directorio llamado `notes` falla con "Is a directory". :: Verdadero: los directorios necesitan `-r`.
+(-) `rm -r project` borra el directorio `project` y todo lo que contiene. :: Verdadero: `-r` es recursivo.
+(+) `rm -f report.txt` pide confirmación antes de borrar. :: Falso: `-f` fuerza el borrado sin preguntar; la opción que pregunta es `-i`.
+(-) `rm -i report.txt` pregunta antes de borrar el fichero. :: Verdadero: `-i` es interactivo, útil para root.
+
+@@q single | Una línea de sudoers
+`/etc/sudoers` contiene la línea `%staff ALL=(ALL) ALL`. ¿Qué afirmación es VERDADERA?
+(-) Define un usuario cuyo nombre es `%staff`. :: El `%` marca el nombre de un grupo, no de un usuario.
+(+) Cualquier miembro del grupo `staff` puede ejecutar cualquier mandato como cualquier usuario. :: El prefijo `%` selecciona un grupo; `ALL` en cada campo significa cualquier máquina, usuario destino y mandato.
+(-) Solo el usuario `root` puede usar `sudo`, y `staff` es el nombre de la máquina. :: El primer campo indica quién puede usar `sudo`; aquí es un grupo, no una máquina.
+(-) Los miembros de `staff` se convierten en root solo después de escribir la contraseña de root. :: `sudo` pide la contraseña del usuario que lo ejecuta; no hace falta conocer la de root.
+
+@@q single | Contar con grep
+`animals` tiene cuatro líneas: `cat`, `Dog`, `dog food` y `bird`. ¿Qué imprime `grep -ci dog animals`?
+(-) `1` :: Ese es el resultado sin `-i`: solo `dog food` tiene `dog` en minúsculas.
+(+) `2` :: `-i` ignora las mayúsculas, así que `Dog` y `dog food` coinciden, y `-c` imprime cuántas líneas coincidieron.
+(-) `3` :: Ese sería el de las líneas que no contienen `dog` con `grep -vc`, que es otra opción.
+(-) `4` :: Ese es el número total de líneas del fichero, no las que coinciden.
+
+@@q single | Nombre, cuenta y primer argumento
+`show.sh` tiene permiso de ejecución y contiene `echo "$0 has $# args, first is $1"`. ¿Qué imprime `./show.sh red green`?
+(-) `show.sh has 2 args, first is red` :: `$0` es el nombre con el que se llamó al script, así que incluye el `./`.
+(-) `./show.sh has 3 args, first is ./show.sh` :: `$#` no cuenta `$0`, y `$1` es el primer argumento, no el script.
+(+) `./show.sh has 2 args, first is red` :: `$0` es el mandato tal como se escribió, `$#` cuenta los dos argumentos y `$1` es el primero.
+(-) `./show.sh has 2 args, first is green` :: Los argumentos se numeran desde la izquierda: `$1` es `red`.
+
+@@q single | Variables exportadas y no exportadas
+Ejecutas `COLOR=blue` y después `export SIZE=big`. ¿Qué imprime `bash -c 'echo "[$COLOR] [$SIZE]"'`?
+(-) `[blue] [big]` :: Solo las variables exportadas llegan al proceso nuevo; `COLOR` no se exportó.
+(-) `[blue] []` :: Es al revés: `SIZE` se exportó y `COLOR` no.
+(+) `[] [big]` :: `bash -c` arranca un proceso hijo, que hereda `SIZE` pero no `COLOR`.
+(-) `[] []` :: `export` existe precisamente para pasar una variable a los procesos hijos.

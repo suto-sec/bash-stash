@@ -1,0 +1,101 @@
+@@exam medium-07 | Medium exam 7
+@@tier medium
+@@about
+Ten single-choice questions that combine two facts or ask you to trace two or three steps: loops over arguments, escaped dots, startup files, links and permissions, `&&` and `||`, and here-documents.
+
+@@q single | A for loop without a list
+@@topic scripts
+`loop.sh` contains `for v; do echo "<$v>"; done`. What does `bash loop.sh "a b" c` print?
+(-) `<a>`, `<b>` and `<c>` on three lines :: With no list, `for` goes over the arguments as they were given, so `a b` stays together.
+(+) `<a b>` and `<c>` on two lines :: `for v` with no `in` runs once for each argument of the script.
+(-) `<a b c>` on one line :: That is what a single string of all the arguments would give; the loop runs once per argument.
+(-) A syntax error, because `for` needs the word `in` and a list. :: The form without a list is valid and uses the arguments.
+
+@@q single | A literal dot
+@@topic grep-regex
+`v` contains the lines `1.5`, `125` and `1x5`. Which command prints only `1.5`?
+(-) `grep '1.5' v` :: The unescaped dot matches any character, so it matches all three lines.
+(+) `grep '1\.5' v` :: The backslash makes the dot an ordinary character.
+(-) `grep '1*5' v` :: `1*` is zero or more ones, so any line containing a `5` matches: all three.
+(-) `grep -E '1+5' v` :: It looks for one or more ones followed by a 5, like `15` or `115`; none of the lines has that.
+
+@@q single | Editing .bashrc
+@@topic expansion-vars
+You add the line `alias ll='ls -l'` to `~/.bashrc` and, in the terminal you already had open, type `ll`. What happens?
+(-) It works at once, because bash re-reads `.bashrc` before each command. :: `.bashrc` is read when the shell starts.
+(+) `ll` is not found in that terminal; it will work in a new terminal, or after `source ~/.bashrc`. :: The alias is created when the file is read, which happened before you edited it.
+(-) The alias works in every terminal, including this one, but only after a reboot. :: A new shell is enough; no reboot is needed.
+(-) bash gives an error, because aliases cannot be written in `.bashrc`. :: `.bashrc` is precisely the place for the aliases and variables that customise bash.
+
+@@q single | Permissions of a symbolic link
+@@topic permissions
+Which statement about a symbolic link and permissions is FALSE?
+(-) `ls -l` shows the link itself with the mode `lrwxrwxrwx`. :: True: all its bits are on.
+(-) What you can do through the link is decided by the permissions of the file it points to. :: True: the link does not grant or deny anything by itself.
+(-) `chmod 600 link` changes the mode of the target, not of the link. :: True: `chmod` follows the link.
+(+) Because the link shows `rwxrwxrwx`, anybody can read a target whose mode is `rw-------`. :: False: the target's permissions apply, so only its owner can read it.
+
+@@q single | Header of a script
+@@topic logs-cron
+A script must start by printing the name of the machine, the directory it is running in and how many arguments it received. Which line does it?
+(-) `echo "hostname pwd #"` :: The words are printed as plain text; nothing is executed.
+(-) `echo '$(hostname) $PWD $#'` :: Single quotes block the substitutions and the variable, so the text is printed as it is.
+(+) `echo "$(hostname) $PWD $#"` :: The substitution runs `hostname`, `PWD` holds the current directory and `$#` is the number of arguments.
+(-) `echo $hostname $pwd $#` :: `$hostname` and `$pwd` are variables that do not exist, so only the argument count appears.
+
+@@q single | Init systems
+@@topic boot-systemd
+Which statement about the initial process and its styles is FALSE?
+(-) System V init was the standard on Linux for many years. :: True: it was also used by other Unix systems such as AIX and Solaris.
+(-) systemd is the initial process on current Ubuntu, Fedora and Debian. :: True.
+(-) systemd can start services in parallel and restart a service that has died. :: True: it handles the dependencies and watches the services.
+(+) launchd is the initial process of Ubuntu and Fedora. :: False: launchd is the one of macOS.
+
+@@q single | Size of a directory
+@@topic files-fs
+Which command prints one single line with the total disk space used by the directory `projects` and everything in it, in a human-readable unit?
+(-) `du -h projects` :: It prints one line per subdirectory, not only the total.
+(-) `df -h projects` :: It reports the free and used space of the filesystem that contains the directory.
+(+) `du -sh projects` :: `-s` gives only the total and `-h` uses units such as K, M and G.
+(-) `ls -lh projects` :: It lists the files with their individual sizes; it does not add them up.
+
+@@q single | Status as a condition
+@@topic shell-help
+`/nope` does not exist and `/etc` does. What does this print?
+```
+if ls /nope 2> /dev/null; then echo A; else echo B; fi
+if ls /etc > /dev/null; then echo C; else echo D; fi
+```
+(-) `A` and `C` :: Hiding the message does not change the status: `ls /nope` still fails, so the `else` branch runs.
+(-) `B` and `D` :: `ls /etc` succeeds even though its output goes to `/dev/null`.
+(+) `B` and `C` :: `if` looks at the exit status: non-zero for `ls /nope` (so `else`) and zero for `ls /etc` (so `then`).
+(-) `A` and `D` :: Both branches are the opposite of what happens: status 0 is "true" for `if`, and any other value is "false".
+
+@@q single | A chain of filters
+@@topic filters
+What does this print?
+```
+printf 'b,2\na,1\nc,3\n' | sort | head -n 2 | cut -d, -f2
+```
+(-) `2` and `1` :: `sort` runs first, so the order starts with `a`.
+(-) `1`, `2` and `3` :: `head -n 2` keeps only two lines.
+(+) `1` and `2` :: After `sort` the lines are `a,1`, `b,2` and `c,3`; `head` keeps the first two and `cut` prints their second field.
+(-) `a` and `b` :: `-f2` selects the second field, the number.
+
+@@q single | Here-documents
+@@topic redirection-pipes
+What does this print?
+```
+n=4
+cat <<EOF
+n is $n
+EOF
+cat <<'EOF'
+n is $n
+EOF
+wc -w <<< "a b c"
+```
+(-) `n is 4`, `n is 4` and `3` :: With the delimiter quoted (`'EOF'`) the text is taken literally and `$n` is not expanded.
+(-) `n is $n`, `n is $n` and `3` :: With an unquoted delimiter the shell expands `$n` in the text.
+(-) `n is 4`, `n is $n` and `1` :: `<<<` gives `wc` the string `a b c`, which has three words.
+(+) `n is 4`, `n is $n` and `3` :: Unquoted `EOF` expands the variable, quoted `'EOF'` does not, and the here-string has three words.

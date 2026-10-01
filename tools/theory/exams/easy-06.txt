@@ -1,0 +1,84 @@
+@@exam easy-06 | Easy exam 6
+@@tier easy
+@@about
+Ten single-choice questions on the basics: one concept each, with the classic look-alike options.
+
+@@q single | Replacing characters
+@@topic filters
+What does `echo a-b-c | tr - _` print?
+(-) `abc` :: That would be the result of deleting the dashes with `tr -d -`.
+(-) `a_b-c` :: `tr` replaces every occurrence, not only the first one.
+(+) `a_b_c` :: `tr` replaces each character of the first set with the one in the same position of the second set.
+(-) `a-b-c` :: The text is changed: the dashes become underscores.
+
+@@q single | Installing the boot loader
+@@topic boot-systemd
+Which command installs GRUB on the first disk of the machine?
+(-) `update-grub /dev/sda` :: `update-grub` regenerates the menu file `grub.cfg`; it does not install the loader on a disk.
+(+) `grub-install /dev/sda` :: It writes the boot loader to the disk; it is done once, not at every boot.
+(-) `systemctl start grub` :: GRUB is not a service: it runs before the kernel, so `systemd` does not exist yet.
+(-) `cp /boot/grub/grub.cfg /dev/sda` :: `grub.cfg` is the configuration the loader reads, not the loader itself.
+
+@@q single | PID 1
+@@topic jobs-procs
+Which process has PID 1 on a Linux system?
+(-) The idle process of the kernel, which runs when nothing else can. :: The idle process has PID 0.
+(-) The boot loader, since it is the first program that runs when the machine is switched on. :: The boot loader finishes its work before the kernel starts: it is not a process of the running system.
+(+) The first process of the running system, started by the kernel (usually systemd). :: It is the first process of the running system and the ancestor of all the others.
+(-) The login shell of the first user who connects to the machine. :: A login shell is an ordinary process that gets whatever PID is next.
+
+@@q single | Creating a hard link
+@@topic files-fs
+`orig.txt` exists and `copy.txt` does not. Which command makes `copy.txt` a hard link to `orig.txt`?
+(-) `ln -s orig.txt copy.txt` :: With `-s` it is a symbolic link, not a hard link.
+(-) `ln copy.txt orig.txt` :: The existing file goes first: this one looks for a file called `copy.txt` and fails.
+(-) `cp orig.txt copy.txt` :: It creates a second, independent file with its own inode.
+(+) `ln orig.txt copy.txt` :: Without options `ln` makes a hard link: the new name is another entry for the same inode.
+
+@@q single | The order of redirections
+@@topic redirection-pipes
+Which statement about `ls /nope /etc/hostname > out 2>&1` is TRUE?
+(-) The error message appears on the screen and the listing goes to `out`. :: That is what `2>&1 > out` does, because the order of the redirections matters.
+(-) Both the error message and the listing appear on the screen, and `out` stays empty. :: Both streams are redirected to the file.
+(+) Nothing appears on the screen: both the error message and the listing go to `out`. :: `> out` points stdout at the file and then `2>&1` makes stderr go where stdout goes now.
+(-) The error message goes to a file called `1`. :: With `&` before the number, `2>&1` duplicates a descriptor and does not name a file.
+
+@@q single | The authentication log
+@@topic logs-cron
+What does `grep sudo /var/log/auth.log | tail -n 5` show?
+(-) The five users who have used `sudo` most often. :: Nothing is counted per user; the lines are shown as they are.
+(-) The last five lines of `auth.log`, whether or not they mention `sudo`. :: `grep` runs first, so `tail` only sees the lines that contain `sudo`.
+(+) The five most recent lines of `auth.log` that mention `sudo`. :: `auth.log` records the commands run with `sudo`; `grep` keeps those lines and `tail` the last five.
+(-) The five oldest lines of `auth.log` that mention `sudo`. :: `tail` takes lines from the end of its input, not from the start.
+
+@@q single | Searching the manual
+@@topic shell-help
+Which command does the same search as `apropos network`?
+(-) `whatis network` :: `whatis` looks up the name of the page only.
+(-) `man network` :: It opens the page called `network`, if there is one; it does not search descriptions.
+(+) `man -k network` :: `-k` makes `man` search the descriptions of all the pages for the keyword.
+(-) `info network` :: It opens the info page of a tool called `network`; it is not a keyword search.
+
+@@q single | Variables are strings
+@@topic expansion-vars
+Which statement is FALSE?
+(-) `echo $((7*3))` prints `21`, the product of the numbers. :: True: `$(( ))` evaluates the arithmetic.
+(-) `expr 5 + 3` prints `8`, with spaces around the plus. :: True: the spaces around `+` are needed.
+(+) After `n=4` and `n=$n+1`, `echo $n` prints `5`. :: False: variables are strings, so `n` becomes the text `4+1`.
+(-) `echo "2*8" | bc` prints `16`, as `bc` calculates it. :: True: `bc` is a calculator that reads expressions from stdin.
+
+@@q single | Anchors in a pattern
+@@topic grep-regex
+`w` contains the lines `cat`, `cart`, `scatter`, `cut` and `cat5`. Which statement about `grep '^c.t$' w` is TRUE?
+(-) It prints `cat`, `cart` and `cut`. :: `.` matches exactly one character, and `cart` has two letters between `c` and `t`.
+(-) It prints `cat`, `scatter`, `cut` and `cat5`. :: `^` and `$` force the line to start with `c` and end with `t`.
+(+) It prints `cat` and `cut`. :: The whole line must be `c`, one character and `t`.
+(-) It prints nothing, because `^` and `$` cannot be used together. :: They can: together they force the pattern to cover the whole line.
+
+@@q single | Exit status
+@@topic scripts
+Which statement about `$?` is FALSE?
+(-) After a command ends, `$?` holds its exit status. :: True.
+(-) A value of 0 means that the last command ended successfully. :: True: any other value means an error.
+(+) `$?` is the PID of the shell that runs the script. :: False: that is `$$`; `$?` is only the exit status of the last command.
+(-) After `ls /nope`, `echo $?` prints a non-zero value. :: True: `ls` fails because `/nope` does not exist.

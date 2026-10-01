@@ -1,0 +1,90 @@
+@@exam hard-03 | Examen difícil 3
+@@about
+Diez preguntas de respuesta única con trampas: subshells, ficheros de arranque, precedencia de operadores en `find`, directorios que deciden quién puede borrar, un delimitador con un espacio y patrones que no coinciden con nada.
+
+@@q single | Dentro de los paréntesis
+Una shell tiene `PWD=/tmp` y ejecuta:
+```
+x=1
+( x=2; cd /; echo "$x $PWD" )
+echo "$x $PWD"
+```
+¿Qué imprime?
+(-) `2 /` y `2 /` :: Los paréntesis arrancan una subshell: sus cambios no llegan a la shell padre.
+(-) `1 /tmp` y `1 /tmp` :: Dentro de la subshell `x` vale 2 y el directorio es `/`.
+(-) `2 /` y `2 /tmp` :: La variable tampoco cambia en el padre.
+(+) `2 /` y `1 /tmp` :: La subshell ve sus propios valores; después el padre sigue teniendo `x=1` y `/tmp`.
+
+@@q single | Dónde vive una variable
+Añades `export P=1` al final de tu `~/.bashrc`, y nada más. ¿Qué mandato imprime `1`?
+(-) `echo $P` en el terminal que ya estaba abierto, ahora mismo. :: Esa shell leyó `.bashrc` cuando arrancó, antes de la edición.
+(-) `bash -c 'echo $P'` ejecutado en el terminal que ya estaba abierto. :: El hijo hereda solo lo que la shell abierta exportó, y nunca recibió `P`.
+(-) `echo $P` en un terminal nuevo abierto por otro usuario. :: Cada usuario lee su propio `~/.bashrc`; este es tuyo.
+(+) `echo $P` en un terminal nuevo que abres tú mismo. :: Un bash interactivo nuevo lee tu `~/.bashrc`, que ahora define `P`.
+
+@@q single | El fichero adecuado para cada ajuste
+`ana`, una usuaria normal, quiere un alias solo para ella. El administrador, root, quiere una variable definida para todos los usuarios al entrar. ¿Qué pareja de ficheros es correcta?
+(-) ana edita `/etc/profile`; root edita `/etc/profile`. :: ana no puede escribir en `/etc/profile`, y afectaría a todos los usuarios.
+(+) ana edita `~/.bashrc`; root edita `/etc/profile`. :: El fichero personal está en el home del usuario; el de todos está bajo `/etc`.
+(-) ana edita `~/.bashrc`; root edita `/root/.bashrc`. :: El fichero de `/root` configura solo al usuario root.
+(-) ana edita `/etc/bash.bashrc`; root edita `~/.profile`. :: Los papeles están invertidos: el fichero general está bajo `/etc`, y `~/.profile` es personal.
+
+@@q single | Un asterisco que es solo un asterisco
+`f` contiene las líneas `a*b`, `aab` y `ab`. ¿Qué mandato imprime solo `a*b`?
+(-) `grep 'a*b' f` :: El `*` repite la `a`, así que coincide también con `ab` y `aab`, e incluso con `a*b` (por su `b` final).
+(+) `grep 'a\*b' f` :: La barra invertida convierte el asterisco en un carácter normal.
+(-) `grep 'a.b' f` :: El punto coincide con un carácter cualquiera: coincide con `a*b` y `aab`.
+(-) `grep -E 'a+b' f` :: Coincide con una o más `a` seguidas de `b`: `aab` y `ab`.
+
+@@q single | Quién puede borrar
+El directorio `dd` tiene el modo `rwxrwxrwx`. Dentro está `dd/f`, de root con el modo `---------`. Un usuario normal ejecuta `rm -f dd/f`. ¿Qué ocurre?
+(-) Falla con `Permission denied`, porque el fichero no tiene ningún permiso. :: Borrar elimina una entrada del directorio; los bits del propio fichero no se comprueban.
+(-) Falla, porque el fichero pertenece a root y solo el dueño puede borrarlo. :: Sin el bit sticky, deciden los permisos del directorio.
+(+) El fichero se borra, porque el usuario tiene `w` y `x` en el directorio. :: Quitar un nombre necesita `w` y `x` en el directorio que lo contiene.
+(-) El contenido del fichero se vacía pero el fichero permanece. :: `rm` desenlaza el nombre; no trunca el fichero.
+
+@@q single | Precedencia en find
+En el directorio actual están los ficheros `a.log` y `b.txt`, el directorio `c.txt` y el directorio `dir.log`. ¿Qué imprime `find . -name '*.log' -o -name '*.txt' -type f`?
+(-) `./a.log` y `./b.txt` :: `-type f` se aplica solo a la prueba `*.txt`, así que el directorio `dir.log` también se selecciona.
+(-) Los cuatro nombres, incluido `./c.txt`. :: `-type f` excluye el directorio `c.txt`, que sería una coincidencia de `*.txt`.
+(+) `./a.log`, `./dir.log` y `./b.txt` :: Las pruebas se unen con un AND implícito que liga más fuerte que `-o`: es `*.log` O (`*.txt` Y fichero).
+(-) Nada, porque `-o` necesita paréntesis para funcionar. :: `-o` funciona sin ellos; los paréntesis solo cambian la agrupación.
+
+@@q single | El delimitador con un espacio
+`h.sh` contiene estas cuatro líneas, la tercera empezando por un espacio:
+```
+cat <<EOF
+hello
+ EOF
+echo after
+```
+¿Qué ocurre al ejecutarlo?
+(-) Imprime `hello` y después `after`, como si el delimitador estuviera bien escrito. :: El delimitador debe aparecer solo al principio de la línea; con un espacio no se reconoce.
+(-) Imprime `hello`, luego `EOF`, y luego `after` en su propia línea, como mandatos separados. :: Esas líneas siguen siendo parte del texto del here-document, no mandatos.
+(+) No se cierra: bash avisa del fin de fichero, y `cat` imprime `hello`, ` EOF` y `echo after`. :: El texto continúa hasta el final del fichero, porque ` EOF` no es el delimitador.
+(-) Un error de sintaxis detiene el script antes de que se pueda imprimir nada. :: Bash lee hasta el final del fichero y solo emite un aviso.
+
+@@q single | Espacio libre y espacio usado
+Quieres saber cuánto espacio libre tiene la partición montada en `/backup`, y cuánto ocupa el directorio `/backup/2024`. ¿Qué pareja de mandatos lo hace?
+(-) `du -sh /backup` para el espacio libre y `df -h /backup/2024` para el tamaño del directorio. :: `du` mide lo que usan los ficheros, no lo que está libre; `df` informa de sistemas de ficheros enteros, no de directorios.
+(-) `ls -l /backup` para el espacio libre y `ls -lh /backup/2024` para el tamaño del directorio. :: `ls` muestra el tamaño de cada entrada, no el espacio libre ni el total de un árbol de directorios.
+(+) `df -h /backup` para el espacio libre y `du -sh /backup/2024` para el tamaño del directorio. :: `df` informa del espacio libre y usado del sistema de ficheros; `du -s` suma los ficheros bajo un directorio.
+(-) `df -h /backup/2024` para ambas cosas, porque informa del directorio y de su partición. :: `df` da las cifras de todo el sistema de ficheros; no puede decir cuánto ocupa ese directorio concreto.
+
+@@q single | Los ficheros más grandes
+¿Qué tubería imprime los cinco ficheros más grandes del directorio, usando el tamaño de la quinta columna de `ls -l`?
+(-) `ls -l | sort -n | head -n 5` :: `-n` compara el principio de cada línea, que es la cadena del modo, no el tamaño.
+(-) `ls -l | sort -k5 -n | head -n 5` :: Ordena por tamaño, pero en orden ascendente, así que estos son los más pequeños.
+(-) `ls -l | head -n 5 | sort -k5 -n -r` :: Ordena solo las cinco primeras líneas del listado; el orden de los más grandes se pierde.
+(+) `ls -l | sort -k5 -n -r | head -n 5` :: Ordena por el quinto campo, numéricamente y a la inversa, y conserva los cinco primeros.
+
+@@q single | Dividir la lista
+El directorio tiene dos ficheros, `b.txt` y `my file.txt` (el segundo tiene un espacio en el nombre). ¿Qué imprimen estos dos bucles?
+```
+n=0; for f in $(ls *.txt); do n=$((n+1)); done; echo $n
+n=0; for f in *.txt; do n=$((n+1)); done; echo $n
+```
+(-) `2` y `2` :: El primer bucle recibe la salida de `ls` como texto plano, y la shell la divide en el espacio.
+(-) `3` y `3` :: En el segundo bucle el patrón se expande a dos nombres, y un nombre con espacio sigue siendo una palabra.
+(-) `2` y `3` :: Es al revés: el segundo bucle es el seguro.
+(+) `3` y `2` :: `$(ls *.txt)` se divide en los blancos en `b.txt`, `my` y `file.txt`; el glob del segundo bucle da exactamente los dos nombres reales.

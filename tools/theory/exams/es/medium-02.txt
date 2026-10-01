@@ -1,0 +1,76 @@
+@@exam medium-02 | Examen medio 2
+@@about
+Diez preguntas de respuesta única que combinan dos datos o piden seguir dos o tres pasos: códigos de salida, redirecciones, máscaras, fechas de ficheros y las teclas de `less`.
+
+@@q single | Parar el script si falla la copia
+Un script debe copiar `a` en `b` y, solo si la copia falla, imprimir `copy failed` y terminar con estado de salida 2. ¿Qué fragmento lo hace?
+(-) `cp a b && { echo "copy failed"; exit 2; }` :: El bloque tras `&&` se ejecuta cuando `cp` tiene éxito, lo contrario de lo que se quiere.
+(-) `cp a b; echo "copy failed"; exit 2` :: Con `;` el mensaje y el `exit 2` se ejecutan siempre, incluso cuando la copia funcionó.
+(+) `cp a b || { echo "copy failed"; exit 2; }` :: El bloque tras `||` se ejecuta solo cuando `cp` devuelve un estado distinto de 0.
+(-) `cp a b | echo "copy failed"; exit 2` :: La tubería no comprueba nada: `echo` se ejecuta igualmente, y también `exit 2`.
+
+@@q single | Mostrar un hash de contraseña
+Eres el usuario normal `ana`, que puede usar `sudo`. ¿Qué mandato muestra la línea de `/etc/shadow` que contiene el hash de la contraseña de `ana`?
+(-) `grep '^ana:' /etc/shadow` :: `/etc/shadow` solo es legible por root, así que esto falla con "Permission denied".
+(-) `grep '^ana:' /etc/passwd` :: Esta línea tiene una `x` en el campo de la contraseña: el hash no se guarda ahí.
+(+) `sudo grep '^ana:' /etc/shadow` :: `sudo` ejecuta `grep` como root, que sí puede leer el fichero.
+(-) `grep '^ana:' /etc/group` :: `/etc/group` lista grupos y sus miembros; no tiene contraseñas de usuarios.
+
+@@q single | Buscar dentro de less
+Abres un fichero largo con `less`. La palabra `main` aparece solo en las líneas 12, 80 y 140. Pulsas `G`, luego escribes `50g`, luego escribes `/main` y Enter. ¿Dónde estás?
+(-) En la línea 12, la primera línea que contiene `main`. :: Una búsqueda hacia delante empieza en la posición actual, no al principio del fichero.
+(+) En la línea 80, la primera coincidencia después de la línea 50. :: `G` va al final, `50g` salta a la línea 50, y `/` busca hacia delante desde ahí.
+(-) En la línea 140, la última coincidencia, porque pulsaste `G` primero. :: `50g` te devolvió a la línea 50 antes de la búsqueda.
+(-) En la línea 50, porque `50g` ha fijado la posición. :: `/main` te lleva después a la siguiente línea que contiene la palabra.
+
+@@q single | Dos sed en una tubería
+¿Qué imprime esto?
+```
+printf 'one two\ntwo two\nthree\n' | sed 's/two/2/' | sed '/three/d'
+```
+(-) `one 2`, `2 2` :: Sin la bandera `g` solo cambia el primer `two` de cada línea.
+(+) `one 2`, `2 two` :: El primer `sed` sustituye el primer `two` de cada línea y el segundo borra la línea `three`.
+(-) `one 2`, `2 two`, `three` :: El mandato `d` borra las líneas que contienen `three`.
+(-) `one two`, `two two` :: El primer `sed` cambia las líneas; el segundo no lo deshace.
+
+@@q single | En el prompt de GRUB
+En el prompt `grub>` quieres pasar el control al gestor de arranque de una instalación de Windows, en lugar de cargar un kernel Linux. ¿Qué mandato lo hace, una vez seleccionada la partición correcta?
+(-) `linux +1` :: `linux` carga una imagen de kernel Linux; no puede arrancar otro gestor.
+(-) `initrd +1` :: `initrd` carga el disco RAM inicial de un kernel Linux.
+(+) `chainloader +1` :: El encadenamiento pasa el control al gestor que hay en el primer sector de la partición seleccionada.
+(-) `set root=(hd0,2)` :: Eso solo selecciona la partición; no se arranca nada hasta `chainloader` y `boot`.
+
+@@q single | El orden de las redirecciones
+Se ejecuta `ls /nope /etc/hostname 2>&1 > f | wc -l`. ¿Qué ocurre?
+(-) Imprime `0`, y `f` contiene el mensaje de error y el listado. :: Las redirecciones se leen de izquierda a derecha, así que el error no sigue a la salida hasta el fichero.
+(-) Imprime `2`, y `f` está vacío. :: El listado va a `f`: stdout se redirigió allí después de `2>&1`.
+(+) Imprime `1`, y `f` contiene el listado de `/etc/hostname`. :: `2>&1` copió stdout, que era la tubería, así que el error va a `wc`; después `> f` manda solo stdout al fichero.
+(-) Imprime `1`, y `f` contiene el mensaje de error. :: Es al revés: el error va por la tubería y el listado al fichero.
+
+@@q single | Permisos por defecto con umask 022
+Con `umask 022`, ¿qué afirmación es FALSA?
+(-) `mkdir d` crea un directorio con el modo `rwxr-xr-x`. :: Verdadero: 777 menos 022 es 755.
+(-) `touch f` crea un fichero con el modo `rw-r--r--`. :: Verdadero: los ficheros parten de 666, así que el resultado es 644.
+(+) `touch f` crea un fichero con el modo `rwxr-xr-x`, igual que los directorios. :: Falso: los ficheros regulares nuevos no se crean con permiso de ejecución; reciben 644.
+(-) El grupo y los otros no pueden escribir en los ficheros y directorios nuevos. :: Verdadero: 022 quita `w` al grupo y a los otros.
+
+@@q single | Clasificar procesos
+¿Qué afirmación sobre los tipos de proceso es FALSA?
+(-) Un mandato escrito en una shell y lanzado con `&` sigue siendo un proceso interactivo. :: Verdadero: pertenece a la shell, en segundo plano.
+(-) Un script lanzado por el planificador a las 03:00 es un proceso por lotes. :: Verdadero: se planificó para un instante dado.
+(-) `cron` es un demonio. :: Verdadero: trabaja en segundo plano realizando una tarea del sistema.
+(+) Un demonio se detiene cuando el usuario que lo arrancó cierra el terminal. :: Falso: los demonios no están ligados al terminal de un usuario; funcionan para el sistema.
+
+@@q single | Solo la fecha de modificación
+`notes.txt` tiene una fecha de acceso y una de modificación antiguas. ¿Qué mandato cambia solo su fecha de modificación a la actual?
+(-) `touch -a notes.txt` :: `-a` cambia solo la fecha de acceso.
+(-) `touch notes.txt` :: Sin opciones se actualizan las dos fechas.
+(+) `touch -m notes.txt` :: `-m` cambia solo la fecha de modificación.
+(-) `touch -c notes.txt` :: `-c` significa "no crear el fichero si no existe"; las fechas se actualizan como siempre, las dos.
+
+@@q single | Números en texto y en aritmética
+¿Qué imprime `a=2; b=3; echo $a+$b $((a+b)) $(($a*$b))`?
+(-) `5 5 6` :: `$a+$b` no es aritmética: la shell solo pone los dos textos alrededor de un `+`.
+(-) `2+3 5 23` :: Dentro de `$(( ))` el `*` multiplica, no une los textos.
+(-) `2+3 23 6` :: Dentro de `$(( ))` el `+` suma los números.
+(+) `2+3 5 6` :: Solo `$(( ))` hace aritmética; fuera, las variables son cadenas, y dentro `a` y `$a` son la misma variable.
