@@ -19,7 +19,7 @@ done
 echo "Created $2 files"
 @@step 2 | Check the arguments
 @@readme
-Checks, in this order: not exactly two arguments → error message **and the correct usage**, exit **1**; `N` is not a positive integer → error that includes it, exit **2**; `PREFIX` is empty or contains a `/` → error that includes it, exit **3**. Nothing is created in those cases.
+Checks, in this order: not exactly two arguments → error message **and the correct usage** (e.g. `Usage: mkfiles.sh prefix N`), exit **1**; `N` is not a positive integer → error that includes it, exit **2**; `PREFIX` is empty or contains a `/` → error that includes it, exit **3**. Nothing is created in those cases.
 @@check
 ARGS=('log 3' 'x 1' '' 'log' 'a b c' 'log 0' 'log x' 'log -2' 'a/b 2' '/tmp/x 2' 'a/b x')
 COMPARE="stdout exit errmsg files"

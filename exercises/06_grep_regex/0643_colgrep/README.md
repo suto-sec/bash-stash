@@ -23,7 +23,3 @@ Errors (message on **stderr**, nothing on stdout):
 - `COLNUM` is not a positive integer: message with it, exit **3**
 - `PATTERN` is not a syntactically valid ERE (test it against empty input first; `grep -E` exits
   with status **2** for a bad pattern): message with it, exit **4**
-
----
-Write your solution in `answer.sh`, then run `check 0643`.  
-To experiment with the same test files the checker uses: `play 0643`.

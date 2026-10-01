@@ -11,7 +11,3 @@ Year: 2026, day of year: 171
 ```
 
 Use `$HOSTNAME` and `date +FORMAT`.
-
----
-Write your solution in `answer.sh`, then run `check 0110`.  
-To experiment with the same test files the checker uses: `play 0110`.

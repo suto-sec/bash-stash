@@ -13,7 +13,3 @@ Hola, Ana!
 ```
 
 Hint: `saluda() { echo "Hola, $1!"; }` and then `saluda "$1"`.
-
----
-Write your solution in `answer.sh`, then run `check 1631`.  
-To experiment with the same test files the checker uses: `play 1631`.

@@ -9,7 +9,3 @@ address written in different letter case counts once.
 
 Decoys that must **not** match: groups separated by `-` instead of `:`, fewer than six groups, and a
 group containing a non-hexadecimal letter (`G`-`Z`).
-
----
-Write your solution in `answer.sh`, then run `check 0640`.  
-To experiment with the same test files the checker uses: `play 0640`.

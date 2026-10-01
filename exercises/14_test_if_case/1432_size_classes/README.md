@@ -31,7 +31,3 @@ Errors (message on **stderr**, wording free), checked in this order:
 | `directory` is not a directory (name it) | 2 |
 | `min` or `max` is not a non-negative integer (digits only) (name it) | 3 |
 | `min` > `max` | 4 |
-
----
-Write your solution in `answer.sh`, then run `check 1432`.  
-To experiment with the same test files the checker uses: `play 1432`.

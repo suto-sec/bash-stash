@@ -14,7 +14,3 @@ files/f4
 ```
 
 Hint: `find dir -type f -size +1M | sort`
-
----
-Write your solution in `answer.sh`, then run `check 0754`.  
-To experiment with the same test files the checker uses: `play 0754`.

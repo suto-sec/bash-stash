@@ -25,7 +25,3 @@ Exit codes: 0 if all lines were valid, **4** if there was some invalid line (aft
 everything). Errors that stop the script before reading (stderr, wording free):
 0 or more than 2 arguments → **1** (show the usage); FILE not a readable regular file → **2** (name
 it); MIN not a non-negative integer → **3** (name it).
-
----
-Write your solution in `answer.sh`, then run `check 1530`.  
-To experiment with the same test files the checker uses: `play 1530`.

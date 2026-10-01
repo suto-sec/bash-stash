@@ -19,7 +19,3 @@ Errors (message on stderr):
 - the file cannot be read: exit **1**
 - `MIN` is not a non-negative integer (digits only): exit **2**
 - more than two arguments: usage, exit **3**
-
----
-Write your solution in `answer.sh`, then run `check 1722`.  
-To experiment with the same test files the checker uses: `play 1722`.

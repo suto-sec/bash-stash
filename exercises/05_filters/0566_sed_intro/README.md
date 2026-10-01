@@ -9,7 +9,3 @@ For the file `frase.txt`, print its content replacing the first `hola` of each l
 Example: the line `hola luis hola ana` becomes `adios luis hola ana`.
 
 Hint: `sed 's/hola/adios/' file`
-
----
-Write your solution in `answer.sh`, then run `check 0566`.  
-To experiment with the same test files the checker uses: `play 0566`.

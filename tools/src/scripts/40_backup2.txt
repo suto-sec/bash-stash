@@ -48,7 +48,7 @@ touch "$2/.last"
 exit 0
 @@step 3 | Check both directories
 @@readme
-Checks, in this order, before copying anything: not exactly two arguments → error message **and the correct usage**, exit **1**; `SRC` does not exist → error with its name, exit **2**; `SRC` is not a directory → error with its name, exit **3**. If `DST` does not exist, create it and print exactly `Directory DST created` (as given) first; if it exists but is not a directory → error with its name, exit **3**.
+Checks, in this order, before copying anything: not exactly two arguments → error message **and the correct usage** (e.g. `Usage: backup2.sh src dst`), exit **1**; `SRC` does not exist → error with its name, exit **2**; `SRC` is not a directory → error with its name, exit **3**. If `DST` does not exist, create it and print exactly `Directory DST created` (as given) first; if it exists but is not a directory → error with its name, exit **3**.
 @@check
 SORT_OUTPUT=1
 ARGS=('src dst' 'src newdst' 'src "new parent/dst"' '' 'src' 'src dst extra' 'nothing dst' 'notadir.txt dst' 'src notadir.txt' 'src dstm $(pre_marker)')

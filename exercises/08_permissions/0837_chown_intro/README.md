@@ -9,7 +9,3 @@ The file `informe.txt` exists in the current directory. Make `luke` its owner. N
 Afterwards `ls -l informe.txt` shows `luke` as the owner.
 
 Hint: `chown luke file`
-
----
-Write your solution in `answer.sh`, then run `check 0837`.  
-To experiment with the same test files the checker uses: `play 0837`.

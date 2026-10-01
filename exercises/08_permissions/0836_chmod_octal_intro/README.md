@@ -9,7 +9,3 @@ The file `datos.txt` currently has the permissions `rwxrwxrwx`. Set them to `rw-
 Afterwards `ls -l datos.txt` shows `-rw-r--r--`.
 
 Hint: `chmod 644 file`
-
----
-Write your solution in `answer.sh`, then run `check 0836`.  
-To experiment with the same test files the checker uses: `play 0836`.

@@ -16,7 +16,3 @@ Errors (message on **stderr**, wording free, checked in this order):
 | FILE is not a readable regular file (name it) | 2 |
 | FROM or TO is not a positive integer (digits only, ≥ 1) (name the bad value) | 3 |
 | FROM > TO | 4 |
-
----
-Write your solution in `answer.sh`, then run `check 1529`.  
-To experiment with the same test files the checker uses: `play 1529`.

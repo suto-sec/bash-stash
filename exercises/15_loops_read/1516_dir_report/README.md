@@ -10,7 +10,3 @@ and `..`) print one line:
 - `[L] name -> target` for symbolic links (check first)
 
 At the end: `Total: X dirs, Y files, Z links`.
-
----
-Write your solution in `answer.sh`, then run `check 1516`.  
-To experiment with the same test files the checker uses: `play 1516`.

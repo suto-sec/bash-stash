@@ -11,7 +11,3 @@ root<TAB>0
 alumno<TAB>1000
 END
 ```
-
----
-Write your solution in `answer.sh`, then run `check 0109`.  
-To experiment with the same test files the checker uses: `play 0109`.

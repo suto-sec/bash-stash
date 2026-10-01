@@ -11,7 +11,3 @@ is the longest sequence of letters, digits, `.` and `-` right after `://`
 3. the number of URLs (occurrences, not lines!) that use plain `http://`
 
 `ftp://`, `mailto:` and other schemes are not URLs here.
-
----
-Write your solution in `answer.sh`, then run `check 0623`.  
-To experiment with the same test files the checker uses: `play 0623`.

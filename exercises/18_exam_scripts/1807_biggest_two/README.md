@@ -6,7 +6,3 @@ Write `grandes.sh [dir]` (default: current directory) that prints the **two bigg
 under `dir` (recursively), biggest first, as `<size in bytes> <path>` (path as `find` prints it).
 Ties: path in alphabetical order (`sort -k1,1nr -k2`). If there's only one file print one line;
 if none, print `No files` and exit 1. Not a directory: stderr, exit 2. Names may contain spaces.
-
----
-Write your solution in `answer.sh`, then run `check 1807`.  
-To experiment with the same test files the checker uses: `play 1807`.

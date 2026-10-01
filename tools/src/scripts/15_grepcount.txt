@@ -23,7 +23,7 @@ COMPARE="stdout exit"
 echo "$2: $(grep -c -- "$1" "$2")"
 @@step 2 | Many files
 @@readme
-`grepcount.sh WORD FILE...` takes **one or more files** after the word and prints one `FILE: N` line each. With fewer than two arguments (no file): error message **and the correct usage**, exit **1**.
+`grepcount.sh WORD FILE...` takes **one or more files** after the word and prints one `FILE: N` line each. With fewer than two arguments (no file): error message **and the correct usage** (e.g. `Usage: grepcount.sh word file...`), exit **1**.
 @@check
 ARGS=('Error a.log' 'Error a.log b.log' 'info b.log a.log empty.log' '' 'Error')
 COMPARE="stdout exit errmsg"
@@ -35,7 +35,7 @@ word=$1; shift
 for f in "$@"; do
   echo "$f: $(grep -c -- "$word" "$f")"
 done
-@@step 3 | Bad files
+@@step 3 | Skip unreadable files
 @@readme
 A file that is not a readable regular file prints an error message with its name on standard error, is skipped, and the script ends with exit code **2** after processing the rest.
 @@check

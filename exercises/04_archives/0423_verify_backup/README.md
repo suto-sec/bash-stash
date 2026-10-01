@@ -25,7 +25,3 @@ Finally print `Differences: N`. Exit **1** if `N` is greater than 0, **0** if it
 Other errors (message on stderr): not exactly 2 arguments → usage, exit **2**; `DIR` is not a
 directory → exit **3** (message includes `DIR`); `ARCHIVE` does not exist or `tar -tzf` fails on it
 → exit **4** (message includes `ARCHIVE`).
-
----
-Write your solution in `answer.sh`, then run `check 0423`.  
-To experiment with the same test files the checker uses: `play 0423`.

@@ -10,7 +10,3 @@ Each subdirectory contains only regular files (no deeper levels), or nothing at 
 3. Print `N files moved`.
 
 Files that were already directly in `caos` stay where they are.
-
----
-Write your solution in `answer.sh`, then run `check 0321`.  
-To experiment with the same test files the checker uses: `play 0321`.

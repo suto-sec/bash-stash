@@ -40,7 +40,7 @@ done < "$1"
 echo "total: $t words"
 @@step 3 | Check the file
 @@readme
-Not exactly one argument → error message **and the correct usage**, exit **1**; the argument is not a readable regular file → error with its name, exit **2**.
+Not exactly one argument → error message **and the correct usage** (e.g. `Usage: words.sh file`), exit **1**; the argument is not a readable regular file → error with its name, exit **2**.
 @@check
 ARGS=('poem.txt' 'empty.txt' '' 'poem.txt empty.txt' 'nothing.txt' 'adir' 'locked.txt')
 COMPARE="stdout exit errmsg"

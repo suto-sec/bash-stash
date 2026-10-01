@@ -8,7 +8,3 @@ with `ibase`/`obase` (not `$(( ))`), print:
 
 1. N written in base B (`obase=B; N`)
 2. the decimal value of the number in `digits.txt`, which is written in base B (`ibase=B; ...`)
-
----
-Write your solution in `answer.sh`, then run `check 1119`.  
-To experiment with the same test files the checker uses: `play 1119`.

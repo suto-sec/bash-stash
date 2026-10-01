@@ -22,7 +22,3 @@ literally).
 Exit codes: **0** if the trees have no differences at all (`D`, `A` and `B` are 0), **1** if they have
 some; **2** if there are not exactly 2 arguments (usage on stderr); **3** if one of them is not a directory
 (stderr message including its name). Names may contain spaces.
-
----
-Write your solution in `answer.sh`, then run `check 0822`.  
-To experiment with the same test files the checker uses: `play 0822`.

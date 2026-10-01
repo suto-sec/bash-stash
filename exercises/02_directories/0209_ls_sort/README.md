@@ -10,7 +10,3 @@ Print, one per line:
 3. the file names ordered by **modification time**, **oldest** first
 
 Look at `ls -S`, `ls -t` and `ls -r`.
-
----
-Write your solution in `answer.sh`, then run `check 0209`.  
-To experiment with the same test files the checker uses: `play 0209`.

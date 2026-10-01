@@ -17,7 +17,3 @@ for `done.flag` up to `MAX_POLLS` times, sleeping `POLL_TENTHS` **tenths of a se
 - Not exactly 2 arguments: usage on stderr, exit **1**.
 - `POLL_TENTHS` not a positive integer: error, exit **2**.
 - `MAX_POLLS` not a positive integer: error, exit **3**.
-
----
-Write your solution in `answer.sh`, then run `check 1219`.  
-To experiment with the same test files the checker uses: `play 1219`.

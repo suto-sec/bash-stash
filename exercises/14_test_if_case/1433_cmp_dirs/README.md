@@ -33,7 +33,3 @@ Exit codes:
 | `dir1` is not a directory (stderr, name it) | 3 |
 | `dir2` is not a directory (stderr, name it) | 4 |
 | both are the same directory (`-ef`) (stderr) | 5 |
-
----
-Write your solution in `answer.sh`, then run `check 1433`.  
-To experiment with the same test files the checker uses: `play 1433`.

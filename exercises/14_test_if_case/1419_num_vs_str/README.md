@@ -17,7 +17,3 @@ second one comparing them as **strings** (`[[ $a < $b ]]`, `[[ $a > $b ]]`, `==`
 
 If there are not exactly 2 arguments or one is not made of digits only, print
 `Usage: cmp2.sh a b` on stderr (use `$(basename "$0")`) and exit **1**.
-
----
-Write your solution in `answer.sh`, then run `check 1419`.  
-To experiment with the same test files the checker uses: `play 1419`.

@@ -27,7 +27,3 @@ Errors (message on stderr):
 - `USER` is `root` (uid 0 bypasses permissions) → exit **3**
 - a FILE that does not exist → message including its name, skip it and continue; at the end exit **4**
   (otherwise exit **0**)
-
----
-Write your solution in `answer.sh`, then run `check 0824`.  
-To experiment with the same test files the checker uses: `play 0824`.

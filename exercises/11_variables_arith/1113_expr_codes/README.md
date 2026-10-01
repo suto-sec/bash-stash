@@ -9,7 +9,3 @@ some digits (e.g. `AB1234`). Using only `expr` (`length`, `match`, `substr`), pr
 2. the number of leading letters (`expr match CODE '[A-Z]*'`)
 3. the letters (the leading part of the code)
 4. the digits (the rest of the code)
-
----
-Write your solution in `answer.sh`, then run `check 1113`.  
-To experiment with the same test files the checker uses: `play 1113`.

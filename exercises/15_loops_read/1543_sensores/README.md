@@ -15,7 +15,3 @@ SENSOR: N lecturas, min MIN, max MAX, media MEDIA
 ```
 
 MEDIA is the integer average (`suma / N`). Finally print `total validas: V, invalidas: I`.
-
----
-Write your solution in `answer.sh`, then run `check 1543`.  
-To experiment with the same test files the checker uses: `play 1543`.

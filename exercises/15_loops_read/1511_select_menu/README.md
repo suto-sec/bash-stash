@@ -11,7 +11,3 @@ The user's choices come from stdin, one per line:
 - invalid number: print `invalid option`
 
 If stdin ends without choosing `salir`, the loop ends by itself (select stops at EOF).
-
----
-Write your solution in `answer.sh`, then run `check 1511`.  
-To experiment with the same test files the checker uses: `play 1511`.

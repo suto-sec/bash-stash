@@ -33,7 +33,3 @@ Exit codes:
 | some invalid address | 1 |
 | no arguments, or `-f` not followed by exactly one file (usage on stderr) | 2 |
 | the file is not a readable regular file (stderr, name it) | 3 |
-
----
-Write your solution in `answer.sh`, then run `check 1427`.  
-To experiment with the same test files the checker uses: `play 1427`.

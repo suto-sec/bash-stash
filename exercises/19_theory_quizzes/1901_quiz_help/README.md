@@ -18,6 +18,3 @@ You may (and should) check things with `man`, `info`... inside the lab.
 10. Which manual section contains **administration** commands? (number)
 11. Which manual section contains **file formats** (like `/etc/passwd`)? (number)
 12. Command to see the page of the file format `passwd` (not the command). (command)
-
----
-Write your answers in `answer.txt` (one `N: answer` line per question), then run `check 1901`.

@@ -29,7 +29,3 @@ Errors (message on **stderr**, nothing on stdout), checked in this order:
 
 Careful: the user will call it as `calc.sh 7 '*' 6`. Your script runs in a directory that contains
 files, so an unquoted `*` would be expanded.
-
----
-Write your solution in `answer.sh`, then run `check 0119`.  
-To experiment with the same test files the checker uses: `play 0119`.

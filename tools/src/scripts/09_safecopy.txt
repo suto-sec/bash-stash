@@ -16,7 +16,7 @@ Write `safecopy.sh SOURCE DEST`. It copies the file `SOURCE` to the path `DEST` 
 safecopy.sh a.txt copy.txt   ->   Copied a.txt to copy.txt
 ```
 
-Use `play s09` to get the files the checker uses.
+The files used by the checker are in the terminal folder (use **Reset exercise instance** to rebuild them).
 @@check
 ARGS=('a.txt copy.txt' '"my file.txt" out/new.txt' 'b.txt sub/b2.txt')
 COMPARE="stdout exit files"
@@ -28,7 +28,7 @@ echo "Copied $1 to $2"
 @@readme
 Checks, in this order (errors go to standard error, nothing on standard output):
 
-1. Not exactly two arguments: error message **and the correct usage**, exit code **1**.
+1. Not exactly two arguments: error message **and the correct usage** (e.g. `Usage: safecopy.sh source dest`), exit code **1**.
 2. `SOURCE` is not a regular file (missing, or a directory): error message that includes its name, exit code **2**.
 @@check
 ARGS=('a.txt copy.txt' '"my file.txt" out/new.txt' '' 'a.txt' 'a.txt b.txt c.txt' 'nothing.txt copy.txt' 'sub copy.txt')

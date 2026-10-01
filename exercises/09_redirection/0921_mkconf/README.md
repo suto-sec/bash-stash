@@ -37,7 +37,3 @@ Errors (message on **stderr**), checked in this order:
 | `NAME` is not a lowercase letter followed by lowercase letters, digits, `_` or `-` | 2 |
 | `PORT` is not an integer 1..65535 written without leading zeros | 3 |
 | file exists and no `-f` (mention the path) | 4 |
-
----
-Write your solution in `answer.sh`, then run `check 0921`.  
-To experiment with the same test files the checker uses: `play 0921`.

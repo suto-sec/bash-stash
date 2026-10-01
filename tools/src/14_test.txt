@@ -208,7 +208,8 @@ esac
 For each argument print one line:
 
 - `email user=<u> domain=<d>` if it looks like an email `user@domain.tld` (use `=~` with groups and
-  `BASH_REMATCH`; user and domain are sequences of letters, digits, `.`, `_` or `-`; tld is 2-6 letters)
+  `BASH_REMATCH`; user and domain are sequences of letters, digits, `.`, `_` or `-`; tld is 2-6 letters;
+  `<d>` includes the tld: `pepe@example.es` gives `email user=pepe domain=example.es`)
 - `backup` if it matches the **glob** pattern `*.bak` or `*~` (`[[ $x == *.bak ]]`)
 - `other` otherwise
 @@check
@@ -231,7 +232,7 @@ done
 @@cmds [[ =~ ]], IFS, read -a, -le
 @@readme
 The script receives one argument and prints `valid` or `invalid`: a valid IPv4 has exactly 4
-decimal numbers from 0 to 255 separated by dots, no leading `+`/`-`, no empty parts.
+decimal numbers from 0 to 255 separated by dots, no leading `+`/`-`, no empty parts; leading zeros are accepted (`01.2.3.4` is valid).
 Exit code: 0 if valid, 1 if invalid. (You will reuse this in the ipLog exercise (1802).)
 @@check
 SEEDS=1

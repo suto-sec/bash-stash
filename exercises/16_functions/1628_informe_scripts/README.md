@@ -20,7 +20,3 @@ may contain spaces). For each one, call `analizar "$f"` and capture its two word
 `read -r e s <<< "$(analizar "$f")"`; print `FILE: E, S`.
 
 Finally print `TOTAL: N scripts, E ejecutables, S con shebang`.
-
----
-Write your solution in `answer.sh`, then run `check 1628`.  
-To experiment with the same test files the checker uses: `play 1628`.

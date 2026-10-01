@@ -20,7 +20,7 @@ Write `lines.sh FILE`. It prints the file name, a colon, a space and the number 
 notes.txt: 7
 ```
 
-`wc -l < file` prints just the number of lines. File names may contain spaces. Use `play s04` to get the files the checker uses.
+`wc -l < file` prints just the number of lines. File names may contain spaces. The files used by the checker are in the terminal folder (use **Reset exercise instance** to rebuild them).
 @@check
 ARGS=('a.txt' 'b.txt' 'empty.txt' '"my file.txt"')
 COMPARE="stdout exit"
@@ -32,7 +32,7 @@ echo "$f: $(wc -l < "$f")"
 @@readme
 Add the error handling, checked in this order:
 
-1. Not exactly one argument: error message **and the correct usage** on standard error, exit code **1**.
+1. Not exactly one argument: error message **and the correct usage** (e.g. `Usage: lines.sh file`) on standard error, exit code **1**.
 2. The argument does not exist or is not a regular file (a directory, for instance): error message that includes its name, exit code **2**.
 3. The file exists but is not readable: error message that includes its name, exit code **3**.
 

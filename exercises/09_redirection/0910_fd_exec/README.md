@@ -10,7 +10,3 @@ Using **custom file descriptors**:
 4. open `entrada.txt` for reading on fd 4 and read **its first two lines** with `read -u 4`
    (or `read <&4`); print them in reverse order (second line first)
 5. close fd 4
-
----
-Write your solution in `answer.sh`, then run `check 0910`.  
-To experiment with the same test files the checker uses: `play 0910`.

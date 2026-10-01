@@ -6,7 +6,3 @@ The file `libro.txt` has many lines and the file `rango.txt` contains two number
 Print lines A to B (both included) of `libro.txt`.
 
 Do it first with `head` + `tail` in a pipeline; then try `sed -n 'A,Bp'`.
-
----
-Write your solution in `answer.sh`, then run `check 0505`.  
-To experiment with the same test files the checker uses: `play 0505`.

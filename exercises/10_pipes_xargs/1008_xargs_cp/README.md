@@ -5,7 +5,3 @@
 Create the directory `temporal` and copy into it every file ending in `.sh` found anywhere under
 `$HOME` (the checker gives you a fake home with some scripts). Use `find ... | xargs cp -t temporal`
 (or `xargs -I{} cp {} temporal`). No two scripts have the same name.
-
----
-Write your solution in `answer.sh`, then run `check 1008`.  
-To experiment with the same test files the checker uses: `play 1008`.

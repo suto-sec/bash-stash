@@ -25,7 +25,3 @@ Errors (message on **stderr**):
 - `LOG` cannot be read: exit **2**
 - `N` is not a positive integer: exit **3**
 - `LOG` has no lines: exit **4**
-
----
-Write your solution in `answer.sh`, then run `check 1734`.  
-To experiment with the same test files the checker uses: `play 1734`.

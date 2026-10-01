@@ -14,7 +14,3 @@ Set these **exact** modes (the entries exist, with other permissions):
 Then print `stat -c '%A %a %n'` of `tmpcomun herramienta compartido raro` (in that order), a line
 `---`, and the sorted list of entries under the current directory (`find .`, any depth) that have the
 setuid **or** setgid bit.
-
----
-Write your solution in `answer.sh`, then run `check 0816`.  
-To experiment with the same test files the checker uses: `play 0816`.

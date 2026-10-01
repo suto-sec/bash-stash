@@ -25,7 +25,3 @@ For every non-portable entry print `<path> (<kind>)`, where `path` is as `find D
 
 Errors (message on **stderr**): more than one argument → usage, exit **1**; `DIR` is not a
 directory → exit **2** (mention it).
-
----
-Write your solution in `answer.sh`, then run `check 0635`.  
-To experiment with the same test files the checker uses: `play 0635`.

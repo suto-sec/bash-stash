@@ -13,7 +13,3 @@ directory with hidden files. Print, each one **without** the final summary line 
 4. a line `---`
 5. the content of `proyecto/docs` **including hidden files**, as a flat list of **full paths**
    without indentation lines (`-a`, `-f`, `-i`)
-
----
-Write your solution in `answer.sh`, then run `check 0218`.  
-To experiment with the same test files the checker uses: `play 0218`.

@@ -30,7 +30,3 @@ Errors (message on **stderr**, nothing on stdout):
 - not 1 or 2 arguments: error and usage, exit **1**
 - `FILE` is not a readable regular file: message with its name, exit **2**
 - `SUBJECT` does not appear in the file: message with the subject, exit **3**
-
----
-Write your solution in `answer.sh`, then run `check 0546`.  
-To experiment with the same test files the checker uses: `play 0546`.

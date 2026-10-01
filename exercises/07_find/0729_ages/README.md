@@ -33,7 +33,3 @@ Checks, **in this order** (messages on stderr, wording free):
 - `DAYS` is not a positive integer (≥ 1): exit **3**
 
 Names may contain spaces.
-
----
-Write your solution in `answer.sh`, then run `check 0729`.  
-To experiment with the same test files the checker uses: `play 0729`.

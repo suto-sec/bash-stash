@@ -7,7 +7,3 @@
 `nota.txt` already contains one line. Add the line `fin` after it with `echo` and `>>`. Afterwards the file has two lines: `primera linea` and `fin`. Nothing is printed on the screen.
 
 Hint: `command >> file`
-
----
-Write your solution in `answer.sh`, then run `check 0927`.  
-To experiment with the same test files the checker uses: `play 0927`.

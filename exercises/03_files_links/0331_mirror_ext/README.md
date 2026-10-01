@@ -9,7 +9,3 @@ extensions are not copied, and `destino` may already contain unrelated files (le
 
 Finally print, sorted, the relative path (no leading `./`) of every file copied, one per line,
 followed by `Copied: N`.
-
----
-Write your solution in `answer.sh`, then run `check 0331`.  
-To experiment with the same test files the checker uses: `play 0331`.

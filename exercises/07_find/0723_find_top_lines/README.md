@@ -8,7 +8,3 @@ Under `src`, print the **3** regular files ending in `.c` or `.h` with the **mos
 
 Careful: `wc -l file1 file2 ...` adds a `total` line at the end, which `-exec ... {} +` would give you.
 Names may contain spaces.
-
----
-Write your solution in `answer.sh`, then run `check 0723`.  
-To experiment with the same test files the checker uses: `play 0723`.

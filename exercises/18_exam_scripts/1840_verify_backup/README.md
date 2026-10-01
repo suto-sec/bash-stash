@@ -18,7 +18,3 @@ Checks, in this order:
 - `SRC` exists but is not a directory: message on stderr (naming `SRC`), exit **3**.
 - `DEST` does not exist: message on stderr (naming `DEST`), exit **4**.
 - `DEST` exists but is not a directory: message on stderr (naming `DEST`), exit **5**.
-
----
-Write your solution in `answer.sh`, then run `check 1840`.  
-To experiment with the same test files the checker uses: `play 1840`.

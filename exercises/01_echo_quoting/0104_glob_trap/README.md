@@ -9,9 +9,5 @@ Print exactly:
 No sé multiplicar 4*2
 ```
 
-Run `play 0104`, go to the work directory and try `echo No sé multiplicar 4*2` without quotes
-to see why the checker's files break the naive version.
-
----
-Write your solution in `answer.sh`, then run `check 0104`.  
-To experiment with the same test files the checker uses: `play 0104`.
+Open the terminal on this exercise (it is in a folder with the same kind of files as the checker's) and try
+`echo No sé multiplicar 4*2` without quotes to see why the naive version breaks.

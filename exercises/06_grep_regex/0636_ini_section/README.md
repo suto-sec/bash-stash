@@ -25,7 +25,3 @@ Errors (message on **stderr**):
 | not exactly 2 arguments (show the usage) | 1 |
 | `FILE` not a readable regular file | 2 |
 | section not found (mention it) | 3 |
-
----
-Write your solution in `answer.sh`, then run `check 0636`.  
-To experiment with the same test files the checker uses: `play 0636`.

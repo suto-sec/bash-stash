@@ -29,7 +29,3 @@ with the file count and the sum of their uncompressed sizes. If there are none, 
 - `DIR` exists but is not a directory: error naming it on stderr, exit **3**.
 
 Names may contain spaces.
-
----
-Write your solution in `answer.sh`, then run `check 0417`.  
-To experiment with the same test files the checker uses: `play 0417`.

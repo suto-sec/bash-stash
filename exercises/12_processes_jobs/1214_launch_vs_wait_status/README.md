@@ -9,7 +9,3 @@
 
 Think about it: starting a job in the background always "succeeds" immediately; the job's own result
 only becomes known once you `wait` for it.
-
----
-Write your solution in `answer.sh`, then run `check 1214`.  
-To experiment with the same test files the checker uses: `play 1214`.

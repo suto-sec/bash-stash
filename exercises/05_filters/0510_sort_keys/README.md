@@ -9,7 +9,3 @@
 3. the lines sorted by **subject** (alphabetical), and for the same subject by **grade** descending
 
 Use `-t:` and `-k` with a field range (`-k3,3n`), not just `-k3`.
-
----
-Write your solution in `answer.sh`, then run `check 0510`.  
-To experiment with the same test files the checker uses: `play 0510`.

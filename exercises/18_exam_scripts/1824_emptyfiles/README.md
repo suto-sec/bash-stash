@@ -11,7 +11,3 @@ Checks, in this order:
 
 Empty directories and symbolic links are never listed, even if they point to an empty file. File
 names may contain spaces.
-
----
-Write your solution in `answer.sh`, then run `check 1824`.  
-To experiment with the same test files the checker uses: `play 1824`.

@@ -13,7 +13,3 @@ where `<command line>` is all the arguments joined by single spaces (`"$*"`). Th
 
 With no arguments print `Usage: try.sh command [args...]` on stderr (use `$(basename "$0")`) and
 exit **64**.
-
----
-Write your solution in `answer.sh`, then run `check 1317`.  
-To experiment with the same test files the checker uses: `play 1317`.

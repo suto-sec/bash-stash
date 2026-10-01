@@ -26,7 +26,3 @@ Exit code:
 - otherwise, **1** if there were no matches at all, **0** if there was at least one
 
 Remember to quote the pattern everywhere, or the shell will expand it. Names may contain spaces.
-
----
-Write your solution in `answer.sh`, then run `check 0733`.  
-To experiment with the same test files the checker uses: `play 0733`.

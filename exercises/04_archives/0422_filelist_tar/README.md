@@ -14,7 +14,3 @@ named in `lista.txt` (and nothing else), with their paths **relative to `proyect
 Hint: filter `lista.txt` down to the paths that actually exist as regular files under `proyecto`
 first, then feed that filtered list to `tar -T -` (`tar` refuses the whole archive if even one
 listed path is missing).
-
----
-Write your solution in `answer.sh`, then run `check 0422`.  
-To experiment with the same test files the checker uses: `play 0422`.

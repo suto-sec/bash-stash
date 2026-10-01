@@ -19,6 +19,3 @@ Answer in `answer.txt` as `N: answer`.
 13. Bash option that makes a pipeline fail if **any** command fails. (write the `set` command)
 14. In a here document, how do you prevent `$VAR` from being expanded? a) quote the delimiter
     (`<< 'EOF'`) b) use `<<-` c) it cannot be prevented (a/b/c)
-
----
-Write your answers in `answer.txt` (one `N: answer` line per question), then run `check 1904`.

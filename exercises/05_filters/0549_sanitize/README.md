@@ -29,7 +29,3 @@ Arguments that are not readable and writable regular files are skipped with a me
 some argument was skipped; **0** otherwise.
 
 Tip: `od -c file` shows the `\r` and `\t` that `cat` hides.
-
----
-Write your solution in `answer.sh`, then run `check 0549`.  
-To experiment with the same test files the checker uses: `play 0549`.

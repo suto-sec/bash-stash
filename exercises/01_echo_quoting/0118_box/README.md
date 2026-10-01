@@ -30,7 +30,3 @@ Errors (message on **stderr**, nothing on stdout), checked in this order:
 
 Careful: the checker runs your script in a directory full of files, and `CHAR` may be `*`.
 Texts and characters are plain ASCII.
-
----
-Write your solution in `answer.sh`, then run `check 0118`.  
-To experiment with the same test files the checker uses: `play 0118`.

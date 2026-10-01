@@ -26,7 +26,3 @@ Errors (message on stderr, nothing created), checked in this order:
   exit **4**
 
 Careful: `SRC` and `DEST` may be relative paths, and may contain spaces.
-
----
-Write your solution in `answer.sh`, then run `check 0224`.  
-To experiment with the same test files the checker uses: `play 0224`.

@@ -9,7 +9,3 @@ then go back **up two levels** using `..` and print the current directory again.
 /.../work/a/b/c
 /.../work/a
 ```
-
----
-Write your solution in `answer.sh`, then run `check 0201`.  
-To experiment with the same test files the checker uses: `play 0201`.

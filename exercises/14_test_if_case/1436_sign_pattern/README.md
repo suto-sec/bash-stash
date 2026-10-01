@@ -10,7 +10,3 @@ exactly one of:
 - `todos positivos` if all three are `+`
 - `todos negativos` if all three are `-`
 - `mixto` otherwise (a mix of `+` and `-`, no zero)
-
----
-Write your solution in `answer.sh`, then run `check 1436`.  
-To experiment with the same test files the checker uses: `play 1436`.

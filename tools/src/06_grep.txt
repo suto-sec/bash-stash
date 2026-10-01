@@ -132,6 +132,8 @@ The directory `src` contains source files in several subdirectories. Print separ
 1. the **names** of files (recursive) that contain `TODO` (`-rl`), sorted
 2. for each `.c` file directly in `src`, `file:count` of lines with `TODO` (`-c`)
 3. all lines with `TODO` in any file, **without** the file name prefix (`-rh`), sorted
+
+Paths are shown as `grep` prints them when run on `src` (e.g. `src/lib/x.h`, `src/a.c:3`).
 @@check
 setup() { mkdir -p src/lib src/test; local f i; for f in src/$(word)1.c src/$(word)2.c src/lib/$(word).h src/test/$(word).c src/README; do for i in $(seq 4); do echo "$(pick 'TODO' 'todo' 'DONE' '') $(words 3)"; done > "$f"; done; }
 @@solution

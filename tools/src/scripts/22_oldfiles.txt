@@ -24,7 +24,7 @@ COMPARE="stdout exit"
 find . -type f -mtime +"$1"
 @@step 2 | Check DAYS
 @@readme
-Exactly one argument is needed (otherwise: error message **and the correct usage**, exit **1**) and it must be a non-negative integer (otherwise: error that includes it, exit **2**).
+Exactly one argument is needed (otherwise: error message **and the correct usage** (e.g. `Usage: oldfiles.sh days`), exit **1**) and it must be a non-negative integer (otherwise: error that includes it, exit **2**).
 @@check
 SORT_OUTPUT=1
 ARGS=('30' '0' '365' '' '1 2' 'abc' '-3' '2.5')

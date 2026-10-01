@@ -16,7 +16,3 @@ touched. Finally print `Replaced N links, M broken`.
 
 Exit codes: **1** not exactly one argument (usage on stderr); **2** `DIR` is not a directory (stderr);
 **3** if at least one broken link was found; **0** otherwise.
-
----
-Write your solution in `answer.sh`, then run `check 0329`.  
-To experiment with the same test files the checker uses: `play 0329`.

@@ -7,7 +7,3 @@ For the file `datos.txt`, print separated by a line `---`:
 1. all the lines **except the last 5**
 2. all the lines **except the first 5** (i.e. from line 6 to the end)
 3. the last 20 **bytes**
-
----
-Write your solution in `answer.sh`, then run `check 0504`.  
-To experiment with the same test files the checker uses: `play 0504`.

@@ -8,7 +8,3 @@
    (`grep -c '^S'`) and how many are **stopped** (`grep -c '^T'`), as `running: N` then `stopped: N`.
 4. Resume the two stopped ones (`kill -CONT`); `sleep 0.2`; print the same two counts again.
 5. Kill all four (`kill -9`) and `wait` for them (hide messages).
-
----
-Write your solution in `answer.sh`, then run `check 1216`.  
-To experiment with the same test files the checker uses: `play 1216`.

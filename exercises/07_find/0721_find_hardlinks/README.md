@@ -10,7 +10,3 @@ Print, separated by `---`:
    including itself, sorted
 
 A **symbolic** link to `original.dat` is a different file and must not appear in 2.
-
----
-Write your solution in `answer.sh`, then run `check 0721`.  
-To experiment with the same test files the checker uses: `play 0721`.

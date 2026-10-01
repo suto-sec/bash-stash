@@ -14,7 +14,3 @@ hola
 ```
 
 Without `export` the child shell would print an empty line.
-
----
-Write your solution in `answer.sh`, then run `check 1128`.  
-To experiment with the same test files the checker uses: `play 1128`.

@@ -21,7 +21,7 @@ COMPARE="stdout exit"
 cut -d, -f"$2" "$1"
 @@step 2 | Check the arguments
 @@readme
-Checks, in this order: not exactly two arguments → error message **and the correct usage**, exit **1**; `FILE` is not a readable regular file → error with its name, exit **2**; `N` is not a positive integer → error that includes it, exit **3**.
+Checks, in this order: not exactly two arguments → error message **and the correct usage** (e.g. `Usage: csvcol.sh file N`), exit **1**; `FILE` is not a readable regular file → error with its name, exit **2**; `N` is not a positive integer → error that includes it, exit **3**.
 @@check
 ARGS=('people.csv 1' 'one.csv 1' '' 'people.csv' 'people.csv 1 2' 'nothing.csv 1' 'adir 1' 'locked.csv 1' 'people.csv 0' 'people.csv x' 'nothing.csv x')
 COMPARE="stdout exit errmsg"

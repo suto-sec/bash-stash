@@ -14,7 +14,3 @@ logs/f4.log
 ```
 
 Hint: `find dir -type f -mtime +5 | sort`
-
----
-Write your solution in `answer.sh`, then run `check 0755`.  
-To experiment with the same test files the checker uses: `play 0755`.

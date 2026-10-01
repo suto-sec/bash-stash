@@ -13,7 +13,3 @@ Valid also requires month `01`-`12` and day `01`-`31` (do not check days per mon
 `08` and `09`: they are not valid numbers **inside `$(( ))`** (octal!), but `[ 08 -le 12 ]` works.
 
 At the end print `V valid, I invalid`. Use one `=~` with groups and `BASH_REMATCH`.
-
----
-Write your solution in `answer.sh`, then run `check 1420`.  
-To experiment with the same test files the checker uses: `play 1420`.

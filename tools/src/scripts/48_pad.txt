@@ -26,7 +26,7 @@ while IFS= read -r line; do
 done < "$1"
 @@step 2 | Check the file
 @@readme
-Not exactly one argument → error message **and the correct usage** on standard error, exit **1**; the argument is not a readable regular file → error with its name, exit **2**.
+Not exactly one argument → error message **and the correct usage** (e.g. `Usage: pad.sh file`) on standard error, exit **1**; the argument is not a readable regular file → error with its name, exit **2**.
 @@check
 ARGS=('small.txt' 'long.txt' '' 'small.txt long.txt' 'nothing.txt' 'adir' 'locked.txt')
 COMPARE="stdout exit errmsg"

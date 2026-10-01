@@ -23,7 +23,3 @@ Finally print `V valid, I invalid`.
 
 Exit codes: **0** all dates valid (also when there are none), **1** some invalid, **2** no arguments
 (usage on stderr). Careful with `08`/`09` in `$(( ))`.
-
----
-Write your solution in `answer.sh`, then run `check 1430`.  
-To experiment with the same test files the checker uses: `play 1430`.

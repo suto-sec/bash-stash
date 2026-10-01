@@ -27,7 +27,3 @@ directories and regular files examined.
 
 Errors (stderr, wording free): not exactly one argument → exit **1**; `DIR` is not a directory →
 exit **2**. Names may contain spaces.
-
----
-Write your solution in `answer.sh`, then run `check 0732`.  
-To experiment with the same test files the checker uses: `play 0732`.

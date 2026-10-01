@@ -10,7 +10,3 @@
    it is exported.
 5. `unset MODE`, then print the exit code of `env printenv MODE` (hide its output): it must be
    non-zero, since `MODE` no longer exists.
-
----
-Write your solution in `answer.sh`, then run `check 1117`.  
-To experiment with the same test files the checker uses: `play 1117`.

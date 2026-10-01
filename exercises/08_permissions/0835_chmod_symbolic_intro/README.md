@@ -9,7 +9,3 @@ The file `script.sh` currently has the permissions `rw-r--r--`. Add execute perm
 Afterwards `ls -l script.sh` shows `-rwxr--r--`.
 
 Hint: `chmod u+x file`
-
----
-Write your solution in `answer.sh`, then run `check 0835`.  
-To experiment with the same test files the checker uses: `play 0835`.

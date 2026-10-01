@@ -11,7 +11,3 @@ Decoys that must **not** be extracted: a component with a leading zero (`01.2.3`
 components (`1.2`), a non-digit component (`1.a.3`), and a version glued to a letter with no
 separation (`v10.0.0` — there is no boundary between `v` and `1`, so it must not match; use `\b` to
 require one).
-
----
-Write your solution in `answer.sh`, then run `check 0638`.  
-To experiment with the same test files the checker uses: `play 0638`.

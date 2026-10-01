@@ -12,7 +12,3 @@ where N is the line number, W the number of words and WORD the longest word (the
 length if tied). Empty lines print `N: 0 words`. Finally print `total: T words`.
 
 Use `read -ra words` to split each line into an array.
-
----
-Write your solution in `answer.sh`, then run `check 1521`.  
-To experiment with the same test files the checker uses: `play 1521`.

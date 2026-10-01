@@ -19,7 +19,3 @@ Total: N scripts
 ```
 
 No argument-count validation is required: default to `.` when no argument is given.
-
----
-Write your solution in `answer.sh`, then run `check 0747`.  
-To experiment with the same test files the checker uses: `play 0747`.

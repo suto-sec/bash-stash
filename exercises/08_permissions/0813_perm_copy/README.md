@@ -10,7 +10,3 @@ For every **regular file** `dest/NAME` (order of the `dest/*` glob):
   shows them)
 
 Finally print `N changed`. Names may contain spaces.
-
----
-Write your solution in `answer.sh`, then run `check 0813`.  
-To experiment with the same test files the checker uses: `play 0813`.

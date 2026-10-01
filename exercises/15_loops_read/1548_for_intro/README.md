@@ -15,7 +15,3 @@ Example: run as `./script.sh 3` it prints:
 ```
 
 Hint: `for ((i = 1; i <= $1; i++)); do echo "$i"; done` (or `for i in $(seq 1 $1)`).
-
----
-Write your solution in `answer.sh`, then run `check 1548`.  
-To experiment with the same test files the checker uses: `play 1548`.

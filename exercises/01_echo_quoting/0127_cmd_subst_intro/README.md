@@ -14,7 +14,3 @@ Soy alumno
 ```
 
 Hint: `VAR=$(command)` stores the output of the command in `VAR`.
-
----
-Write your solution in `answer.sh`, then run `check 0127`.  
-To experiment with the same test files the checker uses: `play 0127`.

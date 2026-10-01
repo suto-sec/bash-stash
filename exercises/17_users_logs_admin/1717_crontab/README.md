@@ -13,7 +13,3 @@ Your current crontab already contains other entries (the checker adds one): **ke
 Hint: `(crontab -l; echo "0 */4 * * * ...") | crontab -`
 
 Nothing needs to be printed. (Writing to `/var/log/ipLog.log` instead would require root.)
-
----
-Write your solution in `answer.sh`, then run `check 1717`.  
-To experiment with the same test files the checker uses: `play 1717`.

@@ -35,7 +35,3 @@ Errors (message on **stderr**, nothing on stdout), checked in this order:
 - `DIR` is not a directory: exit **2** (mention it)
 - `PREFIX` is empty or contains something other than letters, digits, `_` and `-`: exit **3**
 - `DIR` contains no regular files: exit **4**
-
----
-Write your solution in `answer.sh`, then run `check 0120`.  
-To experiment with the same test files the checker uses: `play 0120`.

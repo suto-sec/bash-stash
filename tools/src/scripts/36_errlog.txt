@@ -46,7 +46,7 @@ grep ' ERROR ' "$1" > "$out"
 echo "Saved $(wc -l < "$out") errors to $out"
 @@step 4 | Checks, and nothing to save
 @@readme
-Checks, before anything is created: not exactly one argument → error message **and the correct usage**, exit **1**; the argument is not a readable regular file → error with its name, exit **2**. And when the log has **no error lines**, print `No errors found` and do not create the directory or the file (exit 0).
+Checks, before anything is created: not exactly one argument → error message **and the correct usage** (e.g. `Usage: errlog.sh log`), exit **1**; the argument is not a readable regular file → error with its name, exit **2**. And when the log has **no error lines**, print `No errors found` and do not create the directory or the file (exit 0).
 @@check
 ARGS=('app.log' 'app.log $(pre_rep)' 'calm.log' 'empty.log $(pre_rep)' '' 'app.log calm.log' 'nothing.log' 'adir' 'locked.log')
 COMPARE="stdout exit errmsg files"

@@ -12,7 +12,3 @@ Without extracting anything, then print:
 3. only the number of entries
 
 Use `tar -cjf`/`tar -tjf` (bzip2), not gzip.
-
----
-Write your solution in `answer.sh`, then run `check 0411`.  
-To experiment with the same test files the checker uses: `play 0411`.

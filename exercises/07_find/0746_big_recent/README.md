@@ -18,7 +18,3 @@ Total: N files
 
 where `N` is the number of such files. No argument-count validation is required: just default to
 `.` when no argument is given. `.marca` always exists in the tests.
-
----
-Write your solution in `answer.sh`, then run `check 0746`.  
-To experiment with the same test files the checker uses: `play 0746`.

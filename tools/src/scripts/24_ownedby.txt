@@ -21,7 +21,7 @@ COMPARE="stdout exit"
 find "$2" -type f -user "$1"
 @@step 2 | Check the arguments
 @@readme
-Checks, in this order: not exactly two arguments → error message **and the correct usage**, exit **1**; `DIR` does not exist → error with its name, exit **2**; not a directory → error with its name, exit **3**.
+Checks, in this order: not exactly two arguments → error message **and the correct usage** (e.g. `Usage: ownedby.sh user dir`), exit **1**; `DIR` does not exist → error with its name, exit **2**; not a directory → error with its name, exit **3**.
 @@check
 SORT_OUTPUT=1
 ARGS=('alumno work' 'root work' '' 'alumno' 'alumno work empty' 'alumno nothing' 'alumno notadir.txt')

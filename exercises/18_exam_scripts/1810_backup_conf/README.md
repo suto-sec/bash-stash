@@ -12,7 +12,3 @@ Write `backup_conf.sh SRC [DEST]` that archives every **regular** file ending in
 - no `.conf` files: stderr message, exit 3 and **no** archive is created
 
 Careful: `SRC` and `DEST` may be relative; if you `cd` into `SRC`, relative `DEST` breaks.
-
----
-Write your solution in `answer.sh`, then run `check 1810`.  
-To experiment with the same test files the checker uses: `play 1810`.

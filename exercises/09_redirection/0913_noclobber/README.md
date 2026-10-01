@@ -14,7 +14,3 @@ exist. Write a script that:
 3. overwrites the existing `forzar.txt` with the line `forced` anyway, using `>|`, and prints `forced`
 
 Existing files must keep their content.
-
----
-Write your solution in `answer.sh`, then run `check 0913`.  
-To experiment with the same test files the checker uses: `play 0913`.

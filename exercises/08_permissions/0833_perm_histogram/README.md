@@ -21,7 +21,3 @@ regular files, print only `Total: 0 files`.
 
 Errors (message on stderr): not exactly 1 argument → usage, exit **1**; `DIR` is not a directory →
 exit **2** (message includes `DIR`).
-
----
-Write your solution in `answer.sh`, then run `check 0833`.  
-To experiment with the same test files the checker uses: `play 0833`.

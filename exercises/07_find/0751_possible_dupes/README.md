@@ -19,7 +19,3 @@ Total: N grupos
 ```
 
 where `N` is the number of such groups (not the number of files).
-
----
-Write your solution in `answer.sh`, then run `check 0751`.  
-To experiment with the same test files the checker uses: `play 0751`.

@@ -35,7 +35,3 @@ Result: 14
 
 Arguments are checked from left to right; the first bad one decides the error. Messages go to
 **stderr** (wording is free).
-
----
-Write your solution in `answer.sh`, then run `check 1322`.  
-To experiment with the same test files the checker uses: `play 1322`.

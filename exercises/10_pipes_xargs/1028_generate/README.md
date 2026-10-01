@@ -30,7 +30,3 @@ Validation, in this order (message on **stderr**, nothing is created):
 - `TEMPLATE` is not a readable regular file: exit **2**
 - `LIST` is not a readable regular file: exit **3**
 - `OUTDIR` exists but is not a directory: exit **4**
-
----
-Write your solution in `answer.sh`, then run `check 1028`.  
-To experiment with the same test files the checker uses: `play 1028`.

@@ -28,7 +28,3 @@ Errors (message on **stderr**, nothing created), checked in this order:
 - `LINES` is not a positive integer (`1`, `25`...; not `0`, `-3`, `abc`): message, exit **3**
 - a file named `PREFIX` followed by exactly three digits already exists (it would be
   overwritten): message, exit **4**
-
----
-Write your solution in `answer.sh`, then run `check 0540`.  
-To experiment with the same test files the checker uses: `play 0540`.

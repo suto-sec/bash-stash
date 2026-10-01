@@ -17,7 +17,3 @@ total: COUNT
 - Not exactly 1 argument: usage on stderr, exit **1**.
 - `COUNT` not an integer: error, exit **2**.
 - `COUNT` outside `1..6`: error, exit **3**.
-
----
-Write your solution in `answer.sh`, then run `check 1220`.  
-To experiment with the same test files the checker uses: `play 1220`.

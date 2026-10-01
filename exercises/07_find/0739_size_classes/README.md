@@ -31,7 +31,3 @@ Exit code: no arguments → usage on stderr, exit **1**; if some `DIR` was not a
 
 Careful with `-size` units: `-size -1k` does **not** mean "less than 1024 bytes". Use `c`.
 Names may contain spaces.
-
----
-Write your solution in `answer.sh`, then run `check 0739`.  
-To experiment with the same test files the checker uses: `play 0739`.

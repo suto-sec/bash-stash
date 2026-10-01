@@ -11,7 +11,3 @@ The script runs with umask `022`. Without using `chmod`:
    `grupo.txt` and the directory `grupo_dir`.
 4. Print the current umask (`umask`), then `stat -c '%A %n'` of `secreto.txt privado normal.txt
    grupo.txt grupo_dir` in that order.
-
----
-Write your solution in `answer.sh`, then run `check 0815`.  
-To experiment with the same test files the checker uses: `play 0815`.

@@ -20,7 +20,3 @@ separator runs of spaces count as one). The text contains no wildcard characters
 Errors (stderr, exact text): no arguments or more than 2 → `Usage: fields.sh text [separator]`
 (use `$(basename "$0")`), exit **1**; separator that is not exactly one character →
 `Invalid separator`, exit **2**.
-
----
-Write your solution in `answer.sh`, then run `check 1318`.  
-To experiment with the same test files the checker uses: `play 1318`.

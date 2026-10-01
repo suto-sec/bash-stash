@@ -31,7 +31,3 @@ no differences and **1** if there is any. Errors (message on **stderr**):
 
 Hint: `(cd DIR && find . -type f) | sed 's#^\./##' | sort` gives the relative paths; `comm` or
 a loop with `[ -f ]` separates them.
-
----
-Write your solution in `answer.sh`, then run `check 1032`.  
-To experiment with the same test files the checker uses: `play 1032`.

@@ -13,7 +13,3 @@
 7. print `stat -c '%a %n'` of `script.sh copia1.sh copia2.sh copia3.sh d d2`
 
 Predict each line before running it.
-
----
-Write your solution in `answer.sh`, then run `check 0820`.  
-To experiment with the same test files the checker uses: `play 0820`.

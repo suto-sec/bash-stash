@@ -23,7 +23,3 @@ where `VALUE = QTY * PRICE` with **2 decimals** (`bc`). Finally print
   `DIGITS.DD`, or extra/missing fields) is skipped: print `Error: line L: <line>` on stderr (blank
   lines don't count) and, if at least one such line was found, exit **4** at the end (only when there
   was no other error).
-
----
-Write your solution in `answer.sh`, then run `check 1123`.  
-To experiment with the same test files the checker uses: `play 1123`.

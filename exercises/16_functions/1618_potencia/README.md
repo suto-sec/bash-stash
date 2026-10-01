@@ -23,7 +23,3 @@ when there is one; checked in this order):
 | BASE is not a valid integer | 2 |
 | EXP is not a valid non-negative integer | 3 |
 | EXP > 15 (keeps the recursion shallow) | 4 |
-
----
-Write your solution in `answer.sh`, then run `check 1618`.  
-To experiment with the same test files the checker uses: `play 1618`.

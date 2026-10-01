@@ -1,1 +1,1 @@
-Finish with exit code **0** when the files are the same and **4** when they differ (after printing the line), like `cmp` itself does for scripts that test it.
+Make the exit code tell the result too: **0** when the files are the same and **4** when they differ (the `same` / `different...` line is printed first in both cases).

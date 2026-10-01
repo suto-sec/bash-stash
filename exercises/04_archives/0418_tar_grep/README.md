@@ -24,7 +24,3 @@ If nothing matches, print only `Matches: 0`.
 
 Hint: `tar -xOzf ARCHIVE MEMBER` streams a single member's content to stdout without touching
 disk. Names may contain spaces.
-
----
-Write your solution in `answer.sh`, then run `check 0418`.  
-To experiment with the same test files the checker uses: `play 0418`.

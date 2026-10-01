@@ -12,7 +12,3 @@ Print:
    followed by `equal` if they are equal
 
 The script must finish with exit code 0.
-
----
-Write your solution in `answer.sh`, then run `check 0520`.  
-To experiment with the same test files the checker uses: `play 0520`.

@@ -4,7 +4,3 @@
 
 `acceso.log` contains lines with IPv4 addresses somewhere in the text. Print **only** the IP addresses
 (`-o`), one per line, in order of appearance. An IP is 4 groups of 1-3 digits separated by dots.
-
----
-Write your solution in `answer.sh`, then run `check 0608`.  
-To experiment with the same test files the checker uses: `play 0608`.

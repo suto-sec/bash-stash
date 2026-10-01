@@ -9,7 +9,3 @@ Print the number of lines of `datos.txt` using `wc -l` and `<`. Do **not** pass 
 Example: for a file with 4 lines, print `4`.
 
 Hint: `wc -l < file`
-
----
-Write your solution in `answer.sh`, then run `check 0928`.  
-To experiment with the same test files the checker uses: `play 0928`.

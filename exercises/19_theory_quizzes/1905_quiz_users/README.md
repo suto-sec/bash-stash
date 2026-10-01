@@ -24,6 +24,3 @@ Answer in `answer.txt` as `N: answer`.
     c) a host alias (a/b/c)
 18. Command to add an **existing** user `u` to the supplementary group `g` without removing its other
     groups (with `usermod`). (command)
-
----
-Write your answers in `answer.txt` (one `N: answer` line per question), then run `check 1905`.

@@ -15,7 +15,3 @@ values in the file (an empty file prints only `distinct: 0`).
 
 Hint: `od -An -tu1` prints every byte as a decimal number. **Careful**: by default `od` replaces
 repeated lines with a `*`; `-v` prints them all.
-
----
-Write your solution in `answer.sh`, then run `check 0538`.  
-To experiment with the same test files the checker uses: `play 0538`.

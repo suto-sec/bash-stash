@@ -9,7 +9,3 @@ Print:
 2. the users whose real password is **locked**: the password field is `!` followed by a hash
    (`!$...`), sorted. (System accounts have `*` or `!*`: no password at all, not "locked".)
 3. the users that have a real password hash (field starts with `$`), sorted
-
----
-Write your solution in `answer.sh`, then run `check 1712`.  
-To experiment with the same test files the checker uses: `play 1712`.

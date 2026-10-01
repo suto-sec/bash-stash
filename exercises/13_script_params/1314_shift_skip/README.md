@@ -15,10 +15,6 @@ Errors (message on **stderr**, exact text):
 |-----------|---------|------|
 | no arguments | `Usage: skip.sh N [arg...]` (use `$(basename "$0")`) | 1 |
 | `N` is not a non-negative integer (only digits) | `Invalid count: N` | 2 |
-| fewer than `N` arguments after `N` | `Cannot skip N of M arguments` (M = how many there were) | 3 |
+| fewer than `N` arguments after `N` | `Cannot skip N of M arguments` (M = how many arguments came after `N`) | 3 |
 
 Example: `skip.sh 2 a b c d` prints `> c`, `> d`, `(2 left)`.
-
----
-Write your solution in `answer.sh`, then run `check 1314`.  
-To experiment with the same test files the checker uses: `play 1314`.

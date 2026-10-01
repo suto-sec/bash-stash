@@ -6,7 +6,3 @@
 Print the **3 products with most units** in one sale (lines, not aggregated), as `producto unidades`
 separated by a single space, highest first (ties: product name alphabetically).
 The header must be ignored.
-
----
-Write your solution in `answer.sh`, then run `check 0523`.  
-To experiment with the same test files the checker uses: `play 0523`.

@@ -27,7 +27,3 @@ Exit code: **4** if some file was skipped, 0 otherwise. Checks, **in this order*
 - `OLD` or `NEW` is empty, or they are equal: exit **3**
 
 Directories are never renamed. Names may contain spaces.
-
----
-Write your solution in `answer.sh`, then run `check 0736`.  
-To experiment with the same test files the checker uses: `play 0736`.

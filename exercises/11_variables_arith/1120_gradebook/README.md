@@ -21,7 +21,3 @@ where `AVG` is the average of the three scores with **2 decimals** (`bc`), and t
   outside 1-10) is **not** fatal: print `Error: line L: <line>` on stderr (L = line number, 1-based;
   blank lines don't count as errors and are skipped silently) and keep going. If this happened at
   least once, exit **4** at the end (only if there was no other error above); otherwise exit **0**.
-
----
-Write your solution in `answer.sh`, then run `check 1120`.  
-To experiment with the same test files the checker uses: `play 1120`.

@@ -14,7 +14,3 @@ Print `Rotated <LOGFILE> (keeping KEEP)`.
 - wrong number of arguments: usage on stderr, exit 1
 - LOGFILE is not a regular file: stderr, exit 2
 - KEEP not an integer ≥ 1: stderr, exit 3
-
----
-Write your solution in `answer.sh`, then run `check 1816`.  
-To experiment with the same test files the checker uses: `play 1816`.

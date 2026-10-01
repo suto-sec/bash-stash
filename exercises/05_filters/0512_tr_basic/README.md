@@ -5,6 +5,4 @@
 The script reads text from **standard input**. Convert all lowercase letters to uppercase,
 and additionally every `:` into a TAB.
 
----
-Write your solution in `answer.sh`, then run `check 0512`.  
-To experiment with the same test files the checker uses: `play 0512`.
+Use `tr`.

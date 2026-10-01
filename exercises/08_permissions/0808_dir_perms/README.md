@@ -17,7 +17,3 @@ Situations: `chmod 700 caja`, `chmod 600 caja`, `chmod 300 caja`. Output example
 ```
 
 Finally, restore `caja` to `755`.
-
----
-Write your solution in `answer.sh`, then run `check 0808`.  
-To experiment with the same test files the checker uses: `play 0808`.

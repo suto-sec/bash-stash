@@ -10,7 +10,3 @@
 3. the names that are in **both** lists (sorted), using `comm -12` on the sorted lists
 
 The script must exit with code 0.
-
----
-Write your solution in `answer.sh`, then run `check 0911`.  
-To experiment with the same test files the checker uses: `play 0911`.

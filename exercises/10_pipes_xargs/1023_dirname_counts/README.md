@@ -13,7 +13,3 @@ most frequent first; ties by directory in alphabetical order (as `sort` orders t
 a path is what `dirname` prints for it (`.` for a path without `/`).
 
 Hint: `xargs -d '\n' dirname < paths.txt` (GNU `dirname` accepts several arguments), or `sed`.
-
----
-Write your solution in `answer.sh`, then run `check 1023`.  
-To experiment with the same test files the checker uses: `play 1023`.

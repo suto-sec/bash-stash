@@ -15,7 +15,3 @@ ones) prints `skipped line N` on **stderr** (N = input line number).
 
 Finally print `count: N, average: A` where A is the average with exactly 2 decimals, **truncated**
 (not rounded), e.g. `66.66`; if there were no valid lines print `count: 0, average: -`.
-
----
-Write your solution in `answer.sh`, then run `check 1527`.  
-To experiment with the same test files the checker uses: `play 1527`.

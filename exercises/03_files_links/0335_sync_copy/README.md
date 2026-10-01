@@ -29,7 +29,3 @@ Errors (message on stderr):
 - `DST` exists and is not a directory → exit **3** (message includes `DST`)
 
 `DST` is created (with parents) if it does not exist. Names may contain spaces.
-
----
-Write your solution in `answer.sh`, then run `check 0335`.  
-To experiment with the same test files the checker uses: `play 0335`.

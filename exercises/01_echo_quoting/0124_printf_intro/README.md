@@ -16,7 +16,3 @@ Ana tiene 23 anios
 ```
 
 Hint: `printf '%s is %s\n' "$first" "$second"`
-
----
-Write your solution in `answer.sh`, then run `check 0124`.  
-To experiment with the same test files the checker uses: `play 0124`.

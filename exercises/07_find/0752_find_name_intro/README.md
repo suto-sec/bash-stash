@@ -15,7 +15,3 @@ data/notes.txt
 ```
 
 Hint: `find data -name 'notes.txt' | sort`. Always put the name pattern in quotes, so the shell does not expand it.
-
----
-Write your solution in `answer.sh`, then run `check 0752`.  
-To experiment with the same test files the checker uses: `play 0752`.

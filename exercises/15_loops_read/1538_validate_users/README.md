@@ -19,7 +19,3 @@ If all pass print `line N: OK USER`. Finally print `valid V, invalid I` and exit
 line was invalid, 0 otherwise.
 Errors (stderr): not exactly 1 argument → **1** (usage); FILE not a readable regular file → **2**
 (name it).
-
----
-Write your solution in `answer.sh`, then run `check 1538`.  
-To experiment with the same test files the checker uses: `play 1538`.

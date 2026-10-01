@@ -29,7 +29,3 @@ Exit code: **1** if nothing was found (the summary `WORD: 0 lines in 0 files` is
 
 Careful: `grep -c` with a single file prints only the number, with several files it prints
 `file:number`. Names may contain spaces.
-
----
-Write your solution in `answer.sh`, then run `check 0737`.  
-To experiment with the same test files the checker uses: `play 0737`.

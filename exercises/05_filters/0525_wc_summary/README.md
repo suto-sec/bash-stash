@@ -15,7 +15,3 @@ lines=L words=W chars=C bytes=B longest=X blank=E
 - `E`: number of **empty** lines (lines with nothing at all)
 
 Print only the numbers, never the file name (`wc -l < file`).
-
----
-Write your solution in `answer.sh`, then run `check 0525`.  
-To experiment with the same test files the checker uses: `play 0525`.

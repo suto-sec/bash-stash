@@ -8,7 +8,3 @@
    asynchronous; `sleep 0.2` before reading the state.
 4. Resume it with `kill -CONT` and print its state again.
 5. Kill it with `SIGKILL`, `wait` for it and print the exit status.
-
----
-Write your solution in `answer.sh`, then run `check 1204`.  
-To experiment with the same test files the checker uses: `play 1204`.

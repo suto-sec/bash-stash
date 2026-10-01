@@ -31,7 +31,3 @@ Errors (message on **stderr**):
 | `WORD` is not made only of letters and digits (mention it) | 2 |
 | `DIR` is not a directory (mention it) | 3 |
 | no match at all: print just the summary `0 lines in 0 files` on stdout | 4 |
-
----
-Write your solution in `answer.sh`, then run `check 0629`.  
-To experiment with the same test files the checker uses: `play 0629`.

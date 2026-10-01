@@ -25,7 +25,3 @@ Exit codes: wrong number of arguments → usage on stderr, **1**; `FILE` is not 
 
 The checker compares the users and groups you create (name, GECOS, home, shell, groups, home exists)
 and removes them afterwards.
-
----
-Write your solution in `answer.sh`, then run `check 1729`.  
-To experiment with the same test files the checker uses: `play 1729`.

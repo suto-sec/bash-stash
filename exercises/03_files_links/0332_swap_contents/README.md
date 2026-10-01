@@ -11,7 +11,3 @@ files through a third, disposable name first — get one with `mktemp` in the cu
 do a proper three-way rotation. Remember that a permission mode belongs to the **inode**, not to the
 name: `mv` carries it along with the data, so after the swap don't be surprised that each name now
 also carries the *other* file's original permissions. Nothing is printed.
-
----
-Write your solution in `answer.sh`, then run `check 0332`.  
-To experiment with the same test files the checker uses: `play 0332`.

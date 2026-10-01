@@ -15,7 +15,3 @@ exit **10**.
 - Not exactly 1 argument: usage on stderr, exit **1**.
 - `MAX_RESTARTS` not an integer: error, exit **2**.
 - `MAX_RESTARTS` outside `1..5`: error, exit **3**.
-
----
-Write your solution in `answer.sh`, then run `check 1221`.  
-To experiment with the same test files the checker uses: `play 1221`.

@@ -9,7 +9,3 @@ cipher: every letter is replaced by the letter `N` positions later in the alphab
 
 Hint: `abc...zabc...z` (the alphabet twice) contains every rotated alphabet: `cut -c` it out and
 give it to `tr`.
-
----
-Write your solution in `answer.sh`, then run `check 0529`.  
-To experiment with the same test files the checker uses: `play 0529`.

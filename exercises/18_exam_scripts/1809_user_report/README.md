@@ -13,7 +13,3 @@ where `exists/missing` says whether the home directory exists **on this system**
 number of lines of the group file whose member list (4th field, comma-separated) contains the login
 **plus one** for the primary group. End with `Total: N users`.
 If a file can't be read: stderr, exit 1.
-
----
-Write your solution in `answer.sh`, then run `check 1809`.  
-To experiment with the same test files the checker uses: `play 1809`.

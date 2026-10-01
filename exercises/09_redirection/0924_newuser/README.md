@@ -34,7 +34,3 @@ and prints on stdout `User <login> saved to <OUTFILE>`.
 
 Before asking anything: not exactly one argument → usage, exit **1**; `OUTFILE` already exists →
 exit **2** (it must not be modified). All errors print a message on **stderr** and do not create `OUTFILE`.
-
----
-Write your solution in `answer.sh`, then run `check 0924`.  
-To experiment with the same test files the checker uses: `play 0924`.

@@ -23,7 +23,7 @@ tail -n +2 "$1"
 tail -n +2 "$2"
 @@step 2 | Check the files
 @@readme
-Checks, in this order: not exactly two arguments → error message **and the correct usage**, exit **1**; the first, then the second argument is not a readable non-empty regular file → error with its name, exit **2**; the two headers differ → error message, exit code **4** (nothing printed on standard output).
+Checks, in this order: not exactly two arguments → error message **and the correct usage** (e.g. `Usage: mergecsv.sh a.csv b.csv`), exit **1**; the first, then the second argument is not a readable non-empty regular file → error with its name, exit **2**; the two headers differ → error message, exit code **4** (nothing printed on standard output).
 @@check
 ARGS=('a.csv b.csv' 'hdr.csv a.csv' '' 'a.csv' 'a.csv b.csv hdr.csv' 'nothing.csv a.csv' 'a.csv nothing.csv' 'adir a.csv' 'locked.csv a.csv' 'a.csv empty.csv' 'a.csv other.csv' 'other.csv b.csv')
 COMPARE="stdout exit errmsg"

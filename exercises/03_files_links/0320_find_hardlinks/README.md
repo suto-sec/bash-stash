@@ -10,7 +10,3 @@ The directory `datos` contains a file `master` and many other entries: some are 
    **not** count. Follow the order of the `datos/*` glob.
 2. Print `links: N`, where `N` is the link count of `datos/master` (`stat`). It may be bigger than what
    you found: hard links can live in other directories too.
-
----
-Write your solution in `answer.sh`, then run `check 0320`.  
-To experiment with the same test files the checker uses: `play 0320`.

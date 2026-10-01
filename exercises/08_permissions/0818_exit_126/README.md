@@ -13,7 +13,3 @@ Run these steps, hiding error messages with `2>/dev/null` where it says so:
 6. give the owner execute permission on `cerrado` and `cat cerrado/dato` again
 
 Notice the codes: **126** = found but cannot be executed, **127** = command not found.
-
----
-Write your solution in `answer.sh`, then run `check 0818`.  
-To experiment with the same test files the checker uses: `play 0818`.

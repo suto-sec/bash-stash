@@ -26,7 +26,3 @@ entries.
 - Wrong number of arguments: usage on stderr, exit **1**.
 - `ARCHIVE` does not exist: error naming it on stderr, exit **2**.
 - `ARCHIVE` exists but `tar -tf` fails on it: error naming it on stderr, exit **3**.
-
----
-Write your solution in `answer.sh`, then run `check 0421`.  
-To experiment with the same test files the checker uses: `play 0421`.

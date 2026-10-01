@@ -9,7 +9,3 @@ N characters, 1 otherwise).
 **Source it** (`source ./lib_texto.sh`) and, for each script argument, print
 `V: C vocales, largo` if `es_largo "V" 5` succeeds, or `V: C vocales, corto` otherwise (C is the
 vowel count from `contar_vocales`). Don't redefine either function.
-
----
-Write your solution in `answer.sh`, then run `check 1617`.  
-To experiment with the same test files the checker uses: `play 1617`.

@@ -8,7 +8,3 @@ If the lowercase name already exists, don't rename: print `skip <name>: <lower> 
 
 Print `<name> -> <lower>` on stdout for each rename (in alphabetical order of the original names, as the
 `*` glob gives them), then `Renamed N entries`. Exit 0. Not a directory: stderr, exit 1.
-
----
-Write your solution in `answer.sh`, then run `check 1818`.  
-To experiment with the same test files the checker uses: `play 1818`.

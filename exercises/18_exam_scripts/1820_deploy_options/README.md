@@ -10,7 +10,3 @@ Extend the deploy script (1801): `deploy2.sh [-n] [-m] [directory]` (options in 
 - no options: behave exactly like `deploy_bins.sh` (1801) (copy, `Copied N files`, `Directory ... created`).
 - unknown option (anything starting with `-`): usage on stderr, exit 1. More than one directory: exit 1.
 - the directory checks and exit codes 2 and 3 are the same as in 1801.
-
----
-Write your solution in `answer.sh`, then run `check 1820`.  
-To experiment with the same test files the checker uses: `play 1820`.

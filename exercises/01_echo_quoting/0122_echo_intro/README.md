@@ -15,7 +15,3 @@ Sin salto!
 ```
 
 Hint: `echo text` prints the text and a newline; `echo -n text` prints it without the newline.
-
----
-Write your solution in `answer.sh`, then run `check 0122`.  
-To experiment with the same test files the checker uses: `play 0122`.

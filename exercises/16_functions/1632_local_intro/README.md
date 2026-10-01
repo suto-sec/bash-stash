@@ -17,7 +17,3 @@ fuera
 ```
 
 Hint: `f() { local X=dentro; echo "$X"; }`
-
----
-Write your solution in `answer.sh`, then run `check 1632`.  
-To experiment with the same test files the checker uses: `play 1632`.

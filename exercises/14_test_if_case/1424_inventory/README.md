@@ -33,7 +33,3 @@ Errors (message on **stderr**, wording free), checked in this order:
 | `directory` does not exist (name it) | 2 |
 | it is not a directory (name it) | 3 |
 | you cannot read it or enter it (name it) | 4 |
-
----
-Write your solution in `answer.sh`, then run `check 1424`.  
-To experiment with the same test files the checker uses: `play 1424`.

@@ -22,7 +22,3 @@ Players: 3
 Hint: when `printf` receives more arguments than its format uses, it **repeats the format**:
 `printf '%s=%s\n' a 1 b 2` prints two lines. An **unquoted** `$(cat scores.txt)` is split into words.
 No loops are needed.
-
----
-Write your solution in `answer.sh`, then run `check 0115`.  
-To experiment with the same test files the checker uses: `play 0115`.

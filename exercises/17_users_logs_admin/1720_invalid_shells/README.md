@@ -19,7 +19,3 @@ Finally print `N users with an invalid shell`.
 - one of the files cannot be read: error message on stderr naming it, exit **1**
 
 (On the lab system, `pruiz` has `/bin/dash`, but `/etc/shells` only lists `/usr/bin/dash`.)
-
----
-Write your solution in `answer.sh`, then run `check 1720`.  
-To experiment with the same test files the checker uses: `play 1720`.

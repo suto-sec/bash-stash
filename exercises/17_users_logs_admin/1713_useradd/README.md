@@ -11,7 +11,3 @@ This script is run **as root**. Create the user `pepe`:
 
 Then print `getent passwd pepe` and `id -Gn pepe`.
 (`adduser` is the interactive Debian wrapper; in scripts use `useradd`.)
-
----
-Write your solution in `answer.sh`, then run `check 1713`.  
-To experiment with the same test files the checker uses: `play 1713`.

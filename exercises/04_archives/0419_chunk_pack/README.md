@@ -30,7 +30,3 @@ with the chunk count and `FILE`'s total size.
 - `FILE` does not exist: error naming it on stderr, exit **2**.
 - `FILE` exists but is not a regular file: error naming it on stderr, exit **3**.
 - `SIZE` is not a positive integer: error on stderr, exit **4**.
-
----
-Write your solution in `answer.sh`, then run `check 0419`.  
-To experiment with the same test files the checker uses: `play 0419`.

@@ -7,7 +7,3 @@
 Save the output of `echo hola` into the file `saludo.txt`. The file already exists with some old content: it must end up containing only `hola`. Nothing is printed on the screen.
 
 Hint: `command > file`
-
----
-Write your solution in `answer.sh`, then run `check 0926`.  
-To experiment with the same test files the checker uses: `play 0926`.

@@ -11,7 +11,3 @@ and exit **2**. If every level is a directory, print `cadena valida: FULLPATH` (
 complete joined path) and exit 0.
 
 With no arguments, print a usage message on stderr and exit 1.
-
----
-Write your solution in `answer.sh`, then run `check 1438`.  
-To experiment with the same test files the checker uses: `play 1438`.

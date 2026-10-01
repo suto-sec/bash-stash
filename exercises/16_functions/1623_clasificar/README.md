@@ -15,7 +15,3 @@ argument, print:
 Finally print `TOTAL: P positivos, N negativos, Z ceros, I invalidos`.
 
 Errors: no arguments at all → usage on stderr, exit 1.
-
----
-Write your solution in `answer.sh`, then run `check 1623`.  
-To experiment with the same test files the checker uses: `play 1623`.

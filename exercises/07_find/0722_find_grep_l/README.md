@@ -10,7 +10,3 @@ Under `etc` there are configuration files. Print, separated by `---`:
 
 Use `find ... -exec grep ... {} +` (one grep for many files) with the options that make grep print
 only the **names** of the files that match (`-l`) or don't match (`-L`). Some names have spaces.
-
----
-Write your solution in `answer.sh`, then run `check 0722`.  
-To experiment with the same test files the checker uses: `play 0722`.

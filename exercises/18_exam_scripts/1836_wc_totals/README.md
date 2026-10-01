@@ -11,7 +11,3 @@ Checks, in this order:
 - not exactly 2 arguments: usage on stderr, exit **1**.
 - `DIR` does not exist: message on stderr (naming `DIR`), exit **2**.
 - `DIR` exists but is not a directory: message on stderr (naming `DIR`), exit **3**.
-
----
-Write your solution in `answer.sh`, then run `check 1836`.  
-To experiment with the same test files the checker uses: `play 1836`.

@@ -14,7 +14,3 @@ Checks, in this order:
 - wrong number of arguments (not 1 or 2), or a given `N` that is not a positive integer: usage on
   stderr, exit **1**.
 - `FILE` is not a readable regular file: message on stderr (naming `FILE`), exit **2**.
-
----
-Write your solution in `answer.sh`, then run `check 1826`.  
-To experiment with the same test files the checker uses: `play 1826`.

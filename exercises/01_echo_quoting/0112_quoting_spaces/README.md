@@ -12,7 +12,3 @@ separated by a **single** space. Read it into a variable with `MSG=$(cat msg.txt
 hello     big    world
 hello big world
 ```
-
----
-Write your solution in `answer.sh`, then run `check 0112`.  
-To experiment with the same test files the checker uses: `play 0112`.

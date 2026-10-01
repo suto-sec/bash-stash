@@ -25,7 +25,3 @@ Errors (message on **stderr**), checked **before** writing anything:
 | `OUT` cannot be written (e.g. its directory does not exist) | 4 |
 
 All files end with a newline. Names may contain spaces.
-
----
-Write your solution in `answer.sh`, then run `check 0922`.  
-To experiment with the same test files the checker uses: `play 0922`.

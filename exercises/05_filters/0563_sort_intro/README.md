@@ -9,7 +9,3 @@ Print the lines of `nombres.txt` in alphabetical order.
 Example: if `nombres.txt` contains `pera`, `kiwi`, `manzana` (one per line), the output is `kiwi`, `manzana`, `pera`.
 
 Hint: `sort file`
-
----
-Write your solution in `answer.sh`, then run `check 0563`.  
-To experiment with the same test files the checker uses: `play 0563`.

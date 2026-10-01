@@ -19,7 +19,3 @@ Total: <U> users, <S> shells
 
 - more than one argument: usage on stderr, exit **2**
 - the file is not a readable regular file: error message on stderr, exit **1**
-
----
-Write your solution in `answer.sh`, then run `check 1719`.  
-To experiment with the same test files the checker uses: `play 1719`.

@@ -6,7 +6,3 @@
 call — not a loop, not `sed`, not `sort` — group every three consecutive lines into one output
 line, the three values joined by a comma, in file order (`paste -d, - - -` reads three lines from
 its input for every output line, one per `-`).
-
----
-Write your solution in `answer.sh`, then run `check 0552`.  
-To experiment with the same test files the checker uses: `play 0552`.

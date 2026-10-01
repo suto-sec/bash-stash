@@ -7,7 +7,3 @@ A hard link is a second name for the same file: both names point to the same dat
 The current directory contains the file `original`. Create a hard link called `duro` that points to it. Both names must exist afterwards. Nothing is printed.
 
 Hint: `ln EXISTING NEWNAME`
-
----
-Write your solution in `answer.sh`, then run `check 0342`.  
-To experiment with the same test files the checker uses: `play 0342`.

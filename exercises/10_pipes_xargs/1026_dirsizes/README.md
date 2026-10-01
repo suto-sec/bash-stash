@@ -32,7 +32,3 @@ Errors (message on **stderr**, nothing on stdout):
 - `DIR` has no subdirectories: exit **4**
 
 Names may contain spaces.
-
----
-Write your solution in `answer.sh`, then run `check 1026`.  
-To experiment with the same test files the checker uses: `play 1026`.

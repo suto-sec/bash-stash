@@ -11,7 +11,3 @@ Print, one per line:
    if there are fewer than 3
 
 The script always receives at least one argument.
-
----
-Write your solution in `answer.sh`, then run `check 1306`.  
-To experiment with the same test files the checker uses: `play 1306`.

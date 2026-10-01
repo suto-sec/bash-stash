@@ -19,7 +19,3 @@ For every `.rpt` file directly inside `reportes`, **in the order given by the `*
    **after**.
 
 Finally print `Total: N files processed`.
-
----
-Write your solution in `answer.sh`, then run `check 0410`.  
-To experiment with the same test files the checker uses: `play 0410`.

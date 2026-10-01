@@ -10,8 +10,4 @@ Print:
 2. the size of every directory **under** `Datos` with **max depth 1**, in KiB (`-k`)
 3. the size of every directory **and file** under `Datos`, max depth 2, human readable
 
-(Exactly what `du` prints; the checker runs your command and the reference on identical files.)
-
----
-Write your solution in `answer.sh`, then run `check 0213`.  
-To experiment with the same test files the checker uses: `play 0213`.
+(Exactly what `du` prints; the order of the lines does not matter. The checker runs your command and the reference on identical files.)

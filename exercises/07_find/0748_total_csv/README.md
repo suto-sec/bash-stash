@@ -16,7 +16,3 @@ Hint: batch all the matches into **one** invocation of `wc -l` with `-exec ... {
 `{} \;`) — `wc` only prints an extra `total` line when it is given **more than one** file at once;
 give it the files one at a time with `{} \;` and you never get that combined total, so you would
 have to add the numbers up yourself instead.
-
----
-Write your solution in `answer.sh`, then run `check 0748`.  
-To experiment with the same test files the checker uses: `play 0748`.

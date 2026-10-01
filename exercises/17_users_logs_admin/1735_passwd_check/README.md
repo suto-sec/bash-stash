@@ -17,7 +17,3 @@ the passwd file line by line (lines numbered from 1) and reports, in this order 
 
 Exit codes: **0** OK, **1** some problem; more than 2 arguments → usage on stderr, **2**; a file cannot
 be read → message on stderr naming it, **3**.
-
----
-Write your solution in `answer.sh`, then run `check 1735`.  
-To experiment with the same test files the checker uses: `play 1735`.

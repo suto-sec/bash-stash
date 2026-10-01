@@ -21,7 +21,3 @@ Length  : 12
 - `Length`: the number of characters of the `Name` value (including the space)
 
 Hint: `${v,,}` lowercases, `${v^}` uppercases the first letter, `${v^^}` everything, `${#v}` is the length.
-
----
-Write your solution in `answer.sh`, then run `check 0114`.  
-To experiment with the same test files the checker uses: `play 0114`.

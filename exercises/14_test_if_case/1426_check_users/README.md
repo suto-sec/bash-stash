@@ -31,7 +31,3 @@ Exit codes:
 | not exactly one argument (usage on stderr) | 2 |
 | `file` is not a readable regular file (stderr, name it) | 3 |
 | the file has no records at all (only blank/comment lines; stderr message, nothing on stdout) | 4 |
-
----
-Write your solution in `answer.sh`, then run `check 1426`.  
-To experiment with the same test files the checker uses: `play 1426`.

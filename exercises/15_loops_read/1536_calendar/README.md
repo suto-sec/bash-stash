@@ -20,7 +20,3 @@ week lines, E = number of days that fall on Saturday or Sunday.
 Errors (stderr, checked in this order): not exactly 2 arguments → **1** (usage); an argument that is
 not an integer (digits only; check DAYS first) → **2** (name it); DAYS not in 28–31 or FIRST not in
 1–7 → **3** (name the bad value).
-
----
-Write your solution in `answer.sh`, then run `check 1536`.  
-To experiment with the same test files the checker uses: `play 1536`.

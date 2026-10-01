@@ -83,6 +83,8 @@ a name are kept), sorted by **quantity descending** (numeric) and, for equal qua
 **code** (as `sort` orders them).
 
 Example: `P1231 red apple            7` becomes `P1231;red apple;7`.
+
+Use `cut` to take the columns by character position.
 @@check
 setup() {
   local i n name; n=$(randr 6 14)
@@ -197,6 +199,8 @@ Read titles from **standard input** (one per line, ASCII only) and print, for ea
 - no `-` at the beginning or at the end
 
 Example: `  Hello, World!! 2026 -- v1.2 ` → `hello-world-2026-v1-2`.
+
+Use `tr`.
 @@check
 input() {
   local i w
@@ -373,6 +377,8 @@ Print:
 3. all the events **oldest first** in a single line, separated by `;`
 
 Hint: `paste - - -` reads three lines of its input for every output line.
+
+Use `tac` and `paste`.
 @@check
 setup() {
   local i n t=$(randr 0 300); n=$(randr 4 13)

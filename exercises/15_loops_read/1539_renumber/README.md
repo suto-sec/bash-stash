@@ -14,7 +14,3 @@ Write `renumera.sh DIR EXT PREFIX`. It renames the regular files directly in DIR
 Errors (stderr, checked in this order): not exactly 3 arguments → **1** (usage); DIR not a directory
 → **2** (name it); EXT not matching `^[a-z0-9]+$` → **3** (name it); PREFIX not matching
 `^[A-Za-z0-9_]+$` → **4** (name it).
-
----
-Write your solution in `answer.sh`, then run `check 1539`.  
-To experiment with the same test files the checker uses: `play 1539`.

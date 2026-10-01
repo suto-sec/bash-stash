@@ -14,7 +14,3 @@ Expected output:
 ```
 143
 ```
-
----
-Write your solution in `answer.sh`, then run `check 1224`.  
-To experiment with the same test files the checker uses: `play 1224`.

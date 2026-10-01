@@ -15,7 +15,3 @@ At the end (only if at least one grade was valid) print
 
 Exit codes: 1 if there are no arguments at all (usage on stderr); 2 if there are arguments but
 none is valid; 0 otherwise.
-
----
-Write your solution in `answer.sh`, then run `check 1624`.  
-To experiment with the same test files the checker uses: `play 1624`.

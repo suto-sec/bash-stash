@@ -103,8 +103,8 @@ find . -name '*~' | xargs rm
 @@level 2
 @@cmds $( ), `...`
 @@readme
-Same as before (delete every `*~` file under the current directory), but now using
-**command substitution**: `rm $(find ...)`.
+Delete every file whose name ends in `~` under the current directory (at any depth), but this time using
+**command substitution** instead of `xargs`: `rm $(find ...)`. (Like the previous exercise, the names have no spaces.)
 @@check
 COMPARE="stdout exit files"
 setup() { mkdir -p a/b c; local i; for i in $(seq 8); do touch "$(pick . a a/b c)/$(word)$i$(pick '~' '' '.bak')"; done; touch "x~"; }

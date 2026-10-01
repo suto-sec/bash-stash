@@ -8,7 +8,3 @@ is not 0, otherwise A) for two non-negative integers, returning the result with 
 
 The script receives two or more non-negative integers. Compute the gcd of *all* of them by folding
 `mcd` from left to right, and print `mcd = R`.
-
----
-Write your solution in `answer.sh`, then run `check 1616`.  
-To experiment with the same test files the checker uses: `play 1616`.

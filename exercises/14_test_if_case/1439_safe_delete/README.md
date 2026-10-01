@@ -11,7 +11,3 @@ Finally print `TOTAL: R borrados de N candidatos`.
 
 Errors (stderr, wording free; check in this order): fewer than 2 arguments -> usage, exit **1**;
 REF does not exist -> a message **naming it**, exit **2** (don't touch anything).
-
----
-Write your solution in `answer.sh`, then run `check 1439`.  
-To experiment with the same test files the checker uses: `play 1439`.

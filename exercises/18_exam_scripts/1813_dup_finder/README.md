@@ -10,7 +10,3 @@ their first path. Finish with `N groups of duplicates` (preceded by an empty lin
 at least one group). Not a directory: stderr, exit 1.
 
 Hint: `md5sum` every file, sort by hash, keep hashes that appear more than once.
-
----
-Write your solution in `answer.sh`, then run `check 1813`.  
-To experiment with the same test files the checker uses: `play 1813`.

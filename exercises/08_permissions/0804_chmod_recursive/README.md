@@ -10,7 +10,3 @@ The tree `web` has files and directories with messy permissions. With **one** `c
 - nobody except the user can write
 
 (Tip: `chmod -R u=rwX,go=rX web`.)
-
----
-Write your solution in `answer.sh`, then run `check 0804`.  
-To experiment with the same test files the checker uses: `play 0804`.

@@ -15,7 +15,3 @@ Finally print `K settings, B ignored`.
 
 Hint: `IFS='=' read -r key value <<< "$line"` puts the first field in `key` and **the rest of the
 line** in the last variable.
-
----
-Write your solution in `answer.sh`, then run `check 1520`.  
-To experiment with the same test files the checker uses: `play 1520`.

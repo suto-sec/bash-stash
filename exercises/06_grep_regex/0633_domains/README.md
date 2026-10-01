@@ -22,7 +22,3 @@ orders them). Finally print `<A> distinct addresses, <D> domains`.
   at the end exit **2**.
 - Otherwise, if no address was found at all: exit **3** (the summary `0 distinct addresses, 0 domains`
   is still printed). Else exit 0.
-
----
-Write your solution in `answer.sh`, then run `check 0633`.  
-To experiment with the same test files the checker uses: `play 0633`.

@@ -28,7 +28,3 @@ Errors (message on **stderr**, nothing changed):
 - `FILE` is not writable: message with its name, exit **3**
 
 Hint: `cat -n` numbers the lines; `sort -s -u` keeps the first of each group of equal keys.
-
----
-Write your solution in `answer.sh`, then run `check 0548`.  
-To experiment with the same test files the checker uses: `play 0548`.

@@ -9,7 +9,3 @@ The script `ruidoso.sh` writes to stdout and stderr. Run it so that:
    stdout!) and only stdout to the file. Understand why.
 
 The checker compares your stdout and the files.
-
----
-Write your solution in `answer.sh`, then run `check 0904`.  
-To experiment with the same test files the checker uses: `play 0904`.

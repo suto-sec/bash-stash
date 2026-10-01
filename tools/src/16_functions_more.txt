@@ -333,7 +333,7 @@ Write `informe.sh FILE...`. Loop over the arguments with `for f in "$@"; do revi
   count it as skipped — don't stop the script;
 - otherwise read the file's first line into a **local** variable also named `f` (yes, on purpose —
   it must not leak into the caller's loop variable), and print
-  `FILE: primera linea = 'f' (lineas: L)` (L = `wc -l` of the file), counting it as ok.
+  `FILE: primera linea = 'f' (lineas: L)` (the quotes are literal; `f` stands for the text of that first line; L = `wc -l` of the file), counting it as ok.
 
 After the loop, print `procesados: OK ok, SKIP saltados` and then `ultimo arg: $f` — this last line
 must show the **last FILE argument itself**, proving the loop variable was never overwritten by
@@ -739,9 +739,9 @@ function per subcommand, each validating its own argument count with `die`:
 
 - `listar` (0 args): print every contact as `NOMBRE: TELEFONO`, sorted (`sort agenda.txt`), or
   `agenda vacia` if the file is missing/empty.
-- `buscar NOMBRE` (1 arg): print `NOMBRE: TELEFONO` for every matching line, or `no encontrado` if
-  none.
-- `borrar NOMBRE` (1 arg): delete every matching line (`sed -i`) and print `borrados: K` (K = how
+- `buscar NOMBRE` (1 arg): print `NOMBRE: TELEFONO` for every matching line (a line whose name is
+  exactly NOMBRE, i.e. it starts with `NOMBRE:`), or `no encontrado` if none.
+- `borrar NOMBRE` (1 arg): delete every matching line (same rule) (`sed -i`) and print `borrados: K` (K = how
   many).
 - `add NOMBRE TELEFONO` (2 args): TELEFONO must be digits only (die otherwise, naming it); append
   the line and print `agregado: NOMBRE`.

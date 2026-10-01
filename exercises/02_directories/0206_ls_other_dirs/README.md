@@ -10,7 +10,3 @@ each with some files. **Without using `cd`**, print (in this order):
 3. the content of `/usr/share/dict`
 
 (Plain `ls DIR` for each; each listing is one entry per line.)
-
----
-Write your solution in `answer.sh`, then run `check 0206`.  
-To experiment with the same test files the checker uses: `play 0206`.

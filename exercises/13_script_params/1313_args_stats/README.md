@@ -13,7 +13,3 @@ max: M
 
 With no arguments, print `No numbers` on stderr and exit 1. If some argument is **not** an integer
 (optional `-` and digits), print `Not a number: X` on stderr and exit 2.
-
----
-Write your solution in `answer.sh`, then run `check 1313`.  
-To experiment with the same test files the checker uses: `play 1313`.

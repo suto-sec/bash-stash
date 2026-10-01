@@ -7,7 +7,3 @@ files without a dot are ignored). Print as `uniq -c` does, sorted by count desce
 extension alphabetically.
 
 Hint: `find repo -type f -name '*.*'` + extract the extension (e.g. `sed 's/.*\.//'`).
-
----
-Write your solution in `answer.sh`, then run `check 0716`.  
-To experiment with the same test files the checker uses: `play 0716`.

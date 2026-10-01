@@ -8,8 +8,4 @@ The current directory contains many `Trimestre.*` files. Using **wildcards** (no
 2. Delete the files named `Trimestre.18.` followed by a `1` or a `2` and ending in `.txt`.
 3. Delete every file whose name has exactly **one character** before `.log` (e.g. `a.log`, not `ab.log`).
 
-Leave everything else untouched.
-
----
-Write your solution in `answer.sh`, then run `check 0305`.  
-To experiment with the same test files the checker uses: `play 0305`.
+Leave everything else untouched. Use at most three `rm` commands (one per item).

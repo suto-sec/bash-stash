@@ -26,7 +26,3 @@ leading spaces. Order: by path (as `sort` orders paths), then by line number. Fi
 
 Errors (message on **stderr**): no arguments or more than 2 → usage, exit **1**; `DIR` is not a
 directory → exit **2** (mention it); invalid `TAG` → exit **3** (mention it). Checked in that order.
-
----
-Write your solution in `answer.sh`, then run `check 0632`.  
-To experiment with the same test files the checker uses: `play 0632`.

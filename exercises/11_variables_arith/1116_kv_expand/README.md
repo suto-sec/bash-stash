@@ -10,7 +10,3 @@ The file `config.txt` contains one line `KEY=VALUE` (KEY is uppercase, VALUE is 
 3. `KEY` in lowercase
 4. `VALUE` with every `/` replaced by `_` — `${VALUE//\//_}`
 5. the length of `VALUE`
-
----
-Write your solution in `answer.sh`, then run `check 1116`.  
-To experiment with the same test files the checker uses: `play 1116`.

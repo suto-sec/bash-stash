@@ -28,7 +28,3 @@ Errors (message on stderr):
 - not exactly 3 arguments → usage, exit **1**
 - `DIR` is not a directory → exit **2** (the message includes `DIR`)
 - `OLD` or `NEW` is an empty string → exit **3**
-
----
-Write your solution in `answer.sh`, then run `check 0325`.  
-To experiment with the same test files the checker uses: `play 0325`.

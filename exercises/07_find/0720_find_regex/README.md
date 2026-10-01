@@ -12,7 +12,3 @@ Under `camera`, print, separated by `---`:
 
 Remember that `-regex` matches against the **whole path** (e.g. `camera/misc/IMG_1234.jpg`), not the
 name, and it must match it entirely. `-regextype posix-extended` lets you use `{4}`, `?`, `+`...
-
----
-Write your solution in `answer.sh`, then run `check 0720`.  
-To experiment with the same test files the checker uses: `play 0720`.

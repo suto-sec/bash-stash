@@ -15,7 +15,3 @@ Total: 2
 ```
 
 Hint: `echo "Primero: $1"`
-
----
-Write your solution in `answer.sh`, then run `check 1339`.  
-To experiment with the same test files the checker uses: `play 1339`.

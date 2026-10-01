@@ -22,7 +22,7 @@ COMPARE="stdout exit"
 find "$1" -type f -printf '%s %p\n' | sort -nr | head -n 1
 @@step 2 | Check the directory
 @@readme
-Not exactly one argument → error message **and the correct usage**, exit **1**; `DIR` does not exist → error with its name, exit **2**; not a directory → error with its name, exit **3**.
+Not exactly one argument → error message **and the correct usage** (e.g. `Usage: findbig.sh dir`), exit **1**; `DIR` does not exist → error with its name, exit **2**; not a directory → error with its name, exit **3**.
 @@check
 ARGS=('proj' 'empty' '' 'proj empty' 'nothing' 'notadir.txt')
 COMPARE="stdout exit errmsg"

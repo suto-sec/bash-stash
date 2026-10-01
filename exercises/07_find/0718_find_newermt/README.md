@@ -11,7 +11,3 @@ The photos under `fotos` have modification dates between 2023 and 2025. Print, s
    no ties).
 
 Hint for 2: `stat -c '%Y %n'` prints the modification time in seconds followed by the name.
-
----
-Write your solution in `answer.sh`, then run `check 0718`.  
-To experiment with the same test files the checker uses: `play 0718`.

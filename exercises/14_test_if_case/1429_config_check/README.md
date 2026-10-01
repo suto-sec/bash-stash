@@ -26,7 +26,3 @@ problems, or `P problems` (P = number of problem lines printed).
 
 Exit codes: **0** no problems, **1** some problem, **2** not exactly one argument (usage on stderr),
 **3** `file` is not a readable regular file (stderr, name it).
-
----
-Write your solution in `answer.sh`, then run `check 1429`.  
-To experiment with the same test files the checker uses: `play 1429`.

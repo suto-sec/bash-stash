@@ -22,7 +22,3 @@ Checks, in this order:
 - `DEST` exists but is not a directory: message on stderr (naming `DEST`), exit **4**.
 
 File and directory names may contain spaces.
-
----
-Write your solution in `answer.sh`, then run `check 1832`.  
-To experiment with the same test files the checker uses: `play 1832`.

@@ -17,6 +17,16 @@ Rules
 - Tests of the web UI must use a scratch progress dir (`LAB_PROGRESS=/tmp/x node web/server.js`; `./lab` does not forward the variable).
 - Do not reuse the scenarios of the pilot practice exams (`newest`, `lowstock`, `quarantine`) nor those planned for the remaining ones.
 
+Writing a step statement (the learner sees only this text and the step title)
+- The **title** says what the step adds ("Optional step size", not "Count in steps"); never reuse a vague word like "More" or "Something else".
+- Say the new behaviour in one sentence, then show an **example** (command → output) whenever the output format is not obvious.
+- List every check as `condition → what is printed where → exit code`, in the order the checker applies them. Anything the checker tests must be
+  written down: file names, exact messages (`Directory <path> created`), the order of lines, whether case matters, what happens to hidden files.
+- Name the tools only as hints; do not refer to commands outside the browser (the lab has no `check`/`play` commands: say "the terminal folder",
+  "Reset exercise instance").
+- The first time a step asks for "the correct usage", give an example message (`(e.g. `Usage: name args`)`): the checker accepts any message that
+  contains `Usage`/`usage`/`Uso` or the script name.
+
 ## The 30 scripts (plan; groups are set by number in tools/build_scripts.js)
 
 First steps (s01–s08): 01 greet (args, default, usage) · 02 kind (-f/-d/-e, exit codes) · 03 sumargs (loop, arithmetic, validation) ·

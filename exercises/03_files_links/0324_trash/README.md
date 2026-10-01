@@ -24,7 +24,3 @@ It **moves** every FILE into the trash directory `$HOME/.papelera`.
 Exit codes: **1** if there are no arguments (usage message on stderr, nothing else happens); **2** if at
 least one argument produced an error; **0** otherwise. Arguments are processed in the order given and
 may contain spaces.
-
----
-Write your solution in `answer.sh`, then run `check 0324`.  
-To experiment with the same test files the checker uses: `play 0324`.

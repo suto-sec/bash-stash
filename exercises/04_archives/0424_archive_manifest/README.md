@@ -27,7 +27,3 @@ Then print `Total: N files, B bytes` (`N` entries counted, `B` = sum of their si
 Errors (message on stderr): not exactly 1 argument → usage, exit **1**; `ARCHIVE` does not exist →
 exit **2** (message includes `ARCHIVE`); `ARCHIVE` exists but `tar -tzf` fails on it → exit **3**
 (message includes `ARCHIVE`).
-
----
-Write your solution in `answer.sh`, then run `check 0424`.  
-To experiment with the same test files the checker uses: `play 0424`.

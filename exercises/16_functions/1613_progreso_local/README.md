@@ -17,7 +17,3 @@ The script must, in this exact order:
 2. call `progreso "$@"` directly (not inside `$( )`)
 3. print `estado despues: $n` — it must still say `sin datos`
 4. print `total: $(sumar "$@")`
-
----
-Write your solution in `answer.sh`, then run `check 1613`.  
-To experiment with the same test files the checker uses: `play 1613`.

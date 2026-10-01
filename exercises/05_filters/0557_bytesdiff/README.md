@@ -18,7 +18,3 @@ Errors (message on **stderr**, nothing on stdout), checked in this order:
 - one of the files is not a readable regular file: message with its name, exit **2**
 - the files have **different sizes** (so a byte-by-byte comparison is not meaningful): message
   naming both files, exit **3**
-
----
-Write your solution in `answer.sh`, then run `check 0557`.  
-To experiment with the same test files the checker uses: `play 0557`.

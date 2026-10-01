@@ -29,7 +29,3 @@ Errors (message on **stderr**, wording free, nothing copied), checked in this or
 | `src` is not readable (name it) | 4 |
 | `dst` is not a directory and its parent directory does not exist (name `dst`) | 5 |
 | the target is the same file as `src` (`-ef`) | 6 |
-
----
-Write your solution in `answer.sh`, then run `check 1425`.  
-To experiment with the same test files the checker uses: `play 1425`.

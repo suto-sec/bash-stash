@@ -20,7 +20,3 @@ Finally print `N jobs`.
 - the file is not a readable regular file: error message on stderr, exit **1**
 
 (Reminder: `read -r a b rest` splits on blanks and leaves everything else in `rest`.)
-
----
-Write your solution in `answer.sh`, then run `check 1726`.  
-To experiment with the same test files the checker uses: `play 1726`.

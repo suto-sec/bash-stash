@@ -22,7 +22,7 @@ done
 echo "${out^^}"
 @@step 2 | Exactly one argument
 @@readme
-Not exactly one argument → error message **and the correct usage** on standard error, exit **1**.
+Not exactly one argument → error message **and the correct usage** (e.g. `Usage: initials.sh "full name"`) on standard error, exit **1**.
 @@check
 ARGS=('"ana maria ruiz"' 'luis' '' 'ana maria' '"a b" "c d"')
 COMPARE="stdout exit errmsg"

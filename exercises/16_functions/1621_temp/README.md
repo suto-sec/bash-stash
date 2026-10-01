@@ -15,7 +15,3 @@ exits the script with CODE) and use it for every validation:
 Write `c_to_f` and `f_to_c` (integer arithmetic, truncating like `$(( ))`) and a function
 `convertir UNIDAD VALOR` that **echoes** the converted value, dispatching with a `case`. Print
 `VALOR UNIDAD = R OTRA` (OTRA is the other unit's letter).
-
----
-Write your solution in `answer.sh`, then run `check 1621`.  
-To experiment with the same test files the checker uses: `play 1621`.

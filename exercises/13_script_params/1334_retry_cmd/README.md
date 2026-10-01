@@ -13,7 +13,3 @@ times, stopping as soon as one attempt succeeds. For every attempt actually run,
 
 If fewer than 2 arguments are given, or N is not a positive integer, print a usage message on stderr
 and exit 1 (without attempting anything).
-
----
-Write your solution in `answer.sh`, then run `check 1334`.  
-To experiment with the same test files the checker uses: `play 1334`.

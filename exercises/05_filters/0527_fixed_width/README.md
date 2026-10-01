@@ -16,6 +16,4 @@ a name are kept), sorted by **quantity descending** (numeric) and, for equal qua
 
 Example: `P1231 red apple            7` becomes `P1231;red apple;7`.
 
----
-Write your solution in `answer.sh`, then run `check 0527`.  
-To experiment with the same test files the checker uses: `play 0527`.
+Use `cut` to take the columns by character position.

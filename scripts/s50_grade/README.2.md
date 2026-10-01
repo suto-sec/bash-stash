@@ -1,1 +1,1 @@
-Not exactly one argument → error message **and the correct usage**, exit **1**. The score must be an integer from 0 to 100 (digits only, no sign), otherwise an error that includes it and exit **2**.
+Not exactly one argument → error message **and the correct usage** (e.g. `Usage: grade.sh score`), exit **1**. The score must be an integer from 0 to 100 (digits only, no sign), otherwise an error that includes it and exit **2**.

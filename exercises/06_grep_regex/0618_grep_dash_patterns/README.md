@@ -8,7 +8,3 @@
 1. the lines that contain `-rf`
 2. the lines that contain `-n` **or** `--dry-run` (a single `grep` with two `-e`)
 3. the **number** of lines that contain no `-` at all
-
----
-Write your solution in `answer.sh`, then run `check 0618`.  
-To experiment with the same test files the checker uses: `play 0618`.

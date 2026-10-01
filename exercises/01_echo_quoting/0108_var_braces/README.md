@@ -14,7 +14,3 @@ kernels are cool
 ```
 
 Hint: `$NAME_backup` is a different (empty) variable. Use `${NAME}`.
-
----
-Write your solution in `answer.sh`, then run `check 0108`.  
-To experiment with the same test files the checker uses: `play 0108`.

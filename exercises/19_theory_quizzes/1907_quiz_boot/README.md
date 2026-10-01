@@ -22,6 +22,3 @@ Answer in `answer.txt` as `N: answer`.
 15. After loading itself, the kernel looks for the initial process. Which PID does it get? (number)
 16. Put in order (letters, no spaces): a) the kernel runs the initial process b) the firmware checks
     the hardware c) the boot loader loads the kernel d) the partition table is loaded
-
----
-Write your answers in `answer.txt` (one `N: answer` line per question), then run `check 1907`.

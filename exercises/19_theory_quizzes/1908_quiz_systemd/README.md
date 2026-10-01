@@ -22,6 +22,3 @@ Answer in `answer.txt` as `N: answer`.
 16. Name of the classic init system systemd replaced on Linux. (name)
 17. What is a systemd **unit**? a) a CPU core b) a configuration file describing something systemd
     manages (a service, a mount...) c) a user session (a/b/c)
-
----
-Write your answers in `answer.txt` (one `N: answer` line per question), then run `check 1908`.

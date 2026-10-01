@@ -12,7 +12,3 @@ Write the argument validation of the exam-style deploy script (1801) (installed 
 If everything is OK, print `Base directory: <dir>` where `<dir>` is the given argument, or `.` if
 none was given, and exit 0. (Error message wording is free; the checker checks stderr is not empty,
 the exit code and that the name appears.)
-
----
-Write your solution in `answer.sh`, then run `check 1413`.  
-To experiment with the same test files the checker uses: `play 1413`.

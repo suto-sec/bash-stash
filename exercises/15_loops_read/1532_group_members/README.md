@@ -19,7 +19,3 @@ A USER that is not a valid user name (`^[a-z_][a-z0-9_-]*$`) prints `invalid use
 
 Exit codes: fewer than 2 arguments → **1** (usage on stderr); GROUPFILE not a readable regular file →
 **2** (stderr, name it); otherwise **3** if some user name was invalid, else 0.
-
----
-Write your solution in `answer.sh`, then run `check 1532`.  
-To experiment with the same test files the checker uses: `play 1532`.

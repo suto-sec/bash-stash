@@ -13,7 +13,3 @@ alumno
 ```
 
 Hint: `passwd -S "$(whoami)" | cut -d' ' -f1` (`-d' '` = fields are separated by a space, `-f1` = the first field).
-
----
-Write your solution in `answer.sh`, then run `check 1739`.  
-To experiment with the same test files the checker uses: `play 1739`.

@@ -29,7 +29,3 @@ Validation, in this order (message on **stderr**):
 - `ARCHIVE` does not end in `.tar.gz`: exit **3**
 - after processing the manifest (the `missing:`/`skipped:` lines are printed), there is no file to
   pack: error on stderr, exit **4**, and no archive is created.
-
----
-Write your solution in `answer.sh`, then run `check 1029`.  
-To experiment with the same test files the checker uses: `play 1029`.

@@ -310,6 +310,8 @@ other: <n>
 Total: <T> lines
 ```
 
+(`T` = the sum of the five counts, i.e. the non-empty lines of `LOG`.)
+
 Errors (message on **stderr**): not exactly 2 arguments → usage, exit **1**; `LOG` is not a
 readable regular file → exit **2**; `OUTDIR` exists and is not a directory → exit **3**.
 @@check

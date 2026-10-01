@@ -20,7 +20,3 @@ Other files are not checked. For each problem print `BAD <path>: <mode>` or, wit
 Exit codes: **0** if there were no problems or `-f` fixed them; **1** if problems were found without
 `-f`; **2** for wrong usage (any argument other than a single `-f`; usage on stderr); **3** if
 `$HOME/.ssh` is not a directory (stderr message, nothing else is printed).
-
----
-Write your solution in `answer.sh`, then run `check 0826`.  
-To experiment with the same test files the checker uses: `play 0826`.

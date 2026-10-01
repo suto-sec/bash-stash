@@ -10,7 +10,3 @@
 Nothing is printed. Afterwards `ls -R proyecto` should show `src` and `lib`.
 
 Hint: `mkdir -p one/two/three`
-
----
-Write your solution in `answer.sh`, then run `check 0228`.  
-To experiment with the same test files the checker uses: `play 0228`.

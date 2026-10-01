@@ -9,7 +9,3 @@ Under `datos`, print sorted, separated by `---`:
 3. **empty** regular files (`-empty` or `-size 0`)
 
 (Beware: `-size -1M` means "0 blocks of 1M", i.e. only empty files. That's why we use k here.)
-
----
-Write your solution in `answer.sh`, then run `check 0704`.  
-To experiment with the same test files the checker uses: `play 0704`.

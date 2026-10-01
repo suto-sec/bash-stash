@@ -7,7 +7,3 @@ Print the users that own processes in the system, with how many processes each o
 
 Note: your own script and its pipeline also count as processes of `alumno`; the checker
 tolerates that difference only if your pipeline is a single line... so keep it on **one line**.
-
----
-Write your solution in `answer.sh`, then run `check 1011`.  
-To experiment with the same test files the checker uses: `play 1011`.

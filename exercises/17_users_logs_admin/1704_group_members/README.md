@@ -7,7 +7,3 @@ to it: those listed as members in `/etc/group` (4th field, comma-separated) **pl
 **primary** group (4th field of `/etc/passwd`) is that group's GID.
 
 If the group does not exist, print `no such group: NAME` on stderr and exit 1.
-
----
-Write your solution in `answer.sh`, then run `check 1704`.  
-To experiment with the same test files the checker uses: `play 1704`.

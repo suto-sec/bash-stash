@@ -9,7 +9,3 @@ file's byte value in octal, one differing byte per line). Then print:
 ```
 Total: N bytes differ
 ```
-
----
-Write your solution in `answer.sh`, then run `check 0553`.  
-To experiment with the same test files the checker uses: `play 0553`.

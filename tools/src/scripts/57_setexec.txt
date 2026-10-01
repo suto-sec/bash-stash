@@ -22,7 +22,7 @@ for f in "$@"; do
 done
 @@step 2 | Bad arguments
 @@readme
-No arguments → error message **and the correct usage**, exit **1**. An argument that is not a regular file prints `skipped NAME` on standard error (and is not changed); the others are processed and the exit code at the end is **2** if anything was skipped.
+No arguments → error message **and the correct usage** (e.g. `Usage: setexec.sh file...`), exit **1**. An argument that is not a regular file prints `skipped NAME` on standard error (and is not changed); the others are processed and the exit code at the end is **2** if anything was skipped.
 @@check
 ARGS=('run.sh' 'run.sh tool.sh' '"my script.sh"' '' 'nothing.sh' 'run.sh adir tool.sh' 'adir nothing.sh')
 COMPARE="stdout exit errmsg files"

@@ -13,7 +13,3 @@ dir: 750 rwxr-x---
 Files start from `666`, directories from `777`, and the umask **removes** bits
 (`$(( 8#666 & ~8#027 ))` gives the decimal value; print it back in octal with `printf '%03o'`).
 You can obtain the symbolic form with a tiny helper or by really creating a temp file and dir.
-
----
-Write your solution in `answer.sh`, then run `check 0812`.  
-To experiment with the same test files the checker uses: `play 0812`.

@@ -19,7 +19,3 @@ Total: N files
 ```
 
 where `N` is the number of big files counted (the sum over all groups, not the number of groups).
-
----
-Write your solution in `answer.sh`, then run `check 0750`.  
-To experiment with the same test files the checker uses: `play 0750`.

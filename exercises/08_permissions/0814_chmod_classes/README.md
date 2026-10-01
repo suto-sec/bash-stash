@@ -12,7 +12,3 @@ order of the `equipo/*` glob.
 
 Hint: `chmod` accepts `u`, `g` or `o` on the right side of `=` (`man chmod`): `chmod g=u f` copies the
 user's permissions to the group. Clauses separated by commas are applied in order.
-
----
-Write your solution in `answer.sh`, then run `check 0814`.  
-To experiment with the same test files the checker uses: `play 0814`.

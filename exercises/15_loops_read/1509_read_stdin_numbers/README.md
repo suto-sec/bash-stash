@@ -5,7 +5,3 @@
 Read numbers from **standard input**, one per line, until you read `0` (or the input ends).
 Print their count and their average as an integer (`$((sum / count))`), as `count=N avg=A`.
 If no numbers were read before the `0`, print `no data`.
-
----
-Write your solution in `answer.sh`, then run `check 1509`.  
-To experiment with the same test files the checker uses: `play 1509`.

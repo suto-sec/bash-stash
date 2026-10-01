@@ -28,7 +28,3 @@ Exit codes:
 | some command failed | 1 |
 | wrong arguments (not `[-e] file`; show the usage on stderr) | 2 |
 | `file` is not a readable regular file (message on stderr naming it) | 3 |
-
----
-Write your solution in `answer.sh`, then run `check 1330`.  
-To experiment with the same test files the checker uses: `play 1330`.

@@ -14,7 +14,3 @@ shown), checking the cases in this order:
 
 `<shorter>` and `<longer>` are the file names as given in the arguments. Names may contain spaces.
 Nothing may be printed on stderr.
-
----
-Write your solution in `answer.sh`, then run `check 0537`.  
-To experiment with the same test files the checker uses: `play 0537`.

@@ -17,7 +17,3 @@ Errors (stderr, exact text, exit **2**): not exactly 2 arguments → `Usage: can
 (use `$(basename "$0")`); unknown action → `unknown action: <action>`.
 
 Use one `case` on the action. (Tip: the exit status of a `case` is the one of the last command it ran.)
-
----
-Write your solution in `answer.sh`, then run `check 1421`.  
-To experiment with the same test files the checker uses: `play 1421`.

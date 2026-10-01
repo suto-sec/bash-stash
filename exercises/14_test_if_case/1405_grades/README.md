@@ -13,7 +13,3 @@ The script receives a grade (integer 0-10) and prints:
 | 10 | `Matricula de Honor` |
 
 Anything else (not a number in 0-10, or no argument): print `Invalid grade` on stderr, exit 1.
-
----
-Write your solution in `answer.sh`, then run `check 1405`.  
-To experiment with the same test files the checker uses: `play 1405`.

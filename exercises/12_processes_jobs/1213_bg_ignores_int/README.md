@@ -10,7 +10,3 @@ signals Ctrl+C and Ctrl+\ send); only signals like `SIGTERM` (or `SIGKILL`) actu
 3. Send it `SIGQUIT`, `sleep 0.3`, print `alive` or `dead`.
 4. Send it the default signal (`kill`, i.e. SIGTERM), `sleep 0.3`, print `alive` or `dead`.
 5. `wait` for it (hide messages) and print the exit status.
-
----
-Write your solution in `answer.sh`, then run `check 1213`.  
-To experiment with the same test files the checker uses: `play 1213`.

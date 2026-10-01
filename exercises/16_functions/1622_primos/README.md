@@ -14,7 +14,3 @@ At the end print `TOTAL: P primos de V validos`.
 
 Exit codes: 0 on success; 1 if there are no arguments at all (usage on stderr); 2 if there is at
 least one argument but **none** of them is valid (checked after processing all arguments).
-
----
-Write your solution in `answer.sh`, then run `check 1622`.  
-To experiment with the same test files the checker uses: `play 1622`.

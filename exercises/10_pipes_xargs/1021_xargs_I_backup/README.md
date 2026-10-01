@@ -10,7 +10,3 @@ not in the list must not be copied.
 Then print all the `.bak` files under the current directory, sorted, as `find .` prints them.
 
 Note: with `-I{}`, `xargs` takes **whole lines** as arguments, so spaces are no problem.
-
----
-Write your solution in `answer.sh`, then run `check 1021`.  
-To experiment with the same test files the checker uses: `play 1021`.

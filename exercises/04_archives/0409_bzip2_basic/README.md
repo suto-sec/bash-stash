@@ -17,7 +17,3 @@ Do, in this exact order:
    by its `.bz2`).
 3. Compress `datos/plantilla.dat` with `bzip2`, but this time **keep** the uncompressed original
    too (see `bzip2 -k`).
-
----
-Write your solution in `answer.sh`, then run `check 0409`.  
-To experiment with the same test files the checker uses: `play 0409`.

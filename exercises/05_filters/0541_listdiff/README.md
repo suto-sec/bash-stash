@@ -24,7 +24,3 @@ Errors (message on **stderr**):
 
 Hint: once both lists are sorted without repetitions, `diff` marks the removed items with `<` and
 the added ones with `>`.
-
----
-Write your solution in `answer.sh`, then run `check 0541`.  
-To experiment with the same test files the checker uses: `play 0541`.

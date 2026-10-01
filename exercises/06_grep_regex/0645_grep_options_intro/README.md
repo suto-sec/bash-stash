@@ -29,7 +29,3 @@ the output is
 ```
 
 Hint: combine options, for example `grep -in word file` and `grep -vic word file`.
-
----
-Write your solution in `answer.sh`, then run `check 0645`.  
-To experiment with the same test files the checker uses: `play 0645`.

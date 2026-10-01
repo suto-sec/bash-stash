@@ -9,7 +9,3 @@
 - the day is `01` to `31`
 
 The whole line must be the date (nothing before or after).
-
----
-Write your solution in `answer.sh`, then run `check 0614`.  
-To experiment with the same test files the checker uses: `play 0614`.

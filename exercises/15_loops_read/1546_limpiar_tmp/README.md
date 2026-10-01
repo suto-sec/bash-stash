@@ -12,7 +12,3 @@ A file like `keep2.bakup` does **not** count (it does not end in exactly `.bak`)
 
 Errors (stderr, wording free, checked in this order): not exactly 1 argument -> usage, exit **1**;
 DIR does not exist -> exit **2** (name it); DIR exists but is not a directory -> exit **3** (name it).
-
----
-Write your solution in `answer.sh`, then run `check 1546`.  
-To experiment with the same test files the checker uses: `play 1546`.

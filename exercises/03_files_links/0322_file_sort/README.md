@@ -9,7 +9,3 @@ and move every **regular file** of `mezcla` into:
 - `mezcla/otros` otherwise (including empty files)
 
 Finally print `text: N` and `other: M` (two lines). Names may contain spaces.
-
----
-Write your solution in `answer.sh`, then run `check 0322`.  
-To experiment with the same test files the checker uses: `play 0322`.

@@ -17,7 +17,3 @@ Names may contain spaces.
 
 Errors (message on stderr): not exactly one argument → usage, exit **1**; `DIR` is not a directory →
 exit **2**, with a message including `DIR`.
-
----
-Write your solution in `answer.sh`, then run `check 0326`.  
-To experiment with the same test files the checker uses: `play 0326`.

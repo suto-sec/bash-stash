@@ -24,7 +24,3 @@ one with the biggest number (numerically: `v10` > `v9`). Other files in `DIR` (e
 
 Errors (message on stderr): no arguments or more than 2 → usage, exit **1**; `FILE` is not a regular
 file → exit **2**; `DIR` exists but is not a directory → exit **3**.
-
----
-Write your solution in `answer.sh`, then run `check 0328`.  
-To experiment with the same test files the checker uses: `play 0328`.

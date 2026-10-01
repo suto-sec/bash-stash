@@ -11,7 +11,3 @@ For each argument (a file name), print `name: TYPE` where TYPE is:
 - `unknown` otherwise
 
 Use one `case` with patterns like `*.jpg|*.png)`.
-
----
-Write your solution in `answer.sh`, then run `check 1408`.  
-To experiment with the same test files the checker uses: `play 1408`.

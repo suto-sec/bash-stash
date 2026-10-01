@@ -14,7 +14,3 @@ in their names.
 
 Tip: `xargs -r` (`--no-run-if-empty`) avoids running `gzip` with no arguments when nothing matches
 (`gzip` without arguments would compress its stdin).
-
----
-Write your solution in `answer.sh`, then run `check 1017`.  
-To experiment with the same test files the checker uses: `play 1017`.

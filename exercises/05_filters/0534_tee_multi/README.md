@@ -12,7 +12,3 @@ Then print `saved N lines`, where N is the number of lines of `today.log`.
 The script must end with exit code 0.
 
 Hint: `tee` can write several files, but `-a` would apply to all of them; you can chain two `tee`.
-
----
-Write your solution in `answer.sh`, then run `check 0534`.  
-To experiment with the same test files the checker uses: `play 0534`.

@@ -13,7 +13,3 @@ Hola Kernel
 ```
 
 Hint: `echo 'text $VAR'` prints `$VAR` as it is; `echo "text $VAR"` prints its value.
-
----
-Write your solution in `answer.sh`, then run `check 0125`.  
-To experiment with the same test files the checker uses: `play 0125`.

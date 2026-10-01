@@ -10,7 +10,3 @@ The current directory contains a file `borrar.txt` and a non-empty directory `ca
 Nothing is printed. There is no recycle bin: deleted files are gone for good.
 
 Hint: `rm file`, and `rm -r directory` for a directory.
-
----
-Write your solution in `answer.sh`, then run `check 0341`.  
-To experiment with the same test files the checker uses: `play 0341`.

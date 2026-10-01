@@ -9,7 +9,3 @@ Print:
 3. the home directory seen by a **login** shell of `rod`: `sudo -i -u rod pwd` (the `-i` loads the
    user's environment, like `su -`)
 4. the result of `sudo whoami`
-
----
-Write your solution in `answer.sh`, then run `check 1716`.  
-To experiment with the same test files the checker uses: `play 1716`.

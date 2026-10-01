@@ -23,7 +23,3 @@ ends in `.sh` or `.bin`.
 
 Error messages go to **stderr** (wording is free). File names may contain spaces.
 Some files may be unreadable: `cp` fails for them, and they must not be counted.
-
----
-Write your solution in `answer.sh`, then run `check 1801`.  
-To experiment with the same test files the checker uses: `play 1801`.

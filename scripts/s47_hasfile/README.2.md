@@ -1,1 +1,1 @@
-Checks, in this order: fewer than two arguments → error message **and the correct usage**, exit **1**; `DIR` does not exist → error with its name, exit **2**; not a directory → error with its name, exit **3**.
+Checks, in this order: fewer than two arguments → error message **and the correct usage** (e.g. `Usage: hasfile.sh dir name...`), exit **1**; `DIR` does not exist → error with its name, exit **2**; not a directory → error with its name, exit **3**.

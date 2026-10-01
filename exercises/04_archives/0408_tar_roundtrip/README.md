@@ -10,7 +10,3 @@ Make a backup of the directory `proyecto` into `proyecto.tgz`, then verify it:
 4. remove the temporary directory
 
 Only `backup OK` (or `FAILED`) must be printed.
-
----
-Write your solution in `answer.sh`, then run `check 0408`.  
-To experiment with the same test files the checker uses: `play 0408`.

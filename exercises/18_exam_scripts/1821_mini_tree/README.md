@@ -13,7 +13,3 @@ with a recursive function:
 - last line: `N directories, M files` (links count as files)
 
 Not a directory: stderr, exit 1.
-
----
-Write your solution in `answer.sh`, then run `check 1821`.  
-To experiment with the same test files the checker uses: `play 1821`.

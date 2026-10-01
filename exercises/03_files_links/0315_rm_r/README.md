@@ -6,7 +6,3 @@
 2. The directory `vacios` contains several subdirectories: some are empty and some are not.
    Remove **only the empty ones** with one `rmdir` command, hiding its error messages
    (`2>/dev/null`). The script must end with exit code **0**.
-
----
-Write your solution in `answer.sh`, then run `check 0315`.  
-To experiment with the same test files the checker uses: `play 0315`.

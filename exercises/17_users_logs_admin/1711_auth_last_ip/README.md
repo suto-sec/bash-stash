@@ -5,7 +5,3 @@
 Print the **last IP address** that appears in `/var/log/auth.log` (1802 needs this), and
 then on the next line the number of lines of the whole file that contain that IP.
 (Beware: a dot in a regex matches anything. Use `grep -F` for the second part.)
-
----
-Write your solution in `answer.sh`, then run `check 1711`.  
-To experiment with the same test files the checker uses: `play 1711`.

@@ -15,7 +15,3 @@ proj: F files, D directories, B bytes, largest: P
 - `P`: path of the biggest regular file, as `find proj` prints it (there are no ties)
 
 Names may contain spaces.
-
----
-Write your solution in `answer.sh`, then run `check 1019`.  
-To experiment with the same test files the checker uses: `play 1019`.

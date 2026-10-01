@@ -8,7 +8,3 @@
 3. Overwrite `ultima.txt` with just the word `fin`.
 
 Nothing is printed on screen.
-
----
-Write your solution in `answer.sh`, then run `check 0901`.  
-To experiment with the same test files the checker uses: `play 0901`.

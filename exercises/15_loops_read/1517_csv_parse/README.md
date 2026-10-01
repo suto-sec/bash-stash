@@ -8,7 +8,3 @@
 2. `---`
 3. `aprobados: X, suspensos: Y`
 4. `mejor: nombre apellido (nota)` for the best grade (the first one in the file if tied)
-
----
-Write your solution in `answer.sh`, then run `check 1517`.  
-To experiment with the same test files the checker uses: `play 1517`.

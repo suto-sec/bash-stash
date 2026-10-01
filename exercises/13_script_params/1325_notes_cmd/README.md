@@ -25,7 +25,3 @@ Errors (message on **stderr**, wording free, the file is not modified):
 | unknown subcommand (name it) | 2 |
 | wrong number of arguments for the subcommand (`add` needs at least 1, `del` exactly 1, `list`/`count` none) | 3 |
 | `del` with something that is not the number of an existing note (name it) | 4 |
-
----
-Write your solution in `answer.sh`, then run `check 1325`.  
-To experiment with the same test files the checker uses: `play 1325`.
