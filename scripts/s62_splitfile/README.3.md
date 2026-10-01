@@ -1,0 +1,1 @@
+Before creating anything, if **any** of the parts that would be created already exists (`ten.txt.part2` in the checker), create **none**: print an error message that includes the name of the first existing one on standard error and exit with code **4**.

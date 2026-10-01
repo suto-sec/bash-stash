@@ -1,0 +1,1 @@
+With `-s` as the **first** argument, print the word `N` times on **one line** separated by single spaces (`repeat.sh -s hi 3` prints `hi hi hi`). `-s` needs the word and `N` after it (otherwise the usage error). Everything else is as before.

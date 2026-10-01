@@ -1,0 +1,3 @@
+Write `csvcol.sh FILE N`. `FILE` is a CSV (fields separated by commas, no quoting). Print the `N`-th field of every line, one per line: `csvcol.sh people.csv 2` prints `city`, `madrid`, ...
+
+`cut -d, -f"$2" "$1"`.

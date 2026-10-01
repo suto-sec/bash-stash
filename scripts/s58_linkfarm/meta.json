@@ -1,0 +1,31 @@
+{
+ "id": "s58",
+ "slug": "linkfarm",
+ "title": "A directory of links",
+ "script": "linkfarm.sh",
+ "cmds": "ln -s, readlink -f, mkdir -p, for, test -e -L, counters",
+ "level": 3,
+ "tags": [
+  "files",
+  "copy and move",
+  "exit codes"
+ ],
+ "steps": [
+  {
+   "n": 1,
+   "title": "One link per file"
+  },
+  {
+   "n": 2,
+   "title": "Create LINKDIR"
+  },
+  {
+   "n": 3,
+   "title": "Check the directories"
+  },
+  {
+   "n": 4,
+   "title": "Skip what exists and count"
+  }
+ ]
+}

@@ -1,0 +1,27 @@
+{
+ "id": "s51",
+ "slug": "mkfiles",
+ "title": "Creating numbered files",
+ "script": "mkfiles.sh",
+ "cmds": "touch, for ((;;)), test -e, [[ == */* ]], exit codes",
+ "level": 2,
+ "tags": [
+  "files",
+  "loops",
+  "exit codes"
+ ],
+ "steps": [
+  {
+   "n": 1,
+   "title": "Create them"
+  },
+  {
+   "n": 2,
+   "title": "Check the arguments"
+  },
+  {
+   "n": 3,
+   "title": "Never touch existing files"
+  }
+ ]
+}

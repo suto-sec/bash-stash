@@ -1,0 +1,88 @@
+@@script s57 | setexec | Making files executable | setexec.sh
+@@level 3
+@@tags permissions, files, exit codes
+@@cmds chmod u+x / a+x, test -f -x, for, shift, counters, exit codes
+@@fixture
+setup() {
+  echo a > run.sh; chmod 644 run.sh; echo b > tool.sh; chmod 755 tool.sh; echo c > "my script.sh"; chmod 600 "my script.sh"
+  echo d > notes.txt; chmod 640 notes.txt; mkdir adir; echo e > ro.sh; chmod 444 ro.sh
+}
+usage_ok() { [[ $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* || $ERR == *setexec.sh* ]]; }
+@@step 1 | Add the permission
+@@readme
+Write `setexec.sh FILE...`. It gives the **owner** execute permission to every file (`chmod u+x`) and prints `ok NAME` for each.
+@@check
+ARGS=('run.sh' 'run.sh tool.sh' '"my script.sh" notes.txt' 'ro.sh')
+COMPARE="stdout exit files"
+@@solution
+#!/bin/bash
+for f in "$@"; do
+  chmod u+x -- "$f"
+  echo "ok $f"
+done
+@@step 2 | Bad arguments
+@@readme
+No arguments → error message **and the correct usage**, exit **1**. An argument that is not a regular file prints `skipped NAME` on standard error (and is not changed); the others are processed and the exit code at the end is **2** if anything was skipped.
+@@check
+ARGS=('run.sh' 'run.sh tool.sh' '"my script.sh"' '' 'nothing.sh' 'run.sh adir tool.sh' 'adir nothing.sh')
+COMPARE="stdout exit errmsg files"
+extra_check() {
+  [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }
+}
+@@solution
+#!/bin/bash
+if (( $# == 0 )); then echo "Error: at least one file is needed" >&2; echo "Usage: $0 file..." >&2; exit 1; fi
+bad=0
+for f in "$@"; do
+  if [[ ! -f $f ]]; then echo "skipped $f" >&2; bad=1; continue; fi
+  chmod u+x -- "$f"
+  echo "ok $f"
+done
+(( bad == 0 )) || exit 2
+@@step 3 | For everybody
+@@readme
+With `-a` as the **first** argument the execute permission is given to **everybody** (`chmod a+x`) instead of the owner only. `-a` alone is the usage error.
+@@check
+ARGS=('run.sh' '-a run.sh' '-a run.sh tool.sh "my script.sh"' '-a notes.txt' '-a' '' '-a nothing.sh run.sh' 'nothing.sh')
+COMPARE="stdout exit errmsg files"
+extra_check() { [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }; }
+@@solution
+#!/bin/bash
+who=u
+if [[ $1 == -a ]]; then who=a; shift; fi
+if (( $# == 0 )); then echo "Error: at least one file is needed" >&2; echo "Usage: $0 [-a] file..." >&2; exit 1; fi
+bad=0
+for f in "$@"; do
+  if [[ ! -f $f ]]; then echo "skipped $f" >&2; bad=1; continue; fi
+  chmod "$who+x" -- "$f"
+  echo "ok $f"
+done
+(( bad == 0 )) || exit 2
+@@step 4 | How many really changed
+@@readme
+Print `ok NAME` only when the file **was not already executable** for that class (the owner, or everybody with `-a`); when nothing needed changing print `unchanged NAME` instead. Finish with `Changed N files`. "Executable for everybody" means the three execute bits are set.
+
+`[[ -x file ]]` tests the owner's bit (for the user running the script); for `-a` check the mode with `stat -c %a`.
+@@check
+ARGS=('run.sh' 'run.sh tool.sh' '-a run.sh tool.sh' '-a tool.sh' '"my script.sh" notes.txt' '' '-a' 'nothing.sh run.sh' '-a nothing.sh')
+COMPARE="stdout exit errmsg files"
+extra_check() { [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }; }
+@@solution
+#!/bin/bash
+who=u
+if [[ $1 == -a ]]; then who=a; shift; fi
+if (( $# == 0 )); then echo "Error: at least one file is needed" >&2; echo "Usage: $0 [-a] file..." >&2; exit 1; fi
+bad=0 n=0
+for f in "$@"; do
+  if [[ ! -f $f ]]; then echo "skipped $f" >&2; bad=1; continue; fi
+  mode=$(stat -c %a "$f")
+  if [[ $who == a ]]; then
+    if (( (mode & 0111) == 0111 )); then echo "unchanged $f"; continue; fi
+  else
+    if (( mode & 0100 )); then echo "unchanged $f"; continue; fi
+  fi
+  chmod "$who+x" -- "$f"
+  echo "ok $f"; n=$((n + 1))
+done
+echo "Changed $n files"
+(( bad == 0 )) || exit 2

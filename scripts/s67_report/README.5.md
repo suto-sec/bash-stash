@@ -1,0 +1,1 @@
+After the option handling: not exactly one remaining argument → usage error (exit 1 as before); `DIR` does not exist → error with its name, exit **2**; not a directory → error with its name, exit **3**. These checks come **before** the `-o` directory check and before anything is created.

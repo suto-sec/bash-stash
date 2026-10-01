@@ -1,0 +1,31 @@
+{
+ "id": "s54",
+ "slug": "csvcol",
+ "title": "One column of a CSV",
+ "script": "csvcol.sh",
+ "cmds": "cut -d, -f, sort -u, tail -n +2, shift, [[ =~ ]], exit codes",
+ "level": 3,
+ "tags": [
+  "text",
+  "pipes",
+  "arguments"
+ ],
+ "steps": [
+  {
+   "n": 1,
+   "title": "A column"
+  },
+  {
+   "n": 2,
+   "title": "Check the arguments"
+  },
+  {
+   "n": 3,
+   "title": "Skip the header"
+  },
+  {
+   "n": 4,
+   "title": "Distinct values"
+  }
+ ]
+}

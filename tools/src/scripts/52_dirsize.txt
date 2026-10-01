@@ -1,0 +1,65 @@
+@@script s52 | dirsize | Entries per directory | dirsize.sh
+@@level 2
+@@tags files, loops, tests
+@@cmds ls -A, wc -l, for, test -d, counters, exit codes
+@@fixture
+setup() {
+  mkdir -p alpha/sub beta empty "my dir"; echo a > alpha/a.txt; echo b > alpha/b.txt; echo h > alpha/.hidden; echo c > beta/c.txt
+  echo x > "my dir/one"; echo y > "my dir/two"; echo z > "my dir/three"; echo f > notadir.txt
+}
+usage_ok() { [[ $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* || $ERR == *dirsize.sh* ]]; }
+@@step 1 | Count the entries
+@@readme
+Write `dirsize.sh DIR...`. For each directory print `DIR: N entries`, where `N` is how many entries it contains (files, directories and hidden entries; not `.` and `..`). Always the plural.
+
+`ls -A "$d" | wc -l`.
+@@check
+ARGS=('alpha' 'alpha beta empty' '"my dir" beta' 'empty')
+COMPARE="stdout exit"
+@@solution
+#!/bin/bash
+for d in "$@"; do
+  echo "$d: $(ls -A "$d" | wc -l) entries"
+done
+@@step 2 | Bad arguments
+@@readme
+With **no arguments**: error message **and the correct usage** on standard error, exit **1**. An argument that is not an existing directory prints an error with its name on standard error and is skipped (the others are still processed); if any was skipped the exit code is **2** at the end.
+@@check
+ARGS=('alpha' 'alpha beta empty' '' 'nothing' 'alpha nothing beta' 'notadir.txt alpha' 'nothing notadir.txt')
+COMPARE="stdout exit errmsg"
+extra_check() {
+  [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }
+  [[ $REF_CODE == 2 ]] && { local a; for a in $(eval "set -- $CASE"; for x in "$@"; do [[ -d $W/$x ]] || echo "$x"; done); do mentions "$a"; done; }
+}
+@@solution
+#!/bin/bash
+if (( $# == 0 )); then echo "Error: at least one directory is needed" >&2; echo "Usage: $0 dir..." >&2; exit 1; fi
+bad=0
+for d in "$@"; do
+  if [[ ! -d $d ]]; then echo "Error: $d is not a directory" >&2; bad=1; continue; fi
+  echo "$d: $(ls -A "$d" | wc -l) entries"
+done
+(( bad == 0 )) || exit 2
+@@step 3 | A total
+@@readme
+When **more than one** argument was given, add a last line `total: T entries` with the sum for the directories that were processed (printed before the exit).
+@@check
+ARGS=('alpha' 'alpha beta empty' '"my dir" beta' '' 'nothing' 'alpha nothing beta' 'nothing notadir.txt')
+COMPARE="stdout exit errmsg"
+extra_check() {
+  [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }
+  [[ $REF_CODE == 2 ]] && { local a; for a in $(eval "set -- $CASE"; for x in "$@"; do [[ -d $W/$x ]] || echo "$x"; done); do mentions "$a"; done; }
+}
+@@solution
+#!/bin/bash
+if (( $# == 0 )); then echo "Error: at least one directory is needed" >&2; echo "Usage: $0 dir..." >&2; exit 1; fi
+bad=0 total=0
+for d in "$@"; do
+  if [[ ! -d $d ]]; then echo "Error: $d is not a directory" >&2; bad=1; continue; fi
+  n=$(ls -A "$d" | wc -l)
+  echo "$d: $n entries"
+  total=$((total + n))
+done
+(( $# > 1 )) && echo "total: $total entries"
+(( bad == 0 )) || exit 2
+exit 0

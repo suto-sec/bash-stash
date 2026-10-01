@@ -1,0 +1,31 @@
+{
+ "id": "s56",
+ "slug": "permreport",
+ "title": "A permission report",
+ "script": "permreport.sh",
+ "cmds": "stat -c %a, for, arithmetic, test, exit codes",
+ "level": 3,
+ "tags": [
+  "permissions",
+  "files",
+  "exit codes"
+ ],
+ "steps": [
+  {
+   "n": 1,
+   "title": "Modes of the files"
+  },
+  {
+   "n": 2,
+   "title": "Check the directory"
+  },
+  {
+   "n": 3,
+   "title": "Flag the dangerous ones"
+  },
+  {
+   "n": 4,
+   "title": "A summary and an exit code"
+  }
+ ]
+}

@@ -1,0 +1,1 @@
+Write `quota.sh DIR`. It prints `Used: N bytes`, where `N` is the sum of the sizes of all the **regular files** below `DIR` (any depth; `find "$1" -type f -printf '%s\n'` prints the sizes, one per line). Always `bytes`.

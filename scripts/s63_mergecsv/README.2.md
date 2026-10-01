@@ -1,0 +1,1 @@
+Checks, in this order: not exactly two arguments → error message **and the correct usage**, exit **1**; the first, then the second argument is not a readable non-empty regular file → error with its name, exit **2**; the two headers differ → error message, exit code **4** (nothing printed on standard output).

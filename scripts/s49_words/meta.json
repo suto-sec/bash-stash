@@ -1,0 +1,27 @@
+{
+ "id": "s49",
+ "slug": "words",
+ "title": "Words per line",
+ "script": "words.sh",
+ "cmds": "while read -r -a, ${#array[@]}, arithmetic, test, exit codes",
+ "level": 2,
+ "tags": [
+  "text",
+  "files",
+  "arithmetic"
+ ],
+ "steps": [
+  {
+   "n": 1,
+   "title": "Count each line"
+  },
+  {
+   "n": 2,
+   "title": "A total"
+  },
+  {
+   "n": 3,
+   "title": "Check the file"
+  }
+ ]
+}

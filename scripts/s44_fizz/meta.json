@@ -1,0 +1,27 @@
+{
+ "id": "s44",
+ "slug": "fizz",
+ "title": "Fizz and buzz",
+ "script": "fizz.sh",
+ "cmds": "for ((;;)), if / elif, arithmetic %, exit codes",
+ "level": 1,
+ "tags": [
+  "loops",
+  "tests",
+  "arithmetic"
+ ],
+ "steps": [
+  {
+   "n": 1,
+   "title": "The classic game"
+  },
+  {
+   "n": 2,
+   "title": "Check the argument"
+  },
+  {
+   "n": 3,
+   "title": "Count the words"
+  }
+ ]
+}

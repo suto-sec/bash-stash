@@ -1,0 +1,27 @@
+{
+ "id": "s46",
+ "slug": "initials",
+ "title": "Initials of names",
+ "script": "initials.sh",
+ "cmds": "for, ${var:0:1}, ${var^^}, exit codes",
+ "level": 1,
+ "tags": [
+  "text",
+  "arguments",
+  "loops"
+ ],
+ "steps": [
+  {
+   "n": 1,
+   "title": "One name"
+  },
+  {
+   "n": 2,
+   "title": "Exactly one argument"
+  },
+  {
+   "n": 3,
+   "title": "Many names"
+  }
+ ]
+}

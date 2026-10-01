@@ -1,0 +1,31 @@
+{
+ "id": "s63",
+ "slug": "mergecsv",
+ "title": "Merging two CSV files",
+ "script": "mergecsv.sh",
+ "cmds": "head, tail -n +2, cmp / test, associative arrays, shift, exit codes",
+ "level": 4,
+ "tags": [
+  "text",
+  "files",
+  "exit codes"
+ ],
+ "steps": [
+  {
+   "n": 1,
+   "title": "One header, all the rows"
+  },
+  {
+   "n": 2,
+   "title": "Check the files"
+  },
+  {
+   "n": 3,
+   "title": "Drop repeated rows"
+  },
+  {
+   "n": 4,
+   "title": "Count the rows"
+  }
+ ]
+}

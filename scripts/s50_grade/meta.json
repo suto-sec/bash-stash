@@ -1,0 +1,27 @@
+{
+ "id": "s50",
+ "slug": "grade",
+ "title": "Letter grades",
+ "script": "grade.sh",
+ "cmds": "if / elif, arithmetic, [[ =~ ]], for, exit codes",
+ "level": 2,
+ "tags": [
+  "tests",
+  "case",
+  "arithmetic"
+ ],
+ "steps": [
+  {
+   "n": 1,
+   "title": "One score"
+  },
+  {
+   "n": 2,
+   "title": "Valid scores only"
+  },
+  {
+   "n": 3,
+   "title": "A whole class"
+  }
+ ]
+}

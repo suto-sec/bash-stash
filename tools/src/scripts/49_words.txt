@@ -1,0 +1,60 @@
+@@script s49 | words | Words per line | words.sh
+@@level 2
+@@tags text, files, arithmetic
+@@cmds while read -r -a, ${#array[@]}, arithmetic, test, exit codes
+@@fixture
+setup() {
+  mkfl poem.txt "the quick brown fox" "jumps" "" "over   the lazy   dog" "end"
+  : > empty.txt; echo x > locked.txt; chmod 000 locked.txt; mkdir adir
+}
+usage_ok() { [[ $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* || $ERR == *words.sh* ]]; }
+@@step 1 | Count each line
+@@readme
+Write `words.sh FILE`. For every line print `line N: W words` (`N` is the line number, `W` the number of words; words are separated by blanks, and a blank line has 0 words). Always the plural, `1 words` too.
+
+`read -r -a w` puts the words of a line into an array: `${#w[@]}` is how many.
+@@check
+ARGS=('poem.txt' 'empty.txt')
+COMPARE="stdout exit"
+@@solution
+#!/bin/bash
+n=0
+while read -r -a w; do
+  n=$((n + 1))
+  echo "line $n: ${#w[@]} words"
+done < "$1"
+exit 0
+@@step 2 | A total
+@@readme
+Finish with `total: T words`, the sum of all the lines (`total: 0 words` for an empty file).
+@@check
+ARGS=('poem.txt' 'empty.txt')
+COMPARE="stdout exit"
+@@solution
+#!/bin/bash
+n=0 t=0
+while read -r -a w; do
+  n=$((n + 1)); t=$((t + ${#w[@]}))
+  echo "line $n: ${#w[@]} words"
+done < "$1"
+echo "total: $t words"
+@@step 3 | Check the file
+@@readme
+Not exactly one argument → error message **and the correct usage**, exit **1**; the argument is not a readable regular file → error with its name, exit **2**.
+@@check
+ARGS=('poem.txt' 'empty.txt' '' 'poem.txt empty.txt' 'nothing.txt' 'adir' 'locked.txt')
+COMPARE="stdout exit errmsg"
+extra_check() {
+  [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }
+  [[ $REF_CODE == 2 ]] && mentions "$(eval "set -- $CASE"; echo "$1")"
+}
+@@solution
+#!/bin/bash
+if (( $# != 1 )); then echo "Error: one file is needed" >&2; echo "Usage: $0 file" >&2; exit 1; fi
+[[ -f $1 && -r $1 ]] || { echo "Error: cannot read $1" >&2; exit 2; }
+n=0 t=0
+while read -r -a w; do
+  n=$((n + 1)); t=$((t + ${#w[@]}))
+  echo "line $n: ${#w[@]} words"
+done < "$1"
+echo "total: $t words"

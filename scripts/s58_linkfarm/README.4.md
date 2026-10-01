@@ -1,0 +1,1 @@
+If `LINKDIR` already has something with that name (a file, a link, anything: `a.txt` in the `links` directory of the checker), do not touch it: print `skipped NAME` on standard error. Finish with `Linked N files` (only the new links) and exit with code **4** if at least one name was skipped.

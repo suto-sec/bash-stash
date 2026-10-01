@@ -1,0 +1,1 @@
+Cron lines look like `Mar 3 02:00:01 host CRON[412]: (ana) CMD (/usr/bin/backup)`. Write `cronlog.sh LOG`. It prints `Jobs: N`, the number of lines that contain ` CMD (`. Other lines of the log are ignored.

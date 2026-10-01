@@ -1,0 +1,1 @@
+With `-f` as the **first** argument an existing `FILE.upper` is replaced (and the message is `Replaced FILE.upper` in that case; `Created FILE.upper` when it did not exist). `-f` needs a file after it (otherwise the usage error). Without `-f` everything is as before.

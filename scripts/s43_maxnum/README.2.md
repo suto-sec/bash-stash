@@ -1,0 +1,1 @@
+No arguments → error message **and the correct usage** on standard error, exit **1**. Any argument that is not an integer (an optional `-` and digits) → error that includes it, exit **2**; check all of them before printing.
