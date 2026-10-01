@@ -66,6 +66,9 @@ function buildTierMap() {
 }
 const TIER_MAP = buildTierMap();
 
+// Older generated READMEs end with a footer telling the learner to run `check`/`play` in a terminal; the web UI has buttons for that.
+const stripCliFooter = text => text.replace(/\n---\nWrite your (?:solution in `answer\.sh`|answers in `answer\.txt`[^\n]*)[\s\S]*$/, '\n');
+
 function exerciseInfo(topicDir, name) {
   const dir = path.join(topicDir, name);
   const id = name.split('_')[0];
@@ -682,7 +685,7 @@ async function api(req, res, url) {
   if (['exercise', 'check', 'solution', 'reset', 'attempt'].includes(parts[1]) && !ex) return send(res, 404, { error: 'no such exercise' });
 
   if (parts[1] === 'exercise' && req.method === 'GET') {
-    const readme = fs.readFileSync(path.join(ex.dir, 'README.md'), 'utf8');
+    const readme = stripCliFooter(fs.readFileSync(path.join(ex.dir, 'README.md'), 'utf8'));
     const playDir = ensurePlay(ex);
     return send(res, 200, { id: ex.id, title: ex.title, level: ex.level, cmds: ex.cmds, quiz: ex.quiz,
       status: ex.status, readme, dir: ex.dir, answer: ex.answer, topic: ex.topic.title, playDir });
@@ -847,7 +850,7 @@ wss.on('connection', (ws, req) => {
     cols: Number(url.searchParams.get('cols')) || 80,
     rows: Number(url.searchParams.get('rows')) || 24,
     cwd: sc && scPlay(sc) ? scPlay(sc) : sx && fs.existsSync(sx) ? sx : ex ? (ensurePlay(ex) || ex.dir) : LAB,
-    env: { ...process.env, TERM: 'xterm-256color', LAB_QUIET: '' },
+    env: { ...process.env, TERM: 'xterm-256color', LAB_QUIET: '1' },
   });
   term.onData(d => { if (ws.readyState === ws.OPEN) ws.send(d); });
   term.onExit(() => ws.close());

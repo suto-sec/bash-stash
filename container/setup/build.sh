@@ -40,15 +40,10 @@ cat >> /home/alumno/.bashrc <<'EOF'
 
 # ---- bash stash ----
 PS1='\[\e[1;32m\]\u@\h\[\e[0m\]:\[\e[1;34m\]\w\[\e[0m\]\$ '
-if [[ $- == *i* && -z $LAB_QUIET ]]; then
-  echo "bash stash — exercises in ~/lab/exercises.  Commands: next | check <id> | check all | man <cmd>"
-fi
 EOF
 chown alumno:alumno /home/alumno/.bashrc
 
 install -m 755 "$S/lab-init" /usr/local/sbin/lab-init
-# lab commands (the lab folder is bind-mounted at runtime)
-for c in check play next progress; do ln -s "/home/alumno/lab/bin/$c" "/usr/local/bin/$c"; done
 
 # ---------- VS Code in the browser (code-server): plain, no extensions ----------
 CS=/home/alumno/.local/share/code-server/User

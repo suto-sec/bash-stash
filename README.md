@@ -32,35 +32,17 @@ everything, including VS Code for the browser. The first start builds the image 
 
 The web UI only listens on `127.0.0.1` and only accepts requests from pages served by itself.
 
-## Start: command line
+## Other host commands
 
-```bash
-./lab            # opens a shell in the Ubuntu lab as alumno (builds/starts the container if needed)
-```
-
-Inside the lab (you land in `~/lab`, which is this folder, shared with your machine):
-
-| command | what it does |
-|---------|--------------|
-| `next` | shows the first exercise you haven't passed yet |
-| `check 0703` | checks one exercise |
-| `check 07` | checks every attempted exercise of topic 07 |
-| `check all` | checks everything you attempted + progress table |
-| `progress` | per-topic progress (no re-run) |
-| `play 0703` | builds the exercise's test files in `~/play/0703` so you can experiment by hand, and prints the exact command to run your answer like the checker does |
-| `man`, `info`, `whatis`, `apropos` | full manual pages are installed: practise using them, it's your only help in the exam |
-
-From your own terminal you can also run any of them without entering: `./lab check 0703`.
-Other host commands: `./lab root` (root shell), `./lab reset` (throw the container away; your files
-are safe), `./lab build` (rebuild the image). The web UI and the command line share the same
-answers and progress.
+`./lab root` (root shell), `./lab reset` (throw the container away; your files are safe), `./lab build` (rebuild the image),
+`./lab <command>` (run any command inside the lab, for the maintenance tools below). Everything you do as a learner happens in the web UI:
+the lab terminal inside it is a normal bash with the full manual pages installed (`man`, `info`, `whatis`, `apropos`): practise using them, it's your only help in the exam.
 
 ## Workflow
 
-1. Open an exercise (web UI, or `exercises/<topic>/<id>_<name>/README.md`).
-2. Write your solution in its `answer.sh` (quizzes: `answer.txt`).
-3. Check it. On failure you get a diff (expected vs yours), the failing arguments and the fixture
-   seed to reproduce it with `play <id> <seed>`.
+1. Open an exercise.
+2. Write your solution in its `answer.sh` (quizzes: `answer.txt`) with the terminal or VS Code.
+3. Press **Check**. On failure you see what differed, the failing arguments and the fixture seed; **Try with the test files** opens the terminal on exactly those files.
 4. Only after passing (or being truly stuck), compare with the solution
    (`solutions/<topic>/<id>_<name>.sh`): they are written to be the clean/idiomatic version.
 
