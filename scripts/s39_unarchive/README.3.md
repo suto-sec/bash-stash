@@ -1,0 +1,1 @@
+Checks, in this order, before creating anything: one or two arguments, otherwise error message **and the correct usage**, exit **1**; `ARCHIVE` is not a regular file → error with its name, exit **2**; its name does not end in `.tgz` or `.tar.gz` → error with its name, exit **3**.

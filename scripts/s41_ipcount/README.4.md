@@ -1,0 +1,1 @@
+If the **first** argument is `-f`, the next one is an address **prefix** and only the addresses that start with it are counted: `ipcount.sh -f 192. access.log 2`. `-f` needs a prefix and the log (`-f` followed by fewer than two arguments is the usage error, exit 1). All the other behaviour is as before.

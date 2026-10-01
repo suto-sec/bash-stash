@@ -1,0 +1,1 @@
+A valid command needs **exactly one text argument** after it (an empty string `""` is a text). Otherwise: error message **and the correct usage**, exit code **3**. The unknown-command check comes first.

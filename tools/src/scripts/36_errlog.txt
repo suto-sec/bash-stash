@@ -1,0 +1,66 @@
+@@script s36 | errlog | Saving the errors of a log | errlog.sh
+@@level 3
+@@tags logs, text, copy and move
+@@cmds grep, mkdir -p, redirection >, wc -l, test, exit codes
+@@fixture
+setup() {
+  local i
+  for ((i = 0; i < 20; i++)); do echo "2024-05-0$(randr 1 9) 1$(rand 10):$(randr 10 59):00 $(pick INFO INFO WARN ERROR INFO ERROR) $(words 3)"; done > app.log
+  for ((i = 0; i < 5; i++)); do echo "2024-05-01 10:0$i:00 INFO $(words 2)"; done > calm.log
+  : > empty.log; echo x > locked.log; chmod 000 locked.log; mkdir adir
+}
+usage_ok() { [[ $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* || $ERR == *errlog.sh* ]]; }
+pre_rep() { mkdir -p "$H/reports"; }
+@@step 1 | Count the errors
+@@readme
+Write `errlog.sh LOG`. The lines of `LOG` look like `2024-05-05 10:15:02 ERROR something failed`. Print `N errors`, where N is the number of lines whose level (3rd word) is `ERROR` (`grep -c " ERROR "`). Always the plural, also for 0 or 1.
+@@check
+ARGS=('app.log' 'calm.log' 'empty.log')
+COMPARE="stdout exit"
+@@solution
+#!/bin/bash
+echo "$(grep -c ' ERROR ' "$1") errors"
+@@step 2 | Save them
+@@readme
+Also **save** those lines, as they are, in the file `$HOME/reports/errors.txt` (the directory `$HOME/reports` already exists in this step; the file is replaced if it exists). The output is now `Saved N errors to <full path of the file>`.
+@@check
+ARGS=('app.log $(pre_rep)' 'calm.log $(pre_rep)' 'empty.log $(pre_rep)')
+COMPARE="stdout exit files"
+@@solution
+#!/bin/bash
+out=$HOME/reports/errors.txt
+grep ' ERROR ' "$1" > "$out"
+echo "Saved $(wc -l < "$out") errors to $out"
+@@step 3 | Create the reports directory
+@@readme
+If `$HOME/reports` does not exist, create it and print exactly `Directory <full path> created` before the `Saved` line.
+@@check
+ARGS=('app.log $(pre_rep)' 'app.log' 'calm.log' 'empty.log $(pre_rep)')
+COMPARE="stdout exit files"
+@@solution
+#!/bin/bash
+dir=$HOME/reports
+if [[ ! -d $dir ]]; then mkdir -p "$dir"; echo "Directory $dir created"; fi
+out=$dir/errors.txt
+grep ' ERROR ' "$1" > "$out"
+echo "Saved $(wc -l < "$out") errors to $out"
+@@step 4 | Checks, and nothing to save
+@@readme
+Checks, before anything is created: not exactly one argument → error message **and the correct usage**, exit **1**; the argument is not a readable regular file → error with its name, exit **2**. And when the log has **no error lines**, print `No errors found` and do not create the directory or the file (exit 0).
+@@check
+ARGS=('app.log' 'app.log $(pre_rep)' 'calm.log' 'empty.log $(pre_rep)' '' 'app.log calm.log' 'nothing.log' 'adir' 'locked.log')
+COMPARE="stdout exit errmsg files"
+extra_check() {
+  [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }
+  [[ $REF_CODE == 2 ]] && mentions "$(eval "set -- $CASE"; echo "$1")"
+}
+@@solution
+#!/bin/bash
+if (( $# != 1 )); then echo "Error: one log file is needed" >&2; echo "Usage: $0 log" >&2; exit 1; fi
+[[ -f $1 && -r $1 ]] || { echo "Error: cannot read $1" >&2; exit 2; }
+if ! grep -q ' ERROR ' "$1"; then echo "No errors found"; exit 0; fi
+dir=$HOME/reports
+if [[ ! -d $dir ]]; then mkdir -p "$dir"; echo "Directory $dir created"; fi
+out=$dir/errors.txt
+grep ' ERROR ' "$1" > "$out"
+echo "Saved $(wc -l < "$out") errors to $out"

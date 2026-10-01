@@ -1,0 +1,31 @@
+{
+ "id": "s38",
+ "slug": "userlogins",
+ "title": "Logins per user",
+ "script": "userlogins.sh",
+ "cmds": "grep -c, read -r, sort, associative arrays, exit codes",
+ "level": 3,
+ "tags": [
+  "logs",
+  "text",
+  "pipes"
+ ],
+ "steps": [
+  {
+   "n": 1,
+   "title": "Accepted logins"
+  },
+  {
+   "n": 2,
+   "title": "And the failures"
+  },
+  {
+   "n": 3,
+   "title": "Per user"
+  },
+  {
+   "n": 4,
+   "title": "Check the file"
+  }
+ ]
+}

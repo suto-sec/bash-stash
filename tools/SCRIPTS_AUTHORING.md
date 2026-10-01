@@ -39,4 +39,4 @@ Every script has `@@level 1-5` (the same ★ scale as the exercises) and `@@tags
 exit codes, tests, loops, case, arithmetic, files, text, find, copy and move, permissions, archives, logs, pipes). The Scripts section of the home
 page has a dropdown that groups them by Difficulty (default), Topic (a script appears under each of its tags), Number of steps or Progress; the
 choice (`localStorage` `scriptGroup`) drives the home grid, the home sidebar tree and the sidebar inside a script. The Scripts counter counts
-each script once. All 30 scripts (s01-s30, 4 / 9 / 11 / 5 / 1 scripts at 1-5 stars) are written and pass `tools/validate_scripts.sh`.
+each script once. 42 scripts (s01-s42; s31-s42 were added to even out the stars and tags) are written and pass `tools/validate_scripts.sh`.

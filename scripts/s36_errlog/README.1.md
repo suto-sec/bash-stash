@@ -1,0 +1,1 @@
+Write `errlog.sh LOG`. The lines of `LOG` look like `2024-05-05 10:15:02 ERROR something failed`. Print `N errors`, where N is the number of lines whose level (3rd word) is `ERROR` (`grep -c " ERROR "`). Always the plural, also for 0 or 1.

@@ -1,0 +1,1 @@
+Remove those files, printing `removed PATH` for each, and finish with `Removed N files` (N = how many). A file that cannot be removed (it is in a read-only directory) prints `could not remove PATH` on standard error and does not count. Exit code 0 anyway.

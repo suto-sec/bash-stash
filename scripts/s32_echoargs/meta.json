@@ -1,0 +1,26 @@
+{
+ "id": "s32",
+ "slug": "echoargs",
+ "title": "Numbering the arguments",
+ "script": "echoargs.sh",
+ "cmds": "for, counters, shift, exit codes",
+ "level": 1,
+ "tags": [
+  "arguments",
+  "loops"
+ ],
+ "steps": [
+  {
+   "n": 1,
+   "title": "Number them"
+  },
+  {
+   "n": 2,
+   "title": "At least one argument"
+  },
+  {
+   "n": 3,
+   "title": "Backwards"
+  }
+ ]
+}

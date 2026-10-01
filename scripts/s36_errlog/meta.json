@@ -1,0 +1,31 @@
+{
+ "id": "s36",
+ "slug": "errlog",
+ "title": "Saving the errors of a log",
+ "script": "errlog.sh",
+ "cmds": "grep, mkdir -p, redirection >, wc -l, test, exit codes",
+ "level": 3,
+ "tags": [
+  "logs",
+  "text",
+  "copy and move"
+ ],
+ "steps": [
+  {
+   "n": 1,
+   "title": "Count the errors"
+  },
+  {
+   "n": 2,
+   "title": "Save them"
+  },
+  {
+   "n": 3,
+   "title": "Create the reports directory"
+  },
+  {
+   "n": 4,
+   "title": "Checks, and nothing to save"
+  }
+ ]
+}
