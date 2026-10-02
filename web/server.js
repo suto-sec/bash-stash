@@ -115,6 +115,58 @@ function solutionFile(ex) {
   return fs.existsSync(base + '.sh') ? base + '.sh' : base + '.txt';
 }
 
+// ------------------------------------------------------------------ imported packs
+// A pack is one json file the user imported (web/importer.js validates it; web/import-prompt.md describes it). It is kept, normalized, in
+// .progress/imported/<pack-id>/pack.json: personal data, git-ignored, never executed. Its quizzes and exams are served through the
+// ordinary theory and exam APIs under the id "imp-<pack>-<item>", flagged `imp` so the pages keep them apart from the course material:
+// they have their own progress and never count in the home totals, the suggested path or the readiness.
+const importer = require('./importer');
+const IMPORT_DIR = path.join(PROGRESS, 'imported');
+function readPacks() {
+  let ids = [];
+  try { ids = fs.readdirSync(IMPORT_DIR).filter(n => importer.SLUG.test(n)); } catch { /* nothing imported */ }
+  const out = [];
+  for (const id of ids) {
+    try {
+      const pack = JSON.parse(fs.readFileSync(path.join(IMPORT_DIR, id, 'pack.json'), 'utf8'));
+      if (pack && pack.id === id && Array.isArray(pack.items)) out.push(pack);
+    } catch { /* a broken pack file is skipped */ }
+  }
+  return out.sort((a, b) => String(a.addedAt).localeCompare(String(b.addedAt)));
+}
+const impId = (pack, item) => `imp-${pack.id}-${item.id}`;
+function impCollections() {
+  return readPacks().flatMap(p => p.items.filter(i => i.kind === 'quiz').map(i =>
+    ({ id: impId(p, i), title: i.title, about: i.about, groups: i.groups, imp: p.id, packTitle: p.title })));
+}
+function impExams() {
+  return readPacks().flatMap(p => p.items.filter(i => i.kind === 'exam').map(i =>
+    ({ id: impId(p, i), title: i.title, about: i.about, tier: 'imported', imp: p.id, packTitle: p.title,
+       questions: i.questions.map(q => ({ ...q, topic: 'imported' })) })));
+}
+function writePack(pack) {
+  const dir = path.join(IMPORT_DIR, pack.id);
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(path.join(dir, 'pack.json.tmp'), JSON.stringify(pack));
+  fs.renameSync(path.join(dir, 'pack.json.tmp'), path.join(dir, 'pack.json'));
+}
+function deletePack(id, withProgress) {
+  fs.rmSync(path.join(IMPORT_DIR, id), { recursive: true, force: true });
+  if (!withProgress) return;
+  for (const [dir, ext] of [[THEORY_PROGRESS, '.json'], [EXAM_PROGRESS, '.json'], [EXAM_PROGRESS, '.draft.json']]) {
+    try { for (const f of fs.readdirSync(dir)) if (f.startsWith(`imp-${id}-`) && f.endsWith(ext)) fs.unlinkSync(path.join(dir, f)); } catch { /* none */ }
+  }
+}
+// the request body as text (a pack can be a few hundred KB), parsed here so a syntax error can be reported
+function readRaw(req, max = 3e6) {
+  return new Promise(resolve => {
+    let b = '', over = false;
+    req.on('data', c => { b += c; if (b.length > max) { over = true; req.destroy(); } });
+    req.on('end', () => resolve(over ? { error: 'The file is too big (at most 3 MB).' } : { text: b }));
+    req.on('error', () => resolve({ error: 'The upload was interrupted.' }));
+  });
+}
+
 // ------------------------------------------------------------------ theory quizzes
 // Collections are compiled from tools/theory/*.txt into theory/<id>.json (tools/build_theory.js).
 // They are a parallel track to the exercises: graded in the browser (instant feedback), only the
@@ -128,6 +180,7 @@ const SAFE_ID = /^[\w-]+$/;
 const THEORY_LANGS = ['es'];
 function loadCollection(id, lang) {
   if (!SAFE_ID.test(id)) return null;
+  if (id.startsWith('imp-')) return impCollections().find(c => c.id === id) || null;
   const dirs = THEORY_LANGS.includes(lang) ? [path.join(THEORY, lang), THEORY] : [THEORY];
   for (const d of dirs) {
     try { return JSON.parse(fs.readFileSync(path.join(d, id + '.json'), 'utf8')); } catch { /* try the next */ }
@@ -141,9 +194,9 @@ function questionStatus(p) { return !p ? 'new' : p.pass ? 'pass' : 'attempted'; 
 function theoryIndex(lang) {
   let files = [];
   try { files = fs.readdirSync(THEORY).filter(f => f.endsWith('.json')).sort(); } catch { /* no theory yet */ }
-  return files.map(f => loadCollection(f.slice(0, -5), lang)).filter(Boolean).map(c => {
+  return [...files.map(f => loadCollection(f.slice(0, -5), lang)).filter(Boolean), ...impCollections()].map(c => {
     const prog = theoryProgress(c.id);
-    return { id: c.id, title: c.title, about: c.about, ws: !!c.ws, groups: c.groups.map(g => ({
+    return { id: c.id, title: c.title, about: c.about, ws: !!c.ws, imp: c.imp, packTitle: c.packTitle, groups: c.groups.map(g => ({
       id: g.id, title: g.title,
       questions: g.questions.map(q => ({ id: q.id, title: q.title, type: q.type, status: questionStatus(prog[q.id]) })),
     })) };
@@ -169,6 +222,7 @@ const EXAM_MAX_ATTEMPTS = 200;  // kept per set (oldest dropped)
 const EXAM_TIER_ORDER = ['easy', 'medium', 'hard'];
 function loadExam(id, lang) {
   if (!SAFE_ID.test(id)) return null;
+  if (id.startsWith('imp-')) return impExams().find(e => e.id === id) || null;
   const dirs = THEORY_LANGS.includes(lang) ? [path.join(EXAMS, lang), EXAMS] : [EXAMS];
   for (const d of dirs) {
     try { return JSON.parse(fs.readFileSync(path.join(d, id + '.json'), 'utf8')); } catch { /* try the next */ }
@@ -240,9 +294,9 @@ function examIndex(lang) {
   let files = [];
   try { files = fs.readdirSync(EXAMS).filter(f => f.endsWith('.json')).map(f => f.slice(0, -5)); } catch { /* no exams yet */ }
   const rank = e => EXAM_TIER_ORDER.indexOf(e.tier) * 1000 + (parseInt(e.id.split('-')[1], 10) || 0);
-  return files.map(id => loadExam(id, lang)).filter(Boolean).sort((a, b) => rank(a) - rank(b)).map(e => {
+  return [...files.map(id => loadExam(id, lang)).filter(Boolean).sort((a, b) => rank(a) - rank(b)), ...impExams()].map(e => {
     const at = examAttempts(e.id), last = at[at.length - 1];
-    return { id: e.id, title: e.title, about: e.about, tier: e.tier, count: e.questions.length,
+    return { id: e.id, title: e.title, about: e.about, tier: e.tier, count: e.questions.length, imp: e.imp, packTitle: e.packTitle,
       attempts: at.length, best: at.length ? Math.max(...at.map(a => a.score)) : null,
       last: last ? { n: last.n, score: last.score, total: last.total, finishedAt: last.finishedAt } : null,
       pass: EXAM_PASS,
@@ -602,6 +656,37 @@ async function api(req, res, url) {
     return send(res, 200, index().map(t => ({
       ...t, exercises: t.exercises.map(({ dir, answer, ...e }) => e),
     })));
+  }
+
+  if (parts[1] === 'import') {
+    if (req.method === 'GET' && !parts[2]) return send(res, 200, readPacks().map(importer.summarize));
+    if (req.method === 'GET' && (parts[2] === 'prompt.md' || parts[2] === 'example.json')) {
+      const file = path.join(__dirname, parts[2] === 'prompt.md' ? 'import-prompt.md' : 'import-example.json');
+      let text; try { text = fs.readFileSync(file, 'utf8'); } catch { return send(res, 404, { error: 'file missing' }); }
+      res.writeHead(200, { 'Content-Type': parts[2] === 'prompt.md' ? 'text/markdown; charset=utf-8' : 'application/json; charset=utf-8',
+        'Content-Disposition': `attachment; filename="${parts[2] === 'prompt.md' ? 'bash-stash-import-prompt.md' : 'bash-stash-example-pack.json'}"`, 'Cache-Control': 'no-store' });
+      return res.end(text);
+    }
+    if (req.method === 'POST' && (parts[2] === 'validate' || !parts[2])) {
+      const body = await readRaw(req);
+      if (body.error) return send(res, 413, { ok: false, errors: [{ at: 'file', msg: body.error }], warnings: [] });
+      let raw;
+      try { raw = JSON.parse(body.text); } catch (e) { return send(res, 422, { ok: false, errors: [{ at: 'file', msg: 'This is not valid JSON: ' + e.message }], warnings: [] }); }
+      const v = importer.validatePack(raw);
+      if (!v.ok) return send(res, 422, { ok: false, errors: v.errors.slice(0, 60), warnings: v.warnings.slice(0, 30), moreErrors: Math.max(0, v.errors.length - 60) });
+      const exists = readPacks().some(p => p.id === v.pack.id);
+      if (parts[2] === 'validate') return send(res, 200, { ok: true, warnings: v.warnings.slice(0, 30), summary: importer.summarize(v.pack), exists });
+      if (exists && url.searchParams.get('replace') !== '1') return send(res, 409, { ok: false, exists: true, errors: [{ at: 'file', msg: `A pack called "${v.pack.id}" is already imported.` }], warnings: [] });
+      const old = readPacks().find(p => p.id === v.pack.id);
+      v.pack.addedAt = old ? old.addedAt : new Date().toISOString();
+      writePack(v.pack);
+      return send(res, 200, { ok: true, warnings: v.warnings.slice(0, 30), summary: importer.summarize(v.pack) });
+    }
+    if (req.method === 'POST' && parts[3] === 'delete' && importer.SLUG.test(parts[2] || '')) {
+      deletePack(parts[2], (await readBody(req)).progress !== false);
+      return send(res, 200, { ok: true });
+    }
+    return send(res, 404, { error: 'unknown endpoint' });
   }
 
   if (parts[1] === 'theory') {
