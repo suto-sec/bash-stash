@@ -1,0 +1,1 @@
+An optional **third argument** is a default: when the key is not in the file print the default instead of failing (exit 0). The default may be empty (`''`) and then an empty line is printed. All the other checks stay; more than three arguments is the usage error.

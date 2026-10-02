@@ -1,0 +1,1 @@
+By default only the **normal users** are checked: UID (3rd field) **1000 or more and below 65534**. With `-a` as the first argument every account is checked. Finish with `N problems` (N = lines printed above it; the word is always `problems`) and exit **4** if N is not 0 (0 otherwise). The checks of step 2 apply in both modes.

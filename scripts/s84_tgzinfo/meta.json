@@ -1,0 +1,31 @@
+{
+ "id": "s84",
+ "slug": "tgzinfo",
+ "title": "What is inside an archive?",
+ "script": "tgzinfo.sh",
+ "cmds": "tar -tzf -tzvf, grep -c, awk, sort, shift, exit codes",
+ "level": 4,
+ "tags": [
+  "archives",
+  "text",
+  "exit codes"
+ ],
+ "steps": [
+  {
+   "n": 1,
+   "title": "Count the entries"
+  },
+  {
+   "n": 2,
+   "title": "The usual checks"
+  },
+  {
+   "n": 3,
+   "title": "The largest file"
+  },
+  {
+   "n": 4,
+   "title": "Extensions (-e)"
+  }
+ ]
+}

@@ -1,0 +1,97 @@
+@@script s83 | nohome | Accounts without a home | nohome.sh
+@@level 4
+@@tags files, text, exit codes
+@@cmds cut -d: -f, awk -F:, test -e -d, while read, shift, exit codes
+@@fixture
+setup() {
+  mkdir -p homes/ana homes/luis homes/marta empty
+  : > homes/eva
+  cat > passwd <<PW
+root:x:0:0:root:/root:/bin/bash
+daemon:x:1:1:daemon:$PWD/homes/daemon:/usr/sbin/nologin
+ana:x:1000:1000:Ana:$PWD/homes/ana:/bin/bash
+luis:x:1001:1001:Luis:$PWD/homes/luis:/bin/bash
+diego:x:1002:1002:Diego:$PWD/homes/diego:/bin/bash
+eva:x:1003:1003:Eva:$PWD/homes/eva:/bin/bash
+marta:x:1004:1004:Marta:$PWD/homes/marta:/bin/zsh
+nobody:x:65534:65534:nobody:/nonexistent:/usr/sbin/nologin
+carlos:x:1005:1005:Carlos:$PWD/homes/carlos:/bin/bash
+PW
+  head -n 4 passwd > short.passwd; : > empty.passwd; echo x > notregular.txt; mkdir adir
+}
+usage_ok() { [[ $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* || $ERR == *nohome.sh* ]]; }
+@@step 1 | Homes that do not exist
+@@readme
+In a `passwd` file the 1st field is the user name and the **6th the home directory** (an absolute path). Write `nohome.sh FILE`. It prints, in file order, the **user name** of every account whose home path **does not exist at all** (`test -e` fails). A home that exists but is a regular file is *not* printed in this step.
+@@check
+ARGS=('passwd' 'short.passwd' 'empty.passwd')
+COMPARE="stdout exit"
+@@solution
+#!/bin/bash
+while IFS=: read -r user _ _ _ _ home _; do
+  [[ -e $home ]] || echo "$user"
+done < "$1"
+exit 0
+@@step 2 | The usual checks
+@@readme
+Checks: not exactly one argument → an error message **and the correct usage** (e.g. `Usage: nohome.sh passwdfile`), exit **1**; the file does not exist → an error with its name, exit **2**; it exists but is not a regular file → an error with its name, exit **3**.
+@@check
+ARGS=('passwd' 'short.passwd' 'empty.passwd' '' 'passwd short.passwd' 'nothing' 'adir' 'notregular.txt')
+COMPARE="stdout exit errmsg"
+extra_check() {
+  [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }
+  [[ $REF_CODE == [23] ]] && mentions "$(eval "set -- $CASE"; echo "$1")"
+}
+@@solution
+#!/bin/bash
+if (( $# != 1 )); then echo "Error: one argument needed" >&2; echo "Usage: $0 passwdfile" >&2; exit 1; fi
+[[ -e $1 ]] || { echo "Error: $1 does not exist" >&2; exit 2; }
+[[ -f $1 ]] || { echo "Error: $1 is not a regular file" >&2; exit 3; }
+while IFS=: read -r user _ _ _ _ home _; do
+  [[ -e $home ]] || echo "$user"
+done < "$1"
+exit 0
+@@step 3 | Say what is wrong
+@@readme
+Report the two problems with their reason: `USER: missing` (the home path does not exist) and `USER: not a directory` (it exists but is not a directory). Accounts with a proper home print nothing.
+@@check
+ARGS=('passwd' 'short.passwd' 'empty.passwd' '' 'nothing' 'adir' 'notregular.txt')
+COMPARE="stdout exit errmsg"
+extra_check() { [[ $REF_CODE == [23] ]] && mentions "$(eval "set -- $CASE"; echo "$1")"; }
+@@solution
+#!/bin/bash
+if (( $# != 1 )); then echo "Error: one argument needed" >&2; echo "Usage: $0 passwdfile" >&2; exit 1; fi
+[[ -e $1 ]] || { echo "Error: $1 does not exist" >&2; exit 2; }
+[[ -f $1 ]] || { echo "Error: $1 is not a regular file" >&2; exit 3; }
+while IFS=: read -r user _ _ _ _ home _; do
+  if [[ ! -e $home ]]; then echo "$user: missing"
+  elif [[ ! -d $home ]]; then echo "$user: not a directory"
+  fi
+done < "$1"
+exit 0
+@@step 4 | Only normal users, and a verdict
+@@readme
+By default only the **normal users** are checked: UID (3rd field) **1000 or more and below 65534**. With `-a` as the first argument every account is checked. Finish with `N problems` (N = lines printed above it; the word is always `problems`) and exit **4** if N is not 0 (0 otherwise). The checks of step 2 apply in both modes.
+@@check
+ARGS=('passwd' '-a passwd' '-a short.passwd' 'short.passwd' '-a empty.passwd' 'empty.passwd' '' '-a' '-a nothing' '-a adir' 'nothing' 'passwd short.passwd' '-a passwd short.passwd')
+COMPARE="stdout exit errmsg"
+extra_check() {
+  [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }
+  [[ $REF_CODE == [23] ]] && mentions "$(eval "set -- $CASE"; [[ $1 == -a ]] && shift; echo "$1")"
+}
+@@solution
+#!/bin/bash
+all=
+if [[ $1 == -a ]]; then all=1; shift; fi
+if (( $# != 1 )); then echo "Error: one argument needed" >&2; echo "Usage: $0 [-a] passwdfile" >&2; exit 1; fi
+[[ -e $1 ]] || { echo "Error: $1 does not exist" >&2; exit 2; }
+[[ -f $1 ]] || { echo "Error: $1 is not a regular file" >&2; exit 3; }
+n=0
+while IFS=: read -r user _ uid _ _ home _; do
+  if [[ -z $all ]] && ! (( uid >= 1000 && uid < 65534 )); then continue; fi
+  if [[ ! -e $home ]]; then echo "$user: missing"; n=$((n + 1))
+  elif [[ ! -d $home ]]; then echo "$user: not a directory"; n=$((n + 1))
+  fi
+done < "$1"
+echo "$n problems"
+(( n == 0 )) || exit 4

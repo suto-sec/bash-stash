@@ -1,0 +1,1 @@
+Add a fourth line `Largest: NAME (BYTES bytes)` with the **regular file** of the archive that has the most bytes (`tar -tzvf` shows sizes; `NAME` is the member name exactly as `tar -tzf` prints it, `./img/photo.jpg`). An archive with no regular file prints `Largest: none`. In these archives the largest file is unique and its name has no spaces.

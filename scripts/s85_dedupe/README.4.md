@@ -1,0 +1,1 @@
+Finish with `N duplicates, B bytes` without `-d` (B = the total size of the copies) or `Removed N files, freed B bytes` with `-d`. Without `-d`, if N is not 0 exit **4** (there is something to clean); in every other case exit 0. Compute B **before** deleting.

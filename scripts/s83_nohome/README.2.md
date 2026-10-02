@@ -1,0 +1,1 @@
+Checks: not exactly one argument → an error message **and the correct usage** (e.g. `Usage: nohome.sh passwdfile`), exit **1**; the file does not exist → an error with its name, exit **2**; it exists but is not a regular file → an error with its name, exit **3**.

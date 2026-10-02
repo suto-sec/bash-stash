@@ -1,0 +1,134 @@
+@@script s87 | seqname | Numbering the files | seqname.sh
+@@level 4
+@@tags files, copy and move, exit codes
+@@cmds ls, mv, printf %03d, ${var##*.}, shift, exit codes
+@@fixture
+setup() {
+  mkdir -p photos "my photos" empty busy
+  echo 1 > photos/holiday.jpg; echo 2 > photos/beach.jpg; echo 3 > photos/notes.txt; echo 4 > photos/Zebra.png; echo 5 > photos/README
+  echo 6 > "photos/two words.jpg"; mkdir photos/albums; echo 7 > photos/.hidden.jpg
+  echo a > "my photos/x.png"; echo b > "my photos/y.png"
+  echo 1 > busy/a.txt; echo 2 > busy/b.txt; echo 3 > busy/img-002.txt
+  echo x > notadir.txt
+}
+usage_ok() { [[ $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* || $ERR == *seqname.sh* ]]; }
+@@step 1 | Rename in order
+@@readme
+Write `seqname.sh DIR PREFIX`. The **regular files** directly in `DIR` (not hidden ones, not directories) are taken **in the order `ls` lists them** and renamed to `PREFIX-001.ext`, `PREFIX-002.ext`... : a three-digit counter starting at 1 and the **same extension** as before (the text after the last dot, with the dot; a name without a dot gets none). For each file print `old -> new`, in that order.
+
+Example (files `b.jpg a.png`): `a.png -> img-001.png` then `b.jpg -> img-002.jpg`. In this step assume none of the new names exists yet.
+@@check
+ARGS=('photos img' '"my photos" pic' 'empty x' 'photos "my pic"')
+COMPARE="stdout exit files"
+@@solution
+#!/bin/bash
+n=1
+while IFS= read -r f; do
+  [[ -f $1/$f ]] || continue
+  ext=
+  [[ $f == *.* ]] && ext=.${f##*.}
+  new=$(printf '%s-%03d%s' "$2" "$n" "$ext")
+  mv -- "$1/$f" "$1/$new"
+  echo "$f -> $new"
+  n=$((n + 1))
+done < <(ls "$1")
+exit 0
+@@step 2 | The usual checks
+@@readme
+Checks: not exactly two arguments → an error message **and the correct usage** (e.g. `Usage: seqname.sh dir prefix`), exit **1**; `DIR` does not exist → an error with its name, exit **2**; it is not a directory → an error with its name, exit **3**; `PREFIX` is empty or contains a `/` → an error mentioning `prefix`, exit **4**. Nothing is renamed when a check fails.
+@@check
+ARGS=('photos img' '"my photos" pic' 'empty x' '' 'photos' 'photos img extra' 'nothing img' 'notadir.txt img' 'photos ""' 'photos a/b')
+COMPARE="stdout exit errmsg files"
+extra_check() {
+  [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }
+  [[ $REF_CODE == [23] ]] && mentions "$(eval "set -- $CASE"; echo "$1")"
+  [[ $REF_CODE == 4 ]] && mentions "prefix"
+}
+@@solution
+#!/bin/bash
+if (( $# != 2 )); then echo "Error: two arguments needed" >&2; echo "Usage: $0 dir prefix" >&2; exit 1; fi
+[[ -e $1 ]] || { echo "Error: $1 does not exist" >&2; exit 2; }
+[[ -d $1 ]] || { echo "Error: $1 is not a directory" >&2; exit 3; }
+if [[ -z $2 || $2 == */* ]]; then echo "Error: bad prefix '$2'" >&2; exit 4; fi
+n=1
+while IFS= read -r f; do
+  [[ -f $1/$f ]] || continue
+  ext=
+  [[ $f == *.* ]] && ext=.${f##*.}
+  new=$(printf '%s-%03d%s' "$2" "$n" "$ext")
+  mv -- "$1/$f" "$1/$new"
+  echo "$f -> $new"
+  n=$((n + 1))
+done < <(ls "$1")
+exit 0
+@@step 3 | Start at another number
+@@readme
+An optional **third argument** `START` is the number of the first file (default 1). It must be a non-negative integer (digits only, `0` allowed): otherwise an error with the value, exit **5** (checked after the checks of step 2, before renaming anything). Three digits are used at least (`007`), more when the number needs them (`1234`). Wrong number of arguments is now fewer than two or more than three.
+@@check
+ARGS=('photos img' 'photos img 10' 'photos img 0' 'photos img 998' '"my photos" pic 5' 'empty x 3' '' 'photos' 'photos img 1 2' 'nothing img 1' 'notadir.txt img 1' 'photos "" 1' 'photos img abc' 'photos img -2' 'photos img 2.5')
+COMPARE="stdout exit errmsg files"
+extra_check() {
+  [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }
+  [[ $REF_CODE == [23] ]] && mentions "$(eval "set -- $CASE"; echo "$1")"
+  [[ $REF_CODE == 4 ]] && mentions "prefix"
+  [[ $REF_CODE == 5 ]] && mentions "$(eval "set -- $CASE"; echo "$3")"
+}
+@@solution
+#!/bin/bash
+if (( $# < 2 || $# > 3 )); then echo "Error: wrong number of arguments" >&2; echo "Usage: $0 dir prefix [start]" >&2; exit 1; fi
+[[ -e $1 ]] || { echo "Error: $1 does not exist" >&2; exit 2; }
+[[ -d $1 ]] || { echo "Error: $1 is not a directory" >&2; exit 3; }
+if [[ -z $2 || $2 == */* ]]; then echo "Error: bad prefix '$2'" >&2; exit 4; fi
+n=${3:-1}
+[[ $n =~ ^[0-9]+$ ]] || { echo "Error: $n is not a valid start number" >&2; exit 5; }
+n=$((10#$n))
+while IFS= read -r f; do
+  [[ -f $1/$f ]] || continue
+  ext=
+  [[ $f == *.* ]] && ext=.${f##*.}
+  new=$(printf '%s-%03d%s' "$2" "$n" "$ext")
+  mv -- "$1/$f" "$1/$new"
+  echo "$f -> $new"
+  n=$((n + 1))
+done < <(ls "$1")
+exit 0
+@@step 4 | Never overwrite anything
+@@readme
+Before renaming anything work out all the new names. If **any** new name is already used by an **entry of `DIR`** (even by a file that is itself going to be renamed: `busy` has `img-002.txt`) print `exists: NEWNAME` on standard error for each such name (in the order of the files), **change nothing** and exit with code **6**. The checks of the earlier steps come first.
+@@check
+ARGS=('photos img' 'photos img 10' '"my photos" pic' 'busy img' 'busy img 1' 'busy img 3' 'busy x 2' 'busy x 5' 'empty x' '' 'photos img abc' 'photos "" 1' 'nothing img')
+COMPARE="stdout exit errmsg files"
+extra_check() {
+  [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }
+  [[ $REF_CODE == [23] ]] && mentions "$(eval "set -- $CASE"; echo "$1")"
+  [[ $REF_CODE == 4 ]] && mentions "prefix"
+  [[ $REF_CODE == 5 ]] && mentions "$(eval "set -- $CASE"; echo "$3")"
+  [[ $REF_CODE == 6 ]] && mentions "exists: "
+}
+@@solution
+#!/bin/bash
+if (( $# < 2 || $# > 3 )); then echo "Error: wrong number of arguments" >&2; echo "Usage: $0 dir prefix [start]" >&2; exit 1; fi
+[[ -e $1 ]] || { echo "Error: $1 does not exist" >&2; exit 2; }
+[[ -d $1 ]] || { echo "Error: $1 is not a directory" >&2; exit 3; }
+if [[ -z $2 || $2 == */* ]]; then echo "Error: bad prefix '$2'" >&2; exit 4; fi
+n=${3:-1}
+[[ $n =~ ^[0-9]+$ ]] || { echo "Error: $n is not a valid start number" >&2; exit 5; }
+n=$((10#$n))
+files=() news=()
+while IFS= read -r f; do
+  [[ -f $1/$f ]] || continue
+  ext=
+  [[ $f == *.* ]] && ext=.${f##*.}
+  files+=("$f"); news+=("$(printf '%s-%03d%s' "$2" "$n" "$ext")")
+  n=$((n + 1))
+done < <(ls "$1")
+bad=0
+for new in "${news[@]}"; do
+  if [[ -e $1/$new ]]; then echo "exists: $new" >&2; bad=1; fi
+done
+(( bad == 0 )) || exit 6
+for i in "${!files[@]}"; do
+  mv -- "$1/${files[i]}" "$1/${news[i]}"
+  echo "${files[i]} -> ${news[i]}"
+done
+exit 0
