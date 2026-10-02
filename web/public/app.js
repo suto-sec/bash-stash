@@ -288,13 +288,18 @@ $('#info-btn').onclick = () => {
   $('#info-body').innerHTML = glossaryHTML(explainCmds(state.current.cmds), true);
   $('#info-dialog').showModal();
 };
-$('#info-body').addEventListener('click', ev => {
+function infoGoto(ev) {
   if (ev.target.closest('a[href="#"]')) ev.preventDefault();   // any bare "#" link: otherwise the browser navigates to "#" and the app falls back to an exercise
   const el = ev.target.closest('[data-goto-cmd]');
   if (!el) return;
+  ev.preventDefault();
   // the manual page goes to a new tab brought to the front, so the exercise (and the open dialog) stay as they are
   Keys.openUrl(Keys.refUrl(el.dataset.gotoCmd), true);
-});
+}
+$('#info-body').addEventListener('click', infoGoto);
+// a middle click is an "auxclick", not a "click": without this the browser opened the link itself, in the background
+$('#info-body').addEventListener('auxclick', ev => { if (ev.button === 1) infoGoto(ev); });
+$('#info-body').addEventListener('mousedown', ev => { if (ev.button === 1 && ev.target.closest('[data-goto-cmd]')) ev.preventDefault(); });
 
 // An index of every topic's distinct commands, and every exercise each command appears in (so a
 // focused command view can both link back to its categories and show per-exercise progress there,
