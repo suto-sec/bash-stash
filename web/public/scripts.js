@@ -14,6 +14,14 @@ const Scripts = (() => {
     try { index = await (await api('')).json(); } catch { index = []; }
     if (!Array.isArray(index)) index = [];
   }
+  // ---------------------------------------------------------------- setting (⚙ menu): one step at a time, or every part at once
+  const isFull = () => { try { return localStorage.getItem('scMode') === 'full'; } catch { return false; } };
+  Seg.on('scmode', v => {
+    try { localStorage.setItem('scMode', v === 'full' ? 'full' : 'steps'); } catch { /* private mode */ }
+    Seg.set('scmode', isFull() ? 'full' : 'steps');
+    if (cur && state.script) { cur.step = isFull() ? cur.d.steps.length : cur.d.current; fillStatement(); renderSidebar(); }
+  });
+  Seg.set('scmode', isFull() ? 'full' : 'steps');
   const list = () => index;
   const entry = id => index.find(e => e.id === id);
   const statusOf = e => e.status;
@@ -84,7 +92,7 @@ const Scripts = (() => {
     if (!r.ok) { location.replace('#/home'); return; }
     const d = await r.json();
     if (!location.hash.startsWith(`#/script/${id}`)) return;           // navigated away while loading
-    const step = d.steps.some(s => s.n === Number(stepArg)) ? Number(stepArg) : d.current;
+    const step = isFull() ? d.steps.length : d.steps.some(s => s.n === Number(stepArg)) ? Number(stepArg) : d.current;
     const sameScript = cur && cur.id === id && state.script === id;
     cur = { id, d, step };
     state.script = id; state.theory = null; state.exam = null; state.sexam = null;
@@ -114,16 +122,20 @@ const Scripts = (() => {
     const b = $('#ex-status');
     b.className = 'badge ' + d.status; b.textContent = STATUS[d.status].label;
     $('#answer-path').textContent = 'script: ' + d.answer.replace(/^\/home\/alumno\/lab\//, '');
-    $('#sc-steps').innerHTML = d.steps.map(s => `<button class="sc-step${s.n === step ? ' active' : ''}${d.passed.includes(s.n) ? ' done' : ''}" data-step="${s.n}" title="${esc(s.title)}">${d.passed.includes(s.n) ? '✓' : ''}${s.n}</button>`).join('') +
+    const full = isFull();
+    $('#sc-steps').innerHTML = full ? `<span class="sc-step-title">All ${d.steps.length} parts at once · one check of the finished script</span>` : d.steps.map(s => `<button class="sc-step${s.n === step ? ' active' : ''}${d.passed.includes(s.n) ? ' done' : ''}" data-step="${s.n}" title="${esc(s.title)}">${d.passed.includes(s.n) ? '✓' : ''}${s.n}</button>`).join('') +
       `<span class="sc-step-title">${esc(st.title)}</span>`;
-    $('#readme').innerHTML = marked.parse(`### Step ${step} · ${st.title}\n\n` + st.readme);
+    $('#readme').innerHTML = full
+      ? marked.parse(`### The whole script\n\nRead all the parts first: each one adds to the script, and a later part may change what an earlier one said. Your script must do everything below.\n\n` +
+          d.steps.map(s => `---\n\n#### Part ${s.n} of ${d.steps.length} · ${s.title}\n\n${s.readme}`).join('\n\n'))
+      : marked.parse(`### Step ${step} · ${st.title}\n\n` + st.readme);
     const load = $('#sc-load-btn');
-    load.textContent = step === 1 ? 'Start over (empty file)' : `Load step ${step - 1} code`;
-    load.title = step === 1 ? 'Replace your file with an empty template (your current file is archived first)' : `Replace your file with the reference code of step ${step - 1} (your current file is archived first)`;
+    load.textContent = full || step === 1 ? 'Start over (empty file)' : `Load step ${step - 1} code`;
+    load.title = full || step === 1 ? 'Replace your file with an empty template (your current file is archived first)' : `Replace your file with the reference code of step ${step - 1} (your current file is archived first)`;
     $('#result').classList.add('hidden');
     $('#statement-pane').scrollTop = 0;
     state.current.status = d.status;
-    document.title = `${num(d.id)} · ${d.title} — step ${step} — bash stash`;
+    document.title = `${num(d.id)} · ${d.title}${full ? '' : ` — step ${step}`} — bash stash`;
   }
   $('#sc-steps').addEventListener('click', ev => {
     const b = ev.target.closest('[data-step]');
@@ -142,11 +154,12 @@ const Scripts = (() => {
     const btn = $('#check-btn'), box = $('#result'), body = $('#result-body'), step = cur.step;
     btn.disabled = true; btn.textContent = '… checking';
     box.classList.remove('hidden', 'pass', 'fail'); unfoldResult();
-    $('#result-title').textContent = `Checking step ${step}…`;
+    $('#result-title').textContent = isFull() ? 'Checking the script…' : `Checking step ${step}…`;
     body.innerHTML = '';
     if (typeof NewUser !== 'undefined') NewUser.clear();
     const res = await CheckView.run(`/api/scripts/${cur.id}/check?step=${step}`, body);
     const code = res.code, ok = code === '0';
+    if (ok && isFull()) await fetch(`/api/scripts/${cur.id}/markall`, { method: 'POST' });     // the finished script passed: every step counts
     box.classList.add(ok ? 'pass' : 'fail');
     const last = cur.d.steps.length, sid = cur.id;
     $('#result-title').textContent = ok ? (step === last ? '✔ Script complete!' : `✔ Step ${step} passed — on to step ${step + 1}`) : code === '3' ? 'Not attempted yet' : '✘ Not yet';
@@ -168,14 +181,14 @@ const Scripts = (() => {
     const r = await fetch(`/api/scripts/${cur.id}/solution?step=${step}`, { method: 'POST' });
     if (!r.ok) return;
     const sol = await r.json();
-    $('#sol-title').textContent = `Solution · ${num(cur.id)} ${cur.d.title} · step ${step}`;
+    $('#sol-title').textContent = `Solution · ${num(cur.id)} ${cur.d.title}${isFull() ? '' : ` · step ${step}`}`;
     $('#sol-file').textContent = sol.file;
     $('#sol-body').textContent = sol.content;
     $('#solution-dialog').showModal();
   }
   $('#sc-load-btn').onclick = async () => {
     if (!cur) return;
-    const from = cur.step - 1;
+    const from = isFull() ? 0 : cur.step - 1;
     const msg = from === 0 ? 'Replace your file with an empty template? What you have now is archived first (.progress/scripts/<id>/archive).'
       : `Replace your file with the reference code of step ${from}? What you have now is archived first (.progress/scripts/<id>/archive).`;
     if (!confirm(msg)) return;
@@ -191,7 +204,7 @@ const Scripts = (() => {
   function neighbour(delta) {       // ◀ ▶▶ move between the steps of the script, then between scripts
     if (!cur) return;
     const n = cur.step + delta;
-    if (n >= 1 && n <= cur.d.steps.length) { go(cur.id, n); return; }
+    if (!isFull() && n >= 1 && n <= cur.d.steps.length) { go(cur.id, n); return; }
     const all = displayOrder(), i = all.findIndex(e => e.id === cur.id), o = all[i + delta];
     if (o) go(o.id, delta > 0 ? 1 : o.steps.length);
   }
