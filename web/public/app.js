@@ -365,7 +365,10 @@ function renderReferenceContent() {
     content.innerHTML = entry ? `<div class="gl-focus">${focusedGlossaryHTML(entry)}${usedInHTML(refSel.key)}</div>`
       : '<p class="ref-empty">Not found.</p>';
   } else {
-    content.innerHTML = refTopics.map(t => topicSection(t)).join('');
+    const n = refTopics.reduce((sum, t) => sum + t.cmds.length, 0);
+    content.innerHTML = `<section class="home-hero ref-intro"><div class="hc-kind">Reference</div><div class="hc-title">Every command and concept the course uses</div>
+      <div class="hc-sub">${n} entries in ${refTopics.length} categories. Filter on the left (Enter opens the best match), or open a category to see its entries.</div></section>`
+      + refTopics.map(t => topicSection(t)).join('');
   }
   content.scrollTop = 0;
 }

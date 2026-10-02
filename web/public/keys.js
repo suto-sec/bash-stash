@@ -300,7 +300,7 @@ const Keys = (() => {
   })();
 
   // the visible entry points
-  for (const id of ['palette-btn', 'home-palette-btn', 'readiness-palette-btn']) { const b = e$(id); if (b) b.onclick = openPalette; }
+  for (const id of ['palette-btn', 'home-palette-btn', 'readiness-palette-btn', 'reference-palette-btn']) { const b = e$(id); if (b) b.onclick = openPalette; }
   // the same as pressing Alt+G (and the same refusals)
   function goMode() {
     if (strict()) { toast('Shortcuts are off in an exam that grades only on submit'); return; }
@@ -308,7 +308,7 @@ const Keys = (() => {
     if (isOpen()) closeOverlay();
     startMode();
   }
-  for (const id of ['go-btn', 'home-go-btn', 'readiness-go-btn']) { const b = e$(id); if (b) { b.onclick = goMode; if (mac) b.querySelector('kbd').textContent = '⌥ G'; } }
+  for (const id of ['go-btn', 'home-go-btn', 'readiness-go-btn', 'reference-go-btn']) { const b = e$(id); if (b) { b.onclick = goMode; if (mac) b.querySelector('kbd').textContent = '⌥ G'; } }
   const hb = e$('shortcuts-row');
   if (hb) hb.onclick = () => { e$('settings-menu').classList.add('hidden'); e$('settings-btn').setAttribute('aria-expanded', 'false'); openHelp(); };
   syncPrefs();
