@@ -1059,3 +1059,29 @@ html.boot-home #home-page.hidden, html.boot-reference #reference-page.hidden, ht
 .imp-pack-head .imp-del { margin-left: auto; }
 .imp-pack-items { display: flex; gap: 6px; flex-wrap: wrap; }
 .imp-load .home-sub { margin-top: 10px; }
+
+/* several files at once, rename, history */
+.imp-batch-bar { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; justify-self: stretch; }
+.imp-check { color: var(--muted); font-size: 13px; display: inline-flex; gap: 6px; align-items: center; }
+.imp-file { justify-self: stretch; padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px; background: var(--panel-2); display: grid; gap: 6px; justify-items: start; }
+.imp-file-ok { border-left: 3px solid var(--accent); }
+.imp-file-bad { border-left: 3px solid var(--err); }
+.imp-file-head { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.imp-state { font-size: 11px; padding: 1px 8px; border-radius: 10px; border: 1px solid var(--border); color: var(--muted); text-transform: lowercase; }
+.imp-state.ok { color: var(--accent); border-color: var(--accent); }
+.imp-state.bad { color: var(--err); border-color: var(--err); }
+.imp-more summary { cursor: pointer; color: var(--muted); font-size: 12.5px; }
+.imp-file-actions { display: flex; gap: 8px; }
+.imp-pack-btns { margin-left: auto; display: inline-flex; gap: 6px; }
+.imp-pack-head .imp-del { margin-left: 0; }
+.imp-name { flex: 1 1 260px; padding: 4px 8px; border-radius: 6px; border: 1px solid var(--accent); background: var(--panel-2); color: var(--text); font: inherit; }
+.imp-hist { list-style: none; margin: 0 0 10px; padding: 0; display: grid; gap: 6px; max-height: 420px; overflow-y: auto; }
+.imp-hist li { display: grid; grid-template-columns: 150px 78px 1fr; gap: 10px; align-items: baseline; padding: 7px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--panel); font-size: 13px; }
+.imp-when { color: var(--muted); font-size: 12px; }
+.imp-act { font-size: 11px; text-align: center; padding: 1px 6px; border-radius: 10px; border: 1px solid var(--border); }
+.imp-act.added { color: var(--accent); border-color: var(--accent); }
+.imp-act.replaced { color: var(--info); border-color: var(--info); }
+.imp-act.removed { color: var(--err); border-color: var(--err); }
+.imp-act.renamed { color: var(--warn); border-color: var(--warn); }
+@media (max-width: 700px) { .imp-hist li { grid-template-columns: 1fr; } }
+#imp-hist-clear { justify-self: start; }

@@ -18,10 +18,11 @@ const Home = (() => {
     { key: 'impload', id: 'imp-sec-load',         part: 'imported' },
     { key: 'impq',    id: 'imp-sec-quizzes',      part: 'imported' },
     { key: 'impe',    id: 'imp-sec-exams',        part: 'imported' },
+    { key: 'imphist', id: 'imp-sec-history',      part: 'imported' },
   ];
   const TABS = [['start', 'Start'], ['coding', 'Coding exercises'], ['theory', 'Theory'], ['man', 'Man drills'], ['imported', 'Imported']];
   const GROUP_TAB = { 'home-grp-exercises': 'coding', 'theory-home-title': 'theory', 'man-home-title': 'man', 'imp-home-title': 'imported' };   // the group headings (sidebar labels) -> their tab
-  const DEFAULT_OPEN = ['tracks', 'quizzes', 'man', 'impload', 'impq', 'impe'];   // the first section of each tab (a tab with one folded row looks empty)
+  const DEFAULT_OPEN = ['tracks', 'quizzes', 'man', 'impload', 'impq', 'impe'];   // (imphist starts folded)   // the first section of each tab (a tab with one folded row looks empty)
   const el = id => document.getElementById(id);
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const store = {
@@ -133,6 +134,10 @@ const Home = (() => {
     impload() {
       const n = typeof Imp !== 'undefined' ? Imp.packCount() : 0;
       return { done: 0, total: 0, text: n ? `${n} pack${n === 1 ? '' : 's'} imported` : 'No packs imported yet' };
+    },
+    imphist() {
+      const n = typeof Imp !== 'undefined' ? Imp.historyCount() : 0;
+      return { done: 0, total: 0, text: n ? `${n} event${n === 1 ? '' : 's'}` : 'Nothing has happened yet' };
     },
     impq() {
       const all = Theory.imported(), qs = all.flatMap(c => c.groups.flatMap(g => g.questions));
@@ -365,7 +370,7 @@ const Home = (() => {
     // the other modules redraw their grids when their data arrives: follow them
     let timer = 0;
     const later = () => { clearTimeout(timer); timer = setTimeout(refreshSummaries, 60); };
-    for (const id of ['track-grid', 'intro-grid', 'scripts-grid', 'sexams-grid', 'theory-grid', 'exams-grid', 'imp-quizzes-grid', 'imp-exams-grid', 'imp-load']) {
+    for (const id of ['track-grid', 'intro-grid', 'scripts-grid', 'sexams-grid', 'theory-grid', 'exams-grid', 'imp-quizzes-grid', 'imp-exams-grid', 'imp-load', 'imp-history']) {
       const g = el(id);
       if (!g) continue;
       new MutationObserver(() => { applyGroups(g); later(); }).observe(g, { childList: true });
