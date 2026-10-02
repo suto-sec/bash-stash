@@ -1,0 +1,1 @@
+Finish with the line `Found N entries` (N = how many paths were printed; always the word `entries`). When N is 0 the script still prints `Found 0 entries` but exits with code **4**; otherwise it exits 0. The checks of step 3 stay.

@@ -1,0 +1,1 @@
+With `-n` as the **first** argument nothing is changed: print `would remove PATH` for every member that would be removed (the member path exactly as `tar -tzf` shows it, without the leading `./` if there is one) and, at the end, `Would remove N files`. Without `-n` everything works as in step 3 (with `-n` the other arguments and checks are the same).

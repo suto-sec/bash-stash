@@ -1,0 +1,31 @@
+{
+ "id": "s71",
+ "slug": "tgzclean",
+ "title": "Trimming an archive",
+ "script": "tgzclean.sh",
+ "cmds": "tar -xzf -czf -tzf, mktemp -d, find -size +, rm, exit codes",
+ "level": 5,
+ "tags": [
+  "archives",
+  "find",
+  "exit codes"
+ ],
+ "steps": [
+  {
+   "n": 1,
+   "title": "Remove the big members"
+  },
+  {
+   "n": 2,
+   "title": "The usual checks"
+  },
+  {
+   "n": 3,
+   "title": "Another limit"
+  },
+  {
+   "n": 4,
+   "title": "Look first (-n)"
+  }
+ ]
+}

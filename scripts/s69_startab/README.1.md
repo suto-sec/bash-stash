@@ -1,0 +1,1 @@
+Write `startab.sh DIR`. It prints the path (as `find` shows it) of every **file and directory below `DIR`**, at any depth, whose **name** starts with a lower-case `a` or `b` (`DIR` itself is not listed). The order does not matter. `Alpha` and `.a-hidden` do not start with `a`/`b`.

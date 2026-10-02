@@ -1,0 +1,1 @@
+An optional **second argument** `KB` sets the limit: members bigger than `KB * 1024` bytes are removed (default 8). `KB` must be a positive integer (digits only, at least 1); otherwise an error with its value and exit **5** (checked after the checks of the first argument, before touching anything). Wrong number of arguments is now zero or more than two.
