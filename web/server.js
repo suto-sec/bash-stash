@@ -150,6 +150,19 @@ function writePack(pack) {
   fs.writeFileSync(path.join(dir, 'pack.json.tmp'), JSON.stringify(pack));
   fs.renameSync(path.join(dir, 'pack.json.tmp'), path.join(dir, 'pack.json'));
 }
+// what happened to the packs, newest last: { at, action: added | replaced | removed | renamed, pack, title, detail }
+const HISTORY_FILE = path.join(IMPORT_DIR, 'history.json');
+function readHistory() {
+  try { const h = JSON.parse(fs.readFileSync(HISTORY_FILE, 'utf8')); return Array.isArray(h) ? h : []; } catch { return []; }
+}
+function logHistory(action, pack, detail) {
+  const h = readHistory();
+  h.push({ at: new Date().toISOString(), action, pack: pack.id, title: pack.title, detail: detail || '' });
+  fs.mkdirSync(IMPORT_DIR, { recursive: true });
+  fs.writeFileSync(HISTORY_FILE + '.tmp', JSON.stringify(h.slice(-500)));
+  fs.renameSync(HISTORY_FILE + '.tmp', HISTORY_FILE);
+}
+const itemsLine = pack => { const q = pack.items.filter(i => i.kind === 'quiz').length, e = pack.items.filter(i => i.kind === 'exam').length; return [q && `${q} quiz${q === 1 ? '' : 'zes'}`, e && `${e} exam${e === 1 ? '' : 's'}`].filter(Boolean).join(', '); };
 function deletePack(id, withProgress) {
   fs.rmSync(path.join(IMPORT_DIR, id), { recursive: true, force: true });
   if (!withProgress) return;
@@ -660,6 +673,8 @@ async function api(req, res, url) {
 
   if (parts[1] === 'import') {
     if (req.method === 'GET' && !parts[2]) return send(res, 200, readPacks().map(importer.summarize));
+    if (req.method === 'GET' && parts[2] === 'history') return send(res, 200, readHistory().slice(-200).reverse());
+    if (req.method === 'POST' && parts[2] === 'history' && parts[3] === 'clear') { try { fs.unlinkSync(HISTORY_FILE); } catch { /* none */ } return send(res, 200, { ok: true }); }
     if (req.method === 'GET' && (parts[2] === 'prompt.md' || parts[2] === 'example.json')) {
       const file = path.join(__dirname, parts[2] === 'prompt.md' ? 'import-prompt.md' : 'import-example.json');
       let text; try { text = fs.readFileSync(file, 'utf8'); } catch { return send(res, 404, { error: 'file missing' }); }
@@ -680,10 +695,27 @@ async function api(req, res, url) {
       const old = readPacks().find(p => p.id === v.pack.id);
       v.pack.addedAt = old ? old.addedAt : new Date().toISOString();
       writePack(v.pack);
+      const from = (url.searchParams.get('file') || '').slice(0, 120);
+      logHistory(old ? 'replaced' : 'added', v.pack, `${itemsLine(v.pack)}${old ? ` (before: ${itemsLine(old)})` : ''}${from ? ` · file ${from}` : ''}`);
       return send(res, 200, { ok: true, warnings: v.warnings.slice(0, 30), summary: importer.summarize(v.pack) });
     }
     if (req.method === 'POST' && parts[3] === 'delete' && importer.SLUG.test(parts[2] || '')) {
-      deletePack(parts[2], (await readBody(req)).progress !== false);
+      const pack = readPacks().find(p => p.id === parts[2]);
+      const withProgress = (await readBody(req)).progress !== false;
+      deletePack(parts[2], withProgress);
+      if (pack) logHistory('removed', pack, `${itemsLine(pack)}${withProgress ? ' · its progress was deleted too' : ' · its progress was kept'}`);
+      return send(res, 200, { ok: true });
+    }
+    if (req.method === 'POST' && parts[3] === 'rename' && importer.SLUG.test(parts[2] || '')) {
+      const pack = readPacks().find(p => p.id === parts[2]);
+      if (!pack) return send(res, 404, { error: 'no such pack' });
+      const title = String((await readBody(req)).title || '').trim();
+      if (!title || title.length > 200) return send(res, 422, { error: 'The name must have between 1 and 200 characters.' });
+      if (title === pack.title) return send(res, 200, { ok: true });
+      const was = pack.title;
+      pack.title = title;
+      writePack(pack);
+      logHistory('renamed', pack, `“${was}” → “${title}”`);
       return send(res, 200, { ok: true });
     }
     return send(res, 404, { error: 'unknown endpoint' });

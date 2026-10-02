@@ -1020,8 +1020,9 @@ function homeTree() {
   const scriptGroups = Scripts.groups().map(g =>
     group(`scriptgroup:${g.key}`, g.label, g.label, `scriptgroup:${g.key}`, false,
       g.items.map(e => leaf(e.title, `${e.id} ${e.title} ${e.cmds} ${e.tags.join(' ')}`, `script:${e.id}`, state.script === e.id, e.status, e.id.slice(1)))));
-  const impq = Theory.imported().map(quizTree);
-  const impe = Exams.imported().map(e => leaf(e.title, `${e.title} ${e.packTitle || ''}`, `exam:${e.id}`, state.exam === e.id, Exams.statusOf(e)));
+  const sameTitle = (list, x) => list.filter(y => y.title === x.title).length > 1;     // two packs may hold items with the same title: name the pack then
+  const impq = Theory.imported().map(c => { const n = quizTree(c); if (sameTitle(Theory.imported(), c)) n.label = `${c.title} (${c.packTitle})`; return n; });
+  const impe = Exams.imported().map(e => leaf(sameTitle(Exams.imported(), e) ? `${e.title} (${e.packTitle})` : e.title, `${e.title} ${e.packTitle || ''}`, `exam:${e.id}`, state.exam === e.id, Exams.statusOf(e)));
   return { tracks, intro: [introAll, ...introCats], scripts: scriptGroups, sexams: sexamTiers, quizzes, exams: examTiers, man: manTree, impq, impe };
 }
 function renderHomeNav() {
