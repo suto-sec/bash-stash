@@ -842,3 +842,35 @@ kbd { font: 11px ui-monospace, Menlo, monospace; padding: 1px 5px; border: 1px s
 #nu-slot:empty { display: none; }
 .nu-box { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 0 12px 12px; padding: 10px 12px; border-radius: 8px; background: var(--panel-2); border: 1px solid var(--border); font-size: 13px; }
 .nu-help { border-color: var(--warn); }
+
+/* the exam path (home page) */
+.ep-top { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.ep-sub { font-size: 12.5px; color: var(--muted); }
+.ep-fin { color: var(--accent); font-weight: 600; }
+.ep-bar { height: 7px; border-radius: 4px; background: var(--border); overflow: hidden; margin-bottom: 12px; }
+.ep-bar i, .ep-mini i { display: block; height: 100%; background: var(--accent); }
+.home-roadmap ol.ep-stages { display: grid; grid-template-columns: 1fr; gap: 6px; }
+.ep-stage { border: 1px solid var(--border); border-radius: 10px; background: var(--panel); }
+.ep-stage.current { border-color: var(--accent); }
+.home-roadmap .ep-row { display: grid; grid-template-columns: 26px 1fr 120px 54px 14px; gap: 8px; align-items: center; width: 100%; height: auto; padding: 9px 12px; border: 0; background: transparent; border-radius: 10px; text-align: left; }
+.ep-n { width: 24px; height: 24px; border-radius: 50%; border: 1px solid var(--border); display: inline-flex; align-items: center; justify-content: center; font-size: 12px; color: var(--muted); }
+.ep-stage.current .ep-n { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.ep-stage.done .ep-n { color: var(--accent); border-color: var(--accent); }
+.ep-name { font-weight: 600; font-size: 14px; }
+.ep-mini { height: 6px; border-radius: 3px; background: var(--border); overflow: hidden; }
+.ep-count { font-size: 12px; color: var(--muted); text-align: right; }
+.ep-chev { color: var(--muted); transition: transform .12s; }
+.ep-stage.open .ep-chev { transform: rotate(90deg); }
+.ep-body { display: none; padding: 2px 14px 12px 46px; }
+.ep-stage.open .ep-body { display: block; }
+.ep-why { margin: 0 0 8px; font-size: 12.5px; color: var(--muted); }
+.ep-grp { display: flex; gap: 10px; align-items: baseline; margin: 5px 0; }
+.ep-gname { flex: 0 0 104px; font-size: 12px; font-weight: 600; }
+.ep-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.ep-chip { font-size: 11.5px; padding: 2px 7px; border-radius: 6px; border: 1px solid var(--border); color: var(--text); text-decoration: none; background: var(--code-bg); font-variant-numeric: tabular-nums; }
+.ep-chip:hover { border-color: var(--accent); }
+.ep-chip.st-pass { color: var(--accent); border-color: var(--accent); }
+.ep-chip.st-pass::before { content: "✔ "; }
+.ep-chip.st-part { border-color: var(--warn); color: var(--warn); }
+@media (max-width: 700px) { .home-roadmap .ep-row { grid-template-columns: 26px 1fr 54px 14px; } .ep-mini { display: none; } .ep-grp { flex-direction: column; gap: 2px; } .ep-body { padding-left: 14px; } }
+.home-roadmap button.ep-go { display: inline-block; width: auto; height: auto; text-align: center; padding: 8px 16px; }
