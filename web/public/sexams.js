@@ -188,16 +188,16 @@ const SExams = (() => {
       <td><span class="exam-best ${a.score >= PASS ? 'good' : 'low'}">${a.score}/10</span></td>
       <td>${esc(T('secs', a.seconds))}</td><td class="hint">${esc(modeLine(a.settings))}</td>
       <td><button class="small" data-act="review" data-n="${a.n}">${T('review')}</button></td></tr>`).join('');
-    return `<div class="theory-head"><div>
+    return `<section class="home-hero ex-hero"><div class="theory-head"><div>
         <div class="ex-topic">${esc(crumb())}</div><h1>${esc(d.title)}</h1>
         <div class="ex-meta"><span>${T('meta')} · <code>${esc(d.script)}</code></span></div></div>
         ${best == null ? '' : `<span class="badge ${best >= PASS ? 'pass' : 'attempted'}">${T('bestLine', best, cur.attempts.length)}</span>`}</div>
-      <h2 class="ex-h2">${T('objectives')}</h2>
-      <table class="ex-history sx-objectives"><tbody>${objectiveRows(d.objectives)}</tbody></table>
       <div class="ex-modes"><span class="ex-chip">${set.checkAnytime ? T('chkAny') : T('chkSubmit')}</span></div>
       ${c ? `<div class="ex-draft">${T('draftLine', esc(fmtDate(c.startedAt)))}</div>` : ''}
       <div class="th-actions">${c ? `<button class="primary" data-act="resume">${T('resume')}</button><button data-act="discard">${T('discard')}</button>`
-        : `<button class="primary" data-act="start">${T('start')}</button>`}<a class="small-link" href="#/home">${T('all')}</a>${c ? '' : `<span class="hint">${T('settingsHint')}</span>`}</div>
+        : `<button class="primary" data-act="start">${T('start')}</button>`}<a class="small-link" href="#/home">${T('all')}</a>${c ? '' : `<span class="hint">${T('settingsHint')}</span>`}</div></section>
+      <h2 class="ex-h2">${T('objectives')}</h2>
+      <table class="ex-history sx-objectives"><tbody>${objectiveRows(d.objectives)}</tbody></table>
       <h2 class="ex-h2">${T('history')}</h2>
       ${rows ? `<table class="ex-history"><thead><tr><th>${T('hN')}</th><th>${T('hWhen')}</th><th>${T('hScore')}</th><th>${T('hTime')}</th><th>${T('hMode')}</th><th></th></tr></thead><tbody>${rows}</tbody></table>
         <div class="th-actions"><button class="small" data-act="clear">${T('clear')}</button></div>` : `<p class="hint">${T('noHistory')}</p>`}`;
@@ -233,11 +233,12 @@ const SExams = (() => {
     $('#sidebar').classList.add('exam-mode');
     document.querySelector('.overall').title = T('title');
     const scored = cur.phase === 'result' ? cur.review.objectives : null;
-    nav.innerHTML = cur.d.objectives.map((o, i) => {
+    nav.innerHTML = `<div class="ex-side-title">${esc(cur.d.title)}</div>` + cur.d.objectives.map((o, i) => {
       const r = scored && scored.find(x => x.id === o.id);
       const st = !scored ? 'new' : r && r.passed === r.cases ? 'pass' : r && r.passed ? 'attempted' : 'new';
       return `<a class="ex-item ${st}"><span class="dot ${st}">${st === 'pass' ? '●' : st === 'attempted' ? '◐' : '○'}</span><span class="ex-id">${o.points}</span><span class="ex-name">${esc(o.label)}</span></a>`;
     }).join('');
+    nav.scrollTop = 0;
   }
   view().addEventListener('click', async ev => {
     const b = ev.target.closest('[data-act]');
