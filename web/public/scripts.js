@@ -87,7 +87,7 @@ const Scripts = (() => {
   const optionsOf = (map, cur) => Object.entries(map).map(([v, t]) => `<option value="${v}"${v === cur ? ' selected' : ''}>${esc(t)}</option>`).join('');
   function renderSideView() {
     const box = sideView(), g = getMode(), o = getOrder(), d = getDir();
-    box.innerHTML = `<summary><span class="scv-title">View</span><span class="scv-now">Group by <b>${esc(MODES[g])}</b> · order by <b>${esc(ORDERS[o])}</b>, ${DIRS[d].toLowerCase()}</span></summary>
+    box.innerHTML = `<summary><span class="scv-title">View</span><span class="scv-now"><span>Group by: <b>${esc(MODES[g])}</b></span><span>Order by: <b>${esc(ORDERS[o])}</b></span><span>Direction: <b>${DIRS[d]}</b></span></span></summary>
       <div class="scv-body">
         <label>Group by <select data-k="group">${optionsOf(MODES, g)}</select></label>
         <label>Order by <select data-k="order">${optionsOf(ORDERS, o)}</select></label>

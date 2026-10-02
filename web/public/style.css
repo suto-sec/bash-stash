@@ -1029,3 +1029,8 @@ kbd { font: 11px ui-monospace, Menlo, monospace; padding: 1px 5px; border: 1px s
 .home-groupby #scripts-reset { align-self: center; }
 /* the arrow-only buttons: the glyph filled the button before, now it is the size of its text neighbours */
 #prev-btn, #next-btn, #th-prev, .th-actions [data-act="prev"] { font-size: 21px; line-height: 1; padding: 4px 13px 6px; }
+
+/* first paint on a reload of a full page: its frame instead of the exercise layout (the class is removed once the router has run) */
+html[class*="boot-"] .layout { display: none !important; }
+html.boot-home #home-page.hidden, html.boot-reference #reference-page.hidden, html.boot-readiness #readiness-page.hidden { display: flex !important; }
+.scv-now { display: flex; flex-direction: column; gap: 1px; }
