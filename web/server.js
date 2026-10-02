@@ -94,12 +94,14 @@ function index() {
   const root = path.join(LAB, 'exercises');
   return fs.readdirSync(root).filter(t => /^\d\d_/.test(t)).sort().map(t => {
     const topicDir = path.join(root, t);
-    const exercises = fs.readdirSync(topicDir).filter(e => /^\d{4}_/.test(e)).sort()
+    // a folder without its README is not an exercise (e.g. the leftover answer file of an exercise from another branch)
+    const exercises = fs.readdirSync(topicDir).filter(e => /^\d{4}_/.test(e) && fs.existsSync(path.join(topicDir, e, 'README.md'))).sort()
       .map(e => exerciseInfo(topicDir, e));
+    if (!exercises.length) return null;
     const first = fs.readFileSync(path.join(topicDir, exercises[0].name, 'README.md'), 'utf8');
     const title = (first.match(/\*\*Topic:\*\*\s*(.*?)\s*·/) || [, t])[1];
     return { id: t.slice(0, 2), dir: t, title, exercises };
-  });
+  }).filter(Boolean);
 }
 
 function findExercise(id) {

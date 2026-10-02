@@ -118,5 +118,63 @@ const MANUAL = (() => {
   }
   const searchText = e => norm([e.name, e.summary, ...(e.aliases || []), ...(e.synopsis || [])].join(' '));
 
-  return { CATS, add, get, all, byCat, catTitle, lookup, rule, entryHTML, cardHTML, inline, setOutputs, searchText, esc };
+  // ---------------------------------------------------------------- ranked search (the Reference's filter box)
+  // A query is split in words and every word must match. How an entry matches decides its rank: the name (exact, then start, then a word
+  // of it) beats an alias, an alias beats the first word of the synopsis, then come option flags, the one-line summary and last the
+  // body; short words (1-2 letters) match names, aliases and flags only, so "if" is the `if` entry and not everything that says "if".
+  const words = s => norm(s).split(/[^a-z0-9._+-]+/).filter(Boolean);
+  const cache = new Map();
+  function profile(e) {
+    let p = cache.get(e.key);
+    if (p) return p;
+    const name = norm(e.name), flags = new Set();
+    for (const o of e.options || []) for (const it of (o.items || [o])) for (const f of String(it.flag || '').split(/[\s,/|]+/)) if (f.startsWith('-')) flags.add(norm(f.replace(/[=\[<].*$/, '')));
+    p = { name, nameWords: words(e.name), aliases: (e.aliases || []).map(norm), synFirst: norm(((e.synopsis || [])[0] || '').split(/\s+/)[0]), flags,
+      summary: words(e.summary || ''), body: null, cat: words(catTitle(e.cat)) };
+    cache.set(e.key, p);
+    return p;
+  }
+  const bodyWords = (e, p) => p.body || (p.body = new Set(words([...(e.desc || []), ...(e.sections || []).flatMap(s => s.body || []), ...(e.notes || [])].join(' '))));
+  function scoreWord(e, t) {
+    const p = profile(e), long = t.length >= 3;
+    let best = 0;
+    const up = v => { if (v > best) best = v; };
+    if (p.name === t || e.key === t) up(1000);
+    else if (p.nameWords.includes(t)) up(850);
+    else if (p.name.startsWith(t) || e.key.startsWith(t)) up(800 - Math.min(99, p.name.length - t.length));
+    else if (p.nameWords.some(w => w.startsWith(t))) up(600);
+    else if (long && p.name.includes(t)) up(350);
+    for (const a of p.aliases) {
+      if (a === t) up(700);
+      else if (a.startsWith(t)) up(450);
+      else if (words(a).includes(t)) up(300);
+      else if (long && a.includes(t)) up(200);
+    }
+    if (p.synFirst === t) up(400);
+    if (p.flags.has(t)) up(260);
+    if (long) {
+      if (p.summary.includes(t)) up(150);
+      else if (p.summary.some(w => w.startsWith(t))) up(90);
+      if (best < 90 && bodyWords(e, p).has(t)) up(40);
+    }
+    if (p.cat.some(w => w.startsWith(t)) && t.length >= 2) up(60);   // the category's name: "scripting" shows the whole category
+    return best;
+  }
+  // -> Map key -> score for the entries that match every word (empty query: no map)
+  function rank(query) {
+    const ts = words(query);
+    if (!ts.length) return null;
+    const out = new Map();
+    for (const e of entries.values()) {
+      let sum = 0;
+      for (const t of ts) { const v = scoreWord(e, t); if (!v) { sum = 0; break; } sum += v; }
+      if (sum) out.set(e.key, sum);
+    }
+    // when something matches by name, the entries that only mention the word in their summary or body are noise: drop them
+    const top = Math.max(0, ...out.values());
+    if (top >= 600) for (const [k, v] of out) if (v < 100) out.delete(k);
+    return out;
+  }
+
+  return { CATS, add, get, all, byCat, catTitle, lookup, rule, entryHTML, cardHTML, inline, setOutputs, searchText, rank, esc };
 })();

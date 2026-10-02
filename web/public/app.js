@@ -379,6 +379,7 @@ function renderReferenceNav() {
 
 function renderReference() {
   renderReferenceNav();
+  applyReferenceSearch();     // the tree was rebuilt: re-apply what is typed in the filter box
   renderReferenceContent();
   const cur = document.querySelector('.ref-nav-cmd.current');   // keep the selected entry visible in the long list
   if (cur) cur.scrollIntoView({ block: 'nearest' });
@@ -414,20 +415,47 @@ $('#reference-back').onclick = ev => {
   else location.hash = '#/ex/0101';
 };
 $('#theme-btn-ref').onclick = () => applyTheme(currentTheme() === 'dark' ? 'light' : 'dark');
-$('#reference-search').oninput = () => {
-  const q = $('#reference-search').value.trim().toLowerCase();
-  for (const node of document.querySelectorAll('.ref-nav-topic')) {
-    const topicHit = !q || node.dataset.topic.includes(q);
-    let anyCmd = false;
-    for (const a of node.querySelectorAll('.ref-nav-cmd')) {
-      const hit = !q || topicHit || a.dataset.name.includes(q);
-      a.classList.toggle('hidden', !hit);
-      anyCmd = anyCmd || hit;
+// The filter box ranks (MANUAL.rank in manual.js): categories and entries best match first, the top entry marked; Enter opens it.
+// With nothing typed the original order comes back.
+function applyReferenceSearch() {
+  const q = $('#reference-search').value.trim();
+  const tree = $('#reference-tree');
+  const topics = [...tree.children];
+  const byIndex = (a, b) => Number(a.dataset.i) - Number(b.dataset.i);
+  topics.forEach((t, i) => { if (t.dataset.i === undefined) t.dataset.i = i; t.querySelectorAll('.ref-nav-cmd').forEach((a, j) => { if (a.dataset.i === undefined) a.dataset.i = j; }); });
+  for (const a of document.querySelectorAll('.ref-nav-cmd.top')) a.classList.remove('top');
+  const scores = q ? MANUAL.rank(q) : null;
+  for (const node of topics) {
+    const box = node.querySelector('.ref-nav-cmds'), cmds = [...box.querySelectorAll('.ref-nav-cmd')];
+    let best = 0;
+    for (const a of cmds) {
+      const sc = scores ? scores.get(a.dataset.key) || 0 : 1;
+      a.dataset.score = sc; a.classList.toggle('hidden', !sc); best = Math.max(best, sc);
     }
-    node.classList.toggle('hidden', !(topicHit || anyCmd));
+    cmds.sort(scores ? (a, b) => b.dataset.score - a.dataset.score || byIndex(a, b) : byIndex).forEach(a => box.appendChild(a));
+    node.dataset.best = best;
+    node.classList.toggle('hidden', !best);
     if (q) node.classList.add('open'); else if (refSel.type === 'all') node.classList.remove('open');
   }
-};
+  topics.sort(scores ? (a, b) => b.dataset.best - a.dataset.best || byIndex(a, b) : byIndex).forEach(t => tree.appendChild(t));
+  if (scores) { const first = tree.querySelector('.ref-nav-topic:not(.hidden) .ref-nav-cmd:not(.hidden)'); if (first) first.classList.add('top'); }
+  $('#reference-count').textContent = scores ? `${scores.size} match${scores.size === 1 ? '' : 'es'}` : '';
+  // on the "All categories" page the matches also fill the page itself, best first (a command or category you opened is left alone)
+  const content = $('#reference-content');
+  if (refSel.type === 'all' && scores) {
+    const list = [...scores].map(([k, v]) => [MANUAL.get(k), v]).filter(x => x[0]).sort((a, b) => b[1] - a[1] || a[0].name.localeCompare(b[0].name));
+    content.innerHTML = list.length ? `<h2 class="ref-results-h">${list.length} match${list.length === 1 ? '' : 'es'} for <code>${esc(q)}</code> <span class="hint">best first</span></h2><div class="glossary-list">${list.map(([e]) => MANUAL.cardHTML(e, true)).join('')}</div>`
+      : `<p class="ref-empty">Nothing matches <code>${esc(q)}</code>. Try a command name (find), an option (-exec) or a word (loop).</p>`;
+    content.scrollTop = 0; refResultsShown = true;
+  } else if (refResultsShown) { refResultsShown = false; if (refSel.type === 'all') renderReferenceContent(); }
+}
+let refResultsShown = false;
+$('#reference-search').oninput = applyReferenceSearch;
+$('#reference-search').addEventListener('keydown', ev => {
+  if (ev.key !== 'Enter') return;
+  const top = document.querySelector('.ref-nav-cmd.top');
+  if (top) { ev.preventDefault(); top.click(); }
+});
 
 $('#solution-btn').onclick = async () => {
   if (state.current && state.current.sc) return Scripts.showSolution();
