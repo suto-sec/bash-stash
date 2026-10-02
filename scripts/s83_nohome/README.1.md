@@ -1,0 +1,1 @@
+In a `passwd` file the 1st field is the user name and the **6th the home directory** (an absolute path). Write `nohome.sh FILE`. It prints, in file order, the **user name** of every account whose home path **does not exist at all** (`test -e` fails). A home that exists but is a regular file is *not* printed in this step.

@@ -1,0 +1,104 @@
+@@script s86 | readcfg | Reading a setting | readcfg.sh
+@@level 4
+@@tags text, tests, exit codes
+@@cmds grep -v, cut -d= -f2-, tail -n 1, test -f, shift, exit codes
+@@fixture
+setup() {
+  mkdir -p adir
+  cat > app.conf <<'CF'
+# application settings
+name=demo
+port=8080
+
+# the next one is repeated
+mode=test
+greeting=hello world
+url=http://example.com/?a=1&b=2
+empty=
+ # indented comment
+mode=production
+CF
+  printf 'only=one\n' > one.conf; : > empty.conf; echo x > file.bin
+}
+usage_ok() { [[ $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* || $ERR == *readcfg.sh* ]]; }
+@@step 1 | Print a value
+@@readme
+A configuration file has lines `key=value`; lines that **start with `#`** and blank lines are ignored. Write `readcfg.sh FILE KEY`. It prints the value of `KEY`: everything after the **first `=`** of the line (the value may contain spaces and more `=`). If the key appears **several times, the last one wins** (`mode` in `app.conf` is `production`). An empty value prints an empty line. The key must match the whole name before the `=` (`mod` is not `mode`). You may assume the key exists.
+@@check
+ARGS=('app.conf name' 'app.conf port' 'app.conf mode' 'app.conf greeting' 'app.conf url' 'app.conf empty' 'one.conf only')
+COMPARE="stdout exit"
+@@solution
+#!/bin/bash
+grep -v '^#' "$1" | grep "^$2=" | tail -n 1 | cut -d= -f2-
+@@step 2 | Missing key, usual checks
+@@readme
+Checks, in this order: not exactly two arguments → an error message **and the correct usage** (e.g. `Usage: readcfg.sh file key`), exit **1**; the file does not exist → an error with its name, exit **2**; it exists but is not a regular file → an error with its name, exit **3**; the key is not in the file (not even with an empty value) → an error with the key, exit **4**, and nothing on standard output.
+@@check
+ARGS=('app.conf name' 'app.conf mode' 'app.conf empty' 'one.conf only' '' 'app.conf' 'app.conf name extra' 'nothing name' 'adir name' 'app.conf nokey' 'app.conf mod' 'app.conf #' 'empty.conf name' 'app.conf indented')
+COMPARE="stdout exit errmsg"
+extra_check() {
+  [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }
+  [[ $REF_CODE == [23] ]] && mentions "$(eval "set -- $CASE"; echo "$1")"
+  [[ $REF_CODE == 4 ]] && mentions "$(eval "set -- $CASE"; echo "$2")"
+}
+@@solution
+#!/bin/bash
+if (( $# != 2 )); then echo "Error: two arguments needed" >&2; echo "Usage: $0 file key" >&2; exit 1; fi
+[[ -e $1 ]] || { echo "Error: $1 does not exist" >&2; exit 2; }
+[[ -f $1 ]] || { echo "Error: $1 is not a regular file" >&2; exit 3; }
+line=$(grep -v '^#' "$1" | grep "^$2=" | tail -n 1) || { echo "Error: key $2 not found in $1" >&2; exit 4; }
+echo "$line" | cut -d= -f2-
+@@step 3 | A default value
+@@readme
+An optional **third argument** is a default: when the key is not in the file print the default instead of failing (exit 0). The default may be empty (`''`) and then an empty line is printed. All the other checks stay; more than three arguments is the usage error.
+@@check
+ARGS=('app.conf name' 'app.conf nokey fallback' 'app.conf nokey ""' 'app.conf name fallback' 'app.conf nokey "two words"' 'app.conf empty fallback' 'app.conf nokey' '' 'app.conf a b c' 'nothing name x' 'adir name x' 'empty.conf name dflt')
+COMPARE="stdout exit errmsg"
+extra_check() {
+  [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }
+  [[ $REF_CODE == [23] ]] && mentions "$(eval "set -- $CASE"; echo "$1")"
+  [[ $REF_CODE == 4 ]] && mentions "$(eval "set -- $CASE"; echo "$2")"
+}
+@@solution
+#!/bin/bash
+if (( $# < 2 || $# > 3 )); then echo "Error: wrong number of arguments" >&2; echo "Usage: $0 file key [default]" >&2; exit 1; fi
+[[ -e $1 ]] || { echo "Error: $1 does not exist" >&2; exit 2; }
+[[ -f $1 ]] || { echo "Error: $1 is not a regular file" >&2; exit 3; }
+if line=$(grep -v '^#' "$1" | grep "^$2=" | tail -n 1); then
+  echo "$line" | cut -d= -f2-
+elif (( $# == 3 )); then
+  echo "$3"
+else
+  echo "Error: key $2 not found in $1" >&2; exit 4
+fi
+@@step 4 | List the keys (-k)
+@@readme
+`-k` as the **only option, first** argument: `readcfg.sh -k FILE` prints every **key** of the file (the text before the first `=` of each non-comment, non-blank line that has an `=`), each once, **sorted**. The file checks 2 and 3 apply (the missing file is exit 2, not a regular file exit 3); `-k` with any number of arguments other than the file is the usage error. An empty file prints nothing.
+@@check
+ARGS=('app.conf name' '-k app.conf' '-k one.conf' '-k empty.conf' '-k' '-k app.conf name' '-k nothing' '-k adir' 'app.conf nokey dflt' 'app.conf nokey' '')
+COMPARE="stdout exit errmsg"
+extra_check() {
+  [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }
+  [[ $REF_CODE == [23] ]] && mentions "$(eval "set -- $CASE"; [[ $1 == -k ]] && shift; echo "$1")"
+  [[ $REF_CODE == 4 ]] && mentions "$(eval "set -- $CASE"; echo "$2")"
+}
+@@solution
+#!/bin/bash
+if [[ $1 == -k ]]; then
+  shift
+  if (( $# != 1 )); then echo "Error: one file needed" >&2; echo "Usage: $0 -k file" >&2; exit 1; fi
+  [[ -e $1 ]] || { echo "Error: $1 does not exist" >&2; exit 2; }
+  [[ -f $1 ]] || { echo "Error: $1 is not a regular file" >&2; exit 3; }
+  grep -v '^#' "$1" | grep '=' | cut -d= -f1 | sort -u
+  exit 0
+fi
+if (( $# < 2 || $# > 3 )); then echo "Error: wrong number of arguments" >&2; echo "Usage: $0 [-k] file key [default]" >&2; exit 1; fi
+[[ -e $1 ]] || { echo "Error: $1 does not exist" >&2; exit 2; }
+[[ -f $1 ]] || { echo "Error: $1 is not a regular file" >&2; exit 3; }
+if line=$(grep -v '^#' "$1" | grep "^$2=" | tail -n 1); then
+  echo "$line" | cut -d= -f2-
+elif (( $# == 3 )); then
+  echo "$3"
+else
+  echo "Error: key $2 not found in $1" >&2; exit 4
+fi

@@ -1,0 +1,31 @@
+{
+ "id": "s82",
+ "slug": "members",
+ "title": "Members of a group",
+ "script": "members.sh",
+ "cmds": "cut -d: -f, tr, grep, test -f, shift, exit codes",
+ "level": 3,
+ "tags": [
+  "text",
+  "exit codes",
+  "arguments"
+ ],
+ "steps": [
+  {
+   "n": 1,
+   "title": "List the members"
+  },
+  {
+   "n": 2,
+   "title": "Group not found, usual checks"
+  },
+  {
+   "n": 3,
+   "title": "A header and a count"
+  },
+  {
+   "n": 4,
+   "title": "Is this user a member? (-u)"
+  }
+ ]
+}

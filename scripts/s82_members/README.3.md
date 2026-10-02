@@ -1,0 +1,1 @@
+Before the members print the header `Group GROUP (gid N)` with the numeric id (3rd field) and after them `N members` (`1 members` too; the word is always `members`). A group with no members prints `No members` instead of the count line. The checks stay.

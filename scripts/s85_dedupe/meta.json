@@ -1,0 +1,31 @@
+{
+ "id": "s85",
+ "slug": "dedupe",
+ "title": "Duplicate files",
+ "script": "dedupe.sh",
+ "cmds": "find -type f, md5sum, sort, uniq -w, rm, shift, exit codes",
+ "level": 5,
+ "tags": [
+  "files",
+  "find",
+  "exit codes"
+ ],
+ "steps": [
+  {
+   "n": 1,
+   "title": "The extra copies"
+  },
+  {
+   "n": 2,
+   "title": "The usual checks"
+  },
+  {
+   "n": 3,
+   "title": "Remove them (-d)"
+  },
+  {
+   "n": 4,
+   "title": "Summary and freed space"
+  }
+ ]
+}

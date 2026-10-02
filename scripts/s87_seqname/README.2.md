@@ -1,0 +1,1 @@
+Checks: not exactly two arguments → an error message **and the correct usage** (e.g. `Usage: seqname.sh dir prefix`), exit **1**; `DIR` does not exist → an error with its name, exit **2**; it is not a directory → an error with its name, exit **3**; `PREFIX` is empty or contains a `/` → an error mentioning `prefix`, exit **4**. Nothing is renamed when a check fails.

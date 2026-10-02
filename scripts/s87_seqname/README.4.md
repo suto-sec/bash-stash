@@ -1,0 +1,1 @@
+Before renaming anything work out all the new names. If **any** new name is already used by an **entry of `DIR`** (even by a file that is itself going to be renamed: `busy` has `img-002.txt`) print `exists: NEWNAME` on standard error for each such name (in the order of the files), **change nothing** and exit with code **6**. The checks of the earlier steps come first.

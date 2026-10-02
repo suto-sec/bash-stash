@@ -1,0 +1,15 @@
+#!/bin/bash
+del=
+if [[ $1 == -d ]]; then del=1; shift; fi
+if (( $# > 1 )); then echo "Error: too many arguments" >&2; echo "Usage: $0 [-d] [dir]" >&2; exit 1; fi
+dir=${1:-.}
+[[ -e $dir ]] || { echo "Error: $dir does not exist" >&2; exit 2; }
+[[ -d $dir ]] || { echo "Error: $dir is not a directory" >&2; exit 3; }
+n=0 bytes=0
+while IFS= read -r f; do
+  n=$((n + 1)); bytes=$((bytes + $(stat -c %s -- "$f")))
+  if [[ -n $del ]]; then rm -- "$f"; echo "removed $f"; else echo "$f"; fi
+done < <(find "$dir" -type f -print0 | sort -z | xargs -0 -r md5sum | awk '{h=$1; sub(/^[^ ]+  /, ""); if (seen[h]++) print}' | sort)
+if [[ -n $del ]]; then echo "Removed $n files, freed $bytes bytes"; exit 0; fi
+echo "$n duplicates, $bytes bytes"
+(( n == 0 )) || exit 4

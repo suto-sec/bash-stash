@@ -1,0 +1,1 @@
+With `-d` as the **first** argument the copies are **deleted** (the originals stay) and for each one the script prints `removed PATH` instead of `PATH`. Without `-d` nothing is deleted. The other arguments and the checks are the same in both modes.

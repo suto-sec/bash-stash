@@ -1,0 +1,1 @@
+Checks, in this order: not exactly two arguments → an error message **and the correct usage** (e.g. `Usage: members.sh group file`), exit **1**; the file does not exist → an error with its name, exit **2**; it exists but is not a regular file → an error with its name, exit **3**; no group called `GROUP` in the file → an error with the group name, exit **4**.
