@@ -942,7 +942,15 @@ kbd { font: 11px ui-monospace, Menlo, monospace; padding: 1px 5px; border: 1px s
 .rd-row .rd-chip { justify-self: start; }
 .rd-weight { font-size: 12px; color: var(--muted); white-space: nowrap; }
 .rd-row button { justify-self: end; }
-.readiness-content > .rd-missed { list-style: none; margin-top: 0; margin-bottom: 0; padding: 12px 18px; display: grid; gap: 6px; border: 1px solid var(--border); border-radius: 10px; background: var(--panel); }
+.readiness-content > .rd-missed { list-style: none; margin-top: 0; margin-bottom: 0; padding: 0; display: grid; gap: 8px; }
+.rd-miss { display: grid; grid-template-columns: minmax(0, 1fr) auto 90px 80px; gap: 6px 16px; align-items: center; padding: 11px 16px; border: 1px solid var(--border); border-radius: 10px; background: var(--panel); color: var(--text); text-decoration: none; }
+.rd-miss:hover { border-color: var(--accent); }
+.rd-miss-t { font-weight: 600; min-width: 0; }
+.rd-miss-topic { font-size: 11.5px; padding: 1px 9px; border-radius: 10px; border: 1px solid var(--border); color: var(--muted); white-space: nowrap; }
+.rd-miss-exam { font-size: 12px; color: var(--muted); font-family: var(--mono, monospace); }
+.rd-miss-go { justify-self: end; font-size: 12.5px; color: var(--muted); }
+.rd-miss:hover .rd-miss-go { color: var(--accent); }
+@media (max-width: 800px) { .rd-miss { grid-template-columns: 1fr auto; } .rd-miss-t { grid-column: 1 / -1; } .rd-miss-exam { display: none; } }
 .rd-how { margin-top: 30px; color: var(--muted); font-size: 13px; }
 .rd-how summary { cursor: pointer; }
 @media (max-width: 800px) {

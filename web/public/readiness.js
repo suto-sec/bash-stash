@@ -131,7 +131,8 @@ const Readiness = (() => {
         ${nextOf(t) ? `<button type="button" class="small" ${go(nextOf(t))} title="${esc(nextOf(t).label)}">Practise</button>` : '<span class="hint">all done</span>'}</li>`).join('')}
       </ul>
       ${(stats.missed || []).length ? `<h2 class="home-sub">Missed in theory exams <span class="hint">— the last answer to these was wrong</span></h2>
-      <ul class="rd-missed">${stats.missed.slice(0, 12).map(m => `<li><a href="#/exam/${esc(m.exam)}/attempt/${m.attempt}">${esc(m.title)}</a> <span class="hint">${esc(m.exam)} · ${esc(TOPICS[m.topic] || m.topic)}</span></li>`).join('')}</ul>` : ''}
+      <ul class="rd-missed">${stats.missed.slice(0, 12).map(m => `<li><a class="rd-miss" href="#/exam/${esc(m.exam)}/attempt/${m.attempt}"><span class="rd-miss-t">${esc(m.title)}</span>
+        <span class="rd-miss-topic">${esc(TOPICS[m.topic] || m.topic)}</span><span class="rd-miss-exam">${esc(m.exam)}</span><span class="rd-miss-go">Review →</span></a></li>`).join('')}</ul>` : ''}
       <details class="rd-how"><summary>How this is calculated</summary>
         <p>Only the material of the suggested path counts. Per topic, <b>practice</b> is the share of path exercises passed (warm-ups count a quarter, script ladders twice, script practice exams three times), <b>quizzes</b> the share of quiz questions answered right and <b>exams</b> the share of theory-exam questions whose last answer was right (at least 3 answered). Nobody needs 100% of everything, so passing 70% of the practice or the quizzes, or getting 85% of the exam questions right, counts as full marks for that part. The parts are mixed 50% / 15% / 35%, using only the kinds that exist for the topic, and the overall figure weighs the topics by their share of the theory-exam questions. It is a coverage-weighted estimate of what you have practised, not a prediction of your mark.</p>
       </details>`;
