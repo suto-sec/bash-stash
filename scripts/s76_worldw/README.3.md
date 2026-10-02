@@ -1,0 +1,1 @@
+With `-f` as the **first** argument the script also repairs them: it removes the write permission for *others* (`chmod o-w`; everything else about the mode stays) and prints `fixed PATH` instead of just `PATH`. Without `-f` nothing is changed. The other arguments and the checks are the same with or without `-f`.

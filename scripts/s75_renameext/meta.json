@@ -1,0 +1,31 @@
+{
+ "id": "s75",
+ "slug": "renameext",
+ "title": "Changing an extension",
+ "script": "renameext.sh",
+ "cmds": "mv, for, ${var%.ext}, test -e -f, shift, exit codes",
+ "level": 4,
+ "tags": [
+  "files",
+  "copy and move",
+  "exit codes"
+ ],
+ "steps": [
+  {
+   "n": 1,
+   "title": "Rename by extension"
+  },
+  {
+   "n": 2,
+   "title": "The usual checks"
+  },
+  {
+   "n": 3,
+   "title": "Never overwrite"
+  },
+  {
+   "n": 4,
+   "title": "Count and exit code"
+  }
+ ]
+}

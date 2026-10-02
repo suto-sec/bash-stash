@@ -1,0 +1,1 @@
+Checks: not exactly three arguments → an error message **and the correct usage** (e.g. `Usage: renameext.sh dir old new`), exit **1**; `DIR` does not exist → an error with its name, exit **2**; not a directory → an error with its name, exit **3**.

@@ -1,0 +1,31 @@
+{
+ "id": "s78",
+ "slug": "arith",
+ "title": "A tiny calculator",
+ "script": "arith.sh",
+ "cmds": "case, $(( )), test, [[ =~ ]], shift, exit codes",
+ "level": 3,
+ "tags": [
+  "arguments",
+  "arithmetic",
+  "case"
+ ],
+ "steps": [
+  {
+   "n": 1,
+   "title": "One operation"
+  },
+  {
+   "n": 2,
+   "title": "Wrong calls"
+  },
+  {
+   "n": 3,
+   "title": "Show the whole operation"
+  },
+  {
+   "n": 4,
+   "title": "Longer expressions"
+  }
+ ]
+}

@@ -1,0 +1,1 @@
+Checks, in this order: not exactly two arguments → an error message **and the correct usage** (e.g. `Usage: onlyin.sh dir1 dir2`), exit **1**; a directory does not exist → an error with its name, exit **2** (look at `DIR1` first); it exists but is not a directory → an error with its name, exit **3** (again `DIR1` first). Existence of **both** is checked before the kind of either.

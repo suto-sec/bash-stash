@@ -1,0 +1,1 @@
+If a file with the new name **already exists** (any kind of entry), leave the old one alone, print `exists: NEWNAME` on **standard error** and go on with the next file (`docs` has `a.txt` and `a.md`). Nothing is printed on standard output for it.

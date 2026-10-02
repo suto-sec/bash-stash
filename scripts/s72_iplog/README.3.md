@@ -1,0 +1,1 @@
+With **one** argument that is **a directory** the script finds the **last IP address** that appears in `$HOME/auth.log` (any text like `1.2.3.4`; `grep -oE '[0-9]+(\.[0-9]+){3}'`), prints `Last IP: ADDRESS` and then, as in step 1, the files of that directory that contain it. A single argument that is an IP address still counts lines in `auth.log` (an IP is checked first).

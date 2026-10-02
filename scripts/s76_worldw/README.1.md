@@ -1,0 +1,1 @@
+Write `worldw.sh DIR`. It prints the path (as `find` shows it) of every **regular file** below `DIR` (any depth) that **anybody** can write: the `w` permission bit for *others* is set (`-perm -o+w`; mode `664` does not qualify, `666`, `646` and `777` do). The order does not matter. A world-writable **directory** is not listed.

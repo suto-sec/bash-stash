@@ -1,0 +1,1 @@
+With **one** argument that is an IP address (four numbers separated by dots) the script counts the lines of **`$HOME/auth.log`** that contain it (whole-address match as before) and prints `IP appears in N lines`, e.g. `10.0.0.5 appears in 7 lines`. Two arguments work as in step 1.

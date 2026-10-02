@@ -1,0 +1,1 @@
+Finish with `N only in DIR1` where `DIR1` is the first argument **exactly as it was written** (e.g. `3 only in d1`). When the count is 0, print `Nothing only in DIR1` instead and exit **4**; otherwise exit 0. The checks stay.
