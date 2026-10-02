@@ -1,0 +1,475 @@
+{
+  "format": "bash-stash-pack",
+  "version": 1,
+  "id": "example",
+  "title": "Example pack",
+  "description": "A small pack that shows the format: one quiz with every question type and one practice exam.",
+  "items": [
+    {
+      "kind": "quiz",
+      "id": "shell-basics",
+      "title": "Shell basics (example)",
+      "about": "A tiny quiz with one question of every format, to try the importer.",
+      "groups": [
+        {
+          "id": "formats",
+          "title": "One of each format",
+          "questions": [
+            {
+              "type": "single",
+              "id": "which-lists",
+              "title": "Listing files",
+              "text": "Which command lists the files of the current directory?",
+              "note": "`ls` is the everyday listing command.",
+              "options": [
+                {
+                  "t": "`ls`",
+                  "ok": true,
+                  "why": "`ls` lists the entries of a directory (the current one by default)."
+                },
+                {
+                  "t": "`cd`",
+                  "ok": false,
+                  "why": "`cd` changes the working directory; it prints nothing."
+                },
+                {
+                  "t": "`pwd`",
+                  "ok": false,
+                  "why": "`pwd` prints the path of the working directory, not its contents."
+                },
+                {
+                  "t": "`cat`",
+                  "ok": false,
+                  "why": "`cat` prints the contents of files, it does not list a directory."
+                }
+              ]
+            },
+            {
+              "type": "multi",
+              "id": "redirect-ops",
+              "title": "Redirection operators",
+              "text": "Select every operator that redirects standard output.",
+              "options": [
+                {
+                  "t": "`>`",
+                  "ok": true,
+                  "why": "Sends standard output to a file, replacing it."
+                },
+                {
+                  "t": "`>>`",
+                  "ok": true,
+                  "why": "Sends standard output to a file, appending."
+                },
+                {
+                  "t": "`<`",
+                  "ok": false,
+                  "why": "Reads standard input from a file; it does not redirect output."
+                },
+                {
+                  "t": "`|`",
+                  "ok": false,
+                  "why": "Connects the output of one command to the input of another; no file is involved."
+                }
+              ]
+            },
+            {
+              "type": "fill",
+              "id": "exit-status",
+              "title": "Exit status",
+              "text": "After a successful command, `$?` is `{{0}}`; after a failed one it is a number other than `{{0}}`... and `$#` is the number of {{1}}.",
+              "note": "`$?` holds the exit status of the last command.",
+              "blanks": [
+                {
+                  "answers": [
+                    "0"
+                  ]
+                },
+                {
+                  "answers": [
+                    "arguments",
+                    "parameters"
+                  ]
+                }
+              ],
+              "wrong": [
+                {
+                  "a": "1",
+                  "why": "1 is a common failure code, not the success code."
+                }
+              ]
+            },
+            {
+              "type": "order",
+              "id": "script-steps",
+              "title": "Running a script",
+              "text": "Put the steps in order.",
+              "items": [
+                {
+                  "t": "Write the script",
+                  "why": "There is nothing to run before it exists."
+                },
+                {
+                  "t": "Make it executable with `chmod +x`",
+                  "why": "Without the execute bit it cannot be started directly."
+                },
+                {
+                  "t": "Run it with `./script.sh`",
+                  "why": "Only an executable script can be started this way."
+                }
+              ]
+            },
+            {
+              "type": "match",
+              "id": "streams",
+              "title": "Standard streams",
+              "text": "Match each stream with its number.",
+              "pairs": [
+                {
+                  "l": "standard input",
+                  "r": "0",
+                  "why": "File descriptor 0."
+                },
+                {
+                  "l": "standard output",
+                  "r": "1",
+                  "why": "File descriptor 1."
+                },
+                {
+                  "l": "standard error",
+                  "r": "2",
+                  "why": "File descriptor 2."
+                }
+              ],
+              "extras": [
+                {
+                  "r": "3",
+                  "why": "3 is not a standard stream."
+                }
+              ]
+            },
+            {
+              "type": "sort",
+              "id": "builtin-or-not",
+              "title": "Builtin or external",
+              "text": "Classify each command.",
+              "buckets": [
+                "Builtin",
+                "External program"
+              ],
+              "items": [
+                {
+                  "t": "`cd`",
+                  "bucket": "Builtin",
+                  "why": "It must change the shell's own directory."
+                },
+                {
+                  "t": "`echo`",
+                  "bucket": "Builtin",
+                  "why": "A builtin (an external /bin/echo exists too)."
+                },
+                {
+                  "t": "`ls`",
+                  "bucket": "External program",
+                  "why": "A separate program."
+                },
+                {
+                  "t": "`grep`",
+                  "bucket": "External program",
+                  "why": "A separate filter program."
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "kind": "exam",
+      "id": "basics-1",
+      "title": "Basics exam (example)",
+      "about": "Ten single-choice questions to try the importer.",
+      "questions": [
+        {
+          "type": "single",
+          "id": "e1",
+          "title": "Print the working directory",
+          "text": "Which command prints the path of the current directory?",
+          "options": [
+            {
+              "t": "`pwd`",
+              "ok": true,
+              "why": "It prints the absolute path of the working directory."
+            },
+            {
+              "t": "`ls`",
+              "ok": false,
+              "why": "It lists entries, not the path."
+            },
+            {
+              "t": "`cd`",
+              "ok": false,
+              "why": "It changes directory and prints nothing."
+            },
+            {
+              "t": "`dir`",
+              "ok": false,
+              "why": "Not the standard way to print the path."
+            }
+          ]
+        },
+        {
+          "type": "single",
+          "id": "e2",
+          "title": "Append to a file",
+          "text": "Which operator appends standard output to a file?",
+          "options": [
+            {
+              "t": "`>>`",
+              "ok": true,
+              "why": "It opens the file for appending."
+            },
+            {
+              "t": "`>`",
+              "ok": false,
+              "why": "It truncates the file first."
+            },
+            {
+              "t": "`<`",
+              "ok": false,
+              "why": "It reads input from a file."
+            },
+            {
+              "t": "`|`",
+              "ok": false,
+              "why": "It feeds another command, not a file."
+            }
+          ]
+        },
+        {
+          "type": "single",
+          "id": "e3",
+          "title": "Exit status of success",
+          "text": "What is the exit status of a command that succeeded?",
+          "options": [
+            {
+              "t": "0",
+              "ok": true,
+              "why": "By convention 0 means success."
+            },
+            {
+              "t": "1",
+              "ok": false,
+              "why": "Usually a generic failure."
+            },
+            {
+              "t": "-1",
+              "ok": false,
+              "why": "Exit statuses are 0-255; -1 is not used."
+            },
+            {
+              "t": "255",
+              "ok": false,
+              "why": "That is a failure code."
+            }
+          ]
+        },
+        {
+          "type": "single",
+          "id": "e4",
+          "title": "Number of arguments",
+          "text": "Which variable holds the number of arguments of a script?",
+          "options": [
+            {
+              "t": "`$#`",
+              "ok": true,
+              "why": "It expands to the count of positional parameters."
+            },
+            {
+              "t": "`$?`",
+              "ok": false,
+              "why": "The exit status of the last command."
+            },
+            {
+              "t": "`$$`",
+              "ok": false,
+              "why": "The process id of the shell."
+            },
+            {
+              "t": "`$0`",
+              "ok": false,
+              "why": "The name of the script."
+            }
+          ]
+        },
+        {
+          "type": "single",
+          "id": "e5",
+          "title": "Make a script executable",
+          "text": "Which command makes `run.sh` executable for its owner?",
+          "options": [
+            {
+              "t": "`chmod u+x run.sh`",
+              "ok": true,
+              "why": "It adds the execute bit for the user."
+            },
+            {
+              "t": "`chmod 000 run.sh`",
+              "ok": false,
+              "why": "It removes every permission."
+            },
+            {
+              "t": "`chown +x run.sh`",
+              "ok": false,
+              "why": "`chown` changes the owner, not the mode."
+            },
+            {
+              "t": "`exec run.sh`",
+              "ok": false,
+              "why": "It would try to run it, replacing the shell."
+            }
+          ]
+        },
+        {
+          "type": "single",
+          "id": "e6",
+          "title": "Count lines",
+          "text": "Which command counts the lines of `data.txt`?",
+          "options": [
+            {
+              "t": "`wc -l data.txt`",
+              "ok": true,
+              "why": "`-l` counts lines."
+            },
+            {
+              "t": "`wc -w data.txt`",
+              "ok": false,
+              "why": "`-w` counts words."
+            },
+            {
+              "t": "`wc -c data.txt`",
+              "ok": false,
+              "why": "`-c` counts bytes."
+            },
+            {
+              "t": "`cat -n data.txt`",
+              "ok": false,
+              "why": "It numbers lines but also prints the whole file."
+            }
+          ]
+        },
+        {
+          "type": "single",
+          "id": "e7",
+          "title": "Search a pattern",
+          "text": "Which command prints the lines of `log` containing `error`?",
+          "options": [
+            {
+              "t": "`grep error log`",
+              "ok": true,
+              "why": "`grep` prints the matching lines."
+            },
+            {
+              "t": "`find error log`",
+              "ok": false,
+              "why": "`find` searches for files, not text."
+            },
+            {
+              "t": "`cut error log`",
+              "ok": false,
+              "why": "`cut` selects fields of lines."
+            },
+            {
+              "t": "`echo error log`",
+              "ok": false,
+              "why": "It just prints the words."
+            }
+          ]
+        },
+        {
+          "type": "single",
+          "id": "e8",
+          "title": "Pipe",
+          "text": "What does `a | b` do?",
+          "options": [
+            {
+              "t": "Sends the output of `a` to the input of `b`",
+              "ok": true,
+              "why": "The pipe connects the two commands."
+            },
+            {
+              "t": "Runs `b` first and then `a`",
+              "ok": false,
+              "why": "They run together, connected."
+            },
+            {
+              "t": "Saves the output of `a` in a file called `b`",
+              "ok": false,
+              "why": "That is `a > b`."
+            },
+            {
+              "t": "Runs `b` only if `a` fails",
+              "ok": false,
+              "why": "That is `a || b`."
+            }
+          ]
+        },
+        {
+          "type": "single",
+          "id": "e9",
+          "title": "Variable use",
+          "text": "How do you print the value of the variable `name`?",
+          "options": [
+            {
+              "t": "`echo \"$name\"`",
+              "ok": true,
+              "why": "The `$` expands the variable."
+            },
+            {
+              "t": "`echo name`",
+              "ok": false,
+              "why": "It prints the word name."
+            },
+            {
+              "t": "`echo \"{name}\"`",
+              "ok": false,
+              "why": "Braces without `$` are literal."
+            },
+            {
+              "t": "`print $name`",
+              "ok": false,
+              "why": "`print` is not a shell command here."
+            }
+          ]
+        },
+        {
+          "type": "single",
+          "id": "e10",
+          "title": "Test a file",
+          "text": "Which test is true when `f` is a regular file?",
+          "options": [
+            {
+              "t": "`[[ -f f ]]`",
+              "ok": true,
+              "why": "`-f` tests for a regular file."
+            },
+            {
+              "t": "`[[ -d f ]]`",
+              "ok": false,
+              "why": "`-d` tests for a directory."
+            },
+            {
+              "t": "`[[ -z f ]]`",
+              "ok": false,
+              "why": "`-z` tests for an empty string."
+            },
+            {
+              "t": "`[[ -n f ]]`",
+              "ok": false,
+              "why": "`-n` tests for a non-empty string; it says nothing about files."
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -924,6 +924,7 @@ function renderHomePage() {
   Exams.renderHomeGrid();
   Scripts.renderHomeGrid();
   SExams.renderHomeGrid();
+  if (typeof Imp !== 'undefined') Imp.renderLists();
   renderHomeNav();
   Exams.refresh();
   Scripts.refresh();
@@ -960,6 +961,7 @@ $('#man-grid').addEventListener('click', ev => {
 // Every entry that has contents shows an arrow (click it to open/close) and its name (click it to go there).
 const HOME_SECTIONS = [['tracks', 'home-sec-tracks', 'home-grp-exercises'], ['intro', 'home-sec-intro', 'home-grp-exercises'], ['quizzes', 'theory-quizzes-title', 'theory-home-title'], ['exams', 'theory-exams-title', 'theory-home-title']];
 HOME_SECTIONS.push(['man', 'home-sec-man', 'man-home-title']);
+HOME_SECTIONS.push(['impq', 'imp-sec-quizzes', 'imp-home-title'], ['impe', 'imp-sec-exams', 'imp-home-title']);
 HOME_SECTIONS.splice(2, 0, ['scripts', 'home-sec-scripts', 'home-grp-exercises'], ['sexams', 'home-sec-sexams', 'home-grp-exercises']);   // last section of the Scripting group, after Introduction
 const lsGet = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) || d; } catch { return d; } };
 const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* private mode */ } };
@@ -1018,7 +1020,9 @@ function homeTree() {
   const scriptGroups = Scripts.groups().map(g =>
     group(`scriptgroup:${g.key}`, g.label, g.label, `scriptgroup:${g.key}`, false,
       g.items.map(e => leaf(e.title, `${e.id} ${e.title} ${e.cmds} ${e.tags.join(' ')}`, `script:${e.id}`, state.script === e.id, e.status, e.id.slice(1)))));
-  return { tracks, intro: [introAll, ...introCats], scripts: scriptGroups, sexams: sexamTiers, quizzes, exams: examTiers, man: manTree };
+  const impq = Theory.imported().map(quizTree);
+  const impe = Exams.imported().map(e => leaf(e.title, `${e.title} ${e.packTitle || ''}`, `exam:${e.id}`, state.exam === e.id, Exams.statusOf(e)));
+  return { tracks, intro: [introAll, ...introCats], scripts: scriptGroups, sexams: sexamTiers, quizzes, exams: examTiers, man: manTree, impq, impe };
 }
 function renderHomeNav() {
   const nav = $('#home-topics');
@@ -1058,7 +1062,7 @@ function renderHomeNav() {
       <summary><span class="t-name">${esc($('#' + headId).textContent)}</span>${sec === 'tracks' ? '' : `<span class="t-count">${done}/${total}</span>`}</summary>
       ${sec === 'tracks' ? '' : `<div class="t-bar"><div style="width:${total ? 100 * done / total : 0}%"></div></div>`}${items}</details>`;
   }
-  nav.innerHTML = html || '<p class="home-intro" style="margin:16px">Nothing matches.</p>';
+  nav.innerHTML = html || `<p class="home-intro" style="margin:16px">${!q && tab === 'imported' ? 'The quizzes and exams you import are listed here.' : 'Nothing matches.'}</p>`;
   syncHomeNav.last = null;
   syncHomeNav();
 }
@@ -1070,7 +1074,7 @@ function syncHomeNav() {
   const y = body.scrollTop + 120;
   let cur = null;
   for (const [sec, headId] of HOME_SECTIONS) if (at(headId) <= y) cur = sec;
-  const g = at('man-home-title') <= y ? 'man-home-title' : at('theory-home-title') <= y ? 'theory-home-title' : 'home-grp-exercises';
+  const g = at('imp-home-title') <= y ? 'imp-home-title' : at('man-home-title') <= y ? 'man-home-title' : at('theory-home-title') <= y ? 'theory-home-title' : 'home-grp-exercises';
   nav.querySelectorAll('.home-group-label').forEach(b => b.classList.toggle('active', b.dataset.scroll === g));
   nav.querySelectorAll('details[data-sec]').forEach(d => d.classList.toggle('active', d.dataset.sec === cur));
   // keep the highlighted section visible in the sidebar as the page scrolls (only when it changes)

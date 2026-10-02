@@ -148,7 +148,7 @@ const Theory = (() => {
   // ---------------------------------------------------------------- home page cards
   function renderHomeGrid() {
     const grid = $('#theory-grid');
-    const plain = index.filter(c => !c.ws);   // the man drills (with a terminal beside them) have their own home section
+    const plain = index.filter(c => !c.ws && !c.imp);   // (imported packs have their own tab) the man drills (with a terminal beside them) have their own home section
     if (!plain.length) { grid.innerHTML = `<p class="home-intro">${T('none')}</p>`; return; }
     grid.innerHTML = plain.map(c => {
       const t = total(c), p = passed(c);
@@ -159,6 +159,12 @@ const Theory = (() => {
       </button>`;
     }).join('');
   }
+  // one quiz card (home grid, and the Imported tab)
+  const cardHTML = c => `<button class="track-card${state.theory === c.id ? ' current' : ''}" data-theory="${esc(c.id)}">
+        <div class="track-card-title">${esc(c.title)}</div>
+        <div class="track-card-desc">${esc(c.about || '')}</div>
+        <div class="track-card-count">${T('count', passed(c), total(c))}</div>
+      </button>`;
   $('#theory-grid').addEventListener('click', ev => {
     const card = ev.target.closest('[data-theory]');
     if (!card) return;
@@ -687,5 +693,5 @@ const Theory = (() => {
 
   applyStatic();
   return { load, collection, isWs, visible: () => wsMounted || !$('#theory-main').classList.contains('hidden'), renderHomeGrid, renderSidebar, open, hide, go: openCollection, t: T,
-    list: () => index, current: () => (state.theory && view ? { cid: view.cid, qid: view.item.q.id } : null) };
+    list: () => index.filter(c => !c.imp), imported: () => index.filter(c => c.imp), total, passed, cardHTML, current: () => (state.theory && view ? { cid: view.cid, qid: view.item.q.id } : null) };
 })();

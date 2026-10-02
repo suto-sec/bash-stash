@@ -18,7 +18,7 @@ const Exams = (() => {
       title: 'Practice exams', crumb: 'Practice exam',
       intro: 'Mock exams of 10 single-choice questions, 1 point each and no penalty for wrong answers. Settings (⚙) let you choose when answers are checked and whether you can go back, to resemble the real exam. An attempt you leave is kept so you can resume it, and every finished attempt is saved in the history of its set, with the date and the score.',
       none: 'No practice exams built yet (run <code>node tools/build_theory.js exams</code>).',
-      tier_easy: 'Easy', tier_medium: 'Medium', tier_hard: 'Hard',
+      tier_easy: 'Easy', tier_medium: 'Medium', tier_hard: 'Hard', tier_imported: 'Imported',
       passedCount: (p, t) => `${p}/${t} passed`, notTaken: 'Not attempted yet',
       bestLine: (b, n) => `Best ${b}/10 · ${n} attempt${n === 1 ? '' : 's'}`, lastLine: d => `Last: ${d}`,
       meta: n => `${n} questions · 1 point each · no penalty · pass at 5/10`,
@@ -52,7 +52,7 @@ const Exams = (() => {
       title: 'Exámenes de práctica', crumb: 'Examen de práctica',
       intro: 'Simulacros de 10 preguntas de respuesta única, 1 punto cada una y sin penalización por fallar. Los ajustes (⚙) permiten elegir cuándo se corrigen las respuestas y si se puede volver atrás, para parecerse al examen real. Un intento que abandonas se conserva para continuarlo, y cada intento terminado queda guardado en el historial de su examen, con la fecha y la nota.',
       none: 'Aún no hay exámenes de práctica (ejecuta <code>node tools/build_theory.js exams</code>).',
-      tier_easy: 'Fácil', tier_medium: 'Medio', tier_hard: 'Difícil',
+      tier_easy: 'Fácil', tier_medium: 'Medio', tier_hard: 'Difícil', tier_imported: 'Importado',
       passedCount: (p, t) => `${p}/${t} aprobados`, notTaken: 'Sin intentar',
       bestLine: (b, n) => `Mejor ${b}/10 · ${n} intento${n === 1 ? '' : 's'}`, lastLine: d => `Último: ${d}`,
       meta: n => `${n} preguntas · 1 punto cada una · sin penalización · aprobado con 5/10`,
@@ -132,7 +132,8 @@ const Exams = (() => {
     try { index = await (await fetch('/api/exams' + qLang())).json(); } catch { index = []; }
     if (!Array.isArray(index)) index = [];
   }
-  const list = () => index;
+  const list = () => index.filter(e => !e.imp);          // the course material; imported packs have their own tab
+  const imported = () => index.filter(e => e.imp);
   const entry = id => index.find(e => e.id === id);
   const statusOf = e => e.best == null ? 'new' : e.best >= PASS ? 'pass' : 'attempted';
   async function fetchExam(id) {
@@ -172,18 +173,18 @@ const Exams = (() => {
     $('#theory-exams-title').textContent = T('title');
     $('#theory-exams-intro').textContent = T('intro');
   }
+  const card = e => {
+    const cls = e.best == null ? '' : e.best >= PASS ? 'good' : 'low';
+    return `<button class="track-card exam-card${state.exam === e.id ? ' current' : ''}" data-exam="${esc(e.id)}">
+      <div class="track-card-title">${esc(e.title)}</div>
+      <div class="track-card-desc">${e.best == null ? T('notTaken') : `<span class="exam-best ${cls}">${T('bestLine', e.best, e.attempts)}</span>`}</div>
+      <div class="track-card-count">${e.draft ? `<span class="exam-draft">${T('inProgress', e.draft.pos + 1, e.draft.total)}</span>` : e.last ? T('lastLine', `${e.last.score}/${e.last.total} · ${fmtDate(e.last.finishedAt)}`) : '&nbsp;'}</div>
+    </button>`;
+  };
   function renderHomeGrid() {
     applyStatic();
     const grid = $('#exams-grid');
     if (!index.length) { grid.innerHTML = `<p class="home-intro">${T('none')}</p>`; return; }
-    const card = e => {
-      const cls = e.best == null ? '' : e.best >= PASS ? 'good' : 'low';
-      return `<button class="track-card exam-card${state.exam === e.id ? ' current' : ''}" data-exam="${esc(e.id)}">
-        <div class="track-card-title">${esc(e.title)}</div>
-        <div class="track-card-desc">${e.best == null ? T('notTaken') : `<span class="exam-best ${cls}">${T('bestLine', e.best, e.attempts)}</span>`}</div>
-        <div class="track-card-count">${e.draft ? `<span class="exam-draft">${T('inProgress', e.draft.pos + 1, e.draft.total)}</span>` : e.last ? T('lastLine', `${e.last.score}/${e.last.total} · ${fmtDate(e.last.finishedAt)}`) : '&nbsp;'}</div>
-      </button>`;
-    };
     grid.innerHTML = ['easy', 'medium', 'hard'].filter(t => index.some(e => e.tier === t)).map(t => {
       const es = index.filter(e => e.tier === t);
       return `<h3 class="home-tier-title">${T('tier_' + t)} <span>${T('passedCount', es.filter(e => statusOf(e) === 'pass').length, es.length)}</span></h3>
@@ -516,6 +517,6 @@ const Exams = (() => {
   syncSettingsUI();
   applyStatic();
   const refresh = async () => { await saving; await refreshIndex(); };   // the home page shows fresh scores and drafts
-  return { load, list, entry, statusOf, open, hide, visible, allowRoute, onLang, refresh, renderHomeGrid, renderSidebar, go, t: T,
+  return { load, list, entry, statusOf, open, hide, visible, allowRoute, onLang, refresh, renderHomeGrid, renderSidebar, go, t: T, imported, cardHTML: card,
     current: () => (state.exam && cur ? cur.id : null), tierLabel: t => T('tier_' + t) };
 })();

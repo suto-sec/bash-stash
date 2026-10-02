@@ -15,10 +15,13 @@ const Home = (() => {
     { key: 'quizzes', id: 'theory-quizzes-title', part: 'theory' },
     { key: 'exams',   id: 'theory-exams-title',   part: 'theory' },
     { key: 'man',     id: 'home-sec-man',         part: 'man' },
+    { key: 'impload', id: 'imp-sec-load',         part: 'imported' },
+    { key: 'impq',    id: 'imp-sec-quizzes',      part: 'imported' },
+    { key: 'impe',    id: 'imp-sec-exams',        part: 'imported' },
   ];
-  const TABS = [['start', 'Start'], ['coding', 'Coding exercises'], ['theory', 'Theory'], ['man', 'Man drills']];
-  const GROUP_TAB = { 'home-grp-exercises': 'coding', 'theory-home-title': 'theory', 'man-home-title': 'man' };   // the group headings (sidebar labels) -> their tab
-  const DEFAULT_OPEN = ['tracks', 'quizzes', 'man'];   // the first section of each tab (a tab with one folded row looks empty)
+  const TABS = [['start', 'Start'], ['coding', 'Coding exercises'], ['theory', 'Theory'], ['man', 'Man drills'], ['imported', 'Imported']];
+  const GROUP_TAB = { 'home-grp-exercises': 'coding', 'theory-home-title': 'theory', 'man-home-title': 'man', 'imp-home-title': 'imported' };   // the group headings (sidebar labels) -> their tab
+  const DEFAULT_OPEN = ['tracks', 'quizzes', 'man', 'impload', 'impq', 'impe'];   // the first section of each tab (a tab with one folded row looks empty)
   const el = id => document.getElementById(id);
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const store = {
@@ -127,6 +130,19 @@ const Home = (() => {
       const next = nq ? { label: nq.title, run: () => Theory.go(nq.id) } : nt ? { label: `${nt.id} · ${nt.title}`, run: () => selectTrack('man', nt.id) } : null;
       return { done: qs.filter(q => q.status === 'pass').length + tasks.filter(e => e.status === 'pass').length, total: qs.length + tasks.length, unit: 'questions and tasks', next };
     },
+    impload() {
+      const n = typeof Imp !== 'undefined' ? Imp.packCount() : 0;
+      return { done: 0, total: 0, text: n ? `${n} pack${n === 1 ? '' : 's'} imported` : 'No packs imported yet' };
+    },
+    impq() {
+      const all = Theory.imported(), qs = all.flatMap(c => c.groups.flatMap(g => g.questions));
+      const next = all.find(c => c.groups.some(g => g.questions.some(q => q.status !== 'pass')));
+      return { done: qs.filter(q => q.status === 'pass').length, total: qs.length, unit: 'questions', text: all.length ? '' : 'No imported quizzes', next: next && { label: next.title, run: () => Theory.go(next.id) } };
+    },
+    impe() {
+      const all = Exams.imported(), next = all.find(e => Exams.statusOf(e) !== 'pass');
+      return { done: all.filter(e => Exams.statusOf(e) === 'pass').length, total: all.length, text: all.length ? '' : 'No imported practice exams', next: next && { label: next.title, run: () => Exams.go(next.id) } };
+    },
     exams() {
       const all = Exams.list(), next = all.find(e => Exams.statusOf(e) !== 'pass');
       return { done: all.filter(e => Exams.statusOf(e) === 'pass').length, total: all.length, next: next && { label: next.title, run: () => Exams.go(next.id) } };
@@ -143,6 +159,7 @@ const Home = (() => {
       const sec = secEl(s.key);
       if (!sec || !d) continue;
       const pct = d.total ? 100 * d.done / d.total : 0;
+      if (d.text) { sec.querySelector('.home-sec-summary').innerHTML = `<span class="hs-next">${esc(d.text)}</span><span class="hs-more">Show ▾</span>`; continue; }
       sec.querySelector('.home-sec-summary').innerHTML = `<span class="hs-bar"><i style="width:${pct}%"></i></span>
         <span class="hs-count">${d.done}/${d.total} ${d.unit || 'done'}</span>
         ${d.next ? `<span class="hs-next">Next up: <b>${esc(d.next.label)}</b></span><button class="hs-go small" type="button">Go</button>`
@@ -191,6 +208,10 @@ const Home = (() => {
     if (k === 'theory') {
       const q = c.quizzes, e = c.exams;
       return q && e && { done: q.done + e.done, total: q.total + e.total, text: `${q.total} quiz questions · ${e.total} practice exams` };
+    }
+    if (k === 'imported') {
+      const q = c.impq, e = c.impe, packs = typeof Imp !== 'undefined' ? Imp.packCount() : 0;
+      return q && e && { done: q.done + e.done, total: q.total + e.total, text: packs ? `${packs} pack${packs === 1 ? '' : 's'} · ${q.total} questions · ${e.total} exams` : 'Nothing imported yet' };
     }
     if (k === 'man') return c.man && { done: c.man.done, total: c.man.total, text: `${c.man.total} questions and tasks` };
     return null;
@@ -289,14 +310,15 @@ const Home = (() => {
       const d = tabStats(k);
       if (!d) return '';
       return `<button type="button" class="home-tile" data-tab="${k}"><span class="ht-title">${esc(title)}</span><span class="ht-desc">${esc(desc)}</span>
-        ${fresh ? '' : `<span class="hs-bar"><i style="width:${d.total ? 100 * d.done / d.total : 0}%"></i></span>`}
-        <span class="ht-stat">${fresh ? esc(d.text) : `${d.done}/${d.total} done`}</span></button>`;
+        ${fresh || k === 'imported' ? '' : `<span class="hs-bar"><i style="width:${d.total ? 100 * d.done / d.total : 0}%"></i></span>`}
+        <span class="ht-stat">${fresh || k === 'imported' ? esc(d.text) : `${d.done}/${d.total} done`}</span></button>`;
     };
     const n = (window.MANUAL && MANUAL.all) ? MANUAL.all().length : 0;
     box.innerHTML = `<h2 class="home-sub">Or choose what to practise</h2><div class="home-tile-grid">
       ${tile('coding', 'Coding exercises', 'Write bash in a real terminal and press Check: tracks, warm-ups, whole scripts and script exams.')}
       ${tile('theory', 'Theory', 'Quizzes on the concepts behind the commands, and theory practice exams.')}
       ${tile('man', 'Man page drills', 'Train with the only help the exam allows: the manual.')}
+      ${tile('imported', 'Imported', 'Your own quizzes and practice exams from a JSON file, with their own progress.')}
       <a class="home-tile" href="#/reference"><span class="ht-title">Reference</span><span class="ht-desc">Every command and concept, grouped by topic and searchable.</span><span class="ht-stat">${n ? n + ' entries' : ''}</span></a></div>`;
   }
   // the order of the boxes on Start, whoever drew them
@@ -343,7 +365,7 @@ const Home = (() => {
     // the other modules redraw their grids when their data arrives: follow them
     let timer = 0;
     const later = () => { clearTimeout(timer); timer = setTimeout(refreshSummaries, 60); };
-    for (const id of ['track-grid', 'intro-grid', 'scripts-grid', 'sexams-grid', 'theory-grid', 'exams-grid']) {
+    for (const id of ['track-grid', 'intro-grid', 'scripts-grid', 'sexams-grid', 'theory-grid', 'exams-grid', 'imp-quizzes-grid', 'imp-exams-grid', 'imp-load']) {
       const g = el(id);
       if (!g) continue;
       new MutationObserver(() => { applyGroups(g); later(); }).observe(g, { childList: true });
