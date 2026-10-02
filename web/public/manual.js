@@ -122,6 +122,8 @@ const MANUAL = (() => {
   // A query is split in words and every word must match. How an entry matches decides its rank: the name (exact, then start, then a word
   // of it) beats an alias, an alias beats the first word of the synopsis, then come option flags, the one-line summary and last the
   // body; short words (1-2 letters) match names, aliases and flags only, so "if" is the `if` entry and not everything that says "if".
+  // A word made of symbols ($@  >>  2>&1  &&  [[  ${var}) is looked up as written: in the names and aliases, the synopsis, the option
+  // flags, the first column of the tables, the summary and last the text; the entry that defines it (special-parameters for $@) comes first.
   const words = s => norm(s).split(/[^a-z0-9._+-]+/).filter(Boolean);
   const cache = new Map();
   function profile(e) {
@@ -135,6 +137,45 @@ const MANUAL = (() => {
     return p;
   }
   const bodyWords = (e, p) => p.body || (p.body = new Set(words([...(e.desc || []), ...(e.sections || []).flatMap(s => s.body || []), ...(e.notes || [])].join(' '))));
+  // the query as tokens: words (letters, digits . _ + -) or, when a whitespace-separated piece has other characters, the piece itself as a symbol
+  const isSym = t => !/[a-z0-9]/.test(t) || /[^a-z0-9._+-]/.test(t);
+  const unquote = t => t.replace(/^["']+|["']+$/g, '');
+  function tokens(query) {
+    const out = [];
+    for (const piece of norm(query).split(/\s+/).filter(Boolean)) {
+      if (isSym(piece)) out.push({ sym: unquote(piece) || piece });
+      else for (const w of words(piece)) out.push({ word: w });
+    }
+    return out;
+  }
+  const symProfile = e => {
+    const p = profile(e);
+    if (p.sym) return p.sym;
+    const cells = [];
+    for (const sec of e.sections || []) for (const row of sec.table || []) cells.push(norm(String(row[0] || '').replace(/`/g, '')));
+    const flagStrs = [];
+    for (const o of e.options || []) for (const it of (o.items || [o])) flagStrs.push(norm(it.flag || ''));
+    const text = norm([...(e.desc || []), ...(e.sections || []).flatMap(sec => [...(sec.body || []), sec.code || '']), ...(e.notes || []), ...(e.examples || []).map(x => x.cmd || '')].join('\n'));
+    return (p.sym = { syn: (e.synopsis || []).map(norm), cells, flagStrs, summary: norm(e.summary || ''), text });
+  };
+  function scoreSym(e, t) {
+    const p = profile(e), sp = symProfile(e);
+    const has = (list, f) => list.some(x => f(x));
+    let best = 0;
+    const up = v => { if (v > best) best = v; };
+    let defines = 0;     // where the entry spells it out as its own subject: the synopsis, the first column of a table (breaks ties between two aliases)
+    if (p.name === t || e.key === t) up(1000);
+    for (const a of p.aliases) { const u = unquote(a); if (a === t || u === t) up(1000); else if (a.includes(t)) up(550 + Math.round(50 * t.length / a.length) + (a.startsWith(t) ? 20 : 0)); }   // the closest alias wins
+    if (has(sp.syn, x => x.includes(t))) { up(500); defines += 40; }
+    if (has(sp.cells, x => x.includes(t))) defines += 40;
+    if (best >= 1000) best += defines;
+    if (has(sp.flagStrs, x => x.split(/[\s,/|]+/).some(f => f === t || unquote(f) === t))) up(480);
+    else if (has(sp.flagStrs, x => x.includes(t))) up(430);
+    if (has(sp.cells, x => x.includes(t))) up(450);
+    if (sp.summary.includes(t)) up(300);
+    if (best < 300 && sp.text.includes(t)) up(60);     // only mentioned: dropped as soon as something defines it
+    return best;
+  }
   function scoreWord(e, t) {
     const p = profile(e), long = t.length >= 3;
     let best = 0;
@@ -162,12 +203,12 @@ const MANUAL = (() => {
   }
   // -> Map key -> score for the entries that match every word (empty query: no map)
   function rank(query) {
-    const ts = words(query);
+    const ts = tokens(query);
     if (!ts.length) return null;
     const out = new Map();
     for (const e of entries.values()) {
       let sum = 0;
-      for (const t of ts) { const v = scoreWord(e, t); if (!v) { sum = 0; break; } sum += v; }
+      for (const t of ts) { const v = t.sym ? scoreSym(e, t.sym) : scoreWord(e, t.word); if (!v) { sum = 0; break; } sum += v; }
       if (sum) out.set(e.key, sum);
     }
     // when something matches by name, the entries that only mention the word in their summary or body are noise: drop them
