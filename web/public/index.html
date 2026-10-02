@@ -22,6 +22,7 @@
     </div>
     <div class="spacer"></div>
     <button id="palette-btn" class="top-btn" title="Search every exercise, script, exam, quiz and manual entry (Ctrl+K)">🔍 Search <kbd>Ctrl K</kbd></button>
+    <a href="#/readiness" id="readiness-btn" title="How ready you are for the exam, topic by topic">📈 Readiness</a>
     <a href="#/reference" id="reference-btn" title="Every command and concept used, grouped by topic">📖 Reference</a>
     <div class="layout-picker" id="layout-picker">
       <button id="layout-btn" title="Choose how the instructions, terminal and VS Code panels are arranged" aria-haspopup="true" aria-expanded="false">⬚ Layout</button>
@@ -203,6 +204,7 @@
       <strong>Choose what to browse</strong>
       <div class="spacer"></div>
       <button id="home-palette-btn" class="top-btn" title="Search every exercise, script, exam, quiz and manual entry (Ctrl+K)">🔍 Search <kbd>Ctrl K</kbd></button>
+      <a href="#/readiness" id="home-readiness-btn" class="ref-link" title="How ready you are for the exam, topic by topic">📈 Readiness</a>
       <a href="#/reference" id="home-reference-btn" class="ref-link" title="Every command and concept used, grouped by topic">📖 Reference</a>
       <div id="home-head-slot"></div>
     </div>
@@ -290,6 +292,17 @@
     </div>
   </div>
 
+  <div class="reference-page hidden" id="readiness-page">
+    <div class="ref-page-head">
+      <a href="#/home" class="brand" title="Choose a collection or track"><span class="prompt">$_</span> bash stash</a>
+      <a href="#/ex/" id="readiness-back" title="Back to exercises">← Exercises</a>
+      <strong>Exam readiness</strong>
+      <div class="spacer"></div>
+      <a href="#/reference" class="ref-link">📖 Reference</a>
+    </div>
+    <div class="readiness-content" id="readiness-content"></div>
+  </div>
+
   <dialog id="info-dialog">
     <form method="dialog">
       <div class="dlg-head"><strong id="info-title">Commands used here</strong><button class="icon-btn" value="close" aria-label="Close">✕</button></div>
@@ -350,5 +363,6 @@
   <script src="/keys.js"></script>
   <script src="/home.js"></script>
   <script src="/newuser.js"></script>
+  <script src="/readiness.js"></script>
 </body>
 </html>
