@@ -1,0 +1,31 @@
+{
+ "id": "s76",
+ "slug": "worldw",
+ "title": "World-writable files",
+ "script": "worldw.sh",
+ "cmds": "find -type f -perm -o+w, chmod o-w, shift, test -d, exit codes",
+ "level": 4,
+ "tags": [
+  "permissions",
+  "find",
+  "exit codes"
+ ],
+ "steps": [
+  {
+   "n": 1,
+   "title": "Find them"
+  },
+  {
+   "n": 2,
+   "title": "The usual checks"
+  },
+  {
+   "n": 3,
+   "title": "Fix them (-f)"
+  },
+  {
+   "n": 4,
+   "title": "A summary and an exit code for monitoring"
+  }
+ ]
+}

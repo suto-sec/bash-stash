@@ -15,7 +15,7 @@ COMPARE="stdout exit errmsg"
 extra_check() {
   [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }
   if [[ $REF_CODE == [23] ]]; then
-    local bad; bad=$(eval "set -- $CASE"; if [[ $REF_CODE == 2 ]]; then [[ -e $1 ]] && echo "$2" || echo "$1"; else [[ -d $1 ]] && echo "$2" || echo "$1"; fi)
+    local bad; bad=$(cd "$W"; eval "set -- $CASE"; if [[ $REF_CODE == 2 ]]; then [[ -e $1 ]] && echo "$2" || echo "$1"; else [[ -d $1 ]] && echo "$2" || echo "$1"; fi)
     mentions "$bad"
   fi
 }

@@ -1,0 +1,31 @@
+{
+ "id": "s77",
+ "slug": "onlyin",
+ "title": "Names in only one directory",
+ "script": "onlyin.sh",
+ "cmds": "ls, comm -23, sort, shift, test -d, exit codes",
+ "level": 3,
+ "tags": [
+  "files",
+  "text",
+  "exit codes"
+ ],
+ "steps": [
+  {
+   "n": 1,
+   "title": "In the first, not in the second"
+  },
+  {
+   "n": 2,
+   "title": "The usual checks"
+  },
+  {
+   "n": 3,
+   "title": "Count, and say when they match"
+  },
+  {
+   "n": 4,
+   "title": "Both directions (-b)"
+  }
+ ]
+}

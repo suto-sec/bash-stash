@@ -1,0 +1,1 @@
+Finish with a summary line: `N world-writable files` without `-f`, `Fixed N files` with `-f` (N = how many files were listed or fixed). Without `-f`, if N is not 0 exit with code **4** (so a monitoring job notices); in every other case exit 0.

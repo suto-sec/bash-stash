@@ -1,0 +1,108 @@
+@@script s73 | shells | Users per login shell | shells.sh
+@@level 4
+@@tags text, pipes, exit codes
+@@cmds cut -d: -f, sort, uniq -c, awk, shift, test -f, exit codes
+@@fixture
+setup() {
+  mkdir -p empty
+  cat > passwd <<'PW'
+root:x:0:0:root:/root:/bin/bash
+daemon:x:1:1:daemon:/usr/sbin:/usr/sbin/nologin
+bin:x:2:2:bin:/bin:/usr/sbin/nologin
+sync:x:4:65534:sync:/bin:/bin/sync
+www-data:x:33:33:www-data:/var/www:/usr/sbin/nologin
+nobody:x:65534:65534:nobody:/nonexistent:/usr/sbin/nologin
+ana:x:1000:1000:Ana,,,:/home/ana:/bin/bash
+luis:x:1001:1001:Luis:/home/luis:/bin/zsh
+marta:x:1002:1002:Marta:/home/marta:/bin/bash
+diego:x:1003:1003:Diego:/home/diego:/bin/dash
+eva:x:1004:1004:Eva:/home/eva:/usr/sbin/nologin
+PW
+  head -n 7 passwd > short.passwd; : > empty.passwd; echo x > notregular.txt; mkdir adir
+}
+usage_ok() { [[ $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* || $ERR == *shells.sh* ]]; }
+@@step 1 | Users per shell
+@@readme
+A `passwd` file has one line per account, fields separated by `:`; the **7th** field is the login shell. Write `shells.sh FILE`. It prints one line `SHELL: N` for each shell (N = how many accounts use it), **the most used shell first**; shells with the same count in alphabetical order (as `sort` orders text).
+
+Example line: `/bin/bash: 3`.
+@@check
+ARGS=('passwd' 'short.passwd' 'empty.passwd')
+COMPARE="stdout exit"
+@@solution
+#!/bin/bash
+cut -d: -f7 "$1" | sort | uniq -c | sort -k1,1nr -k2,2 | while read -r n sh; do echo "$sh: $n"; done
+exit 0
+@@step 2 | The usual checks
+@@readme
+Checks: not exactly one argument → an error message **and the correct usage** (e.g. `Usage: shells.sh passwdfile`), exit **1**; the file does not exist → an error with its name, exit **2**; it exists but is not a regular file → an error with its name, exit **3**.
+@@check
+ARGS=('passwd' 'short.passwd' 'empty.passwd' '' 'passwd short.passwd' 'nothing' 'adir' 'notregular.txt')
+COMPARE="stdout exit errmsg"
+extra_check() {
+  [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }
+  [[ $REF_CODE == [23] ]] && mentions "$(eval "set -- $CASE"; echo "$1")"
+}
+@@solution
+#!/bin/bash
+if (( $# != 1 )); then echo "Error: one argument needed" >&2; echo "Usage: $0 passwdfile" >&2; exit 1; fi
+[[ -e $1 ]] || { echo "Error: $1 does not exist" >&2; exit 2; }
+[[ -f $1 ]] || { echo "Error: $1 is not a regular file" >&2; exit 3; }
+cut -d: -f7 "$1" | sort | uniq -c | sort -k1,1nr -k2,2 | while read -r n sh; do echo "$sh: $n"; done
+exit 0
+@@step 3 | Only real people (-u)
+@@readme
+With `-u` as the **first** argument count only the accounts whose **UID (3rd field) is 1000 or more** and is **less than 65534** (the normal users). Without `-u` nothing changes. With `-u` the number of other arguments and the checks are the same.
+@@check
+ARGS=('passwd' '-u passwd' '-u short.passwd' '-u empty.passwd' '-u' '-u passwd short.passwd' '-u nothing' '-u adir' 'short.passwd' '' 'nothing')
+COMPARE="stdout exit errmsg"
+extra_check() {
+  [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }
+  [[ $REF_CODE == [23] ]] && mentions "$(eval "set -- $CASE"; [[ $1 == -u ]] && shift; echo "$1")"
+}
+@@solution
+#!/bin/bash
+only=
+if [[ $1 == -u ]]; then only=1; shift; fi
+if (( $# != 1 )); then echo "Error: one argument needed" >&2; echo "Usage: $0 [-u] passwdfile" >&2; exit 1; fi
+[[ -e $1 ]] || { echo "Error: $1 does not exist" >&2; exit 2; }
+[[ -f $1 ]] || { echo "Error: $1 is not a regular file" >&2; exit 3; }
+if [[ -n $only ]]; then
+  awk -F: '$3 >= 1000 && $3 < 65534 {print $7}' "$1"
+else
+  cut -d: -f7 "$1"
+fi | sort | uniq -c | sort -k1,1nr -k2,2 | while read -r n sh; do echo "$sh: $n"; done
+exit 0
+@@step 4 | Who uses a given shell (-s)
+@@readme
+`-s SHELL` (it may come before or after `-u`, each at most once, always **before** the file) prints instead the **user names** (1st field) of the accounts that use exactly that shell, one per line in file order, followed by `Total: N`. With `-u` only the normal users (UID rule of step 3) are considered. An option without its value (`-s` as the last argument before the file is missing) is a usage error (exit 1).
+@@check
+ARGS=('-s /bin/bash passwd' '-s /bin/zsh passwd' '-u -s /bin/bash passwd' '-s /bin/bash -u passwd' '-s /usr/sbin/nologin -u passwd' '-s /bin/csh passwd' '-s /bin/bash short.passwd' '-s /bin/bash' '-s' '-u passwd' 'passwd' '-s /bin/bash nothing' '-s /bin/bash adir' '-u -s /bin/bash')
+COMPARE="stdout exit errmsg"
+extra_check() {
+  [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }
+  [[ $REF_CODE == [23] ]] && mentions "$(eval "set -- $CASE"; echo "${@: -1}")"
+}
+@@solution
+#!/bin/bash
+only= want=
+while [[ $1 == -u || $1 == -s ]]; do
+  if [[ $1 == -u ]]; then only=1; shift
+  else
+    (( $# >= 2 )) || { echo "Error: -s needs a shell" >&2; echo "Usage: $0 [-u] [-s shell] passwdfile" >&2; exit 1; }
+    want=$2; shift 2
+  fi
+done
+if (( $# != 1 )); then echo "Error: one argument needed" >&2; echo "Usage: $0 [-u] [-s shell] passwdfile" >&2; exit 1; fi
+[[ -e $1 ]] || { echo "Error: $1 does not exist" >&2; exit 2; }
+[[ -f $1 ]] || { echo "Error: $1 is not a regular file" >&2; exit 3; }
+if [[ -n $want ]]; then
+  awk -F: -v s="$want" -v u="$only" '$7 == s && (u == "" || ($3 >= 1000 && $3 < 65534)) {print $1}' "$1" | { n=0; while read -r name; do echo "$name"; n=$((n + 1)); done; echo "Total: $n"; }
+else
+  if [[ -n $only ]]; then
+    awk -F: '$3 >= 1000 && $3 < 65534 {print $7}' "$1"
+  else
+    cut -d: -f7 "$1"
+  fi | sort | uniq -c | sort -k1,1nr -k2,2 | while read -r n sh; do echo "$sh: $n"; done
+fi
+exit 0

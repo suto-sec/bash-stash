@@ -1,0 +1,31 @@
+{
+ "id": "s73",
+ "slug": "shells",
+ "title": "Users per login shell",
+ "script": "shells.sh",
+ "cmds": "cut -d: -f, sort, uniq -c, awk, shift, test -f, exit codes",
+ "level": 4,
+ "tags": [
+  "text",
+  "pipes",
+  "exit codes"
+ ],
+ "steps": [
+  {
+   "n": 1,
+   "title": "Users per shell"
+  },
+  {
+   "n": 2,
+   "title": "The usual checks"
+  },
+  {
+   "n": 3,
+   "title": "Only real people (-u)"
+  },
+  {
+   "n": 4,
+   "title": "Who uses a given shell (-s)"
+  }
+ ]
+}

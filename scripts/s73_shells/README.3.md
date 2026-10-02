@@ -1,0 +1,1 @@
+With `-u` as the **first** argument count only the accounts whose **UID (3rd field) is 1000 or more** and is **less than 65534** (the normal users). Without `-u` nothing changes. With `-u` the number of other arguments and the checks are the same.

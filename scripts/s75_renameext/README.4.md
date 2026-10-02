@@ -1,0 +1,1 @@
+Finish with `Renamed N files` (N = the files really renamed; nothing to rename gives `Renamed 0 files`). If at least one file was skipped because the new name existed, exit with code **4** after the summary; otherwise 0.

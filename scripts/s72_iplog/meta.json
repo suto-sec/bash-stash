@@ -1,0 +1,31 @@
+{
+ "id": "s72",
+ "slug": "iplog",
+ "title": "Who keeps knocking?",
+ "script": "iplog.sh",
+ "cmds": "grep -c -w -F -o -E, tail, for, test -d, shift, exit codes, $HOME",
+ "level": 5,
+ "tags": [
+  "logs",
+  "text",
+  "exit codes"
+ ],
+ "steps": [
+  {
+   "n": 1,
+   "title": "A path and an address"
+  },
+  {
+   "n": 2,
+   "title": "Only an address"
+  },
+  {
+   "n": 3,
+   "title": "Only a path"
+  },
+  {
+   "n": 4,
+   "title": "Wrong calls"
+  }
+ ]
+}

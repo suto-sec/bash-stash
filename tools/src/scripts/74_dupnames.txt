@@ -1,0 +1,86 @@
+@@script s74 | dupnames | Repeated file names | dupnames.sh
+@@level 4
+@@tags find, text, exit codes
+@@cmds find -printf %f, sort, uniq -d, shift, exit codes
+@@fixture
+setup() {
+  mkdir -p tree/a tree/b/c tree/d "my tree/x" "my tree/y" empty single
+  touch tree/readme.md tree/a/readme.md tree/b/readme.md tree/a/main.c tree/b/c/main.c tree/d/main.c tree/a/only_a tree/b/c/only_c tree/a/"two words.txt" tree/d/"two words.txt" tree/a/Readme.md
+  touch "my tree/x/log" "my tree/y/log" "my tree/x/solo"
+  mkdir -p tree/a/data tree/b/data; touch single/one single/two
+  echo x > notadir.txt
+}
+usage_ok() { [[ $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* || $ERR == *dupnames.sh* ]]; }
+@@step 1 | Names that appear twice or more
+@@readme
+Write `dupnames.sh DIR`. It prints, **sorted alphabetically** and **once each**, every file name that is used by **two or more regular files** below `DIR` (any depth; only the name counts, not the directory; case matters: `readme.md` and `Readme.md` differ). Directories are not files: `data` (two directories) is not listed.
+@@check
+ARGS=('tree' '"my tree"' 'single' 'empty')
+COMPARE="stdout exit"
+@@solution
+#!/bin/bash
+find "$1" -type f -printf '%f\n' | sort | uniq -d
+@@step 2 | The usual checks
+@@readme
+`DIR` becomes optional (default: the current directory). Checks: more than one argument → an error message **and the correct usage** (e.g. `Usage: dupnames.sh [dir]`), exit **1**; `DIR` does not exist → an error with its name, exit **2**; not a directory → an error with its name, exit **3**.
+@@check
+ARGS=('tree' '"my tree"' 'single' 'empty' '' 'tree single' 'nothing' 'notadir.txt')
+COMPARE="stdout exit errmsg"
+extra_check() {
+  [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }
+  [[ $REF_CODE == [23] ]] && mentions "$(eval "set -- $CASE"; echo "$1")"
+}
+@@solution
+#!/bin/bash
+if (( $# > 1 )); then echo "Error: too many arguments" >&2; echo "Usage: $0 [dir]" >&2; exit 1; fi
+dir=${1:-.}
+[[ -e $dir ]] || { echo "Error: $dir does not exist" >&2; exit 2; }
+[[ -d $dir ]] || { echo "Error: $dir is not a directory" >&2; exit 3; }
+find "$dir" -type f -printf '%f\n' | sort | uniq -d
+@@step 3 | Where are they?
+@@readme
+After each repeated name print, indented with **two spaces**, the path of every file that has it, as `find` shows it and sorted alphabetically. Example:
+
+```
+main.c
+  tree/a/main.c
+  tree/b/c/main.c
+  tree/d/main.c
+```
+@@check
+ARGS=('tree' '"my tree"' 'single' 'empty' '' 'nothing' 'notadir.txt')
+COMPARE="stdout exit errmsg"
+extra_check() { [[ $REF_CODE == [23] ]] && mentions "$(eval "set -- $CASE"; echo "$1")"; }
+@@solution
+#!/bin/bash
+if (( $# > 1 )); then echo "Error: too many arguments" >&2; echo "Usage: $0 [dir]" >&2; exit 1; fi
+dir=${1:-.}
+[[ -e $dir ]] || { echo "Error: $dir does not exist" >&2; exit 2; }
+[[ -d $dir ]] || { echo "Error: $dir is not a directory" >&2; exit 3; }
+find "$dir" -type f -printf '%f\n' | sort | uniq -d | while IFS= read -r name; do
+  echo "$name"
+  find "$dir" -type f -name "$name" | sort | sed 's/^/  /'
+done
+@@step 4 | A summary and the exit code
+@@readme
+Finish with `N repeated names` (N = how many names were listed). If there are none print `No repeated names` instead and exit **4**; otherwise exit 0.
+
+Careful: a name like `*` or `[x]` must be matched literally by `find -name`... in this fixture none is special, so `-name "$name"` is fine.
+@@check
+ARGS=('tree' '"my tree"' 'single' 'empty' '' 'nothing' 'notadir.txt')
+COMPARE="stdout exit errmsg"
+extra_check() { [[ $REF_CODE == [23] ]] && mentions "$(eval "set -- $CASE"; echo "$1")"; }
+@@solution
+#!/bin/bash
+if (( $# > 1 )); then echo "Error: too many arguments" >&2; echo "Usage: $0 [dir]" >&2; exit 1; fi
+dir=${1:-.}
+[[ -e $dir ]] || { echo "Error: $dir does not exist" >&2; exit 2; }
+[[ -d $dir ]] || { echo "Error: $dir is not a directory" >&2; exit 3; }
+n=0
+while IFS= read -r name; do
+  n=$((n + 1))
+  echo "$name"
+  find "$dir" -type f -name "$name" | sort | sed 's/^/  /'
+done < <(find "$dir" -type f -printf '%f\n' | sort | uniq -d)
+if (( n == 0 )); then echo "No repeated names"; exit 4; fi
+echo "$n repeated names"

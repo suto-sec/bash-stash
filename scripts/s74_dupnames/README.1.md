@@ -1,0 +1,1 @@
+Write `dupnames.sh DIR`. It prints, **sorted alphabetically** and **once each**, every file name that is used by **two or more regular files** below `DIR` (any depth; only the name counts, not the directory; case matters: `readme.md` and `Readme.md` differ). Directories are not files: `data` (two directories) is not listed.
