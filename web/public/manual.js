@@ -99,7 +99,7 @@ const MANUAL = (() => {
     for (const s of (e.sections || []).filter(s => s.after)) secs.push([`s-${esc(norm(s.title)).replace(/\W+/g, '-')}`, s.title, sectionBody(s)]);
     if (e.exit && e.exit.length) secs.push(['exit', 'Exit status', paras(e.exit)]);
     if (e.notes && e.notes.length) secs.push(['notes', 'Notes and common mistakes', paras(e.notes.map(n => `- ${n}`).join('\n').split('\n\n'))]);
-    if (e.see && e.see.length) secs.push(['see', 'See also', `<p class="man-see">${e.see.map(k => get(k) ? `<a href="#" data-goto-cmd="${esc(get(k).key)}"><code>${esc(get(k).name)}</code></a>` : `<code>${esc(k)}</code>`).join(' · ')}</p>`]);
+    if (e.see && e.see.length) secs.push(['see', 'See also', `<p class="man-see">${e.see.map(k => get(k) ? `<a href="#/reference/cmd/${encodeURIComponent(get(k).key)}" data-goto-cmd="${esc(get(k).key)}"><code>${esc(get(k).name)}</code></a>` : `<code>${esc(k)}</code>`).join(' · ')}</p>`]);
     const toc = secs.map(([id, t]) => `<a href="#" data-man-jump="m-${id}">${esc(t)}</a>`).join('');
     return `<article class="man" data-key="${esc(e.key)}">
       <header class="man-head"><h1><code>${esc(e.name)}</code></h1>${e.kind ? `<span class="man-kind">${KIND[e.kind] || e.kind}</span>` : ''}<span class="man-cat">${esc(catTitle(e.cat))}</span>
@@ -114,7 +114,7 @@ const MANUAL = (() => {
   // a compact card (Info panel, category lists)
   function cardHTML(e, linkify = true) {
     const inner = `<code>${esc(e.name)}</code><p>${inline(e.summary || e.desc || '')}</p>${e.synopsis && e.synopsis[0] ? `<span class="gl-syn">${esc(e.synopsis[0])}</span>` : ''}`;
-    return linkify ? `<a href="#" class="gl-item" data-goto-cmd="${esc(e.key)}">${inner}</a>` : `<div class="gl-item">${inner}</div>`;
+    return linkify ? `<a href="#/reference/cmd/${encodeURIComponent(e.key)}" class="gl-item" data-goto-cmd="${esc(e.key)}">${inner}</a>` : `<div class="gl-item">${inner}</div>`;
   }
   const searchText = e => norm([e.name, e.summary, ...(e.aliases || []), ...(e.synopsis || [])].join(' '));
 
