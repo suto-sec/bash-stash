@@ -1,5 +1,5 @@
 // The first minutes: less lost, less overwhelmed.
-//   - a suggested path on the home page (Introduction -> Minimal -> Intermediate -> Scripts -> Practice exams), always showing where you are
+//   - the suggested path on the home page (path.js), always showing where you are
 //   - a "Start here" card while nothing has been passed yet
 //   - a short tour of the exercise screen (offered once, replayable from Settings)
 //   - after a Check: what to do next when it passed, and a nudge towards the available help when you are stuck
@@ -12,25 +12,8 @@ const NewUser = (() => {
     set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* private mode */ } },
   };
 
-  // ---------------------------------------------------------------- the suggested path
+  // ---------------------------------------------------------------- the suggested path (path.js)
   const pass = e => e.status === 'pass';
-  function stops() {
-    const all = state.flat || [], intro = all.filter(e => e.tier === 0), cod = all.filter(e => e.tier !== 0);
-    const sc = Scripts.list(), sx = SExams.list();
-    const firstOf = (list, ok) => list.find(e => !ok(e));
-    return [
-      { key: 'intro', name: 'Introduction', hint: 'tiny exercises, one idea each', done: intro.filter(pass).length, total: intro.length,
-        go: () => selectIntroCategory('all', (firstOf(intro, pass) || intro[0] || {}).id) },
-      { key: 'minimal', name: 'Minimal track', hint: 'the essentials of every topic', done: cod.filter(e => e.tier <= 1 && pass(e)).length, total: cod.filter(e => e.tier <= 1).length,
-        go: () => selectTrack('minimal') },
-      { key: 'intermediate', name: 'Intermediate track', hint: 'exam-style patterns', done: cod.filter(e => e.tier <= 2 && pass(e)).length, total: cod.filter(e => e.tier <= 2).length,
-        go: () => selectTrack('intermediate') },
-      { key: 'scripts', name: 'Scripts', hint: 'whole scripts, step by step', done: sc.filter(e => e.status === 'pass').length, total: sc.length,
-        go: () => { const n = sc.find(e => e.status !== 'pass') || sc[0]; if (n) Scripts.go(n.id, (n.steps.find(s => !n.passed.includes(s.n)) || n.steps[0]).n); } },
-      { key: 'sexams', name: 'Practice exams', hint: 'one script, graded out of 10', done: sx.filter(e => SExams.statusOf(e) === 'pass').length, total: sx.length,
-        go: () => { const n = sx.find(e => SExams.statusOf(e) !== 'pass') || sx[0]; if (n) SExams.go(n.id); } },
-    ];
-  }
   function renderRoadmap() {
     const home = $1('home-body');
     if (!home || !state.flat) return;
@@ -39,14 +22,10 @@ const NewUser = (() => {
       box = document.createElement('div');
       box.id = 'home-roadmap'; box.className = 'home-roadmap';
       home.insertBefore(box, $1('home-grp-exercises'));
-      box.addEventListener('click', ev => { const b = ev.target.closest('[data-stop]'); if (b) stops().find(s => s.key === b.dataset.stop).go(); });
     }
-    const list = stops(), cur = list.findIndex(s => s.done < s.total);
-    box.innerHTML = `<div class="hr-title">Suggested path <span class="hint">— go in this order if you do not know where to start</span></div>
-      <ol>${list.map((s, i) => `<li><button type="button" data-stop="${s.key}" class="${s.total && s.done >= s.total ? 'done' : i === cur ? 'current' : ''}">
-        <span class="hr-n">${s.total && s.done >= s.total ? '✔' : i + 1}</span><span class="hr-name">${esc(s.name)}</span>
-        <span class="hr-count">${s.done}/${s.total}</span><span class="hr-hint">${esc(s.hint)}</span></button></li>`).join('')}</ol>`;
+    ExamPath.render(box);
   }
+  const startPath = () => { const n = ExamPath.next(null); if (n) ExamPath.open(n); };
 
   // ---------------------------------------------------------------- the "Start here" card (nothing passed yet)
   const freshUser = () => !(state.flat || []).some(pass) && !Scripts.list().some(e => e.status === 'pass') && !store.get('startHidden', false);
@@ -63,19 +42,19 @@ const NewUser = (() => {
       box.addEventListener('click', ev => {
         const b = ev.target.closest('[data-act]');
         if (!b) return;
-        if (b.dataset.act === 'go') stops()[0].go();
+        if (b.dataset.act === 'go') startPath();
         else if (b.dataset.act === 'tour') startTour();
         else if (b.dataset.act === 'hide') { store.set('startHidden', true); renderStart(); }
       });
     }
     box.innerHTML = `<h2>Welcome — start here</h2>
       <ol>
-        <li><b>Pick an exercise.</b> The Introduction set is the gentlest: tiny exercises, one idea each.</li>
+        <li><b>Follow the suggested path.</b> It lists, in order, everything the exam needs: tiny warm-ups first, then exercises, scripts, quizzes and practice exams.</li>
         <li><b>Read the task on the left</b>, then write your answer in <code>answer.sh</code> with the terminal or VS Code (they edit the same file).</li>
         <li><b>Press Check</b> (<kbd>Ctrl</kbd> <kbd>Enter</kbd>). If it fails you see what differed and can try your script on the same files.</li>
         <li><b>Stuck?</b> <i>Info</i> explains the commands, the <i>Reference</i> (<kbd>Ctrl</kbd> <kbd>K</kbd>) is the full manual, and <i>Show solution</i> is the last resort.</li>
       </ol>
-      <div class="hs-actions"><button class="hc-btn" type="button" data-act="go">Start with the Introduction →</button>
+      <div class="hs-actions"><button class="hc-btn" type="button" data-act="go">Start the suggested path →</button>
         <button type="button" data-act="tour">Take the 1-minute tour</button><button type="button" class="linklike" data-act="hide">I know my way around — hide this</button></div>`;
   }
 
@@ -175,6 +154,21 @@ const NewUser = (() => {
     const pool = visibleFlat(), i = pool.findIndex(e => e.id === id);
     return pool.slice(i + 1).find(e => !pass(e)) || pool.find(e => e.id !== id && !pass(e)) || null;
   }
+  // finishing something that is on the suggested path: the next open item of the path (null = all done, undefined = not on the path)
+  const KIND_NAME = { warm: 'warm-up', ex: 'exercise', sc: 'script', quiz: 'quiz', exam: 'theory exam', sx: 'script exam' };
+  function onPath(ctx) {
+    if (ctx.kind === 'ex') {
+      if (state.track !== 'path' || state.introCategory) return undefined;
+      const e = state.flat.find(x => x.id === ctx.id);
+      return e && ExamPath.hasEx(e.id) ? ExamPath.next({ kind: e.tier === 0 ? 'warm' : 'ex', id: e.id }) : undefined;
+    }
+    if (ctx.kind === 'script') {
+      const e = Scripts.entry(ctx.id);
+      if (!e || ctx.step < e.steps.length || !ExamPath.data.some(st => (st.sc || []).includes(ctx.id))) return undefined;   // only when the whole script is done
+      return ExamPath.next({ kind: 'sc', id: ctx.id });
+    }
+    return undefined;
+  }
   // `ctx`: { ok, kind: 'ex' | 'script', id, step } — appends to the result box
   const slot = () => $1('nu-slot');
   function clear() { if (slot()) slot().innerHTML = ''; }
@@ -186,7 +180,11 @@ const NewUser = (() => {
     let html = '';
     if (ctx.ok) {
       delete f[key]; setFails(f);
-      if (ctx.kind === 'ex') {
+      const pn = onPath(ctx);
+      if (pn !== undefined) {
+        html = pn ? `<div class="nu-box"><span>Next on your path: <b>${esc(pn.label)}</b> <span class="hint">(${KIND_NAME[pn.kind]})</span></span><button type="button" class="hc-btn" data-nu="path:${esc(pn.kind)}:${esc(pn.id)}">Continue the path →</button></div>`
+          : `<div class="nu-box"><span>You finished the whole suggested path. Nice work!</span><button type="button" class="hc-btn" data-nu="home">Back to home →</button></div>`;
+      } else if (ctx.kind === 'ex') {
         const nx = nextExercise(ctx.id), pool = visibleFlat(), left = pool.filter(e => e.id !== ctx.id && !pass(e)).length;
         html = nx ? `<div class="nu-box"><span>Next: <b>${esc(nx.id)} · ${esc(nx.title)}</b> <span class="hint">(${left} left in this list)</span></span><button type="button" class="hc-btn" data-nu="ex:${esc(nx.id)}">Next exercise →</button></div>`
           : `<div class="nu-box"><span>That was the last open exercise of this list. Nice work!</span><button type="button" class="hc-btn" data-nu="home">Choose what is next →</button></div>`;
@@ -209,7 +207,8 @@ const NewUser = (() => {
     const b = ev.target.closest('[data-nu]');
     if (!b) return;
     const [kind, id, step] = b.dataset.nu.split(':');
-    if (kind === 'ex') { location.hash = `#/ex/${id}`; }
+    if (kind === 'path') ExamPath.open(ExamPath.item(id, step));
+    else if (kind === 'ex') { location.hash = `#/ex/${id}`; }
     else if (kind === 'script') Scripts.go(id, Number(step));
     else if (kind === 'info') $1('info-btn').click();
     else if (kind === 'home') location.hash = '#/home';
