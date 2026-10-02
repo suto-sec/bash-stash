@@ -13,6 +13,7 @@ const Home = (() => {
     { key: 'sexams',  id: 'home-sec-sexams',      part: 'Coding' },
     { key: 'quizzes', id: 'theory-quizzes-title', part: 'Theory' },
     { key: 'exams',   id: 'theory-exams-title',   part: 'Theory' },
+    { key: 'man',     id: 'home-sec-man',         part: 'Man drills' },
   ];
   const DEFAULT_OPEN = ['tracks'];
   const el = id => document.getElementById(id);
@@ -65,7 +66,7 @@ const Home = (() => {
   }
 
   // ---------------------------------------------------------------- what each section knows about progress
-  const intro = () => (state.index || []).filter(t => t.id !== '18' && t.id !== '19').flatMap(t => t.exercises.filter(e => e.tier === 0).map(e => ({ e, t })));
+  const intro = () => (state.index || []).filter(t => t.id !== '18' && t.id !== '19' && t.id !== '20').flatMap(t => t.exercises.filter(e => e.tier === 0).map(e => ({ e, t })));
   const stepOf = e => (e.steps.find(s => !e.passed.includes(s.n)) || e.steps[e.steps.length - 1]).n;
   const DATA = {
     tracks() {
@@ -89,8 +90,14 @@ const Home = (() => {
       return { done: all.filter(e => SExams.statusOf(e) === 'pass').length, total: all.length, next: next && { label: next.title, run: () => SExams.go(next.id) } };
     },
     quizzes() {
-      const all = Theory.list(), qs = all.flatMap(c => c.groups.flatMap(g => g.questions)), next = all.find(c => c.groups.some(g => g.questions.some(q => q.status !== 'pass')));
+      const all = Theory.list().filter(c => !c.ws), qs = all.flatMap(c => c.groups.flatMap(g => g.questions)), next = all.find(c => c.groups.some(g => g.questions.some(q => q.status !== 'pass')));
       return { done: qs.filter(q => q.status === 'pass').length, total: qs.length, unit: 'questions', next: next && { label: next.title, run: () => Theory.go(next.id) } };
+    },
+    man() {
+      const qs = manQuizzes().flatMap(c => c.groups.flatMap(g => g.questions)), tasks = manTasks();
+      const nq = manQuizzes().find(c => c.groups.some(g => g.questions.some(q => q.status !== 'pass'))), nt = tasks.find(e => e.status !== 'pass');
+      const next = nq ? { label: nq.title, run: () => Theory.go(nq.id) } : nt ? { label: `${nt.id} · ${nt.title}`, run: () => selectTrack('man', nt.id) } : null;
+      return { done: qs.filter(q => q.status === 'pass').length + tasks.filter(e => e.status === 'pass').length, total: qs.length + tasks.length, unit: 'questions and tasks', next };
     },
     exams() {
       const all = Exams.list(), next = all.find(e => Exams.statusOf(e) !== 'pass');

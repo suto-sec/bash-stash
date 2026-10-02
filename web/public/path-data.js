@@ -1,7 +1,7 @@
 // The exam path: what to study, in order, for an exam that asks for ONE bash script (written with a terminal, VS Code and `man`)
 // plus theory questions on the T1 slides. Every stage mixes every kind of practice:
 //   warm  = one-idea "Introduction" exercises (tier 0)      ex   = coding exercises (tier 1/2)      sc = script ladders (s01..)
-//   quiz  = theory quizzes (one per slide topic)            exam = theory practice exams            sx = script practice exams
+//   quiz  = theory quizzes (one per slide topic; 14_man_drills is the one with the terminal beside it)            exam = theory practice exams            sx = script practice exams
 // Chosen against the course material: the commands of the cheatsheets, the six proposed scripts, Practica 1
 // (ipLog: grep/cut/sort on auth.log) and June's exercise 1 (deploy_bins: arguments, exit codes, find, mkdir -p, cp, counters).
 // Left out on purpose (see tools/path_check.js for the id check): the whole "complete" tier (3), which is practice beyond the
@@ -41,6 +41,11 @@ const PATH_DATA = [
     warm: ['0926', '0927', '0928', '0929', '0930', '0931', '1034', '1035', '1036'],
     ex: ['0901', '0902', '0903', '0904', '0905', '0906', '0909', '1001', '1002', '1004', '1005', '1006', '1007', '1008', '1010', '1012', '1013', '1015', '1016'],
     quiz: ['09_redirection'], exam: ['easy-05'] },
+  { id: 'man', title: 'Using man', topics: ['shell-help'],
+    why: 'The only help in the exam is the manual: look up an option, a section 5 file format or a builtin, then use it.',
+    warm: [],
+    ex: ['2001', '2002', '2003', '2004', '2005', '2006', '2007', '2008', '2009', '2010', '2011', '2012', '2013', '2014', '2015', '2016'],
+    quiz: ['14_man_drills'], exam: [] },
   { id: 'script', title: 'Script basics: arguments, exit codes & tests', topics: ['scripts'],
     why: 'The skeleton of every exam script: check the arguments, print an error, exit with the right code, test files and directories.',
     warm: ['1339', '1340', '1341', '1442', '1443', '1444'],
