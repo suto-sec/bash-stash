@@ -1,0 +1,3 @@
+Finish the report with `N problems in M scripts` (problem lines, scripts that have at least one). Exit **4** if N is not 0, otherwise 0.
+
+With `-f` as the **first** argument nothing is only reported, it is repaired: a file without a shebang gets `#!/bin/bash` as a **new first line** (an empty file becomes that single line; the rest of the content stays) and a file that is not executable becomes executable for everybody (`chmod a+x`). For each repaired problem print `fixed PATH: no shebang` / `fixed PATH: not executable` and finish with `Fixed N problems in M scripts`; the exit code is then 0. The checks of step 2 apply in both modes.

@@ -1,0 +1,31 @@
+{
+ "id": "s80",
+ "slug": "shebang",
+ "title": "Checking shell scripts",
+ "script": "shebang.sh",
+ "cmds": "find -name -type f, head -n 1, test -x, chmod, shift, exit codes",
+ "level": 5,
+ "tags": [
+  "files",
+  "permissions",
+  "exit codes"
+ ],
+ "steps": [
+  {
+   "n": 1,
+   "title": "Scripts without a first line"
+  },
+  {
+   "n": 2,
+   "title": "The usual checks"
+  },
+  {
+   "n": 3,
+   "title": "Name every problem"
+  },
+  {
+   "n": 4,
+   "title": "Fix them (-f)"
+  }
+ ]
+}

@@ -1,0 +1,1 @@
+Finish with `N files newer than REF` (the reference as it was written, e.g. `4 files newer than ref.stamp`; always the word `files`). When N is 0 print `Nothing is newer than REF` instead and exit **4**; otherwise exit 0. The checks stay.

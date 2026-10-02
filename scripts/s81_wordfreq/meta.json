@@ -1,0 +1,31 @@
+{
+ "id": "s81",
+ "slug": "wordfreq",
+ "title": "The most frequent words",
+ "script": "wordfreq.sh",
+ "cmds": "tr -cs, sort, uniq -c, head, shift, test -f, exit codes",
+ "level": 4,
+ "tags": [
+  "text",
+  "pipes",
+  "exit codes"
+ ],
+ "steps": [
+  {
+   "n": 1,
+   "title": "Count the words"
+  },
+  {
+   "n": 2,
+   "title": "Only the top N"
+  },
+  {
+   "n": 3,
+   "title": "The usual checks"
+  },
+  {
+   "n": 4,
+   "title": "Ignore the short words (-m)"
+  }
+ ]
+}

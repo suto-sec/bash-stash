@@ -1,0 +1,117 @@
+@@script s80 | shebang | Checking shell scripts | shebang.sh
+@@level 5
+@@tags files, permissions, exit codes
+@@cmds find -name -type f, head -n 1, test -x, chmod, shift, exit codes
+@@fixture
+setup() {
+  mkdir -p tools/sub "my tools" empty
+  printf '#!/bin/bash\necho ok\n' > tools/good.sh;      chmod 755 tools/good.sh
+  printf 'echo no shebang\n' > tools/noshe.sh;          chmod 755 tools/noshe.sh
+  printf '#!/bin/sh\necho not exec\n' > tools/noexec.sh; chmod 644 tools/noexec.sh
+  printf 'echo both\n' > tools/both.sh;                 chmod 644 tools/both.sh
+  : > tools/empty.sh;                                    chmod 755 tools/empty.sh
+  printf '# a comment first\n#!/bin/bash\n' > tools/late.sh; chmod 755 tools/late.sh
+  printf '#!/usr/bin/env bash\necho two\n' > "tools/two words.sh"; chmod 644 "tools/two words.sh"
+  printf 'echo deep\n' > tools/sub/deep.sh;             chmod 700 tools/sub/deep.sh
+  printf 'echo hid\n' > tools/.hid.sh;                  chmod 755 tools/.hid.sh
+  printf 'echo text\n' > tools/readme.txt;              chmod 644 tools/readme.txt
+  mkdir -p tools/dir.sh
+  printf '#!/bin/bash\n' > "my tools/ok.sh"; chmod 755 "my tools/ok.sh"
+  printf 'x\n' > "my tools/bad.sh"; chmod 644 "my tools/bad.sh"
+  echo x > notadir.txt
+}
+usage_ok() { [[ $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* || $ERR == *shebang.sh* ]]; }
+@@step 1 | Scripts without a first line
+@@readme
+Write `shebang.sh DIR`. It prints the path (as `find` shows it) of every **regular file** below `DIR` (any depth) whose name ends in `.sh` and whose **first line does not start with `#!`**. An empty file has no first line, so it is listed. The order does not matter; a directory called `dir.sh` is not a file.
+@@check
+SORT_OUTPUT=1
+ARGS=('tools' '"my tools"' 'empty')
+COMPARE="stdout exit"
+@@solution
+#!/bin/bash
+while IFS= read -r -d '' f; do
+  head -n 1 "$f" | grep -q '^#!' || echo "$f"
+done < <(find "$1" -type f -name '*.sh' -print0)
+exit 0
+@@step 2 | The usual checks
+@@readme
+`DIR` becomes optional (default: the current directory). Checks: more than one argument → an error message **and the correct usage** (e.g. `Usage: shebang.sh [dir]`), exit **1**; `DIR` does not exist → an error with its name, exit **2**; not a directory → an error with its name, exit **3**.
+@@check
+SORT_OUTPUT=1
+ARGS=('tools' '"my tools"' 'empty' '' 'tools empty' 'nothing' 'notadir.txt')
+COMPARE="stdout exit errmsg"
+extra_check() {
+  [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }
+  [[ $REF_CODE == [23] ]] && mentions "$(eval "set -- $CASE"; echo "$1")"
+}
+@@solution
+#!/bin/bash
+if (( $# > 1 )); then echo "Error: too many arguments" >&2; echo "Usage: $0 [dir]" >&2; exit 1; fi
+dir=${1:-.}
+[[ -e $dir ]] || { echo "Error: $dir does not exist" >&2; exit 2; }
+[[ -d $dir ]] || { echo "Error: $dir is not a directory" >&2; exit 3; }
+while IFS= read -r -d '' f; do
+  head -n 1 "$f" | grep -q '^#!' || echo "$f"
+done < <(find "$dir" -type f -name '*.sh' -print0)
+exit 0
+@@step 3 | Name every problem
+@@readme
+Check two things per `.sh` file and print one line for each problem: `PATH: no shebang` and `PATH: not executable` (nobody has the execute permission for *you*: use `test -x`). A file with both problems gives both lines (the first one first). A file without problems prints nothing.
+@@check
+SORT_OUTPUT=1
+ARGS=('tools' '"my tools"' 'empty' '' 'nothing' 'notadir.txt' 'tools/sub')
+COMPARE="stdout exit errmsg"
+extra_check() { [[ $REF_CODE == [23] ]] && mentions "$(eval "set -- $CASE"; echo "$1")"; }
+@@solution
+#!/bin/bash
+if (( $# > 1 )); then echo "Error: too many arguments" >&2; echo "Usage: $0 [dir]" >&2; exit 1; fi
+dir=${1:-.}
+[[ -e $dir ]] || { echo "Error: $dir does not exist" >&2; exit 2; }
+[[ -d $dir ]] || { echo "Error: $dir is not a directory" >&2; exit 3; }
+while IFS= read -r -d '' f; do
+  head -n 1 "$f" | grep -q '^#!' || echo "$f: no shebang"
+  [[ -x $f ]] || echo "$f: not executable"
+done < <(find "$dir" -type f -name '*.sh' -print0)
+exit 0
+@@step 4 | Fix them (-f)
+@@readme
+Finish the report with `N problems in M scripts` (problem lines, scripts that have at least one). Exit **4** if N is not 0, otherwise 0.
+
+With `-f` as the **first** argument nothing is only reported, it is repaired: a file without a shebang gets `#!/bin/bash` as a **new first line** (an empty file becomes that single line; the rest of the content stays) and a file that is not executable becomes executable for everybody (`chmod a+x`). For each repaired problem print `fixed PATH: no shebang` / `fixed PATH: not executable` and finish with `Fixed N problems in M scripts`; the exit code is then 0. The checks of step 2 apply in both modes.
+@@check
+SORT_OUTPUT=1
+ARGS=('tools' '-f tools' '-f "my tools"' '"my tools"' 'empty' '-f empty' '' '-f' '-f nothing' '-f notadir.txt' 'nothing' 'tools empty' '-f tools empty')
+COMPARE="stdout exit errmsg files"
+extra_check() {
+  [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }
+  [[ $REF_CODE == [23] ]] && mentions "$(eval "set -- $CASE"; [[ $1 == -f ]] && shift; echo "$1")"
+}
+@@solution
+#!/bin/bash
+fix=
+if [[ $1 == -f ]]; then fix=1; shift; fi
+if (( $# > 1 )); then echo "Error: too many arguments" >&2; echo "Usage: $0 [-f] [dir]" >&2; exit 1; fi
+dir=${1:-.}
+[[ -e $dir ]] || { echo "Error: $dir does not exist" >&2; exit 2; }
+[[ -d $dir ]] || { echo "Error: $dir is not a directory" >&2; exit 3; }
+problems=0 scripts=0
+while IFS= read -r -d '' f; do
+  bad=0
+  if ! head -n 1 "$f" | grep -q '^#!'; then
+    bad=$((bad + 1))
+    if [[ -n $fix ]]; then
+      { echo '#!/bin/bash'; cat "$f"; } > "$f.tmp.$$" && cat "$f.tmp.$$" > "$f" && rm -f "$f.tmp.$$"
+      echo "fixed $f: no shebang"
+    else echo "$f: no shebang"; fi
+  fi
+  if [[ ! -x $f ]]; then
+    bad=$((bad + 1))
+    if [[ -n $fix ]]; then chmod a+x "$f"; echo "fixed $f: not executable"; else echo "$f: not executable"; fi
+  fi
+  problems=$((problems + bad))
+  (( bad > 0 )) && scripts=$((scripts + 1))
+done < <(find "$dir" -type f -name '*.sh' -print0)
+if [[ -n $fix ]]; then echo "Fixed $problems problems in $scripts scripts"; exit 0; fi
+echo "$problems problems in $scripts scripts"
+(( problems == 0 )) || exit 4
