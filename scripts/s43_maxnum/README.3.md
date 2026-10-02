@@ -1,1 +1,1 @@
-Print two lines: `max: X` and `min: Y`.
+Print two lines instead of the single number, in this order: `max: X` (the biggest) and `min: Y` (the smallest). With a single number both are that number: `maxnum.sh 5` prints `max: 5` and `min: 5`. The checks of step 2 stay.

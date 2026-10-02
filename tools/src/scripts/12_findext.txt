@@ -52,7 +52,7 @@ dir=${2:-.}
 find "$dir" -type f -name "*.$1"
 @@step 4 | Count them
 @@readme
-After the paths print `Found N files`.
+After the paths print the summary line `Found N files`, where N is how many paths were printed (always `files`, also for 0 or 1).
 @@check
 SORT_OUTPUT=1
 ARGS=('txt' 'c proj' 'zzz' 'txt "my dir"' '' 'txt nothing')
