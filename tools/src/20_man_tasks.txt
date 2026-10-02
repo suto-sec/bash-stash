@@ -1,0 +1,387 @@
+@@topic 20_man_tasks | Exam tasks with the manual
+@@ex 2001 find_exec_names | The deploy_bins search
+@@level 3
+@@cmds find
+@@readme
+The folder `app` has files and folders at several levels.
+
+Print the path of every **regular file** below `app` that has **at least one execute permission bit** (owner, group or others) **and** whose name ends in `.sh` or `.bin`. One path per line, in alphabetical order.
+
+Careful with: files with the right name but no execute permission, executable files with another extension, and a folder whose name ends in `.sh`.
+
+This is the search at the heart of the June exam script. The exact meaning of `-perm /mode`, `-perm -mode` and `-perm mode` is in the TESTS part of `man find`; read it once, you will need it.
+@@check
+SEEDS=4
+setup() {
+  mkdir -p app/bin app/lib app/sub/deep
+  local f
+  for f in $(words 3); do mkf "app/$f.sh" '#!/bin/bash'; chmod "$(pick 755 750 700 711)" "app/$f.sh"; done
+  for f in $(words 2); do mkf "app/bin/$f.bin" x; chmod "$(pick 755 710 701)" "app/bin/$f.bin"; done
+  mkf "app/sub/$(word).sh" x; chmod 644 app/sub/*.sh
+  mkf "app/sub/deep/$(word).py" x; chmod 755 app/sub/deep/*.py
+  mkf "app/lib/$(word).bin" x; chmod 640 app/lib/*.bin
+  mkdir "app/lib/$(word).sh"
+}
+extra_check() { must_use find; }
+@@solution
+#!/bin/bash
+find app -type f -perm /111 \( -name '*.sh' -o -name '*.bin' \) | sort
+
+@@ex 2002 find_perm_all | Readable by everybody else
+@@level 3
+@@cmds find
+@@readme
+The folder `publico` holds regular files (some in a subfolder) with all kinds of permissions.
+
+Print the path of every file under `publico` that **others can read** (the `r` of the last group of permissions is set), whatever the other bits are. One per line, in alphabetical order.
+
+Example: `rw-r--r--`, `rw-rw-r--` and `r--r--r--` match; `rw-r-----` and `rwx------` do not.
+
+`find -perm` has three forms (`mode`, `-mode`, `/mode`) and they do very different things: choose the right one in `man find`.
+@@check
+SEEDS=4
+setup() {
+  mkdir -p publico/sub
+  local f
+  for f in $(words 6); do mkf "publico/$f" x; chmod "$(pick 644 640 600 664 604 444 400)" "publico/$f"; done
+  for f in $(words 2); do mkf "publico/sub/$f" x; chmod "$(pick 644 640 604 700)" "publico/sub/$f"; done
+  mkf publico/seguro x; chmod 640 publico/seguro
+}
+extra_check() { must_use find; }
+@@solution
+#!/bin/bash
+find publico -type f -perm -o=r | sort
+
+@@ex 2003 find_size_mtime | Big and old
+@@level 3
+@@cmds find
+@@readme
+The folder `logs` (with a subfolder `viejos`) has files of different sizes and ages.
+
+Print the path of every regular file that is **bigger than 2 KiB** and was **last modified more than 7 days ago**. One per line, in alphabetical order.
+
+Look at what `-size` and `-mtime` mean exactly in `man find`: how `+` and `-` work, the units (`k`, `M`, `c`) and how the days are counted.
+@@check
+SEEDS=4
+setup() {
+  mkdir -p logs/viejos
+  local f
+  for f in $(words 6); do bigfile "logs/$f.log" "$(pick 500 800 5000 9000)"; touch -d "$(pick 2 3 20 40) days ago" "logs/$f.log"; done
+  local g=$(word) h=$(word)
+  bigfile "logs/viejos/$g.log" 6000; touch -d "45 days ago" "logs/viejos/$g.log"
+  bigfile "logs/viejos/$h.log" 700; touch -d "60 days ago" "logs/viejos/$h.log"
+}
+extra_check() { must_use find; }
+@@solution
+#!/bin/bash
+find logs -type f -size +2k -mtime +7 | sort
+
+@@ex 2004 find_newer | Newer than the reference
+@@level 3
+@@cmds find
+@@readme
+The folder `informes` holds regular files (some inside subfolders) and next to it there is a file called `referencia`.
+
+Print the path of every regular file under `informes` that was modified **more recently than `referencia`**, one per line, in alphabetical order.
+
+Example: if `informes/a` is older than `referencia` and `informes/sub/b` is newer, the output is `informes/sub/b`.
+
+`find` can compare a file's modification time with another file's: look for it in `man find`.
+@@check
+SEEDS=3
+setup() {
+  mkdir -p informes/sub informes/otros
+  touch -d '2024-03-10 12:00' referencia
+  local f d
+  for f in $(words 6); do
+    d=$(pick '2024-02-0' '2024-04-0')$(randr 1 9)
+    touch -d "$d 10:00" "informes/$f.txt"
+  done
+  for f in $(words 3); do touch -d "$(pick '2024-01-1' '2024-05-1')$(randr 0 9) 09:00" "informes/sub/$f.log"; done
+}
+extra_check() { must_use find; }
+@@solution
+#!/bin/bash
+find informes -type f -newer referencia | sort
+
+@@ex 2005 find_exec_plus | Lines in all the .txt files
+@@level 3
+@@cmds find, cat, wc
+@@readme
+The folder `docs` contains `.txt` files at several levels, plus files with other extensions.
+
+Print the **total number of lines** of all the `.txt` files under `docs` (only the number).
+
+Use a single `find` that runs `cat` for the selected files, and count with `wc`. In `man find`, read the two forms of `-exec`: `{} \;` and `{} +`; which one is better here?
+@@check
+SEEDS=3
+setup() {
+  mkdir -p docs/a/b docs/c
+  local f
+  for f in $(words 3); do randtext "$(randr 2 5)" > "docs/$f.txt"; done
+  for f in $(words 2); do randtext "$(randr 2 5)" > "docs/a/$f.txt"; done
+  randtext 3 > "docs/a/b/$(word).txt"
+  randtext 4 > "docs/c/$(word).md"
+  randtext 2 > "docs/c/$(word).txt"
+}
+extra_check() { must_use find wc; }
+@@solution
+#!/bin/bash
+find docs -type f -name '*.txt' -exec cat {} + | wc -l
+
+@@ex 2006 grep_count_files | Errors per log
+@@level 2
+@@cmds grep
+@@readme
+The folder `logs` has several `.log` files. For each of them print its name (as `logs/<name>.log`), a colon, and the **number of lines that contain `ERROR`**, in the order of the `logs/*.log` glob.
+
+Example: `logs/a.log:3`, then `logs/b.log:0`.
+
+Do not count with `wc`: `grep` has an option that counts, and with several files it already writes the file names. Check it in `man grep`.
+@@check
+SEEDS=3
+setup() {
+  mkdir logs
+  local f i
+  for f in $(words 4); do
+    for i in $(seq "$(randr 3 8)"); do if (( $(rand 3) == 0 )); then echo "$(word) ERROR $(word)"; else echo "$(word) $(pick INFO WARN) $(word)"; fi; done > "logs/$f.log"
+  done
+  echo "$(word) INFO $(word)" > "logs/$(word).log"
+}
+extra_check() { must_use grep; must_not_use wc; }
+@@solution
+#!/bin/bash
+grep -c ERROR logs/*.log
+
+@@ex 2007 grep_only_ips | Pull the IPs out
+@@level 3
+@@cmds grep
+@@readme
+`access.log` has one request per line. Print **every IPv4 address** that appears in the file, one per line, **in the order they appear** (a line may contain two of them).
+
+Example: from `10.1.2.3 - - [...] "GET /x HTTP/1.1" 200 512 via 192.168.0.9` the output is `10.1.2.3` and `192.168.0.9`.
+
+You need `grep` to print only the matching part of the line (not the whole line) with an extended regular expression: see `-o` and `-E` in `man grep`. Beware of other numbers with dots in the line (like `HTTP/1.1`).
+@@check
+SEEDS=3
+setup() {
+  local i
+  for i in $(seq "$(randr 6 10)"); do
+    printf '%s - - [%s/Mar/2024:10:%s:%s] "GET /%s HTTP/1.1" 200 %s' "$(ip_rand)" "$(randr 10 28)" "$(randr 10 59)" "$(randr 10 59)" "$(word)" "$(randr 100 9000)"
+    if (( $(rand 3) == 0 )); then printf ' via %s' "$(ip_rand)"; fi
+    echo
+  done > access.log
+}
+extra_check() { must_use grep; }
+@@solution
+#!/bin/bash
+grep -oE '[0-9]{1,3}(\.[0-9]{1,3}){3}' access.log
+
+@@ex 2008 grep_word_line | A whole word, any case
+@@level 2
+@@cmds grep
+@@readme
+`usuarios.txt` has one name per line. Print the lines that contain the **word `ana`** (in upper or lower case, in any position), each one **preceded by its line number and a colon**, as `grep` writes it. Names like `mariana` or `anabel` do **not** count: it must be the whole word.
+
+Example: for `Ana Ruiz` on line 3 the output includes `3:Ana Ruiz`.
+
+Three options of `grep` do this: ignoring case, whole words and line numbers. Find them in `man grep`.
+@@check
+SEEDS=3
+setup() {
+  local i l
+  for i in $(seq 10); do l=$(pick "ana garcia" "Ana Ruiz" "ANA PEREZ" "mariana lopez" "anabel perez" "luis soto" "eva diaz" "joana ruiz" "pedro ana soto"); echo "$l"; done > usuarios.txt
+  sed -i '3s/.*/Ana Ruiz/;7s/.*/anabel diaz/' usuarios.txt
+}
+extra_check() { must_use grep; }
+@@solution
+#!/bin/bash
+grep -inw ana usuarios.txt
+
+@@ex 2009 sort_uniq_top | The three busiest IPs
+@@level 3
+@@cmds sort, uniq, head
+@@readme
+`ips.txt` has one IP address per line; some appear many times. Print the **three most frequent** ones, each preceded by the number of times it appears (the way `uniq -c` writes it), most frequent first. All counts are different.
+
+Example: `      5 10.0.0.1` on the first line.
+
+It is the classic pipeline of the log-analysis practical: `sort`, `uniq -c`, then another `sort` (which option makes it numeric and descending?) and `head`. Check `man uniq` and `man sort`.
+@@check
+SEEDS=3
+setup() {
+  local a=($(ip_rand) $(ip_rand) $(ip_rand) $(ip_rand) $(ip_rand)) r i
+  for r in 1 2 3 4 5; do for i in 0 1 2 3 4; do (( r <= 5 - i )) && echo "${a[i]}"; done; done > ips.txt
+}
+extra_check() { must_use sort uniq; }
+@@solution
+#!/bin/bash
+sort ips.txt | uniq -c | sort -rn | head -n 3
+
+@@ex 2010 sort_field_uid | Users by UID
+@@level 3
+@@cmds sort, cut
+@@readme
+`cuentas.txt` has lines like the ones in `/etc/passwd`: fields separated by `:`, where the 3rd field is the numeric UID.
+
+Print only the **user names** (1st field), ordered by **UID from the lowest to the highest**.
+
+Example: for `luis:x:1500:...` and `ana:x:1001:...` the output is `ana`, then `luis`.
+
+Sorting by a field with another separator, and numerically, is all in `man sort` (`-t`, `-k`, `-n`).
+@@check
+SEEDS=3
+setup() { local i n=$(randr 5 9); for i in $(seq "$n"); do echo "$(word)$i:x:$(( 9 + (n - i) * (n - i) * 37 + $(rand 20) )):$(randr 100 3000):$(word):/home/x:/bin/bash"; done > cuentas.txt; }
+extra_check() { must_use sort; }
+@@solution
+#!/bin/bash
+sort -t: -k3 -n cuentas.txt | cut -d: -f1
+
+@@ex 2011 cut_from_field | From a field to the end
+@@level 2
+@@cmds cut
+@@readme
+`personas.csv` has comma-separated records. Every record has the same number of fields, but that number changes from file to file (between 5 and 8).
+
+Print every record **from its 3rd field to its last one**, still separated by commas.
+
+Example: `ana,22,madrid,ingles,rojo` becomes `madrid,ingles,rojo`.
+
+The list of fields of `cut -f` accepts ranges that are open on one end: see `man cut`.
+@@check
+SEEDS=4
+setup() { local n=$(randr 5 8) i j line; for i in $(seq 5); do line=$(word); for j in $(seq 2 "$n"); do line+=",$(word)"; done; echo "$line"; done > personas.csv; }
+extra_check() { must_use cut; }
+@@solution
+#!/bin/bash
+cut -d, -f3- personas.csv
+
+@@ex 2012 head_tail_range | Lines 5 to 9
+@@level 2
+@@cmds head, tail
+@@readme
+`registro.txt` has between 12 and 20 lines. Print **only its lines 5 to 9**, both included.
+
+Example: for the lines `l1 l2 ... l12` the output is `l5 l6 l7 l8 l9`, one per line.
+
+Two commands in a pipe do it (look at the `-n` forms of `head` and `tail`; `+N` and `-N` mean different things).
+@@check
+SEEDS=3
+setup() { local i; for i in $(seq "$(randr 12 20)"); do echo "$i $(word)"; done > registro.txt; }
+extra_check() { must_use head tail; }
+@@solution
+#!/bin/bash
+head -n 9 registro.txt | tail -n 5
+
+@@ex 2013 tar_roundtrip | Pack it and restore it elsewhere
+@@level 3
+@@cmds tar, mkdir
+@@readme
+The folder `datos` has files and subfolders.
+
+1. Create the compressed archive `copia.tgz` that contains the folder `datos`, so that the names inside start with `datos/`.
+2. Create the folder `restaurado` and extract the archive **into it** (without leaving the current folder), so that `restaurado/datos/...` exists.
+
+Do it with `tar` only (not `cp`). The options for creating, listing, extracting, compressing with gzip and for changing the target folder are all in `man tar`.
+@@check
+SEEDS=2
+COMPARE="files exit"
+setup() {
+  mkdir -p datos/sub datos/otro
+  local f
+  for f in $(words 3); do randtext 2 > "datos/$f.txt"; done
+  for f in $(words 2); do randtext 3 > "datos/sub/$f.log"; done
+  randtext 1 > "datos/otro/$(word).md"
+}
+extra_check() { must_use tar; must_not_use cp cd; }
+@@solution
+#!/bin/bash
+tar -czf copia.tgz datos
+mkdir restaurado
+tar -xzf copia.tgz -C restaurado
+
+@@ex 2014 cp_keep_attrs | A copy that keeps everything
+@@level 3
+@@cmds cp
+@@readme
+The folder `origen` has files and subfolders with different permissions and dates.
+
+Create `copia`, a copy of `origen` (all of it, recursively) in which every file and folder keeps **the same permissions and modification times** as the original.
+
+One `cp` command does it. The options for recursion and for preserving attributes are in `man cp`.
+@@check
+SEEDS=2
+COMPARE="files mtime exit"
+setup() {
+  mkdir -p origen/sub origen/vacio
+  local f i=0
+  for f in $(words 4); do mkf "origen/$f.txt" "$f"; chmod "$(pick 644 600 640 755)" "origen/$f.txt"; touch -d "2024-0$(( i % 5 + 1 ))-1$i 10:00" "origen/$f.txt"; i=$(( i + 1 )); done
+  mkf "origen/sub/$(word).sh" x; chmod 750 origen/sub/*.sh; touch -d "2023-12-24 08:30" origen/sub/*.sh
+  touch -d "2022-05-05 05:05" origen/sub origen/vacio
+}
+extra_check() { must_use cp; }
+@@solution
+#!/bin/bash
+cp -rp origen copia
+
+@@ex 2015 find_chmod_scripts | Make the scripts executable
+@@level 3
+@@cmds find, chmod
+@@readme
+The folder `herramientas` has files and subfolders. Give **owner and group** execute permission to every `.sh` file in it (any level) **without changing any other permission bit**, and without touching files that are not `.sh`.
+
+Example: `rw-r--r--` becomes `rwxr-xr--`, and `rw-------` becomes `rwx--x---`.
+
+One `find` with `-exec chmod` does it. The symbolic modes (`ug+x` and the other forms) are in `man chmod`.
+@@check
+SEEDS=3
+COMPARE="files exit"
+setup() {
+  mkdir -p herramientas/sub
+  local f
+  for f in $(words 3); do mkf "herramientas/$f.sh" x; chmod "$(pick 644 600 640 664 444)" "herramientas/$f.sh"; done
+  for f in $(words 2); do mkf "herramientas/sub/$f.sh" x; chmod "$(pick 644 600 640)" "herramientas/sub/$f.sh"; done
+  mkf "herramientas/$(word).txt" x; chmod 644 herramientas/*.txt
+  mkf "herramientas/sub/$(word).py" x; chmod 600 herramientas/sub/*.py
+}
+extra_check() { must_use find chmod; }
+@@solution
+#!/bin/bash
+find herramientas -type f -name '*.sh' -exec chmod ug+x {} +
+
+@@ex 2016 test_newer_script | nuevo.sh: which file is newer
+@@level 4
+@@cmds test, if, exit codes
+@@readme
+Write a script `nuevo.sh` that takes **two file names** and prints the name of the one that was **modified more recently**.
+
+- If it does not receive exactly two arguments: print on standard error a message with the correct use and exit with code `1`.
+- If one of the files does not exist: print on standard error a message that names it and exit with code `2`.
+- Otherwise print the name of the newer file and exit with code `0`.
+
+Example: `./nuevo.sh a b` prints `b` if `b` is newer than `a`.
+
+You do not need `ls` or `stat`: the `test` / `[ ]` command compares the age of two files. Find the operator in `man test`.
+@@check
+SEEDS=3
+SCRIPT_NAME=nuevo.sh
+COMPARE="stdout errmsg exit"
+ARGS=( 'a b' 'b a' 'a nofile' 'nofile a' '' 'a' 'a b c' )
+setup() {
+  mkf a "a"; mkf b "b"
+  if (( $(rand 2) == 0 )); then touch -d '2024-01-01' a; touch -d '2024-06-01' b; else touch -d '2024-06-01' a; touch -d '2024-01-01' b; fi
+}
+extra_check() { must_use -nt; }
+@@solution
+#!/bin/bash
+if [ $# -ne 2 ]; then
+  echo "Use: $0 FILE1 FILE2" >&2
+  exit 1
+fi
+for f in "$1" "$2"; do
+  if [ ! -e "$f" ]; then
+    echo "$0: $f does not exist" >&2
+    exit 2
+  fi
+done
+if [ "$1" -nt "$2" ]; then echo "$1"; else echo "$2"; fi

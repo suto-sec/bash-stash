@@ -782,3 +782,22 @@
 - [1909 · What does it print?](19_theory_quizzes/1909_quiz_trace/README.md)
 - [1910 · Globs vs regular expressions](19_theory_quizzes/1910_quiz_patterns/README.md)
 
+## 20_man_tasks
+
+- [2001 · The deploy_bins search](20_man_tasks/2001_find_exec_names/README.md)
+- [2002 · Readable by everybody else](20_man_tasks/2002_find_perm_all/README.md)
+- [2003 · Big and old](20_man_tasks/2003_find_size_mtime/README.md)
+- [2004 · Newer than the reference](20_man_tasks/2004_find_newer/README.md)
+- [2005 · Lines in all the .txt files](20_man_tasks/2005_find_exec_plus/README.md)
+- [2006 · Errors per log](20_man_tasks/2006_grep_count_files/README.md)
+- [2007 · Pull the IPs out](20_man_tasks/2007_grep_only_ips/README.md)
+- [2008 · A whole word, any case](20_man_tasks/2008_grep_word_line/README.md)
+- [2009 · The three busiest IPs](20_man_tasks/2009_sort_uniq_top/README.md)
+- [2010 · Users by UID](20_man_tasks/2010_sort_field_uid/README.md)
+- [2011 · From a field to the end](20_man_tasks/2011_cut_from_field/README.md)
+- [2012 · Lines 5 to 9](20_man_tasks/2012_head_tail_range/README.md)
+- [2013 · Pack it and restore it elsewhere](20_man_tasks/2013_tar_roundtrip/README.md)
+- [2014 · A copy that keeps everything](20_man_tasks/2014_cp_keep_attrs/README.md)
+- [2015 · Make the scripts executable](20_man_tasks/2015_find_chmod_scripts/README.md)
+- [2016 · nuevo.sh: which file is newer](20_man_tasks/2016_test_newer_script/README.md)
+
