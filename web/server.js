@@ -675,6 +675,13 @@ async function api(req, res, url) {
       scEnsure(m);
       return streamCheck(res, [`${m.id}.${step}`]);
     }
+    if (parts[3] === 'markall' && req.method === 'POST') {    // full-instructions mode: the whole script passed (its last step did), so every step counts
+      const have = scPassed(m.id), last = m.steps[m.steps.length - 1].n;
+      if (!have.includes(last)) return send(res, 409, { error: 'the last step has not passed' });
+      fs.mkdirSync(SC_PROGRESS, { recursive: true });
+      fs.appendFileSync(path.join(SC_PROGRESS, m.id + '.steps'), m.steps.map(st => st.n).filter(n => !have.includes(n)).map(n => n + '\n').join(''));
+      return send(res, 200, { ok: true });
+    }
     if (parts[3] === 'solution' && req.method === 'POST') {
       const content = m.steps.some(st => st.n === step) ? scSolution(m, step) : null;
       return content == null ? send(res, 404, { error: 'no solution' }) : send(res, 200, { file: `solutions/scripts/${path.basename(m.dir)}/${step}.sh`, content });
