@@ -1,0 +1,31 @@
+{
+ "id": "s68",
+ "slug": "nomanpage",
+ "title": "Commands without a manual page",
+ "script": "nomanpage.sh",
+ "cmds": "ls, test -e -d -f, for, case, shift, exit codes",
+ "level": 3,
+ "tags": [
+  "files",
+  "exit codes",
+  "tests"
+ ],
+ "steps": [
+  {
+   "n": 1,
+   "title": "List the commands without a page"
+  },
+  {
+   "n": 2,
+   "title": "The usual checks"
+  },
+  {
+   "n": 3,
+   "title": "Count them"
+  },
+  {
+   "n": 4,
+   "title": "Only the number"
+  }
+ ]
+}

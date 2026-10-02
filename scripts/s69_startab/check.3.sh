@@ -1,0 +1,16 @@
+# checker spec for s69 step 3 (see lib/engine.sh)
+SCRIPT_NAME=startab.sh
+setup() {
+  mkdir -p tree/arch tree/Bdir tree/docs tree/bin~ "my dir" empty
+  touch tree/alpha.txt tree/beta tree/"b~backup" tree/"a~" tree/notes tree/arch/b1.sh tree/arch/c.txt tree/arch/"a copy" tree/Bdir/x tree/docs/"a b.txt" tree/docs/Alpha tree/.a-hidden tree/bravo~2 tree/bin~/ok
+  touch "my dir/apple" "my dir/pear" "my dir/b-side~"
+  echo x > notadir.txt
+}
+usage_ok() { [[ $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* || $ERR == *startab.sh* ]]; }
+SORT_OUTPUT=1
+ARGS=('tree' '"my dir"' 'empty' '' 'tree empty' 'nothing' 'notadir.txt')
+COMPARE="stdout exit errmsg"
+extra_check() {
+  [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }
+  [[ $REF_CODE == [23] ]] && mentions "$(eval "set -- $CASE"; echo "$1")"
+}

@@ -1,0 +1,73 @@
+@@script s69 | startab | Names starting with a or b | startab.sh
+@@level 3
+@@tags find, exit codes, tests
+@@cmds find -name -mindepth, ! -name, test, wc -l, exit codes
+@@fixture
+setup() {
+  mkdir -p tree/arch tree/Bdir tree/docs tree/bin~ "my dir" empty
+  touch tree/alpha.txt tree/beta tree/"b~backup" tree/"a~" tree/notes tree/arch/b1.sh tree/arch/c.txt tree/arch/"a copy" tree/Bdir/x tree/docs/"a b.txt" tree/docs/Alpha tree/.a-hidden tree/bravo~2 tree/bin~/ok
+  touch "my dir/apple" "my dir/pear" "my dir/b-side~"
+  echo x > notadir.txt
+}
+usage_ok() { [[ $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* || $ERR == *startab.sh* ]]; }
+@@step 1 | Entries starting with a or b
+@@readme
+Write `startab.sh DIR`. It prints the path (as `find` shows it) of every **file and directory below `DIR`**, at any depth, whose **name** starts with a lower-case `a` or `b` (`DIR` itself is not listed). The order does not matter. `Alpha` and `.a-hidden` do not start with `a`/`b`.
+@@check
+SORT_OUTPUT=1
+ARGS=('tree' '"my dir"' 'empty')
+COMPARE="stdout exit"
+@@solution
+#!/bin/bash
+find "$1" -mindepth 1 -name '[ab]*'
+@@step 2 | Without the ~ ones
+@@readme
+Leave out every entry whose name **contains the character `~`** (anywhere in the name: `b~backup`, `bravo~2`, `bin~`...). The files *inside* a directory whose name contains `~` are still listed if their own names qualify.
+@@check
+SORT_OUTPUT=1
+ARGS=('tree' '"my dir"' 'empty')
+COMPARE="stdout exit"
+@@solution
+#!/bin/bash
+find "$1" -mindepth 1 -name '[ab]*' ! -name '*~*'
+@@step 3 | Optional directory and checks
+@@readme
+`DIR` is now optional (default: the current directory). Checks: more than one argument → an error message **and the correct usage** (e.g. `Usage: startab.sh [dir]`) and exit **1**; `DIR` does not exist → an error with its name, exit **2**; not a directory → an error with its name, exit **3**.
+@@check
+SORT_OUTPUT=1
+ARGS=('tree' '"my dir"' 'empty' '' 'tree empty' 'nothing' 'notadir.txt')
+COMPARE="stdout exit errmsg"
+extra_check() {
+  [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }
+  [[ $REF_CODE == [23] ]] && mentions "$(eval "set -- $CASE"; echo "$1")"
+}
+@@solution
+#!/bin/bash
+if (( $# > 1 )); then echo "Error: too many arguments" >&2; echo "Usage: $0 [dir]" >&2; exit 1; fi
+dir=${1:-.}
+[[ -e $dir ]] || { echo "Error: $dir does not exist" >&2; exit 2; }
+[[ -d $dir ]] || { echo "Error: $dir is not a directory" >&2; exit 3; }
+find "$dir" -mindepth 1 -name '[ab]*' ! -name '*~*'
+@@step 4 | Count them
+@@readme
+Finish with the line `Found N entries` (N = how many paths were printed; always the word `entries`). When N is 0 the script still prints `Found 0 entries` but exits with code **4**; otherwise it exits 0. The checks of step 3 stay.
+@@check
+SORT_OUTPUT=1
+ARGS=('tree' '"my dir"' 'empty' '' 'tree empty' 'nothing' 'notadir.txt' 'tree/arch')
+COMPARE="stdout exit errmsg"
+extra_check() {
+  [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }
+  [[ $REF_CODE == [23] ]] && mentions "$(eval "set -- $CASE"; echo "$1")"
+}
+@@solution
+#!/bin/bash
+if (( $# > 1 )); then echo "Error: too many arguments" >&2; echo "Usage: $0 [dir]" >&2; exit 1; fi
+dir=${1:-.}
+[[ -e $dir ]] || { echo "Error: $dir does not exist" >&2; exit 2; }
+[[ -d $dir ]] || { echo "Error: $dir is not a directory" >&2; exit 3; }
+n=0
+while IFS= read -r p; do
+  echo "$p"; n=$((n + 1))
+done < <(find "$dir" -mindepth 1 -name '[ab]*' ! -name '*~*')
+echo "Found $n entries"
+(( n > 0 )) || exit 4

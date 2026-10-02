@@ -1,0 +1,1 @@
+With `-c` as the **first** argument print only the number N (nothing else), e.g. `nomanpage.sh -c bin man/man1` prints `4`. The other arguments and all the checks are the same as without `-c` (with `-c`, "two arguments" means two besides the `-c`).

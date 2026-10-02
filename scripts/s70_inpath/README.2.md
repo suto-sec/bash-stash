@@ -1,0 +1,1 @@
+Print the **full path** (`DIR/NAME`) instead of the directory, and only when that file is **executable** by you (`test -x`). A `NAME` that is not executable in one directory is skipped there but may still be found in another.

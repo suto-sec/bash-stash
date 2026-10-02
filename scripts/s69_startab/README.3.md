@@ -1,0 +1,1 @@
+`DIR` is now optional (default: the current directory). Checks: more than one argument → an error message **and the correct usage** (e.g. `Usage: startab.sh [dir]`) and exit **1**; `DIR` does not exist → an error with its name, exit **2**; not a directory → an error with its name, exit **3**.

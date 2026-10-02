@@ -1,0 +1,1 @@
+Leave out every entry whose name **contains the character `~`** (anywhere in the name: `b~backup`, `bravo~2`, `bin~`...). The files *inside* a directory whose name contains `~` are still listed if their own names qualify.

@@ -1,0 +1,31 @@
+{
+ "id": "s69",
+ "slug": "startab",
+ "title": "Names starting with a or b",
+ "script": "startab.sh",
+ "cmds": "find -name -mindepth, ! -name, test, wc -l, exit codes",
+ "level": 3,
+ "tags": [
+  "find",
+  "exit codes",
+  "tests"
+ ],
+ "steps": [
+  {
+   "n": 1,
+   "title": "Entries starting with a or b"
+  },
+  {
+   "n": 2,
+   "title": "Without the ~ ones"
+  },
+  {
+   "n": 3,
+   "title": "Optional directory and checks"
+  },
+  {
+   "n": 4,
+   "title": "Count them"
+  }
+ ]
+}
