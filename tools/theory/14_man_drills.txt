@@ -66,28 +66,17 @@ You copy `docs/*` into `backup/`. Which `cp` option guarantees that **no existin
 @@q match [ls-options] | ls options
 Pair each option of `ls` with its effect (`man ls`).
 (=) `-a` => shows the hidden entries (names starting with a dot) :: `-A` does the same without `.` and `..`.
+(=) `-l` => long listing: type and permissions, links, owner, group, size and date :: The format you read permissions from.
 (=) `-d` => lists a directory itself, not its contents :: `ls -ld dir` shows the permissions of `dir`.
 (=) `-R` => lists subdirectories recursively :: Every directory gets its own heading.
-(=) `-h` => prints sizes as 4.0K, 1.2M... :: Only meaningful together with `-l`.
-(=) `-1` => prints one name per line :: Useful when the output goes to a pipe or a loop.
-(=) `-S` => sorts by size, biggest first :: `-r` reverses it.
-
-@@q multi [ls-order-options] | What changes the order
-Which of these options of `ls` change **the order** of the listing?
-(+) `-S` :: Sorts by file size, largest first.
-(+) `-t` :: Sorts by modification time, newest first.
-(+) `-r` :: Reverses whatever order is in use.
-(-) `-l` :: It only changes the format (long listing); the order stays alphabetical.
-(-) `-a` :: It adds the hidden entries, but they are sorted the same way.
-(-) `-h` :: It changes how sizes are written, not the order.
-
-@@q single [rm-empty-dir] | Only if it is empty
-You want a command that removes the directory `old` **only if it is empty** and fails otherwise, using `rm`. Which one is it (`man rm`)?
-(+) `rm -d old` :: `-d` (`--dir`) removes empty directories: a non-empty one is refused.
+(=) `-i` => prints the inode number of each entry :: Two names of the same file (hard links) share the number.
+(=) `-t` => sorts by modification time, newest first :: `-r` reverses it.
+@@q single [rmdir-or-rm] | Removing a directory
+Which command removes the directory `old` **only if it is empty** and fails if it holds anything (`man rmdir`, `man rm`)?
+(+) `rmdir old` :: `rmdir` removes directories only when they are empty.
 (-) `rm -r old` :: `-r` removes the directory and everything inside it, empty or not.
-(-) `rm -f old` :: `-f` only suppresses errors and prompts; on a directory `rm` still refuses without `-d` or `-r`.
-(-) `rm -i old` :: `-i` asks before removing, but it still refuses a directory without `-d` or `-r`.
-
+(-) `rm -f old` :: `-f` only suppresses errors and prompts; without `-r` or `-d`, `rm` still refuses a directory.
+(-) `rm old/*` :: It removes the files inside, then would still leave `old` itself.
 @@q fill [du-total] | One line with the total
 To print only the **total size** of the directory `fotos`, in human-readable units (like `4.2M`), type `du -{{sh ;; hs}} fotos`.
 (x) `du -a fotos` :: `-a` lists every file, not just a total.
@@ -95,13 +84,33 @@ To print only the **total size** of the directory `fotos`, in human-readable uni
 @@note
 `-s` is `--summarize` and `-h` is `--human-readable`; `du -h --max-depth=1` shows one line per subdirectory instead.
 
-@@q fill [stat-octal] | Permissions as a number
-`stat` prints what you ask with a format: `stat -c {{%a}} file` shows the permissions in octal, for example `644`.
-(x) `%A` :: `%A` prints them as `-rw-r--r--`, not as a number.
-(x) `%s` :: `%s` is the size in bytes.
-@@note
-`%A` is the symbolic form, `%a` the octal one. Look at the FORMAT SEQUENCES in `man stat`.
 
+@@q single [cp-archive] | Copy a folder and keep everything
+A backup script has to copy the directory `datos` to `copia` **including all its subdirectories** and keeping permissions and modification times. Which command does it (`man cp`)?
+(+) `cp -a datos copia` :: `-a` (`--archive`) is the same as `-dR --preserve=all`: recursive, and keeps links, permissions, owner and timestamps.
+(-) `cp datos copia` :: Without `-r` (or `-a`), `cp` refuses to copy a directory.
+(-) `cp -r datos copia` :: It copies the tree, but the copies get new modification times and the default permissions.
+(-) `cp -n datos copia` :: `-n` does not overwrite existing files; it does not make `cp` recursive.
+
+@@q single [ln-hard-symbolic] | Two kinds of link
+You run `ln notas.txt a` and `ln -s notas.txt b`, and then delete `notas.txt`. What happens (`man ln`)?
+(+) `a` still shows the content and `b` is a broken link. :: `a` is another name of the same inode (a hard link); `b` only stores the path `notas.txt`, which no longer exists.
+(-) Both `a` and `b` still show the content. :: A symbolic link stores a path: once the target is gone it points to nothing.
+(-) `a` is broken and `b` still shows the content. :: It is the other way round: the hard link shares the inode, the symbolic one depends on the name.
+(-) Both are broken, because deleting a file removes its links. :: The data survives while at least one name (hard link) still points to the inode.
+
+@@q single [basename-suffix] | Name without directory and extension
+In a script, `f=/home/ana/informes/mayo.txt`. Which command prints just `mayo` (`man basename`)?
+(+) `basename "$f" .txt` :: `basename NAME SUFFIX` removes the leading directories and the trailing suffix.
+(-) `dirname "$f" .txt` :: `dirname` prints the directory part (`/home/ana/informes`) and takes no suffix.
+(-) `basename .txt "$f"` :: The suffix goes last; this prints `.txt` with `$f` taken as the suffix.
+(-) `basename -d "$f"` :: There is no `-d` that strips the extension; the suffix is given as an argument.
+@@q single [mkdir-parents] | A whole path at once
+`mkdir proyecto/docs/2024` fails when `proyecto` does not exist yet. Which option creates all the missing parents and does **not** complain if the directory already exists (`man mkdir`)?
+(+) `mkdir -p proyecto/docs/2024` :: `-p` (`--parents`): no error if it exists, make parent directories as needed. Every deploy script uses it.
+(-) `mkdir -m proyecto/docs/2024` :: `-m` sets the permissions of the new directory and needs a mode as its argument.
+(-) `mkdir -v proyecto/docs/2024` :: `-v` only prints a message for each directory created.
+(-) `mkdir -r proyecto/docs/2024` :: There is no `-r` in `mkdir`: the recursive idea is called `-p` here.
 @@group find
 @@q single [find-perm-modes] | Any execute bit
 Which test selects the regular files that have the **execute permission set for at least one** of owner, group or others? Read the `-perm` entries in `man find`.
@@ -111,17 +120,15 @@ Which test selects the regular files that have the **execute permission set for 
 (-) `find . -type f -executable` :: It tests whether **you** may execute the file (a permission check for the user running `find`), not the permission bits.
 
 @@q sort [find-tests-actions] | Tests or actions
-In a `find` command line, **tests** select files and **actions** do something with the selected ones. Sort the expressions (the EXPRESSION sections of `man find` list them).
+In a `find` command line, **tests** select files and **actions** do something with the selected ones. Sort the expressions (the EXPRESSION part of `man find`).
 @@buckets Test | Action
 (Test) `-name` :: Matches the file name against a pattern.
-(Test) `-size` :: Matches the size, with `+` / `-` for larger / smaller.
+(Test) `-type` :: Matches the kind of file: `f`, `d`, `l`...
+(Test) `-perm` :: Matches the permission bits.
 (Test) `-mtime` :: Matches the time of the last modification, counted in days.
-(Test) `-newer` :: Matches files modified more recently than a reference file.
 (Action) `-print` :: Prints the name: it is the default action when you give none.
 (Action) `-delete` :: Removes the file. Put it last, after every test.
 (Action) `-exec` :: Runs a command for the selected files.
-(Action) `-ls` :: Prints a long listing, like `ls -dils`.
-
 @@q fill [find-mtime-today] | The last 24 hours
 `find . -type f -mtime {{0 ;; -1}}` lists the regular files modified **in the last 24 hours**.
 (x) `+1` :: `+1` means more than 1 day ago (the rounding is explained under `-atime`): the opposite.
@@ -136,14 +143,14 @@ What is the difference between `find . -type f -exec ls -l {} \;` and `find . -t
 (-) `\;` lets the command use the file name through `{}`, but `+` has no way to pass it. :: `{}` is the file name in both forms; with `+` it must be the last argument.
 (-) `\;` asks the user for a confirmation before each file and `+` runs without asking. :: That is `-ok`; `-exec` never asks.
 
-@@q match [find-printf] | -printf formats
-`find -printf` prints what you ask for. Pair each directive with its meaning (`man find`, the `-printf` section).
-(=) `%s` => size in bytes :: As in `find . -type f -printf '%s %p\n'`.
-(=) `%p` => the file name, as `find` found it (the whole path) :: `./docs/a.txt`.
-(=) `%P` => the path without the starting point :: `docs/a.txt` when you searched from `.`.
-(=) `%m` => permission bits in octal :: `644`, `755`...
-(-) `%z` :: There is no such directive for the owner (it is `%u`).
-
+@@q match [find-tests-meaning] | Tests of find
+Pair each test of `find` with what it selects (`man find`).
+(=) `-type f` => regular files only :: `-type d` is for directories and `-type l` for symbolic links.
+(=) `-name '*.sh'` => names that match the pattern (case matters) :: `-iname` ignores the case.
+(=) `-size +10M` => files bigger than 10 mebibytes :: `+` means more than, `-` less than.
+(=) `-user ana` => files owned by the user `ana` :: `-group` does the same for the group.
+(=) `-empty` => empty files and empty directories :: Often combined with `-type f` or `-type d`.
+(-) `-print` :: It is an action, not a test: it selects nothing.
 @@q order [delete-empty-tmp] | Delete with care
 You must delete the empty `.tmp` files below `work/`. Put the steps in the order a careful person would follow.
 (>) Run `find work -type f -name '*.tmp' -empty` and read the list :: First see what the tests select, with the default action `-print`.
@@ -190,13 +197,12 @@ A file has lines like `ana:35:madrid`. To sort them by the **2nd field**, **nume
 (-) `-r` :: There is no `-r` option in `tr`.
 (-) `-l` :: There is no `-l` option; lines are not a concept `tr` knows.
 
-@@q single [head-all-but-last] | Everything but the last lines
-Which command prints a file **except its last 2 lines**? Read `man head` carefully: look at the argument of `-n`.
-(+) `head -n -2 file` :: A negative count means "all but the last N lines".
-(-) `head -n 2 file` :: It prints the first 2 lines.
-(-) `tail -n 2 file` :: It prints the last 2 lines.
-(-) `tail -n +2 file` :: It prints from line 2 to the end, leaving only the first one out.
-
+@@q single [wc-lines-only] | Count lines, only the number
+`datos.txt` has 3 lines. Which command prints just `3`, without the file name (`man wc`)?
+(+) `wc -l < datos.txt` :: With the input redirected, `wc` does not know the file name, so it prints only the count.
+(-) `wc -l datos.txt` :: It prints the count followed by the file name: `3 datos.txt`.
+(-) `wc -w datos.txt` :: `-w` counts words, and the file name is still printed.
+(-) `wc -c < datos.txt` :: `-c` counts bytes, not lines.
 @@group Archives and permissions
 @@q match [tar-options] | tar options
 Pair each option of `tar` with what it does (`man tar`).
@@ -243,7 +249,7 @@ Which command changes **both the owner and the group** of `data.txt` to `ana` an
 (-) `chown :ana:dev data.txt` :: A leading colon means "only the group", and the name would be wrong anyway.
 (-) `chmod ana:dev data.txt` :: `chmod` changes permission bits, not owners.
 
-@@group test and the shell
+@@group Scripts: redirection, parameters and test
 @@q match [test-operators] | Operators of test
 Pair each operator of `[ ... ]` (`man test`) with what it checks.
 (=) `-e FILE` => FILE exists (of any type) :: True also for directories.
@@ -274,14 +280,36 @@ You remember `${var:-default}` and want its exact rule. In which section of `man
 (-) Command Substitution :: That section is about `$(...)` and the backquote form.
 (-) SHELL BUILTIN COMMANDS :: It documents builtins like `read` and `test`, not the expansion syntax.
 
-@@q multi [test-valid-operators] | Valid operators
-Which of these are valid operators of `test` / `[`? Check the list in `man test`.
-(+) `-r FILE` :: True when FILE exists and is readable.
-(+) `-w FILE` :: True when FILE exists and is writable.
-(+) `-L FILE` :: True when FILE exists and is a symbolic link.
-(-) `-E FILE` :: There is no `-E`: `grep -E` is something else.
-(-) `-q FILE` :: There is no `-q` in `test` (that is an option of `grep`).
+@@q match [special-parameters] | Special parameters
+Pair each special parameter of the shell with what it holds (`man bash`, the Special Parameters part).
+(=) `$#` => the number of arguments the script received :: `shift` lowers it by one.
+(=) `$?` => the exit status of the last command :: 0 means success.
+(=) `$0` => the name of the script :: Used in usage messages: `echo "Usage: $0 DIR" >&2`.
+(=) `$@` => all the arguments, each one as a separate word (in double quotes) :: `for a in "$@"` visits every argument whole.
+(=) `$$` => the process ID of the shell :: Handy for temporary file names.
 
+@@q single [at-or-star] | "$@" or "$*"
+A script is called as `./s.sh "a b" c`. How many times does `for x in "$@"; do echo "$x"; done` run (`man bash`, Special Parameters)?
+(+) Twice: once for `a b` and once for `c`. :: Inside double quotes `"$@"` expands every argument as its own word, spaces included.
+(-) Three times: `a`, `b` and `c`. :: That is what unquoted `$@` or `$*` does, after word splitting.
+(-) Once, with `a b c`. :: That is `"$*"`: all the arguments joined into one single word.
+(-) Zero times, because `$@` is only valid outside quotes. :: It is valid, and it is the right way to loop over the arguments.
+
+@@q match [redirection-operators] | Redirection operators
+Pair each operator with what it does (`man bash`, the REDIRECTION part).
+(=) `cmd > file` => writes the output to the file, replacing its content :: The file is created or emptied first.
+(=) `cmd >> file` => appends the output to the end of the file :: The file is created if it does not exist.
+(=) `cmd 2> file` => sends the error messages to the file :: Descriptor 2 is the standard error.
+(=) `cmd < file` => reads the input from the file :: Descriptor 0 is the standard input.
+(=) `cmd1 | cmd2` => feeds the output of the first as the input of the second :: A pipe: both run at once.
+(=) `cmd > file 2>&1` => sends both the output and the errors to the file :: The order of the operators matters.
+
+@@q single [redirect-order] | The order of redirections
+What is the difference between `ls /nada > salida 2>&1` and `ls /nada 2>&1 > salida` (`man bash`: the example with `dirlist`)? `/nada` does not exist.
+(+) In the first one the error message is written to `salida`; in the second it still appears on the screen. :: Redirections are applied left to right: `2>&1` copies where the output goes **at that moment**.
+(-) They are the same: the order of redirections never matters. :: The bash manual shows exactly this pair as an example of why it matters.
+(-) In the first one the message appears on the screen; in the second it goes to `salida`. :: It is the other way round.
+(-) The second one is a syntax error. :: It is valid; it just redirects the output to the file while the errors keep going to the old destination.
 @@group System files (section 5)
 @@q fill [passwd-fields] | Fields of /etc/passwd
 Each line of `/etc/passwd` has `{{7}}` fields separated by colons (see `man 5 passwd`).
@@ -329,13 +357,13 @@ In `/etc/sudoers`, the line `ana ALL=(ALL) NOPASSWD: ALL` allows... (`man 5 sudo
 
 @@group Processes and users
 @@q match [ps-options] | ps options
-Pair each way of calling `ps` with what it selects or shows (`man ps`).
+Pair each way of calling `ps` with what it shows (`man ps`).
 (=) `ps -e` => every process of the system :: Same as `-A`.
 (=) `ps -f` => a full-format listing (UID, PID, PPID, start time...) :: It adds columns.
+(=) `ps -ef` => every process, in full format :: The most common way to look for a process.
+(=) `ps aux` => every process of every user, with the owner and the CPU and memory use :: BSD-style options, without the dash.
 (=) `ps -u ana` => the processes of the user ana :: By effective user ID or name.
 (=) `ps -p 1234` => the process with PID 1234 :: A list of PIDs is accepted.
-(=) `ps -C sshd` => the processes running the command `sshd` :: Selection by command name.
-(=) `ps -o pid,comm` => only the columns you name :: User-defined output format.
 
 @@q single [kill-list] | From a signal number to its name
 A log says a process died from **signal 11**. Which command tells you the **name** of signal 11 (look at the EXAMPLES of `man kill`)?
@@ -372,3 +400,12 @@ You started `sleep 300` in the foreground and pressed `Ctrl+Z`, which **suspende
 (-) `fg` :: It resumes the job in the **foreground**: the shell waits for it again.
 (-) `jobs` :: It only lists the jobs and their state.
 (-) `wait` :: It waits until the background jobs end: it does not resume a stopped one.
+
+
+@@q match [systemctl-verbs] | systemctl
+Pair each `systemctl` command with its effect on a service such as `ssh` (`man systemctl`).
+(=) `systemctl start ssh` => starts it now :: It does not change what happens at the next boot.
+(=) `systemctl stop ssh` => stops it now :: The service stays enabled for the next boot.
+(=) `systemctl restart ssh` => stops it and starts it again :: Used after changing the configuration.
+(=) `systemctl enable ssh` => makes it start automatically at boot :: It does not start it now (unless you add `--now`).
+(=) `systemctl status ssh` => shows whether it is running, with its latest log lines :: It changes nothing.
