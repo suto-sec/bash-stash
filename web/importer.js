@@ -30,7 +30,7 @@ function validatePack(raw) {
   };
   const arr = (v, at, what, { min = 0, max = 1000 } = {}) => {
     if (!Array.isArray(v)) { err(at, `${what} must be a list`); return []; }
-    if (v.length < min) err(at, `${what} needs at least ${min} entries, it has ${v.length}`);
+    if (v.length < min) err(at, `${what} needs at least ${min} ${min === 1 ? 'entry' : 'entries'}, it has ${v.length}`);
     if (v.length > max) { err(at, `${what} has too many entries (${v.length}, at most ${max})`); return v.slice(0, max); }
     return v;
   };
