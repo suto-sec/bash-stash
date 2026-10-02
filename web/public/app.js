@@ -28,10 +28,12 @@ const TRACK_MAX = { minimal: 1, intermediate: 2, complete: 3 };
 function visibleInTopic(t, e) {
   if (state.introCategory === 'all') return e.tier === 0;
   if (state.introCategory) return state.introCategory === t.id && e.tier === 0;
+  if (state.track === 'path') return ExamPath.hasEx(e.id);   // the exam path: its exercises, warm-ups included
   if (e.tier === 0) return false;
   return state.track === 'full' || e.tier <= TRACK_MAX[state.track];
 }
 function visibleFlat() {
+  if (!state.introCategory && state.track === 'path') return ExamPath.ordered();   // in path order, not topic order
   const out = [];
   for (const t of state.index) for (const e of t.exercises) if (visibleInTopic(t, e)) out.push(e);
   return out;
@@ -210,8 +212,10 @@ function setStatus(s) {
 
 function neighbour(delta) {
   if (state.script) return Scripts.neighbour(delta);
-  const i = state.flat.findIndex(e => state.current && e.id === state.current.id);
-  const n = state.flat[i + delta];
+  // previous / next follow the list being browsed (track, intro category or the path), not every exercise there is
+  const cid = state.current && state.current.id, pool = visibleFlat();
+  const list = pool.some(e => e.id === cid) ? pool : state.flat;
+  const n = list[list.findIndex(e => e.id === cid) + delta];
   if (n) location.hash = `#/ex/${n.id}`;
 }
 $('#prev-btn').onclick = () => neighbour(-1);
@@ -797,7 +801,7 @@ document.addEventListener('click', ev => {
 });
 
 // ------------------------------------------------------------------ home page (track picker)
-const TRACK_LABELS = { minimal: 'Minimal', intermediate: 'Intermediate', complete: 'Complete' };
+const TRACK_LABELS = { minimal: 'Minimal', intermediate: 'Intermediate', complete: 'Complete', path: 'Suggested path' };
 function updateTrackBadge() {
   const badge = $('#track-badge');
   if (state.script) {
