@@ -60,8 +60,41 @@ const Scripts = (() => {
     if (typeof renderHomeNav === 'function') renderHomeNav();
     if (cur && state.script) renderSidebar();
   }
-  for (const [id, key] of [['scripts-group', 'scriptGroup'], ['scripts-order', 'scriptOrder'], ['scripts-dir', 'scriptDir']])
-    $('#' + id).onchange = ev => { try { localStorage.setItem(key, ev.target.value); } catch { /* private mode */ } applyMode(); };
+  const VIEW_KEYS = { group: 'scriptGroup', order: 'scriptOrder', dir: 'scriptDir' };
+  const VIEW_DEFAULT = { group: 'stars', order: 'num', dir: 'asc' };
+  function setView(part) {                    // part: { group?, order?, dir? } from the home dropdowns or the sidebar panel; no part = back to the defaults
+    const v = part || VIEW_DEFAULT;
+    for (const k of Object.keys(v)) { try { localStorage.setItem(VIEW_KEYS[k], v[k]); } catch { /* private mode */ } }
+    applyMode();
+  }
+  for (const [id, k] of [['scripts-group', 'group'], ['scripts-order', 'order'], ['scripts-dir', 'dir']]) $('#' + id).onchange = ev => setView({ [k]: ev.target.value });
+  $('#scripts-reset').onclick = () => setView();
+  // the same three choices (and the reset) at the top of the sidebar while a script is open: no need to go back to the home page
+  const DIRS = { asc: 'Increasing', desc: 'Decreasing' };
+  const sideView = () => {
+    let box = $('#sc-view');
+    if (!box) {
+      box = document.createElement('details');
+      box.id = 'sc-view'; box.className = 'sc-view';
+      try { box.open = localStorage.getItem('scViewOpen') === '1'; } catch { /* private mode */ }
+      box.addEventListener('toggle', () => { try { localStorage.setItem('scViewOpen', box.open ? '1' : '0'); } catch { /* private mode */ } });
+      box.addEventListener('change', ev => { const k = ev.target.dataset.k; if (k) setView({ [k]: ev.target.value }); });
+      box.addEventListener('click', ev => { if (ev.target.closest('.scv-reset')) setView(); });
+      $('#sidebar').insertBefore(box, $('#topics'));
+    }
+    return box;
+  };
+  const optionsOf = (map, cur) => Object.entries(map).map(([v, t]) => `<option value="${v}"${v === cur ? ' selected' : ''}>${esc(t)}</option>`).join('');
+  function renderSideView() {
+    const box = sideView(), g = getMode(), o = getOrder(), d = getDir();
+    box.innerHTML = `<summary><span class="scv-title">View</span><span class="scv-now">Group by <b>${esc(MODES[g])}</b> · order by <b>${esc(ORDERS[o])}</b>, ${DIRS[d].toLowerCase()}</span></summary>
+      <div class="scv-body">
+        <label>Group by <select data-k="group">${optionsOf(MODES, g)}</select></label>
+        <label>Order by <select data-k="order">${optionsOf(ORDERS, o)}</select></label>
+        <label>Direction <select data-k="dir">${optionsOf(DIRS, d)}</select></label>
+        <button type="button" class="small scv-reset" title="Group by difficulty, order by number, increasing">Reset</button>
+      </div>`;
+  }
   const go = (id, step) => { location.hash = `#/script/${id}${step ? '/' + step : ''}`; };
 
   // ---------------------------------------------------------------- home grid
@@ -214,6 +247,7 @@ const Scripts = (() => {
     const nav = $('#topics');
     if (!cur) return;
     document.querySelector('.overall').title = 'exercises passed (scripts have their own counter)';
+    renderSideView();
     nav.innerHTML = groups().map(g => {
       const es = g.items, done = es.filter(e => e.status === 'pass').length;
       return `<details class="topic" open><summary><span class="t-name">${esc(g.label)}</span><span class="t-count">${done}/${es.length}</span></summary>
