@@ -18,34 +18,49 @@ const Scripts = (() => {
   const entry = id => index.find(e => e.id === id);
   const statusOf = e => e.status;
   async function refresh() { await load(); renderHomeGrid(); }
-  // ---------------------------------------------------------------- grouping (dropdown, remembered)
+  // ---------------------------------------------------------------- grouping and ordering (dropdowns, remembered)
+  // "Group by" makes the sections, "Order by" + the direction sorts the scripts inside them; they may be the same property (then the direction
+  // also turns the sections around: descending difficulty shows the 5-star section first).
   const MODES = { stars: 'Difficulty', topic: 'Topic', steps: 'Number of steps', progress: 'Progress' };
   const getMode = () => { try { const m = localStorage.getItem('scriptGroup'); return MODES[m] ? m : 'stars'; } catch { return 'stars'; } };
+  const ORDERS = { num: 'Number', title: 'Title', stars: 'Difficulty (stars)', steps: 'Number of steps', progress: 'Progress', topic: 'Topic' };
+  const getOrder = () => { try { const m = localStorage.getItem('scriptOrder'); return ORDERS[m] ? m : 'num'; } catch { return 'num'; } };
+  const getDir = () => { try { return localStorage.getItem('scriptDir') === 'desc' ? 'desc' : 'asc'; } catch { return 'asc'; } };
+  const progressOf = e => (e.steps.length ? e.passed.length / e.steps.length : 0);
+  const ORDER_KEY = { num: e => Number(num(e.id)), title: e => e.title.toLowerCase(), stars: e => e.level, steps: e => e.steps.length, progress: progressOf, topic: e => (e.tags[0] || '') };
+  function sorted(items) {
+    const key = ORDER_KEY[getOrder()], sign = getDir() === 'desc' ? -1 : 1;
+    return [...items].sort((a, b) => { const x = key(a), y = key(b); return (x < y ? -1 : x > y ? 1 : 0) * sign || Number(num(a.id)) - Number(num(b.id)); });
+  }
   const stars = n => '★'.repeat(n) + '☆'.repeat(5 - n);
   function groups() {       // [{ key, label, items }], items are index entries; "topic" lists a script under each of its tags
     const mode = getMode();
-    const by = (keys, labelOf, pick) => keys.map(k => ({ key: String(k), label: labelOf(k), items: index.filter(e => pick(e, k)) })).filter(g => g.items.length);
-    if (mode === 'stars') return by([1, 2, 3, 4, 5], stars, (e, k) => e.level === k);
-    if (mode === 'topic') return by([...new Set(index.flatMap(e => e.tags))].sort(), t => t[0].toUpperCase() + t.slice(1), (e, k) => e.tags.includes(k));
-    if (mode === 'steps') return by(['short', 'medium', 'long'], k => ({ short: 'Short (2-3 steps)', medium: 'Medium (4-5 steps)', long: 'Long (6+ steps)' })[k],
-      (e, k) => (e.steps.length <= 3 ? 'short' : e.steps.length <= 5 ? 'medium' : 'long') === k);
-    return by(['inprogress', 'new', 'pass'], k => ({ inprogress: 'In progress', new: 'Not started', pass: 'Done' })[k],
-      (e, k) => (e.status === 'attempted' ? 'inprogress' : e.status) === k);
+    const by = (keys, labelOf, pick) => keys.map(k => ({ key: String(k), label: labelOf(k), items: sorted(index.filter(e => pick(e, k))) })).filter(g => g.items.length);
+    const same = mode === getOrder() && getDir() === 'desc';                // the same property, descending: the sections turn around too
+    const sections = list => same ? list.reverse() : list;
+    if (mode === 'stars') return sections(by([1, 2, 3, 4, 5], stars, (e, k) => e.level === k));
+    if (mode === 'topic') return sections(by([...new Set(index.flatMap(e => e.tags))].sort(), t => t[0].toUpperCase() + t.slice(1), (e, k) => e.tags.includes(k)));
+    if (mode === 'steps') return sections(by(['short', 'medium', 'long'], k => ({ short: 'Short (2-3 steps)', medium: 'Medium (4-5 steps)', long: 'Long (6+ steps)' })[k],
+      (e, k) => (e.steps.length <= 3 ? 'short' : e.steps.length <= 5 ? 'medium' : 'long') === k));
+    return sections(by(['inprogress', 'new', 'pass'], k => ({ inprogress: 'In progress', new: 'Not started', pass: 'Done' })[k],
+      (e, k) => (e.status === 'attempted' ? 'inprogress' : e.status) === k));
   }
+  const displayOrder = () => [...new Map(groups().flatMap(g => g.items).map(e => [e.id, e])).values()];     // every script once, as the lists show them
   const doneCount = () => index.filter(e => e.status === 'pass').length;
   function applyMode() {    // after the dropdown changed: every view that lists the scripts
     renderHomeGrid();
     if (typeof renderHomeNav === 'function') renderHomeNav();
     if (cur && state.script) renderSidebar();
   }
-  $('#scripts-group').onchange = ev => { try { localStorage.setItem('scriptGroup', ev.target.value); } catch { /* private mode */ } applyMode(); };
+  for (const [id, key] of [['scripts-group', 'scriptGroup'], ['scripts-order', 'scriptOrder'], ['scripts-dir', 'scriptDir']])
+    $('#' + id).onchange = ev => { try { localStorage.setItem(key, ev.target.value); } catch { /* private mode */ } applyMode(); };
   const go = (id, step) => { location.hash = `#/script/${id}${step ? '/' + step : ''}`; };
 
   // ---------------------------------------------------------------- home grid
   function renderHomeGrid() {
     const grid = $('#scripts-grid');
     if (!index.length) { grid.innerHTML = '<p class="home-intro">No scripts built yet (run <code>node tools/build_scripts.js</code>).</p>'; return; }
-    $('#scripts-group').value = getMode();
+    $('#scripts-group').value = getMode(); $('#scripts-order').value = getOrder(); $('#scripts-dir').value = getDir();
     grid.innerHTML = groups().map(g => {
       const es = g.items;
       const card = e => `<button class="track-card exam-card${state.script === e.id ? ' current' : ''}" data-script="${esc(e.id)}">
@@ -177,7 +192,7 @@ const Scripts = (() => {
     if (!cur) return;
     const n = cur.step + delta;
     if (n >= 1 && n <= cur.d.steps.length) { go(cur.id, n); return; }
-    const i = index.findIndex(e => e.id === cur.id), o = index[i + delta];
+    const all = displayOrder(), i = all.findIndex(e => e.id === cur.id), o = all[i + delta];
     if (o) go(o.id, delta > 0 ? 1 : o.steps.length);
   }
 
