@@ -129,12 +129,14 @@ const Scripts = (() => {
     box.classList.remove('hidden', 'pass', 'fail');
     $('#result-title').textContent = `Checking step ${step}…`;
     body.innerHTML = '';
+    if (typeof NewUser !== 'undefined') NewUser.clear();
     const res = await CheckView.run(`/api/scripts/${cur.id}/check?step=${step}`, body);
     const code = res.code, ok = code === '0';
     box.classList.add(ok ? 'pass' : 'fail');
     const last = cur.d.steps.length, sid = cur.id;
     $('#result-title').textContent = ok ? (step === last ? '✔ Script complete!' : `✔ Step ${step} passed — on to step ${step + 1}`) : code === '3' ? 'Not attempted yet' : '✘ Not yet';
     CheckView.show(body, res, { play: c => tryCase(`/api/scripts/${sid}/play?step=${step}&seed=${c.seed}`, c) });
+    if (typeof NewUser !== 'undefined') NewUser.afterCheck({ ok, kind: 'script', id: sid, step, code });
     try { const keep = box.className, t = $('#result-title').textContent, h = body.innerHTML; await reload(); box.className = keep; $('#result-title').textContent = t; body.innerHTML = h; }
     finally { btn.disabled = false; btn.textContent = '▶ Check'; checking = false; }
   }
