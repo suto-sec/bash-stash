@@ -82,6 +82,7 @@ const Home = (() => {
     if (!TABS.some(x => x[0] === t)) t = 'start';
     const changed = t !== tab;
     tab = t;
+    try { sessionStorage.setItem('homeTab', t); } catch { /* private mode */ }
     const p = page(); if (p) p.dataset.tab = t;
     if (changed || toTop) {
       renderBar();
@@ -334,7 +335,8 @@ const Home = (() => {
     if (!el('home-body')) return;
     wrap();
     apply();
-    page().dataset.tab = 'start';
+    if (restoreOnce) { try { const t = sessionStorage.getItem('homeTab'); if (TABS.some(x => x[0] === t)) tab = t; } catch { /* private mode */ } }   // reloaded on the home page: back to its tab
+    page().dataset.tab = tab;
     const body = el('home-body');
     body.addEventListener('click', ev => { const h = ev.target.closest('.home-tier-title'); if (h) toggleGroup(h); });
     body.addEventListener('keydown', ev => { const h = ev.target.closest && ev.target.closest('.home-tier-title'); if (h && (ev.key === 'Enter' || ev.key === ' ')) { ev.preventDefault(); toggleGroup(h); } });
@@ -354,7 +356,15 @@ const Home = (() => {
     remember();
     later();
   }
+  // the home page opens on Start, except right after a reload while it was open: then it comes back to the tab it was on
+  let restoreOnce = /^#\/home\b/.test(location.hash);
+  window.addEventListener('hashchange', () => { restoreOnce = false; }, { once: true });   // the first navigation after the load ends the "reload" case
+  function onShow() {      // (the page can be shown again by the router while it loads: that still counts as the reload)
+    let t = 'start';
+    if (restoreOnce) { try { t = sessionStorage.getItem('homeTab') || 'start'; } catch { /* private mode */ } }
+    setTab(t);
+  }
   init();
   ready = true;
-  return { refresh: refreshSummaries, expandById, apply, onRefresh: fn => hooks.push(fn), setTab, tab: () => tab, tabOfGroup, onShow: () => setTab('start') };
+  return { refresh: refreshSummaries, expandById, apply, onRefresh: fn => hooks.push(fn), setTab, tab: () => tab, tabOfGroup, onShow };
 })();
