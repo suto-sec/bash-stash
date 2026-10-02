@@ -226,7 +226,7 @@ async function runCheck() {
   const btn = $('#check-btn');
   btn.disabled = true; btn.textContent = '… checking';
   const box = $('#result'), body = $('#result-body');
-  box.classList.remove('hidden', 'pass', 'fail');
+  box.classList.remove('hidden', 'pass', 'fail'); unfoldResult();
   // an attempt focused in VS Code (answer2.sh, ...) is checked instead of the canonical file —
   // it never updates the exercise's official pass/fail status (see lib/engine.sh: check_one)
   const canonical = state.current.answer.split('/').pop();
@@ -255,6 +255,14 @@ async function runCheck() {
 }
 $('#check-btn').onclick = runCheck;
 $('#result-close').onclick = () => $('#result').classList.add('hidden');
+// collapse keeps the title (pass / fail) visible and hides the details; a new check always opens it again
+$('#result-fold').onclick = () => {
+  const box = $('#result'), c = box.classList.toggle('collapsed');
+  $('#result-fold').textContent = c ? '▸' : '▾';
+  $('#result-fold').setAttribute('aria-expanded', String(!c));
+  $('#result-fold').title = c ? 'Show the details' : 'Hide the details';
+};
+function unfoldResult() { const b = $('#result'); b.classList.remove('collapsed'); $('#result-fold').textContent = '▾'; $('#result-fold').setAttribute('aria-expanded', 'true'); $('#result-fold').title = 'Hide the details'; }
 document.addEventListener('keydown', ev => {
   if (state.theory || state.exam || state.sexam) return; // the quiz and exam views have their own keys (theory.js, exams.js)
   if ((ev.ctrlKey || ev.metaKey) && ev.key === 'Enter') { ev.preventDefault(); runCheck(); }
@@ -275,11 +283,11 @@ $('#info-btn').onclick = () => {
   $('#info-dialog').showModal();
 };
 $('#info-body').addEventListener('click', ev => {
+  if (ev.target.closest('a[href="#"]')) ev.preventDefault();   // any bare "#" link: otherwise the browser navigates to "#" and the app falls back to an exercise
   const el = ev.target.closest('[data-goto-cmd]');
   if (!el) return;
-  ev.preventDefault();          // the card is an <a href="#">: without this the browser then navigates to "#" and the app falls back to the first exercise
-  $('#info-dialog').close();
-  location.hash = `#/reference/cmd/${encodeURIComponent(el.dataset.gotoCmd)}`;
+  // the manual page goes to a new tab brought to the front, so the exercise (and the open dialog) stay as they are
+  Keys.openUrl(Keys.refUrl(el.dataset.gotoCmd), true);
 });
 
 // An index of every topic's distinct commands, and every exercise each command appears in (so a

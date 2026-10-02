@@ -322,7 +322,7 @@ const SExams = (() => {
     busy = true;
     const btn = $('#sx-check-btn'), box = $('#result'), body = $('#result-body');
     btn.disabled = true; btn.textContent = T('checking');
-    box.classList.remove('hidden', 'pass', 'fail');
+    box.classList.remove('hidden', 'pass', 'fail'); unfoldResult();
     $('#result-title').textContent = T('checking');
     const res = await CheckView.run(`/api/sexams/${cur.id}/check`, body);
     box.classList.add(res.code === '0' ? 'pass' : 'fail');
