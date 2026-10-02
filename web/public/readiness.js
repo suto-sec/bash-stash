@@ -88,36 +88,52 @@ const Readiness = (() => {
     const focus = [...list].filter(t => t.gap > 0.002).sort((a, b) => b.gap - a.gap).slice(0, 3);
     const doneAll = ExamPath.stats();
     const exAcc = Object.values(stats.topics || {}).reduce((s, t) => [s[0] + t.correct, s[1] + t.answered], [0, 0]);
+    const touched = list.some(t => t.touched) || exAcc[1] > 0;
+    const top = focus[0], topNext = top && nextOf(top), pathNext = ExamPath.next(null);
+    const go = it => `data-rd="${esc(it.kind)}:${esc(it.id)}"`;
+    const short = (t, n) => esc(t.length > n ? t.slice(0, n - 1) + '…' : t);
+    const facts = `${doneAll.done} of ${doneAll.total} items of the suggested path done · ${exAcc[1] ? `${pct(exAcc[0] / exAcc[1])}% right in theory practice exams (${exAcc[0]}/${exAcc[1]} questions)` : 'no theory practice exam taken yet'}`;
+    const hero = !touched
+      ? { kind: 'Exam readiness', title: 'Nothing to measure yet', sub: 'This page fills in as you go: the exercises, scripts and quizzes of the suggested path and your theory practice exams all count.',
+          btn: pathNext ? `<button type="button" class="hc-btn" ${go(pathNext)}>Start the suggested path →</button>` : '' }
+      : top ? { kind: 'Where the next hour pays most', title: top.name, sub: `${evidence(top)} · ${pct(top.weight)}% of the theory exams`,
+          btn: topNext ? `<button type="button" class="hc-btn" ${go(topNext)}>Practise: ${short(topNext.label, 40)} →</button>` : '' }
+      : { kind: 'Exam readiness', title: 'Every topic is covered', sub: 'Keep taking the theory practice exams to stay sharp.', btn: '' };
+    const evChips = t => [
+      t.prac.n ? `<span title="Path exercises and scripts passed">Practice <b>${t.prac.nDone}/${t.prac.n}</b></span>` : '',
+      t.quiz.total ? `<span title="Quiz questions answered right">Quizzes <b>${t.quiz.done}/${t.quiz.total}</b></span>` : '',
+      `<span title="Theory-exam questions whose last answer was right">Exams <b>${t.exam.answered ? `${t.exam.correct}/${t.exam.answered}` : '—'}</b></span>`,
+    ].filter(Boolean).join('');
+    const meter = t => `<span class="rd-meter"><span class="rd-bar"><i style="width:${pct(t.mastery)}%"></i></span><b>${pct(t.mastery)}%</b></span>`;
     box.innerHTML = `
-      <section class="rd-top">
+      <section class="home-hero rd-hero">
         <div class="rd-big"><span class="rd-num">${pct(overall)}%</span><span class="rd-cap">exam readiness</span></div>
-        <div class="rd-facts">
-          <div><b>${doneAll.done}</b> of ${doneAll.total} items of the suggested path done</div>
-          <div><b>${exAcc[1] ? pct(exAcc[0] / exAcc[1]) + '%' : '—'}</b> right in theory practice exams ${exAcc[1] ? `(${exAcc[0]}/${exAcc[1]} questions, last answer of each)` : '(none taken yet)'}</div>
-          <div class="hint">A coverage-weighted estimate of what you have practised, with every topic counting as much as it does in the theory exams. Not a prediction of your mark.</div>
-        </div>
+        <div class="rd-hero-text"><div class="hc-kind">${hero.kind}</div><div class="hc-title">${esc(hero.title)}</div>
+          <div class="hc-sub">${esc(hero.sub)}</div>
+          ${hero.btn ? `<div class="hs-actions">${hero.btn}</div>` : ''}
+          ${touched ? `<div class="rd-facts hint">${esc(facts)}</div>` : ''}</div>
       </section>
-      ${focus.length ? `<h2 class="rd-h">Focus next <span class="hint">— where the next hour pays most</span></h2>
-      <section class="rd-focus">${focus.map(t => {
+      ${touched && focus.length > 1 ? `<h2 class="home-sub">Then</h2>
+      <section class="rd-focus">${focus.slice(1).map(t => {
         const nx = nextOf(t), ms = missedOf(t.key);
         return `<article class="rd-card ${t.level}"><h3>${esc(t.name)}</h3>
-          <div class="rd-line"><span class="rd-bar"><i style="width:${pct(t.mastery)}%"></i></span><b>${pct(t.mastery)}%</b><span class="rd-chip ${t.level}">${LABEL[t.level]}</span></div>
-          <p class="hint">${esc(evidence(t))} · ${pct(t.weight)}% of the theory exams</p>
-          <div class="rd-actions">${nx ? `<button type="button" class="hc-btn" data-rd="${esc(nx.kind)}:${esc(nx.id)}">Practise: ${esc(nx.label.length > 38 ? nx.label.slice(0, 37) + '…' : nx.label)} →</button>` : ''}
-          ${ms.length ? `<button type="button" data-rd-miss="${esc(ms[0].exam)}:${ms[0].attempt}">Review ${ms.length} missed question${ms.length > 1 ? 's' : ''}</button>` : ''}</div></article>`;
-      }).join('')}</section>` : '<p class="hint">Nothing to focus on: every topic is covered.</p>'}
-      <h2 class="rd-h">All topics</h2>
-      <table class="rd-table"><thead><tr><th>Topic</th><th>Exam weight</th><th>Readiness</th><th>Evidence</th><th></th></tr></thead><tbody>
-      ${[...list].sort((a, b) => b.weight - a.weight).map(t => `<tr class="${t.level}">
-        <td>${esc(t.name)}</td><td><span class="rd-bar w"><i style="width:${Math.min(100, pct(t.weight) * 6)}%"></i></span> ${pct(t.weight)}%</td>
-        <td><span class="rd-bar"><i style="width:${pct(t.mastery)}%"></i></span> <b>${pct(t.mastery)}%</b> <span class="rd-chip ${t.level}">${LABEL[t.level]}</span></td>
-        <td class="hint">${esc(evidence(t))}</td>
-        <td>${nextOf(t) ? `<button type="button" class="small" data-rd="${esc(nextOf(t).kind)}:${esc(nextOf(t).id)}" title="${esc(nextOf(t).label)}">Practise</button>` : '<span class="hint">all done</span>'}</td></tr>`).join('')}
-      </tbody></table>
-      ${(stats.missed || []).length ? `<h2 class="rd-h">Missed in theory exams <span class="hint">— the last answer to these was wrong</span></h2>
+          <div class="rd-line">${meter(t)}<span class="rd-chip ${t.level}">${LABEL[t.level]}</span></div>
+          <div class="rd-ev">${evChips(t)}</div>
+          <div class="rd-actions">${nx ? `<button type="button" class="small" ${go(nx)} title="${esc(nx.label)}">Practise: ${short(nx.label, 30)} →</button>` : ''}
+          ${ms.length ? `<button type="button" class="small" data-rd-miss="${esc(ms[0].exam)}:${ms[0].attempt}">Review ${ms.length} missed</button>` : ''}</div></article>`;
+      }).join('')}</section>` : ''}
+      <h2 class="home-sub">All topics <span class="hint">— by weight in the theory exams</span></h2>
+      <ul class="rd-rows">
+      ${[...list].sort((a, b) => b.weight - a.weight).map(t => `<li class="rd-row ${t.level}">
+        <div class="rd-name"><b>${esc(t.name)}</b><div class="rd-ev">${evChips(t)}</div></div>
+        <span class="rd-weight" title="Share of the theory-exam questions">${pct(t.weight)}% of exam</span>
+        ${meter(t)}<span class="rd-chip ${t.level}">${LABEL[t.level]}</span>
+        ${nextOf(t) ? `<button type="button" class="small" ${go(nextOf(t))} title="${esc(nextOf(t).label)}">Practise</button>` : '<span class="hint">all done</span>'}</li>`).join('')}
+      </ul>
+      ${(stats.missed || []).length ? `<h2 class="home-sub">Missed in theory exams <span class="hint">— the last answer to these was wrong</span></h2>
       <ul class="rd-missed">${stats.missed.slice(0, 12).map(m => `<li><a href="#/exam/${esc(m.exam)}/attempt/${m.attempt}">${esc(m.title)}</a> <span class="hint">${esc(m.exam)} · ${esc(TOPICS[m.topic] || m.topic)}</span></li>`).join('')}</ul>` : ''}
       <details class="rd-how"><summary>How this is calculated</summary>
-        <p>Only the material of the suggested path counts. Per topic, <b>practice</b> is the share of path exercises passed (warm-ups count a quarter, script ladders twice, script practice exams three times), <b>quizzes</b> the share of quiz questions answered right and <b>exams</b> the share of theory-exam questions whose last answer was right (at least 3 answered). Nobody needs 100% of everything, so passing 70% of the practice or the quizzes, or getting 85% of the exam questions right, counts as full marks for that part. The parts are mixed 50% / 15% / 35%, using only the kinds that exist for the topic, and the overall figure weighs the topics by their share of the theory-exam questions.</p>
+        <p>Only the material of the suggested path counts. Per topic, <b>practice</b> is the share of path exercises passed (warm-ups count a quarter, script ladders twice, script practice exams three times), <b>quizzes</b> the share of quiz questions answered right and <b>exams</b> the share of theory-exam questions whose last answer was right (at least 3 answered). Nobody needs 100% of everything, so passing 70% of the practice or the quizzes, or getting 85% of the exam questions right, counts as full marks for that part. The parts are mixed 50% / 15% / 35%, using only the kinds that exist for the topic, and the overall figure weighs the topics by their share of the theory-exam questions. It is a coverage-weighted estimate of what you have practised, not a prediction of your mark.</p>
       </details>`;
   }
 
