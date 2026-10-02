@@ -1194,6 +1194,8 @@ function showHomePage(show) {
 }
 function route() {
   if (!Exams.allowRoute(location.hash)) return;   // leaving a running exam attempt asks first
+  if (location.hash === '#/readiness') { showHomePage(false); showReferencePage(false); Readiness.show(true); return; }   // an overlay page, like the reference
+  Readiness.show(false);
   const thm = location.hash.match(/^#\/(theory|exam)\/([\w-]+)/);
   document.body.classList.toggle('theory-view', !!thm && !(thm[1] === 'theory' && Theory.isWs(thm[2])));   // (the man drills keep the Layout button: they have a terminal)   // top bar: no Layout button in the quizzes and theory exams
   const refCmd = location.hash.match(/^#\/reference\/cmd\/([^/]+)$/);

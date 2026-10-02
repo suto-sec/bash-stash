@@ -100,5 +100,6 @@ const ExamPath = (() => {
       store.set('pathOpen', [...box.querySelectorAll('.ep-stage.open')].map(x => x.dataset.stage));
     }
   });
-  return { render, next, open, item, hasEx, ordered, data: PATH_DATA };
+  const total = () => { const r = PATH_DATA.map(stats); return { done: r.reduce((n, x) => n + x.done, 0), total: r.reduce((n, x) => n + x.total, 0) }; };
+  return { render, next, open, item, hasEx, ordered, stats: total, data: PATH_DATA };
 })();

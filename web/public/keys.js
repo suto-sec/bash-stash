@@ -67,6 +67,7 @@ const Keys = (() => {
     ['q', 'Theory quizzes', 'quizzes', () => goHome('theory-quizzes-title')],
     ['e', 'Theory practice exams', 'exams', () => goHome('theory-exams-title')],
     ['m', 'Man page drills', 'man', () => goHome('man-home-title')],
+    ['d', 'Exam readiness', 'readiness', () => { location.hash = '#/readiness'; }],
   ];
   const step = delta => {
     const b = e$(delta > 0 ? 'next-btn' : 'prev-btn');
@@ -155,7 +156,7 @@ const Keys = (() => {
   const recent = () => { try { return JSON.parse(localStorage.getItem(RECENT)) || []; } catch { return []; } };
   const remember = href => { try { localStorage.setItem(RECENT, JSON.stringify([href, ...recent().filter(h => h !== href)].slice(0, 6))); } catch { /* private mode */ } };
   const base = () => location.origin + location.pathname;
-  const placeUrl = (id, key) => key === 'h' ? base() + '#/home' : key === 'r' ? base() + '#/reference' : `${base()}?go=${id}#/home`;
+  const placeUrl = (id, key) => key === 'h' ? base() + '#/home' : key === 'r' ? base() + '#/reference' : key === 'd' ? base() + '#/readiness' : `${base()}?go=${id}#/home`;
   function items() {
     const out = [];
     const add = (kind, title, hint, href, text, status) => out.push({ kind, title, hint, url: base() + href, href, status, hay: `${title} ${text || ''} ${hint || ''}`.toLowerCase() });

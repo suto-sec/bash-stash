@@ -177,6 +177,31 @@ function examAttempts(id) {
   try { const a = JSON.parse(fs.readFileSync(path.join(EXAM_PROGRESS, id + '.json'), 'utf8')); return Array.isArray(a) ? a : []; }
   catch { return []; }
 }
+// Per exam topic: how many questions have been answered in the theory practice exams and how many were right (the LAST answer to each
+// question counts), the exam share of each topic (tools/theory/exams/blueprint.json) and the questions answered wrongly most recently.
+function examStats() {
+  let ids = [];
+  try { ids = fs.readdirSync(EXAMS).filter(f => f.endsWith('.json')).map(f => f.slice(0, -5)); } catch { /* no exams yet */ }
+  const topics = {}, missed = [];
+  let attempts = 0;
+  for (const id of ids) {
+    const exam = loadExam(id), at = examAttempts(id);
+    if (!exam || !at.length) continue;
+    attempts += at.length;
+    const last = new Map();
+    for (const a of at) for (const r of a.answers || []) last.set(r.q, { ok: !!r.ok, n: a.n, at: a.finishedAt, answered: r.pick !== null && r.pick !== undefined });
+    for (const q of exam.questions) {
+      const r = last.get(q.id);
+      if (!r || !r.answered) continue;
+      const t = topics[q.topic] = topics[q.topic] || { answered: 0, correct: 0 };
+      t.answered++; if (r.ok) t.correct++; else missed.push({ exam: id, attempt: r.n, qid: q.id, title: q.title, topic: q.topic, at: r.at });
+    }
+  }
+  let weights = {};
+  try { const quota = JSON.parse(fs.readFileSync(path.join(LAB, 'tools/theory/exams/blueprint.json'), 'utf8')).topicQuota, sum = Object.values(quota).reduce((x, y) => x + y, 0); for (const [k, v] of Object.entries(quota)) weights[k] = v / sum; } catch { /* no blueprint: the page weighs every topic equally */ }
+  missed.sort((a, b) => String(b.at).localeCompare(String(a.at)));
+  return { weights, topics, missed: missed.slice(0, 40), attempts };
+}
 function writeExamAttempts(id, list) {
   fs.mkdirSync(EXAM_PROGRESS, { recursive: true });
   const file = path.join(EXAM_PROGRESS, id + '.json');
@@ -605,6 +630,7 @@ async function api(req, res, url) {
   if (parts[1] === 'exams') {
     const lang = url.searchParams.get('lang');
     if (req.method === 'GET' && !parts[2]) return send(res, 200, examIndex(lang));
+    if (req.method === 'GET' && parts[2] === 'stats' && !parts[3]) return send(res, 200, examStats());
     const exam = parts[2] ? loadExam(parts[2], lang) : null;
     if (!exam) return send(res, 404, { error: 'no such exam' });
     if (req.method === 'GET' && !parts[3]) return send(res, 200, exam);
