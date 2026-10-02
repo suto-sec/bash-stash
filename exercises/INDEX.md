@@ -782,3 +782,22 @@
 - [1909 · What does it print?](19_theory_quizzes/1909_quiz_trace/README.md)
 - [1910 · Globs vs regular expressions](19_theory_quizzes/1910_quiz_patterns/README.md)
 
+## 20_man_tasks
+
+- [2001 · Sizes with units, smallest first](20_man_tasks/2001_sort_human/README.md)
+- [2002 · A file from line 4 onwards](20_man_tasks/2002_tail_from/README.md)
+- [2003 · Every field but one](20_man_tasks/2003_cut_complement/README.md)
+- [2004 · Matches and what follows them](20_man_tasks/2004_grep_after/README.md)
+- [2005 · Newer than a reference file](20_man_tasks/2005_find_newer/README.md)
+- [2006 · Biggest first](20_man_tasks/2006_ls_by_size/README.md)
+- [2007 · When was it last changed](20_man_tasks/2007_date_of_file/README.md)
+- [2008 · Only the repeated lines](20_man_tasks/2008_uniq_dups/README.md)
+- [2009 · The longest line](20_man_tasks/2009_wc_longest/README.md)
+- [2010 · Everything but the end](20_man_tasks/2010_head_minus/README.md)
+- [2011 · A private folder in one command](20_man_tasks/2011_mkdir_mode/README.md)
+- [2012 · Copy only what is newer](20_man_tasks/2012_cp_update/README.md)
+- [2013 · Files without a word](20_man_tasks/2013_grep_files_without/README.md)
+- [2014 · Sizes and paths](20_man_tasks/2014_find_printf/README.md)
+- [2015 · Users by UID, highest first](20_man_tasks/2015_sort_field_uid/README.md)
+- [2016 · The permissions as a number](20_man_tasks/2016_stat_octal/README.md)
+

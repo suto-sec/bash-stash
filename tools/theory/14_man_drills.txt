@@ -1,0 +1,374 @@
+@@collection 14_man_drills | Man page questions
+@@workspace
+@@about
+Questions you can answer with the manual pages installed in the lab: the terminal is open beside each one, so look it up (`man`, `help`, `whatis`, `apropos`) instead of guessing. Choices, fill in the blank, ordering, matching and sorting.
+
+@@group Finding your way around man
+@@q single [man-section-for-file-formats] | Which page describes /etc/passwd?
+You want the **layout of the fields of the file `/etc/passwd`**, not the `passwd` command that changes a password. Which command opens that page? Try them in the terminal.
+(+) `man 5 passwd` :: Section 5 holds file formats and configuration files. `passwd (5)` is the page about the file.
+(-) `man passwd` :: It opens the first page called `passwd`, which is the command (section 1), not the file format.
+(-) `man 1 passwd` :: Section 1 is for commands: this is the same page as plain `man passwd`.
+(-) `man 5 etc` :: There is no page named `etc`; the page is named after the file, `passwd`, and the number only picks the section.
+@@note
+`whatis passwd` lists every section that has a page with that name, and `man -k passwd` lists every page that mentions it.
+
+@@q match [man-keys-in-pager] | Keys inside a man page
+`man` shows its pages with the pager `less`. Press `h` inside one to see its keys, then pair each key with what it does.
+(=) `/word` then Enter => searches forward for `word` :: The slash starts a search; matches are highlighted.
+(=) `n` => jumps to the next match of the last search :: `N` (capital) goes to the previous one.
+(=) `g` => goes back to the top of the page :: Handy after jumping around with searches.
+(=) `G` => goes to the end of the page :: The last lines are often the SEE ALSO and examples.
+(=) `q` => leaves the page :: It returns to the shell prompt.
+(-) `x` :: `less` has no such key: redirect the output of `man` yourself if you want a copy.
+
+@@q fill [apropos-by-keyword] | List the pages about a word
+To list every manual entry whose one-line description mentions a word, type `{{apropos ;; man -k}} word`.
+(x) `whatis` :: `whatis` looks a name up and prints its own one-line description; it does not search the descriptions for a word.
+(x) `man -f` :: `man -f` is the same as `whatis`: it matches the name of a page.
+@@note
+`apropos` and `man -k` are the same search. When you do not know the name of the command, describe it: `apropos 'list directory'`.
+
+@@q sort [builtin-or-program] | help or man?
+Bash builtins are documented with `help`, external programs with `man`. Check with `type NAME` in the terminal, then put each command in the right group.
+@@buckets Builtin: help NAME | Program: man NAME
+(Builtin: help NAME) cd :: `type cd` says it is a shell builtin: it must change the directory of the shell itself.
+(Builtin: help NAME) read :: A builtin of bash. Careful: `man read` opens a different page (the POSIX utility, or the system call), not bash's `read`.
+(Builtin: help NAME) shift :: A builtin: it works on the positional parameters of the running shell.
+(Builtin: help NAME) export :: A builtin: it changes the environment of the shell.
+(Program: man NAME) find :: A program in `/usr/bin`: its page is `man find`.
+(Program: man NAME) tar :: A program in `/usr/bin`.
+(Program: man NAME) cut :: A program in `/usr/bin`.
+(Program: man NAME) sort :: A program in `/usr/bin`.
+
+@@q order [find-option-in-man] | Look up an option
+You need the option of `grep` that prints only the matching part of a line. Put the steps in a sensible order.
+(>) Type `man grep` and press Enter :: The page opens in the pager.
+(>) Press `/`, type `only-matching` and press Enter :: The pager jumps to the first place where the word appears.
+(>) Press `n` until the highlighted text is the description of the option itself (`-o, --only-matching`) :: The first match may be a mention elsewhere; `n` moves to the next one.
+(>) Read the description, then press `q` :: Leave the page and try the option in the terminal.
+
+@@q multi [docs-for-builtin] | Documentation of a builtin
+You want the documentation of the bash builtin `read` (its `-p` and `-a` options, for example). Which of these show it? Try each in the terminal.
+(+) `help read` :: `help` prints the documentation of bash builtins, with every option.
+(+) `man bash` and then `/^ *read ` in the pager :: The bash page contains the SHELL BUILTIN COMMANDS section, with a paragraph for every builtin.
+(-) `man read` :: It opens the POSIX page `read (1posix)`, which describes the portable utility: no `-p`, no `-a`.
+(-) `whatis read` :: It only prints one line per page called `read`, without any option.
+
+@@group Files and directories
+@@q single [cp-never-overwrite] | Copy without overwriting
+You copy `docs/*` into `backup/`. Which `cp` option guarantees that **no existing file of `backup/` is replaced**, silently? Check `man cp`.
+(+) `cp -n` :: `-n` (`--no-clobber`): do not overwrite an existing file, and do not fail.
+(-) `cp -i` :: It asks before each overwrite: nothing silent, and a script would wait for an answer.
+(-) `cp -u` :: It copies only when the source is newer than the destination, so it still overwrites older files.
+(-) `cp -p` :: It preserves mode, ownership and timestamps of the copies; it does not protect existing files.
+
+@@q match [ls-options] | ls options
+Pair each option of `ls` with its effect (`man ls`).
+(=) `-a` => shows the hidden entries (names starting with a dot) :: `-A` does the same without `.` and `..`.
+(=) `-d` => lists a directory itself, not its contents :: `ls -ld dir` shows the permissions of `dir`.
+(=) `-R` => lists subdirectories recursively :: Every directory gets its own heading.
+(=) `-h` => prints sizes as 4.0K, 1.2M... :: Only meaningful together with `-l`.
+(=) `-1` => prints one name per line :: Useful when the output goes to a pipe or a loop.
+(=) `-S` => sorts by size, biggest first :: `-r` reverses it.
+
+@@q multi [ls-order-options] | What changes the order
+Which of these options of `ls` change **the order** of the listing?
+(+) `-S` :: Sorts by file size, largest first.
+(+) `-t` :: Sorts by modification time, newest first.
+(+) `-r` :: Reverses whatever order is in use.
+(-) `-l` :: It only changes the format (long listing); the order stays alphabetical.
+(-) `-a` :: It adds the hidden entries, but they are sorted the same way.
+(-) `-h` :: It changes how sizes are written, not the order.
+
+@@q single [rm-empty-dir] | Only if it is empty
+You want a command that removes the directory `old` **only if it is empty** and fails otherwise, using `rm`. Which one is it (`man rm`)?
+(+) `rm -d old` :: `-d` (`--dir`) removes empty directories: a non-empty one is refused.
+(-) `rm -r old` :: `-r` removes the directory and everything inside it, empty or not.
+(-) `rm -f old` :: `-f` only suppresses errors and prompts; on a directory `rm` still refuses without `-d` or `-r`.
+(-) `rm -i old` :: `-i` asks before removing, but it still refuses a directory without `-d` or `-r`.
+
+@@q fill [du-total] | One line with the total
+To print only the **total size** of the directory `fotos`, in human-readable units (like `4.2M`), type `du -{{sh ;; hs}} fotos`.
+(x) `du -a fotos` :: `-a` lists every file, not just a total.
+(x) `du -c fotos` :: `-c` adds a grand total line after the listing, but the listing is still there.
+@@note
+`-s` is `--summarize` and `-h` is `--human-readable`; `du -h --max-depth=1` shows one line per subdirectory instead.
+
+@@q fill [stat-octal] | Permissions as a number
+`stat` prints what you ask with a format: `stat -c {{%a}} file` shows the permissions in octal, for example `644`.
+(x) `%A` :: `%A` prints them as `-rw-r--r--`, not as a number.
+(x) `%s` :: `%s` is the size in bytes.
+@@note
+`%A` is the symbolic form, `%a` the octal one. Look at the FORMAT SEQUENCES in `man stat`.
+
+@@group find
+@@q single [find-perm-modes] | Any execute bit
+Which test selects the regular files that have the **execute permission set for at least one** of owner, group or others? Read the `-perm` entries in `man find`.
+(+) `find . -type f -perm /111` :: With a slash, **any** of the listed bits makes the file match.
+(-) `find . -type f -perm 111` :: Without a sign it means **exactly** `--x--x--x`: a file with mode 755 does not match.
+(-) `find . -type f -perm -111` :: With a minus, **all** the listed bits must be set: x for owner, group and others.
+(-) `find . -type f -executable` :: It tests whether **you** may execute the file (a permission check for the user running `find`), not the permission bits.
+
+@@q sort [find-tests-actions] | Tests or actions
+In a `find` command line, **tests** select files and **actions** do something with the selected ones. Sort the expressions (the EXPRESSION sections of `man find` list them).
+@@buckets Test | Action
+(Test) `-name` :: Matches the file name against a pattern.
+(Test) `-size` :: Matches the size, with `+` / `-` for larger / smaller.
+(Test) `-mtime` :: Matches the time of the last modification, counted in days.
+(Test) `-newer` :: Matches files modified more recently than a reference file.
+(Action) `-print` :: Prints the name: it is the default action when you give none.
+(Action) `-delete` :: Removes the file. Put it last, after every test.
+(Action) `-exec` :: Runs a command for the selected files.
+(Action) `-ls` :: Prints a long listing, like `ls -dils`.
+
+@@q fill [find-mtime-today] | The last 24 hours
+`find . -type f -mtime {{0 ;; -1}}` lists the regular files modified **in the last 24 hours**.
+(x) `+1` :: `+1` means more than 1 day ago (the rounding is explained under `-atime`): the opposite.
+(x) `1` :: `1` means exactly 1 day ago, after discarding the fraction.
+@@note
+`-mtime n` counts whole days and ignores fractions: `0` and `-1` both mean "less than 24 hours ago". For minutes use `-mmin`.
+
+@@q single [exec-semicolon-plus] | \; or +
+What is the difference between `find . -type f -exec ls -l {} \;` and `find . -type f -exec ls -l {} +`? Read the `-exec` entries.
+(+) `+` puts many names on one command line, `\;` runs the command once per file. :: That is also why `+` is faster on large trees.
+(-) `+` processes just the first match and then stops, while `\;` goes through all of them. :: Both variants process every selected file.
+(-) `\;` lets the command use the file name through `{}`, but `+` has no way to pass it. :: `{}` is the file name in both forms; with `+` it must be the last argument.
+(-) `\;` asks the user for a confirmation before each file and `+` runs without asking. :: That is `-ok`; `-exec` never asks.
+
+@@q match [find-printf] | -printf formats
+`find -printf` prints what you ask for. Pair each directive with its meaning (`man find`, the `-printf` section).
+(=) `%s` => size in bytes :: As in `find . -type f -printf '%s %p\n'`.
+(=) `%p` => the file name, as `find` found it (the whole path) :: `./docs/a.txt`.
+(=) `%P` => the path without the starting point :: `docs/a.txt` when you searched from `.`.
+(=) `%m` => permission bits in octal :: `644`, `755`...
+(-) `%z` :: There is no such directive for the owner (it is `%u`).
+
+@@q order [delete-empty-tmp] | Delete with care
+You must delete the empty `.tmp` files below `work/`. Put the steps in the order a careful person would follow.
+(>) Run `find work -type f -name '*.tmp' -empty` and read the list :: First see what the tests select, with the default action `-print`.
+(>) Check that no wanted file is in the list :: Fix the tests if it is: it is cheaper than restoring files.
+(>) Run the same command with `-delete` added **at the end** :: `-delete` after the tests: put first, it would apply to everything `find` visits.
+(>) Run the first command again and check that the list is now empty :: Proves the files are gone and nothing else broke.
+
+@@group Text filters
+@@q match [grep-options] | grep options
+Pair each option of `grep` with its effect (`man grep`).
+(=) `-i` => ignores upper/lower case :: `grep -i error` also finds `ERROR`.
+(=) `-v` => prints the lines that do **not** match :: It inverts the selection.
+(=) `-c` => prints only the number of matching lines :: Not the number of matches: a line counts once.
+(=) `-o` => prints only the part of the line that matches :: One match per output line.
+(=) `-l` => prints only the names of the files that contain a match :: `-L` prints the ones that do not.
+(=) `-w` => matches whole words only :: `grep -w cat` does not match `concatenate`.
+
+@@q single [cut-from-field] | From a field to the end
+A line has several fields separated by commas. Which command prints **from the 3rd field to the last one**, whatever their number (`man cut`)?
+(+) `cut -d, -f3-` :: In a list of fields, `N-` means from field N to the end of the line.
+(-) `cut -d, -f3` :: It prints only the 3rd field.
+(-) `cut -d, -f-3` :: `-N` means from the first field up to the 3rd one.
+(-) `cut -c3-` :: It cuts characters from the 3rd one, ignoring the commas.
+
+@@q fill [sort-field-numeric] | Sort by a column
+A file has lines like `ana:35:madrid`. To sort them by the **2nd field**, **numerically**, type `sort -t{{:}} -k{{2}} -n file`.
+(x) `-k1` :: `-k1` would sort by the name, the first field.
+(x) `-t,` :: The fields are separated by `:`, so `-t,` would treat each line as one single field.
+@@note
+`-t` sets the field separator and `-k` the sort key (field number); `-n` compares as numbers, so `9` comes before `10`.
+
+@@q single [uniq-adjacent] | Why uniq is not enough
+`uniq names.txt` leaves duplicates in the output of an unsorted file. Why (`man uniq`)?
+(+) It only compares **adjacent** lines, so the file must be sorted first (`sort names.txt | uniq`). :: The first line of the page says it: "Filter adjacent matching lines".
+(-) It only compares the first word of each line, so use `-f` to compare all of it. :: It compares the whole line unless you ask otherwise with `-f`, `-s` or `-w`.
+(-) It removes duplicates only when `-u` is given, because by default it just counts them. :: Without options it already prints each group of identical adjacent lines once; `-c` counts, `-u` keeps the unique ones.
+(-) It only works on files with at most 100 lines. :: There is no such limit.
+
+@@q multi [tr-options] | Options of tr
+`tr` translates characters. Which of these are options of `tr`? Check `man tr`.
+(+) `-d` :: Deletes the characters of SET1.
+(+) `-s` :: Squeezes runs of a repeated character into one.
+(+) `-c` :: Complements SET1: acts on everything that is **not** in it.
+(-) `-r` :: There is no `-r` option in `tr`.
+(-) `-l` :: There is no `-l` option; lines are not a concept `tr` knows.
+
+@@q single [head-all-but-last] | Everything but the last lines
+Which command prints a file **except its last 2 lines**? Read `man head` carefully: look at the argument of `-n`.
+(+) `head -n -2 file` :: A negative count means "all but the last N lines".
+(-) `head -n 2 file` :: It prints the first 2 lines.
+(-) `tail -n 2 file` :: It prints the last 2 lines.
+(-) `tail -n +2 file` :: It prints from line 2 to the end, leaving only the first one out.
+
+@@group Archives and permissions
+@@q match [tar-options] | tar options
+Pair each option of `tar` with what it does (`man tar`).
+(=) `-c` => creates a new archive :: One of the three main operations.
+(=) `-x` => extracts files from an archive :: Into the current directory unless you add `-C`.
+(=) `-t` => lists the contents of an archive :: Nothing is extracted.
+(=) `-z` => filters the archive through gzip :: `.tar.gz` / `.tgz` files.
+(=) `-f` => says which archive file to use :: It must be followed by the file name, so it goes last in `-czf name`.
+(=) `-C dir` => changes to `dir` before doing the operation :: Used to extract elsewhere.
+
+@@q order [extract-one-file] | One file out of a .tgz
+You need only `docs/report.txt` out of `backup.tgz`, without extracting everything. Put the steps in order.
+(>) `tar -tzf backup.tgz` :: List the archive to learn the exact name of the member.
+(>) Find `docs/report.txt` in the list and copy the name exactly :: The name must match what is stored, including the directory.
+(>) `tar -xzf backup.tgz docs/report.txt` :: Extract only that member, creating `docs/` as needed.
+(>) `ls -l docs/report.txt` :: Check that it is there.
+
+@@q single [chmod-symbolic] | A symbolic mode
+What does `chmod g-w,o= file` do? Read the MODES part of `man chmod`.
+(+) It removes write permission from the group, and removes every permission from others. :: `-` takes bits away; `o=` assigns an empty set to others.
+(-) It adds write permission to the group, and gives others no permissions. :: `-` removes, it does not add: the sign for adding is `+`.
+(-) It removes write permission from the group and from others. :: `o=` sets others to exactly nothing: it removes read and execute as well.
+(-) It sets the group to write-only and leaves others alone. :: `g-w` only removes the write bit; `=` would be the sign that sets exact permissions.
+
+@@q fill [umask-file] | New files and the umask
+With `umask 027`, a **new regular file** that the program asked to create with mode 666 gets the permissions `{{640}}` (in octal).
+(x) `750` :: That is what a new **directory** (asked with 777) gets: files never start with the execute bit.
+(x) `027` :: `027` is the mask itself: the bits that are taken away.
+@@note
+`help umask` explains the mask: the permissions requested (666 for files, 777 for directories) minus the bits of the mask: 666 - 027 = 640.
+
+@@q match [mode-octal-symbolic] | Octal and symbolic
+Pair each octal mode with its symbolic form.
+(=) `755` => `rwxr-xr-x` :: 7 = rwx for the owner, 5 = r-x for group and others.
+(=) `640` => `rw-r-----` :: 6 = rw-, 4 = r--, 0 = ---.
+(=) `700` => `rwx------` :: Only the owner can do anything.
+(=) `444` => `r--r--r--` :: Everyone can read, nobody can write.
+(=) `664` => `rw-rw-r--` :: Typical for a file shared by a group.
+
+@@q single [chown-user-group] | Owner and group at once
+Which command changes **both the owner and the group** of `data.txt` to `ana` and `dev` (`man chown`)? Changing the owner needs root, so only read the page.
+(+) `chown ana:dev data.txt` :: `OWNER:GROUP` sets both in one go.
+(-) `chown ana dev data.txt` :: It would treat `dev` as a second file name.
+(-) `chown :ana:dev data.txt` :: A leading colon means "only the group", and the name would be wrong anyway.
+(-) `chmod ana:dev data.txt` :: `chmod` changes permission bits, not owners.
+
+@@group test and the shell
+@@q match [test-operators] | Operators of test
+Pair each operator of `[ ... ]` (`man test`) with what it checks.
+(=) `-e FILE` => FILE exists (of any type) :: True also for directories.
+(=) `-f FILE` => FILE exists and is a regular file :: False for directories.
+(=) `-d FILE` => FILE exists and is a directory :: False for regular files.
+(=) `-s FILE` => FILE exists and has a size greater than zero :: An empty file fails it.
+(=) `FILE1 -nt FILE2` => FILE1 is newer than FILE2 :: Compares modification times.
+(=) `-z STRING` => the length of STRING is zero :: `-n` is the opposite.
+
+@@q single [test-less-than] | Smaller than, as a number
+Inside `[ ... ]`, which expression is true when the **number** in `$n` is smaller than 10?
+(+) `[ "$n" -lt 10 ]` :: `-lt` compares integers: less than.
+(-) `[ "$n" < 10 ]` :: `<` is an **input redirection** for the shell: it would try to read from a file named `10`.
+(-) `[ "$n" = 10 ]` :: `=` compares strings for equality.
+(-) `[ "$n" -le 10 ]` :: `-le` is less **or equal**: it is also true when `$n` is 10.
+
+@@q fill [read-prompt] | Asking the user
+To show the text `Name: ` before reading a line into the variable `name`, type `read -{{p}} "Name: " name`. Look at `help read`.
+(x) `-a` :: `-a` stores the words in an array instead.
+(x) `-t` :: `-t` is a timeout in seconds.
+@@note
+`-p` prints the prompt without a final newline. `-r` (do not treat backslashes specially) is a good habit when reading lines of text.
+
+@@q single [bash-param-expansion] | Where is ${var:-default}?
+You remember `${var:-default}` and want its exact rule. In which section of `man bash` do you find it? Search for it in the pager.
+(+) Parameter Expansion :: It lists `${parameter:-word}`, `${parameter:=word}`, `${parameter#word}`... with their rules.
+(-) Pathname Expansion :: That section is about patterns such as `*` and `?` in file names.
+(-) Command Substitution :: That section is about `$(...)` and the backquote form.
+(-) SHELL BUILTIN COMMANDS :: It documents builtins like `read` and `test`, not the expansion syntax.
+
+@@q multi [test-valid-operators] | Valid operators
+Which of these are valid operators of `test` / `[`? Check the list in `man test`.
+(+) `-r FILE` :: True when FILE exists and is readable.
+(+) `-w FILE` :: True when FILE exists and is writable.
+(+) `-L FILE` :: True when FILE exists and is a symbolic link.
+(-) `-E FILE` :: There is no `-E`: `grep -E` is something else.
+(-) `-q FILE` :: There is no `-q` in `test` (that is an option of `grep`).
+
+@@group System files (section 5)
+@@q fill [passwd-fields] | Fields of /etc/passwd
+Each line of `/etc/passwd` has `{{7}}` fields separated by colons (see `man 5 passwd`).
+(x) `6` :: Count again: name, password, UID, GID, comment, home and shell.
+(x) `5` :: The comment (GECOS) field and the shell are also fields.
+@@note
+Login name, password (`x`), UID, GID, comment, home directory and shell.
+
+@@q match [passwd-field-meaning] | What each field is
+Pair the fields of `/etc/passwd` with their meaning (`man 5 passwd`).
+(=) the 1st field => the login name :: What you type to log in.
+(=) the 3rd field => the numeric user ID :: The UID.
+(=) the 4th field => the numeric group ID :: The primary group.
+(=) the 6th field => the home directory :: Where `cd` without arguments goes.
+(=) the 7th field => the login shell :: Usually `/bin/bash`.
+
+@@q single [shadow-locked] | A ! in /etc/shadow
+In `/etc/shadow`, the second field of a user is `!` (or `*`). What does it mean (`man 5 shadow`)?
+(+) The account has no valid password: nobody can log in with a password as that user. :: A string that is not a valid result of `crypt(3)` can never match what is typed.
+(-) The user has an empty password, so anyone can log in without typing one. :: An empty field would mean that; `!` blocks the password login.
+(-) The password has expired and must be changed at the next login. :: Expiry is controlled by other fields (the dates), not by this one.
+(-) The user is an administrator. :: Nothing in this file marks administrators; that is done by groups and `sudoers`.
+
+@@q single [crontab-meaning] | Reading a crontab line
+When does `30 2 * * 1 /usr/local/bin/backup` run (`man 5 crontab`)?
+(+) At 02:30 every Monday. :: The fields are minute, hour, day of month, month, day of week: minute 30, hour 2, any day, any month, weekday 1 (Monday).
+(-) Every 30 minutes between 2 and 3 in the morning on the first day of the month. :: A `1` in the 5th field is a weekday; and `30` is a fixed minute, not a step.
+(-) At 02:30 on the first day of every month. :: The first day of the month would be a `1` in the **third** field; here it is in the fifth.
+(-) At 01:02 on the 30th of every month. :: The order of the fields is minute, hour, day: the first field is minutes.
+
+@@q order [crontab-field-order] | Fields of a crontab line
+Put the five time fields of a crontab line in their order, from left to right.
+(>) minute :: 0-59.
+(>) hour :: 0-23.
+(>) day of month :: 1-31.
+(>) month :: 1-12.
+(>) day of week :: 0-7, where both 0 and 7 are Sunday.
+
+@@q single [sudoers-nopasswd] | The NOPASSWD tag
+In `/etc/sudoers`, the line `ana ALL=(ALL) NOPASSWD: ALL` allows... (`man 5 sudoers`, look up the tag)
+(+) `ana` to run any command as any user via `sudo`, with no password prompt. :: `NOPASSWD:` is a tag of the command list: the password prompt is skipped for those commands.
+(-) every user of the system to run any command as `ana`, without a password prompt. :: The first field is **who** may use sudo: here it is `ana`, not "anybody".
+(-) `ana` to log in to the machine without typing a password at the login prompt. :: It concerns `sudo` only; login passwords are not part of `sudoers`.
+(-) `ana` to run only one program, whose file is literally called `ALL`, with a password. :: `ALL` is a keyword that matches every command.
+
+@@group Processes and users
+@@q match [ps-options] | ps options
+Pair each way of calling `ps` with what it selects or shows (`man ps`).
+(=) `ps -e` => every process of the system :: Same as `-A`.
+(=) `ps -f` => a full-format listing (UID, PID, PPID, start time...) :: It adds columns.
+(=) `ps -u ana` => the processes of the user ana :: By effective user ID or name.
+(=) `ps -p 1234` => the process with PID 1234 :: A list of PIDs is accepted.
+(=) `ps -C sshd` => the processes running the command `sshd` :: Selection by command name.
+(=) `ps -o pid,comm` => only the columns you name :: User-defined output format.
+
+@@q single [kill-list] | From a signal number to its name
+A log says a process died from **signal 11**. Which command tells you the **name** of signal 11 (look at the EXAMPLES of `man kill`)?
+(+) `kill -l 11` :: `-l` (`--list`) with a number converts it to the name (`SEGV`); with a name it gives the number.
+(-) `kill -11` :: It is the way to **send** signal 11, and it needs a PID to send it to.
+(-) `kill -s 11` :: `-s` also sends the signal: it expects a PID after it.
+(-) `kill -q 11` :: `-q` sends a signal together with an integer value (`sigqueue`): it does not translate anything.
+
+@@q fill [signal-number] | Signal numbers
+The signal that `kill` sends by default, `TERM`, has the number {{15}}. Check it with `kill -l TERM`.
+(x) `9` :: 9 is `KILL`, the one that cannot be caught.
+(x) `1` :: 1 is `HUP`, hang up.
+@@note
+`kill -l 15` prints `TERM` and `kill -l TERM` prints `15`: the option converts in both directions.
+
+@@q single [id-group-names] | The groups of a user
+Which command prints the **names** (not the numbers) of **all the groups** of the user `ana` (`man id`)?
+(+) `id -Gn ana` :: `-G` prints all group IDs and `-n` asks for names instead of numbers.
+(-) `id -gn ana` :: `-g` prints only the primary group.
+(-) `id -un ana` :: `-u` is the user, not the groups.
+(-) `id -G ana` :: It prints the numbers of all the groups, because `-n` is missing.
+
+@@q sort [who-or-last] | who or last?
+`who` reports the **current** state of the system and `last` reads the **history** of logins. Check `man who` and `man last`, then sort the facts.
+@@buckets who | last
+(who) Who is logged in right now, and from which terminal :: The default output of `who`.
+(who) The time of the last system boot, with `-b` :: `who -b`.
+(last) Every past login of every user, newest first :: `last` reads the history file `/var/log/wtmp`.
+(last) The list of reboots, with `last reboot` :: `reboot` works as a pseudo user that logs in at every boot.
+
+@@q single [job-background] | To the background
+You started `sleep 300` in the foreground and pressed `Ctrl+Z`, which **suspended** it. Which command now lets it **continue running in the background**? (`help bg`)
+(+) `bg` :: It resumes the suspended job in the background.
+(-) `fg` :: It resumes the job in the **foreground**: the shell waits for it again.
+(-) `jobs` :: It only lists the jobs and their state.
+(-) `wait` :: It waits until the background jobs end: it does not resume a stopped one.

@@ -1,0 +1,322 @@
+@@topic 20_man_tasks | Man page tasks
+@@ex 2001 sort_human | Sizes with units, smallest first
+@@level 2
+@@cmds sort
+@@readme
+`sizes.txt` has one entry per line: a size (a number with an optional `K`, `M` or `G` suffix) and a name.
+
+Print the lines ordered from the smallest size to the largest, keeping each line as it is. `512` is smaller than `3K`, and `3K` is smaller than `2M`, even though `3` comes after `2` and `512` after `3`.
+
+Example: the lines `2M disk`, `512 log`, `3K cache` must come out as `512 log`, `3K cache`, `2M disk`.
+
+`sort` has an option for exactly this kind of number: look it up in the manual (`man sort`) instead of converting anything yourself.
+@@check
+SEEDS=3
+setup() { local i; for i in $(seq "$(randr 6 9)"); do echo "$(randr 1 900)$(pick '' K M G) $(word)"; done > sizes.txt; }
+extra_check() { must_use sort; }
+@@solution
+#!/bin/bash
+sort -h sizes.txt
+
+@@ex 2002 tail_from | A file from line 4 onwards
+@@level 2
+@@cmds tail
+@@readme
+`registro.txt` has between 8 and 15 lines. Print it **from its 4th line to the end** (so only the first three lines are left out).
+
+Example: for a file with the lines `a b c d e`, the output is `d` and `e`.
+
+`tail` is usually taught for "the last N lines", but its manual page has a form that counts from the start. Find it with `man tail`.
+@@check
+SEEDS=3
+setup() { local i; for i in $(seq "$(randr 8 15)"); do echo "$i $(word)"; done > registro.txt; }
+extra_check() { must_use tail; }
+@@solution
+#!/bin/bash
+tail -n +4 registro.txt
+
+@@ex 2003 cut_complement | Every field but one
+@@level 3
+@@cmds cut
+@@readme
+`personas.csv` has comma-separated records. Every record has the same number of fields, but that number changes from file to file (between 5 and 8).
+
+Print every record **without its 3rd field**, still separated by commas.
+
+Example: `ana,22,madrid,ingles,rojo` becomes `ana,22,ingles,rojo`.
+
+Don't count the fields: GNU `cut` can select "everything except" a list of fields. Look for it in `man cut`.
+@@check
+SEEDS=4
+setup() { local n=$(randr 5 8) i j line; for i in $(seq 5); do line=$(word); for j in $(seq 2 "$n"); do line+=",$(word)"; done; echo "$line"; done > personas.csv; }
+extra_check() { must_use cut; }
+@@solution
+#!/bin/bash
+cut -d, --complement -f3 personas.csv
+
+@@ex 2004 grep_after | Matches and what follows them
+@@level 2
+@@cmds grep
+@@readme
+`servicio.log` has lines of several kinds; some contain the word `ERROR`.
+
+Print every line that contains `ERROR` **together with the two lines that come after it**. Leave grep's own output as it is, including the `--` lines it prints between separate groups.
+
+Example: if line 3 is the only `ERROR`, the output is lines 3, 4 and 5.
+
+`grep` can print context around the lines it finds: see "Context Line Control" in `man grep`.
+@@check
+SEEDS=3
+setup() { local i; for i in $(seq 14); do if (( $(rand 5) == 0 )); then echo "$(word) ERROR $(word)"; else echo "$(word) $(pick INFO WARN DEBUG) $(word)"; fi; done > servicio.log; grep -q ERROR servicio.log || sed -i '5s/.*/disco ERROR lleno/' servicio.log; }
+extra_check() { must_use grep; }
+@@solution
+#!/bin/bash
+grep -A2 ERROR servicio.log
+
+@@ex 2005 find_newer | Newer than a reference file
+@@level 3
+@@cmds find
+@@readme
+The folder `informes` holds regular files (some inside subfolders) and next to it there is a file called `referencia`.
+
+Print the path of every regular file under `informes` that was modified **more recently than `referencia`**, one per line, in alphabetical order.
+
+Example: if `informes/a` is older than `referencia` and `informes/sub/b` is newer, the output is `informes/sub/b`.
+
+`find` can compare a file's modification time with another file's: look for it in `man find` (the TESTS section).
+@@check
+SEEDS=3
+setup() {
+  mkdir -p informes/sub informes/otros
+  touch -d '2024-03-10 12:00' referencia
+  local f d
+  for f in $(words 6); do
+    d=$(pick '2024-02-0' '2024-04-0')$(randr 1 9)
+    touch -d "$d 10:00" "informes/$f.txt"
+  done
+  for f in $(words 3); do touch -d "$(pick '2024-01-1' '2024-05-1')$(randr 0 9) 09:00" "informes/sub/$f.log"; done
+  touch -d '2024-06-01' informes/otros
+}
+extra_check() { must_use find; }
+@@solution
+#!/bin/bash
+find informes -type f -newer referencia | sort
+
+@@ex 2006 ls_by_size | Biggest first
+@@level 2
+@@cmds ls
+@@readme
+The current folder contains only regular files (no folders, nothing hidden), all with different sizes.
+
+Print their names, **one per line, the biggest file first**.
+
+Example: with `a` (10 bytes), `b` (300 bytes) and `c` (20 bytes) the output is `b`, `c`, `a`.
+
+`ls` can sort by size and can print one name per line: both are in `man ls`.
+@@check
+SEEDS=3
+setup() { local f n=1; for f in $(words 5); do bigfile "$f" $(( n * 137 + $(randr 0 90) )); n=$(( n + $(randr 1 3) )); done; }
+extra_check() { must_use ls; }
+@@solution
+#!/bin/bash
+ls -S1
+
+@@ex 2007 date_of_file | When was it last changed
+@@level 2
+@@cmds date
+@@readme
+The file `informe.pdf` is in the current folder. Print the **date of its last modification** in the form `YYYY-MM-DD` (year, month and day with leading zeros, separated by hyphens) and nothing else.
+
+Example: for a file last modified on 7 March 2024, the output is `2024-03-07`.
+
+Use `date` for this: it can show the time of a file instead of the current time, and it has a shortcut for the `YYYY-MM-DD` format. Look both up in `man date`.
+@@check
+SEEDS=3
+setup() { mkf informe.pdf "contenido"; touch -d "$(randr 2019 2025)-$(printf '%02d' "$(randr 1 12)")-$(printf '%02d' "$(randr 1 28)") 15:30" informe.pdf; }
+extra_check() { must_use date; }
+@@solution
+#!/bin/bash
+date -r informe.pdf +%F
+
+@@ex 2008 uniq_dups | Only the repeated lines
+@@level 3
+@@cmds sort, uniq
+@@readme
+`nombres.txt` has one name per line, in no particular order, and some names appear more than once.
+
+Print the names that appear **more than once**, each of them **a single time**, in alphabetical order.
+
+Example: for `ana`, `luis`, `ana`, `eva`, `luis`, `ana` the output is `ana` and `luis`.
+
+`uniq` only compares neighbouring lines, so sort first. One of its options keeps only the repeated lines: `man uniq`.
+@@check
+SEEDS=3
+setup() { local i w; for i in $(seq "$(randr 9 14)"); do w=$(word); echo "$w"; (( $(rand 3) == 0 )) && echo "$w"; done > nombres.txt; head -n 1 nombres.txt >> nombres.txt; echo "$(word)" >> nombres.txt; }
+extra_check() { must_use uniq; }
+@@solution
+#!/bin/bash
+sort nombres.txt | uniq -d
+
+@@ex 2009 wc_longest | The longest line
+@@level 3
+@@cmds wc
+@@readme
+Print the **length of the longest line** of `poema.txt` (its number of characters) and nothing else: only the number, no file name.
+
+Example: if the lines have 12, 31 and 7 characters, the output is `31`.
+
+You do not need a loop: `wc` can report this. Look in `man wc` (and remember what it prints next to the number when you give it a file name).
+@@check
+SEEDS=3
+setup() { local i; for i in $(seq "$(randr 4 8)"); do words "$(randr 2 9)" | tr '\n' ' '; echo; done > poema.txt; }
+extra_check() { must_use wc; }
+@@solution
+#!/bin/bash
+wc -L < poema.txt
+
+@@ex 2010 head_minus | Everything but the end
+@@level 2
+@@cmds head
+@@readme
+`datos.txt` has between 8 and 14 lines. Print **all of it except its last 3 lines**.
+
+Example: for the lines `1 2 3 4 5` the output is `1` and `2`.
+
+Don't count the lines: `head` accepts a negative number for this. See `man head`.
+@@check
+SEEDS=3
+setup() { local i; for i in $(seq "$(randr 8 14)"); do echo "$i $(word)"; done > datos.txt; }
+extra_check() { must_use head; }
+@@solution
+#!/bin/bash
+head -n -3 datos.txt
+
+@@ex 2011 mkdir_mode | A private folder in one command
+@@level 3
+@@cmds mkdir
+@@readme
+Create the folders `proyecto/privado/claves` in a **single `mkdir` command**, so that:
+
+- the missing parents (`proyecto` and `proyecto/privado`) get the usual default permissions, and
+- the last one, `claves`, has permissions `rwx------` (octal 700).
+
+No `chmod` allowed. `mkdir` can create the parents and set the mode at once: see `man mkdir`.
+@@check
+SEEDS=1
+COMPARE="files exit"
+extra_check() { must_use mkdir; must_not_use chmod; }
+@@solution
+#!/bin/bash
+mkdir -p -m 700 proyecto/privado/claves
+
+@@ex 2012 cp_update | Copy only what is newer
+@@level 3
+@@cmds cp
+@@readme
+The folder `origen` has files and the folder `destino` has older or newer copies of some of them (plus files that only exist there).
+
+Copy the files of `origen` into `destino` **but never replace a file of `destino` that is newer than the one in `origen`**. A file that is missing in `destino` is copied; an older one is replaced.
+
+Use one `cp` command: it has an option for exactly this. Look in `man cp`.
+@@check
+SEEDS=3
+COMPARE="files exit"
+setup() {
+  mkdir origen destino
+  local f i=0
+  for f in $(words 6); do
+    mkf "origen/$f" "origen $f"
+    touch -d "2024-03-1$(( i % 5 )) 10:00" "origen/$f"
+    case $(( i % 3 )) in
+      0) mkf "destino/$f" "destino viejo $f"; touch -d "2024-03-0$(( i % 5 + 1 )) 10:00" "destino/$f" ;;
+      1) mkf "destino/$f" "destino nuevo $f"; touch -d "2024-04-0$(( i % 5 + 1 )) 10:00" "destino/$f" ;;
+    esac
+    i=$(( i + 1 ))
+  done
+  mkf "destino/solo_aqui_$(word)" "stays"
+}
+extra_check() { must_use cp; }
+@@solution
+#!/bin/bash
+cp -u origen/* destino/
+
+@@ex 2013 grep_files_without | Files without a word
+@@level 3
+@@cmds grep
+@@readme
+The folder `notas` has several `.txt` files. Print the names of the ones that **do not contain** the word `TODO` anywhere, one per line, as `notas/<name>.txt`, in alphabetical order.
+
+Example: if only `notas/b.txt` lacks `TODO`, the output is `notas/b.txt`.
+
+`grep` has an option to list the files without a match instead of the ones with it: look in `man grep`.
+@@check
+SEEDS=3
+setup() {
+  mkdir notas
+  local f i=0
+  for f in $(words 6); do
+    { randtext 3; (( i % 2 == 0 )) && echo "TODO $(word)"; randtext 1; } > "notas/$f.txt"
+    i=$(( i + 1 ))
+  done
+}
+extra_check() { must_use grep; }
+@@solution
+#!/bin/bash
+grep -L TODO notas/*.txt
+
+@@ex 2014 find_printf | Sizes and paths
+@@level 3
+@@cmds find, sort
+@@readme
+The folder `arbol` contains files in several levels. Print one line for each **regular file** under it, with its **size in bytes**, a space, and its path (as `find` prints it, starting with `arbol/`). Order the lines alphabetically by path.
+
+Example: `120 arbol/a.txt`, `45 arbol/sub/b.txt`.
+
+Don't call `stat` or `wc` on every file: `find` can print the size by itself. Look at the `-printf` formats in `man find`.
+@@check
+SEEDS=3
+setup() {
+  mkdir -p arbol/sub/hondo arbol/otros
+  local f
+  for f in $(words 3); do bigfile "arbol/$f.txt" "$(randr 5 300)"; done
+  for f in $(words 3); do bigfile "arbol/sub/$f.log" "$(randr 5 300)"; done
+  bigfile "arbol/sub/hondo/$(word).dat" "$(randr 5 300)"
+}
+extra_check() { must_use find; must_not_use stat; }
+@@solution
+#!/bin/bash
+find arbol -type f -printf '%s %p\n' | sort -k2
+
+@@ex 2015 sort_field_uid | Users by UID, highest first
+@@level 3
+@@cmds sort, cut
+@@readme
+`cuentas.txt` has lines like the ones in `/etc/passwd`: fields separated by `:`, where the 3rd field is the numeric UID.
+
+Print only the **user names** (1st field), ordered by **UID from the highest to the lowest**.
+
+Example: for `ana:x:1001:...` and `luis:x:1500:...` the output is `luis`, then `ana`.
+
+Sorting by a field with another separator and numerically, in reverse, is all in `man sort`.
+@@check
+SEEDS=3
+setup() { local i; for i in $(seq "$(randr 5 9)"); do echo "$(word)$i:x:$(randr 100 3000):$(randr 100 3000):$(word):/home/x:/bin/bash"; done > cuentas.txt; }
+extra_check() { must_use sort; }
+@@solution
+#!/bin/bash
+sort -t: -k3 -nr cuentas.txt | cut -d: -f1
+
+@@ex 2016 stat_octal | The permissions as a number
+@@level 2
+@@cmds stat
+@@readme
+The file `programa` is in the current folder. Print its permissions **as an octal number** (for example `755` or `640`) and nothing else.
+
+Do not convert anything yourself: `stat` can print them like that with a format. Look in `man stat` for the format sequences.
+@@check
+SEEDS=4
+setup() { mkf programa "x"; chmod "$(pick 755 640 600 711 664 700 750)" programa; }
+extra_check() { must_use stat; }
+@@solution
+#!/bin/bash
+stat -c %a programa

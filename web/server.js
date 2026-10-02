@@ -60,6 +60,7 @@ function buildTierMap() {
       const base = f.slice(0, -10) + '.txt';
       if (base !== f && fileSet.has(base)) tier = 0;
     }
+    if (/^20_/.test(f)) tier = 4;   // the man page tasks: only reachable from the Man drills section, never part of a track
     const content = fs.readFileSync(path.join(dir, f), 'utf8');
     for (const m of content.matchAll(/^@@ex (\d{4})\b/gm)) map[m[1]] = tier;
   }
@@ -140,7 +141,7 @@ function theoryIndex(lang) {
   try { files = fs.readdirSync(THEORY).filter(f => f.endsWith('.json')).sort(); } catch { /* no theory yet */ }
   return files.map(f => loadCollection(f.slice(0, -5), lang)).filter(Boolean).map(c => {
     const prog = theoryProgress(c.id);
-    return { id: c.id, title: c.title, about: c.about, groups: c.groups.map(g => ({
+    return { id: c.id, title: c.title, about: c.about, ws: !!c.ws, groups: c.groups.map(g => ({
       id: g.id, title: g.title,
       questions: g.questions.map(q => ({ id: q.id, title: q.title, type: q.type, status: questionStatus(prog[q.id]) })),
     })) };

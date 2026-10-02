@@ -66,6 +66,7 @@ const Keys = (() => {
     ['x', 'Script practice exams', 'sexams', () => goHome('home-sec-sexams')],
     ['q', 'Theory quizzes', 'quizzes', () => goHome('theory-quizzes-title')],
     ['e', 'Theory practice exams', 'exams', () => goHome('theory-exams-title')],
+    ['m', 'Man page drills', 'man', () => goHome('man-home-title')],
   ];
   const step = delta => {
     const b = e$(delta > 0 ? 'next-btn' : 'prev-btn');
