@@ -302,5 +302,5 @@ const Keys = (() => {
   const hb = e$('shortcuts-row');
   if (hb) hb.onclick = () => { e$('settings-menu').classList.add('hidden'); e$('settings-btn').setAttribute('aria-expanded', 'false'); openHelp(); };
   syncPrefs();
-  return { openPalette, openHelp, toast };
+  return { openPalette, openHelp, toast, openUrl, refUrl: key => `${base()}#/reference/cmd/${encodeURIComponent(key)}` };
 })();

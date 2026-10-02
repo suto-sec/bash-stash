@@ -220,6 +220,9 @@ button:disabled { opacity: .5; cursor: default; }
 .result.pass { border-color: var(--accent); }
 .result.fail { border-color: var(--err); }
 .result-head { display: flex; justify-content: space-between; align-items: center; padding: 4px 4px 4px 12px; border-bottom: 1px solid var(--border); font-weight: 600; }
+.result-btns { display: flex; gap: 2px; }
+.result.collapsed .result-head { border-bottom: 0; }
+.result.collapsed .result-body, .result.collapsed #nu-slot { display: none; }
 .result pre, .result .result-body { margin: 0; padding: 10px 12px; max-height: 60vh; overflow: auto; font: 12.5px/1.45 ui-monospace, "Cascadia Code", Menlo, monospace; white-space: pre-wrap; }
 .ansi-red { color: var(--err); } .ansi-green { color: var(--accent); } .ansi-yellow { color: var(--warn); }
 .ansi-bold { font-weight: 700; } .ansi-dim { opacity: .65; }

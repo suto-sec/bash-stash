@@ -126,7 +126,7 @@ const Scripts = (() => {
     checking = true;
     const btn = $('#check-btn'), box = $('#result'), body = $('#result-body'), step = cur.step;
     btn.disabled = true; btn.textContent = '… checking';
-    box.classList.remove('hidden', 'pass', 'fail');
+    box.classList.remove('hidden', 'pass', 'fail'); unfoldResult();
     $('#result-title').textContent = `Checking step ${step}…`;
     body.innerHTML = '';
     if (typeof NewUser !== 'undefined') NewUser.clear();
