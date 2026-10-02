@@ -66,10 +66,13 @@ const ExamPath = (() => {
     const open0 = store.get('pathOpen', null);
     const opened = new Set(open0 || (cur >= 0 ? [PATH_DATA[cur].id] : []));
     const nx = next(null);
+    const folded = store.get('pathFolded', true);
+    box.classList.toggle('folded', folded);
+    const stage = cur >= 0 ? `Stage ${cur + 1} of ${PATH_DATA.length}: ${PATH_DATA[cur].title}` : 'Every stage is done';
     box.innerHTML = `<div class="ep-top"><div><div class="hr-title">Suggested path <span class="hint">— the exam material in order, nothing else</span></div>
-        <div class="ep-sub">${doneAll}/${totalAll} done · ${PATH_DATA.length} stages · warm-ups, exercises, scripts, quizzes and practice exams in every stage</div></div>
-        ${nx ? `<button type="button" class="hc-btn ep-go" data-ep-go="1">${doneAll ? 'Continue' : 'Start'}: ${esc(nx.label.length > 44 ? nx.label.slice(0, 43) + '…' : nx.label)} →</button>` : '<span class="ep-fin">Path complete ✔</span>'}</div>
-      <div class="ep-bar"><i style="width:${totalAll ? 100 * doneAll / totalAll : 0}%"></i></div>
+        <div class="ep-sub">${doneAll ? `${stage} · ${doneAll}/${totalAll} done` : `${totalAll} items in ${PATH_DATA.length} stages: warm-ups, exercises, scripts, quizzes and practice exams`}</div></div>
+        ${nx ? '' : '<span class="ep-fin">Path complete ✔</span>'}<button type="button" class="ep-fold" data-ep-fold="1" aria-expanded="${!folded}">${folded ? 'Show the stages ▾' : 'Hide the stages ▴'}</button></div>
+      ${doneAll ? `<div class="ep-bar"><i style="width:${totalAll ? 100 * doneAll / totalAll : 0}%"></i></div>` : ''}
       <ol class="ep-stages">${rows.map((r, i) => {
         const done = r.total && r.done >= r.total, isCur = i === cur, isOpen = opened.has(r.st.id);
         const groups = KINDS.map(([k, name]) => {
@@ -91,7 +94,12 @@ const ExamPath = (() => {
     if (!box) return;
     const chip = ev.target.closest('[data-ep]');
     if (chip) { ev.preventDefault(); const [k, ...id] = chip.dataset.ep.split(':'); open(item(k, id.join(':'))); return; }
-    if (ev.target.closest('[data-ep-go]')) { open(next(null)); return; }
+    if (ev.target.closest('[data-ep-fold]')) {
+      const f = !box.classList.contains('folded');
+      store.set('pathFolded', f);
+      render(box);
+      return;
+    }
     const tg = ev.target.closest('[data-ep-toggle]');
     if (tg) {
       const id = tg.dataset.epToggle, li = tg.closest('.ep-stage');

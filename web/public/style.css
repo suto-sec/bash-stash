@@ -780,15 +780,47 @@ kbd { font: 11px ui-monospace, Menlo, monospace; padding: 1px 5px; border: 1px s
 .keys-toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 195; padding: 8px 16px; background: var(--panel-2); border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 6px 24px rgba(0,0,0,.4); font-size: 13px; }
 
 /* home page: folding sections, sticky section bar, continue card (home.js) */
-.home-minibar { position: sticky; top: 0; z-index: 5; margin: 0 -32px 28px; padding: 14px 32px 10px; display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 6px 8px;
-  background: color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter: blur(6px); border-bottom: 1px solid var(--border); }
-.home-minibar .mb-part { margin-left: 14px; font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; color: var(--muted); }
-.home-minibar .mb-part:first-child { margin-left: 0; }
-.home-minibar button { padding: 4px 11px; border-radius: 14px; background: var(--panel-2); color: var(--text); font-size: 13px; }
-.home-minibar button i { font-style: normal; color: var(--muted); font-size: 11.5px; margin-left: 3px; }
-.home-minibar button.active { border-color: var(--accent); color: var(--accent); }
-.home-continue + .home-group-title { margin-top: 12px; }
-.home-continue { max-width: 1100px; margin: 0 auto 36px; display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+/* the tab bar of the home page */
+.home-minibar { position: sticky; top: 0; z-index: 5; margin: 0 -32px 28px; padding: 12px 32px 0; display: flex; justify-content: center; gap: 4px;
+  background: var(--bg); border-bottom: 1px solid var(--border); overflow-x: auto; }
+.home-minibar button { padding: 9px 18px; border: 0; border-bottom: 3px solid transparent; border-radius: 6px 6px 0 0; background: transparent; color: var(--muted); font-size: 14.5px; font-weight: 600; white-space: nowrap; }
+.home-minibar button:hover { color: var(--text); background: var(--panel-2); }
+.home-minibar button i { font-style: normal; font-weight: 400; color: var(--muted); font-size: 11.5px; margin-left: 4px; }
+.home-minibar button.active { color: var(--text); border-bottom-color: var(--accent); }
+/* one tab at a time: Start has its own boxes, the other tabs show their sections */
+#home-page[data-tab="start"] .home-body > .home-sec, #home-page[data-tab="start"] .home-body > .home-group-title,
+#home-page[data-tab="start"] #home-nav, #home-page[data-tab="start"] #home-sidebar-toggle { display: none; }
+#home-page:not([data-tab="start"]) :is(#home-hero, #home-tiles, #home-roadmap, #home-readiness) { display: none; }
+#home-page[data-tab="coding"] .home-body > .home-sec:not([data-part="coding"]), #home-page[data-tab="theory"] .home-body > .home-sec:not([data-part="theory"]),
+#home-page[data-tab="man"] .home-body > .home-sec:not([data-part="man"]) { display: none; }
+#home-page[data-tab="coding"] #theory-home-title, #home-page[data-tab="coding"] #man-home-title, #home-page[data-tab="theory"] #home-grp-exercises, #home-page[data-tab="theory"] #man-home-title,
+#home-page[data-tab="man"] #home-grp-exercises, #home-page[data-tab="man"] #theory-home-title { display: none; }
+.home-body .home-group-title:not(:first-child) { margin-top: 0; }
+.home-body .home-group-title { display: none; }   /* the tab says it */
+.home-body.fresh .home-readiness { display: none; }
+@media (max-width: 900px) { .home-body { padding: 0 16px 48px; } .home-minibar { margin: 0 -16px 20px; padding: 8px 12px 0; justify-content: flex-start; } .home-minibar button { padding: 8px 12px; font-size: 13.5px; } }
+/* the hero: one thing to do next */
+.home-hero { max-width: 1100px; margin: 0 auto 20px; padding: 20px 26px; border: 1px solid var(--accent); border-radius: 12px; background: var(--panel); display: flex; flex-direction: column; gap: 6px; }
+.home-hero h2 { margin: 0 0 2px; font-size: 22px; }
+.home-hero p { margin: 0 0 10px; color: var(--muted); max-width: 70ch; }
+.home-hero .hs-actions { margin-top: 8px; }
+.home-hero .hc-btn { margin-top: 0; padding: 9px 20px; font-size: 15px; }
+.hero-alt { color: var(--muted); font-size: 13px; text-decoration: none; }
+.hero-alt:hover { color: var(--text); }
+.hero-alt b { color: var(--text); font-weight: 600; }
+.hero-how { margin-top: 12px; color: var(--muted); font-size: 13.5px; }
+.hero-how summary { cursor: pointer; }
+.hero-how ol { margin: 8px 0 0; padding-left: 22px; display: grid; gap: 5px; }
+/* the tiles: the way into the rest */
+.home-tiles { max-width: 1100px; margin: 0 auto 30px; }
+.home-sub { margin: 0 0 12px; font-size: 14px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .5px; }
+.home-tile-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; }
+.home-tile { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding: 16px 18px; text-align: left; border: 1px solid var(--border); border-radius: 10px; background: var(--panel); color: var(--text); text-decoration: none; }
+.home-tile:hover { border-color: var(--accent); transform: translateY(-2px); }
+.ht-title { font-size: 16px; font-weight: 700; }
+.ht-desc { font-size: 12.5px; color: var(--muted); line-height: 1.5; }
+.ht-stat { margin-top: auto; padding-top: 4px; font-size: 12px; font-weight: 600; color: var(--accent); }
+.home-tile .hs-bar { flex: none; width: 100%; margin-top: 4px; }
 .hc-card { padding: 16px 18px; border: 1px solid var(--accent); border-radius: 10px; background: var(--panel); display: flex; flex-direction: column; gap: 4px; }
 .hc-kind { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--accent); }
 .hc-title { font-size: 17px; font-weight: 700; }
@@ -826,9 +858,6 @@ kbd { font: 11px ui-monospace, Menlo, monospace; padding: 1px 5px; border: 1px s
 .home-roadmap button.current { border-color: var(--accent); }
 .home-roadmap button.current .hr-n { background: var(--accent); border-color: var(--accent); color: #fff; }
 .home-roadmap button.done .hr-n { color: var(--accent); border-color: var(--accent); }
-.home-start { max-width: 1100px; margin: 0 auto 30px; padding: 20px 24px; border: 1px solid var(--accent); border-radius: 12px; background: var(--panel); }
-.home-start h2 { margin: 0 0 10px; font-size: 20px; }
-.home-start ol { margin: 0 0 14px; padding-left: 22px; display: grid; gap: 6px; }
 .hs-actions { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; }
 .linklike { background: none; border: none; color: var(--muted); text-decoration: underline; cursor: pointer; padding: 4px 2px; }
 .linklike:hover { color: var(--text); }
@@ -914,3 +943,8 @@ kbd { font: 11px ui-monospace, Menlo, monospace; padding: 1px 5px; border: 1px s
 .ref-count:empty { display: none; }
 .ref-nav-cmd.top { box-shadow: inset 3px 0 0 var(--accent); background: var(--sel); }
 .ref-results-h { font-size: 15px; margin: 0 0 12px; }
+
+/* the suggested path on Start: one row until the stages are asked for */
+.home-roadmap.folded .ep-stages { display: none; }
+.home-roadmap { padding: 14px 18px; border: 1px solid var(--border); border-radius: 12px; background: var(--panel); }
+.home-roadmap button.ep-fold { width: auto; height: auto; display: inline-block; padding: 6px 12px; background: var(--panel-2); color: var(--text); white-space: nowrap; }

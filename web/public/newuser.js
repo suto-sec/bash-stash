@@ -1,6 +1,6 @@
 // The first minutes: less lost, less overwhelmed.
 //   - the suggested path on the home page (path.js), always showing where you are
-//   - a "Start here" card while nothing has been passed yet
+//   - (the "Start here" hero of the home page lives in home.js)
 //   - a short tour of the exercise screen (offered once, replayable from Settings)
 //   - after a Check: what to do next when it passed, and a nudge towards the available help when you are stuck
 'use strict';
@@ -24,38 +24,6 @@ const NewUser = (() => {
       home.insertBefore(box, $1('home-grp-exercises'));
     }
     ExamPath.render(box);
-  }
-  const startPath = () => { const n = ExamPath.next(null); if (n) ExamPath.open(n); };
-
-  // ---------------------------------------------------------------- the "Start here" card (nothing passed yet)
-  const freshUser = () => !(state.flat || []).some(pass) && !Scripts.list().some(e => e.status === 'pass') && !store.get('startHidden', false);
-  function renderStart() {
-    const home = $1('home-body');
-    if (!home || !state.flat) return;
-    let box = $1('home-start');
-    const show = freshUser();
-    if (!show) { if (box) box.remove(); return; }
-    if (!box) {
-      box = document.createElement('div');
-      box.id = 'home-start'; box.className = 'home-start';
-      home.insertBefore(box, $1('home-grp-exercises'));
-      box.addEventListener('click', ev => {
-        const b = ev.target.closest('[data-act]');
-        if (!b) return;
-        if (b.dataset.act === 'go') startPath();
-        else if (b.dataset.act === 'tour') startTour();
-        else if (b.dataset.act === 'hide') { store.set('startHidden', true); renderStart(); }
-      });
-    }
-    box.innerHTML = `<h2>Welcome — start here</h2>
-      <ol>
-        <li><b>Follow the suggested path.</b> It lists, in order, everything the exam needs: tiny warm-ups first, then exercises, scripts, quizzes and practice exams.</li>
-        <li><b>Read the task on the left</b>, then write your answer in <code>answer.sh</code> with the terminal or VS Code (they edit the same file).</li>
-        <li><b>Press Check</b> (<kbd>Ctrl</kbd> <kbd>Enter</kbd>). If it fails you see what differed and can try your script on the same files.</li>
-        <li><b>Stuck?</b> <i>Info</i> explains the commands, the <i>Reference</i> (<kbd>Ctrl</kbd> <kbd>K</kbd>) is the full manual, and <i>Show solution</i> is the last resort.</li>
-      </ol>
-      <div class="hs-actions"><button class="hc-btn" type="button" data-act="go">Start the suggested path →</button>
-        <button type="button" data-act="tour">Take the 1-minute tour</button><button type="button" class="linklike" data-act="hide">I know my way around — hide this</button></div>`;
   }
 
   // ---------------------------------------------------------------- the tour
@@ -216,10 +184,7 @@ const NewUser = (() => {
 
   // ---------------------------------------------------------------- start
   function refresh() {
-    renderRoadmap(); renderStart();
-    const home = $1('home-body'), h1 = $1('home-grp-exercises');
-    const c = $1('home-continue'); if (c && $1('home-start')) c.classList.add('hidden');   // the start card says it all while nothing is passed
-    if (home && h1) for (const id of ['home-start', 'home-continue', 'home-roadmap']) { const e = $1(id); if (e) home.insertBefore(e, h1); }   // start, continue, path
+    renderRoadmap();   // the order of the boxes on the home page is decided by home.js
   }
   if (typeof Home !== 'undefined' && Home.onRefresh) Home.onRefresh(refresh);
   window.addEventListener('hashchange', offerTour);
