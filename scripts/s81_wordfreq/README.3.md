@@ -1,0 +1,1 @@
+Checks: no argument or more than two → an error message **and the correct usage** (e.g. `Usage: wordfreq.sh file [n]`), exit **1**; the file does not exist → an error with its name, exit **2**; it is not a regular file → an error with its name, exit **3**; `N` is not a positive integer (digits only, at least 1) → an error with the value, exit **4** (checked after the file).

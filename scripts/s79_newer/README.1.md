@@ -1,0 +1,1 @@
+Write `newer.sh REF DIR`. It prints the path (as `find` shows it) of every **regular file** below `DIR` (any depth) whose modification time is **strictly newer** than that of the file `REF` (`find -newer`). The order does not matter. A file with exactly the same time is not newer.

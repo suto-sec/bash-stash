@@ -1,0 +1,1 @@
+Write `shebang.sh DIR`. It prints the path (as `find` shows it) of every **regular file** below `DIR` (any depth) whose name ends in `.sh` and whose **first line does not start with `#!`**. An empty file has no first line, so it is listed. The order does not matter; a directory called `dir.sh` is not a file.

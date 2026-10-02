@@ -1,0 +1,1 @@
+`-m LEN` (as the **first two arguments**, before the file) ignores the words with **fewer than LEN letters** (`-m 3` keeps `the` and drops `it` and `a`). `LEN` is a positive integer with the same check as `N` (error with the value, exit **4**); `-m` without a value is the usage error (exit 1). Everything else is as before.

@@ -1,0 +1,1 @@
+Check two things per `.sh` file and print one line for each problem: `PATH: no shebang` and `PATH: not executable` (nobody has the execute permission for *you*: use `test -x`). A file with both problems gives both lines (the first one first). A file without problems prints nothing.

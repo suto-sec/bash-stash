@@ -1,0 +1,31 @@
+{
+ "id": "s79",
+ "slug": "newer",
+ "title": "Newer than a reference file",
+ "script": "newer.sh",
+ "cmds": "find -newer, mkdir -p, cp, shift, test -f -d, exit codes",
+ "level": 4,
+ "tags": [
+  "find",
+  "copy and move",
+  "exit codes"
+ ],
+ "steps": [
+  {
+   "n": 1,
+   "title": "Files newer than the reference"
+  },
+  {
+   "n": 2,
+   "title": "Optional directory, usual checks"
+  },
+  {
+   "n": 3,
+   "title": "Count them"
+  },
+  {
+   "n": 4,
+   "title": "Copy them (-c)"
+  }
+ ]
+}
