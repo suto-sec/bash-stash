@@ -1,0 +1,73 @@
+@@exam easy-12 | Examen fácil 12
+@@about
+Diez preguntas de respuesta única sobre lo básico: el árbol único de directorios, filtros en una tubería, until, enlaces, expresiones regulares frente a comodines, el orden de las expansiones, la profundidad de find, subshells y los mandatos de sesión.
+
+@@q single | Un árbol para todos los discos
+¿Cómo presenta Linux varios discos y particiones al usuario?
+(+) Todos se montan en directorios de un único árbol que empieza en `/`. :: No hay letras de unidad: `/home` o `/mnt/usb` pueden ser particiones distintas, pero parecen directorios normales.
+(-) Cada disco o partición recibe su propia letra, como `C:` o `D:`, con su propia raíz. :: Ese es el modelo de Windows; en Linux solo hay una raíz, `/`.
+(-) Cada disco tiene su propio árbol y `cd` cambia entre ellos. :: `cd` solo se mueve dentro del único árbol.
+(-) Solo el primer disco es visible; los demás deben usarse a través de ficheros de dispositivo especiales. :: Una vez montada, una partición se usa mediante su punto de montaje como cualquier directorio.
+
+@@q single | Contar usuarios distintos
+Cada línea de `log` es un nombre de usuario y un número, como `ana 1`. ¿Qué afirmación sobre `cut -d' ' -f1 log | sort -u | wc -l` es FALSA?
+(-) `cut -d' ' -f1` conserva solo el primer campo de cada línea, el nombre de usuario. :: Cierto: `-d' '` fija el espacio como separador y `-f1` selecciona el primer campo.
+(-) `sort -u` ordena los nombres y elimina los repetidos. :: Cierto: `-u` deja una copia de cada uno.
+(-) La tubería imprime un único número. :: Cierto: es lo que imprime `wc -l`.
+(+) El número impreso es el número de líneas de `log`, usuarios repetidos incluidos. :: Falso: `sort -u` elimina los duplicados antes de que `wc -l` cuente, así que imprime el número de usuarios distintos.
+
+@@q single | Repetir hasta que
+¿Qué bucle repite su cuerpo mientras su condición es FALSA y se detiene cuando pasa a ser cierta?
+(+) `until` :: `until cond; do ...; done` ejecuta el cuerpo hasta que la condición se cumple.
+(-) `while` :: Repite mientras la condición es cierta.
+(-) `for` :: Repite una vez por cada palabra de una lista.
+(-) `case` :: No es un bucle: elige una rama comparando una palabra con patrones.
+
+@@q single | Permisos de un enlace
+`link` es un enlace simbólico al fichero regular `file`. ¿Qué mandato muestra los permisos del propio enlace, no los de `file`?
+(+) `ls -l link` :: Muestra `lrwxrwxrwx`: la primera letra `l` indica que es un enlace simbólico, y los permisos del propio enlace son siempre `rwx` para todos.
+(-) `ls -lL link` :: `-L` sigue el enlace, así que muestra los permisos de `file`, como `-rw-r--r--`.
+(-) `stat -L link` :: `-L` hace que `stat` siga el enlace y describa el fichero al que apunta.
+(-) `cat link` :: Imprime el contenido de `file`; no muestra ningún permiso.
+
+@@q single | El punto en grep y en ls
+El directorio tiene los ficheros `a.txt`, `axtxt` y `b.txt`. ¿Qué imprime `ls | grep a.txt`?
+(+) `a.txt` y `axtxt` :: En una expresión regular el punto coincide con cualquier carácter, así que `a.txt` coincide también con `axtxt`.
+(-) Solo `a.txt` :: Eso ocurriría si el punto fuera un carácter normal, como lo es en un comodín de la shell.
+(-) `a.txt`, `axtxt` y `b.txt` :: `b.txt` no tiene una `a` delante de `txt`, así que no coincide.
+(-) Nada, porque `grep` necesita la opción `-E` para usar el punto como comodín. :: El punto forma parte de las expresiones regulares básicas que `grep` usa por defecto.
+
+@@q single | El orden de las expansiones
+¿En qué orden aplica bash estos tres pasos a una línea de mandatos escrita?
+(+) Expansión de alias, después expansión de variables, después expansión de comodines. :: Primero se sustituyen los alias; luego se expande `$VAR`; los comodines se expanden los últimos, sobre las palabras que quedan.
+(-) Expansión de comodines, después de variables, después de alias. :: Es el orden inverso del real.
+(-) Expansión de variables, después de alias, después de comodines. :: Los alias se miran antes de expandir las variables.
+(-) Expansión de comodines, después de alias, después de variables. :: Los comodines son el último de los tres pasos, no el primero.
+
+@@q single | Limitar la profundidad de find
+¿Qué mandato lista solo los ficheros `.txt` que están directamente dentro de `docs`, sin entrar en sus subdirectorios?
+(+) `find docs -maxdepth 1 -name '*.txt'` :: `-maxdepth 1` limita la búsqueda al propio directorio y a sus entradas directas.
+(-) `find docs -mindepth 1 -name '*.txt'` :: `-mindepth 1` solo omite el punto de partida; sigue entrando en todos los subdirectorios.
+(-) `find docs -maxdepth 0 -name '*.txt'` :: Profundidad 0 es solo `docs`, y su nombre no termina en `.txt`: no se imprime nada.
+(-) `find docs -depth 1 -name '*.txt'` :: `-depth` no lleva número; `find` protesta con «paths must precede expression».
+
+@@q single | Un subshell y cd
+Estás en `/home/ana`. ¿Qué imprime `(cd /tmp; pwd); pwd`?
+(+) `/tmp` y después `/home/ana` :: Los paréntesis ejecutan los mandatos en un subshell, así que su `cd` no cambia el directorio de la shell original.
+(-) `/tmp` dos veces :: Eso ocurriría con `{ cd /tmp; pwd; }; pwd`, que se ejecuta en la misma shell.
+(-) `/home/ana` dos veces :: El primer `pwd` se ejecuta después del `cd`, dentro del subshell, así que imprime `/tmp`.
+(-) `/tmp` y después un error, porque `cd` no se puede usar entre paréntesis. :: `cd` funciona en un subshell; su efecto simplemente termina con el subshell.
+
+@@q single | Las palabras más frecuentes
+`words` tiene una palabra por línea. ¿Qué afirmación sobre `sort words | uniq -c | sort -nr | head -3` es CIERTA?
+(+) Imprime las tres palabras más frecuentes, cada una precedida de su cuenta. :: `uniq -c` cuenta líneas iguales adyacentes (por eso se ordena antes), `sort -nr` pone primero las cuentas mayores y `head -3` se queda con tres líneas.
+(-) Imprime las tres primeras palabras del fichero en orden alfabético. :: Las cuentas y el segundo `sort` cambian el orden y el contenido de las líneas.
+(-) Imprime tres palabras distintas, sin cuentas. :: `uniq -c` añade la cuenta al principio de cada línea.
+(-) Falla, porque `sort` no puede aparecer dos veces en la misma tubería. :: Un mandato se puede usar tantas veces como haga falta.
+
+@@q single | Quién está conectado
+¿Qué afirmación sobre los mandatos de sesión es FALSA?
+(-) `whoami` imprime el nombre del usuario que ejecuta la shell. :: Cierto.
+(-) `id` muestra el UID, el GID y los grupos del usuario. :: Cierto.
+(-) `who` lista los usuarios que están conectados en este momento. :: Cierto: con sus terminales y horas de inicio de sesión.
+(+) `last` muestra lo que está ejecutando cada usuario ahora mismo. :: Falso: `last` muestra el historial de inicios de sesión pasados (de `/var/log/wtmp`). La actividad actual de cada usuario la muestra `w`.

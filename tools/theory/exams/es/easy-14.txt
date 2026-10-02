@@ -1,0 +1,73 @@
+@@exam easy-14 | Examen fácil 14
+@@about
+Diez preguntas de respuesta única sobre lo básico: sistemas init, funciones, flujos estándar, rutas absolutas, escapar en grep, control de trabajos, nombres de variables, la cadena de modo, campos de crontab y encadenar mandatos.
+
+@@q single | Sistemas init
+¿Qué afirmación sobre los sistemas init es CIERTA?
+(+) `launchd` es el sistema init de macOS. :: Las distribuciones Linux usan sobre todo `systemd`, las antiguas usaban `init` de SysV, y macOS usa `launchd`.
+(-) `systemd` es el sistema init de macOS. :: `systemd` es el estándar en Linux; macOS usa `launchd`.
+(-) El `init` de SysV describe los servicios como ficheros de unidad y los arranca en paralelo. :: Los ficheros de unidad son una idea de `systemd`; SysV init ejecuta los scripts de `/etc/init.d` en orden, por nivel de ejecución.
+(-) Los sistemas BSD usan `systemd` como init por defecto. :: Los BSD tienen su propio init, más sencillo.
+
+@@q single | Una función con un parámetro
+Un script contiene `greet() { echo "Hi $1"; }` seguido de las dos líneas `greet Ana` y `greet`. ¿Qué imprime?
+(+) `Hi Ana` y después `Hi ` :: Dentro de la función `$1` es su primer argumento; en la segunda llamada no hay ninguno, así que `$1` está vacío.
+(-) `Hi Ana` dos veces :: La segunda llamada no tiene argumento: `$1` no conserva el valor de la primera.
+(-) `Hi Ana` y después un error, porque la función necesita un argumento. :: Bash no comprueba los argumentos: uno que falta simplemente está vacío.
+(-) Nada, porque la función se define pero nunca se llama. :: Las dos líneas siguientes son las llamadas.
+
+@@q single | Los tres flujos
+¿Qué línea da los flujos estándar con sus números y sus valores por defecto?
+(+) stdin es 0 (el teclado), stdout es 1 (la pantalla) y stderr es 2 (la pantalla). :: En `2> errors.txt` el número 2 selecciona la salida de error estándar.
+(-) stdin es 1 (el teclado), stdout es 2 (la pantalla) y stderr es 3 (la pantalla). :: La numeración empieza en 0.
+(-) stdin es 0 (la pantalla), stdout es 1 (el teclado) y stderr es 2 (un fichero de registro). :: La entrada viene del teclado y las dos salidas van a la pantalla por defecto.
+(-) stdin es 2 (el teclado), stdout es 1 (la pantalla) y stderr es 0 (la pantalla). :: Los números de stdin y stderr están intercambiados.
+
+@@q single | Qué hace absoluta a una ruta
+¿Qué afirmación define una ruta absoluta?
+(+) Una ruta que empieza en el directorio raíz, así que comienza con `/`. :: Significa lo mismo estés donde estés, por ejemplo `/etc/passwd`.
+(-) Una ruta que empieza en el directorio actual, como `./notes`. :: Esa es una ruta relativa.
+(-) Una ruta que no tiene `..`. :: `docs/notes` no tiene ninguno y sigue siendo relativa; `/home/../etc` tiene uno y sigue siendo absoluta.
+(-) Una ruta de más de un componente, como `docs/notes`. :: El número de componentes es irrelevante: lo que importa es la primera `/`.
+
+@@q single | Escapar un punto
+El fichero tiene las líneas `axb` y `a.b`. ¿Qué afirmación sobre buscar un punto literal es FALSA?
+(-) `grep 'a\.b' file` imprime solo `a.b`. :: Cierto: entre comillas la barra invertida llega a `grep`, que lee entonces el punto como un carácter normal.
+(-) `grep -F a.b file` imprime solo `a.b`. :: Cierto: `-F` trata el patrón como una cadena fija, sin caracteres especiales.
+(-) `grep 'a[.]b' file` imprime solo `a.b`. :: Cierto: dentro de corchetes el punto es un carácter normal.
+(+) `grep a\.b file`, sin comillas, imprime solo `a.b`. :: Falso: la shell quita antes la barra invertida, así que `grep` recibe `a.b` e imprime las dos líneas.
+
+@@q single | Suspender un trabajo
+¿Qué afirmación sobre `Ctrl+C` y `Ctrl+Z` es FALSA?
+(-) `Ctrl+C` envía `SIGINT` al trabajo en primer plano, que normalmente termina. :: Cierto.
+(-) `Ctrl+Z` detiene el trabajo en primer plano y devuelve el prompt. :: Cierto: el trabajo queda suspendido, no terminado.
+(-) Un trabajo detenido con `Ctrl+Z` se puede reanudar con `fg` o `bg`. :: Cierto: `fg` en primer plano y `bg` en segundo plano.
+(+) Un trabajo detenido con `Ctrl+Z` termina y se libera su memoria. :: Falso: permanece en memoria en estado detenido hasta que se reanuda o se mata.
+
+@@q single | Espacios alrededor del signo igual
+Escribes `count = 5` en bash. ¿Qué ocurre?
+(+) Busca un mandato llamado `count` y responde «command not found». :: En una asignación no puede haber espacios alrededor de `=`.
+(-) La variable `count` toma el valor `5`. :: Eso es lo que hace `count=5`, sin espacios.
+(-) La variable `count` toma la cadena ` 5`, con un espacio delante. :: La shell no trata la línea como una asignación.
+(-) La shell imprime `5`, el valor de la asignación. :: Las asignaciones no imprimen nada en la shell.
+
+@@q single | La cadena de modo
+¿Qué mandato imprime la cadena de modo, como `-rw-r--r--`, del fichero `notes.txt`?
+(+) `ls -l notes.txt` :: El formato largo empieza con el tipo y los permisos de propietario, grupo y otros.
+(-) `ls notes.txt` :: Imprime solo el nombre del fichero.
+(-) `ls -i notes.txt` :: Imprime el número de inodo seguido del nombre.
+(-) `cat -l notes.txt` :: `cat` muestra el contenido del fichero y no tiene opción `-l`.
+
+@@q single | Una línea de crontab
+¿Qué afirmación sobre la línea de crontab `30 3 * * 1-5 /usr/bin/backup` es CIERTA?
+(+) El mandato se ejecuta a las 03:30 de lunes a viernes. :: Los campos son minuto, hora, día del mes, mes y día de la semana.
+(-) El mandato se ejecuta a las 03:30 los días 1 a 5 de cada mes. :: El rango `1-5` está en el quinto campo, que es el día de la semana.
+(-) El mandato se ejecuta cada 30 minutos durante las horas de 3 a 5. :: `30` es el campo de minutos y `3` el de horas; no son intervalos.
+(-) El mandato se ejecuta a las 30:03 cada día laborable. :: Las horas van de 0 a 23 y los minutos de 0 a 59.
+
+@@q single | Ejecutar un mandato solo tras otro
+¿Qué línea crea el directorio `d` y entra en él solo si la creación tuvo éxito?
+(+) `mkdir d && cd d` :: `&&` ejecuta el segundo mandato solo cuando el primero termina con estado 0.
+(-) `mkdir d ; cd d` :: `;` ejecuta `cd` pase lo que pase con `mkdir`.
+(-) `mkdir d || cd d` :: `||` ejecuta `cd` solo cuando `mkdir` ha fallado.
+(-) `mkdir d & cd d` :: `&` ejecuta `mkdir` en segundo plano, así que `cd` puede ejecutarse antes de que exista el directorio.

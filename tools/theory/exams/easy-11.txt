@@ -1,0 +1,84 @@
+@@exam easy-11 | Easy exam 11
+@@tier easy
+@@about
+Ten single-choice questions on the basics: startup files, for loops, file ages, here-strings, execute permission, whole-word searches, tar, sessions, signals and filters.
+
+@@q single | Where the aliases live
+@@topic expansion-vars
+Which file is read by every new interactive shell started in a terminal window, and is the usual place to put your aliases?
+(+) `~/.bashrc` :: It is the per-user file that bash reads when an interactive shell starts.
+(-) `/etc/passwd` :: It lists the accounts of the system; it is not a shell configuration file.
+(-) `~/.bash_history` :: It is where the shell saves the commands you typed, not a place for settings.
+(-) `/etc/shadow` :: It stores password hashes; it has nothing to do with shell startup.
+
+@@q single | for loops
+@@topic scripts
+Which statement about `for` loops in bash is FALSE?
+(-) `for f in *.txt; do ...; done` runs the body once for each file whose name matches the pattern. :: True: the shell expands the glob before the loop starts.
+(-) `for i in 1 2 3; do ...; done` runs the body three times, with `i` set to 1, 2 and 3. :: True.
+(-) `for i in {1..5}; do ...; done` runs the body five times. :: True: the shell expands the range to `1 2 3 4 5`.
+(+) `for i in $(seq 3); do ...; done` runs the body only once, because `$(seq 3)` is a single word. :: False: the output of `seq 3` is split into the words `1`, `2` and `3`, so the body runs three times.
+
+@@q single | The age of a file
+@@topic find
+Which statement about `find -mtime` is TRUE?
+(+) `-mtime -1` matches the files modified less than 24 hours ago. :: A minus sign means "less than", counted in periods of 24 hours back from now.
+(-) `-mtime 1` matches the files modified during the last 24 hours. :: A plain `1` means exactly one 24-hour period ago, that is between 24 and 48 hours ago.
+(-) `-mtime +7` matches the files modified exactly seven days ago. :: `+7` means "more than 7" periods, not exactly 7.
+(-) `-mtime` counts calendar days, starting at midnight. :: It counts 24-hour periods back from the moment `find` runs.
+
+@@q single | Text as the input of a command
+@@topic redirection-pipes
+Which command makes `wc -c` read the text `hello` as its standard input, without a file or a pipe?
+(+) `wc -c <<< hello` :: A here-string (`<<<`) feeds the word, followed by a newline, as standard input: it prints `6`.
+(-) `wc -c < hello` :: `<` reads from a file called `hello`, which does not exist: "No such file or directory".
+(-) `wc -c hello` :: `hello` is taken as the name of a file to read, so `wc` reports that it does not exist.
+(-) `wc -c << hello` :: `<<` starts a here-document: the shell waits for lines until it finds one that is just `hello`.
+
+@@q single | Execute for the owner only
+@@topic permissions
+`script.sh` has mode `rw-r--r--`. Which command gives execute permission to the owner and changes nothing else?
+(+) `chmod u+x script.sh` :: `u+x` adds the execute bit for the user (owner) and leaves every other bit as it was.
+(-) `chmod u=x script.sh` :: `=` sets exactly the listed permissions, so the owner would lose read and write.
+(-) `chmod a+x script.sh` :: It also gives execute permission to the group and to the others.
+(-) `chmod 100 script.sh` :: It sets the mode to `--x------`: the group and the others lose their read permission.
+
+@@q single | Searching for a whole word
+@@topic grep-regex
+The file has the lines `a cat sleeps`, `concatenate` and `cat`. Which statement is TRUE?
+(+) `grep -w cat` prints `a cat sleeps` and `cat`, but not `concatenate`. :: `-w` requires the match to be a whole word, with non-word characters (or the line limits) on both sides.
+(-) `grep -w cat` prints all three lines, because every one of them contains `cat`. :: In `concatenate` the letters `cat` are inside a longer word, so `-w` rejects them.
+(-) `grep cat` prints only `cat`, since without options it looks for a whole line. :: Without options `grep` prints every line that contains the pattern anywhere.
+(-) `grep -w cat` prints only the line `cat`, because `-w` means "the whole line". :: The option for matching the whole line is `-x`.
+
+@@q single | Creating a compressed archive
+@@topic files-fs
+What does `tar -czf docs.tgz docs` do?
+(+) It packs `docs` into the compressed archive `docs.tgz` and leaves `docs` as it was. :: `c` creates, `z` compresses with gzip and `f` gives the name of the archive.
+(-) It extracts the archive `docs.tgz` into the directory `docs`. :: Extracting needs `x`, not `c`.
+(-) It lists the content of `docs.tgz` without extracting it. :: Listing is done with `t`.
+(-) It compresses each file inside `docs` separately and deletes the originals. :: `tar` packs everything into one archive and does not delete anything; compressing file by file is what `gzip` does.
+
+@@q single | Reading the output of who
+@@topic users-sessions
+In the output of `who`, a line shows `pts/0` in the second column. What does that mean?
+(+) A pseudo-terminal: a terminal window or an SSH session. :: `pts/N` are pseudo-terminals; a text console would appear as `ttyN`.
+(-) The user is working on the first text console of the machine. :: A text console is shown as `tty1`, `tty2`...
+(-) The user is working on the graphical display of the machine. :: The graphical display is shown as `:0`.
+(-) The user logged in as `pts` and is the first of the connected users. :: The column shows the terminal the session is attached to, not a user name or an order.
+
+@@q single | kill -9
+@@topic jobs-procs
+What does `kill -9 4321` do?
+(+) It sends `SIGKILL`: the process cannot catch or ignore it and ends at once. :: Signal number 9 is `SIGKILL`; the kernel ends the process directly.
+(-) It sends the default signal `SIGTERM`, marked as urgent so that it is delivered before any other. :: `kill` without a number sends `SIGTERM` (15), and signals have no priorities.
+(-) It suspends process 4321 until `kill -18` is sent. :: Suspending is done with `SIGSTOP` (19) or `Ctrl+Z`.
+(-) It sends the signal to the 9 processes that were started last. :: The number is the signal, and the argument is the PID.
+
+@@q single | What is a filter
+@@topic filters
+Which statement about filters (commands that read standard input and write standard output) is FALSE?
+(-) `sort`, `tr` and `wc` can be used as filters in a pipeline. :: True: with no file argument they read their standard input.
+(-) `grep pattern` with no file name reads standard input. :: True: that is why it works at the end of a pipe.
+(-) `cat` with no arguments copies its standard input to its standard output. :: True.
+(+) `ls` is a filter: it reads a list of names from its standard input and prints them. :: False: `ls` ignores its input and lists the current directory (or the arguments), so `echo /tmp | ls` does not list `/tmp`.
