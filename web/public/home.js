@@ -1,21 +1,24 @@
-// Home page browsing: less scrolling.
-//   - every section can be folded to ONE row (progress bar, count, "next up" button); the choice is remembered, and only Tracks starts open
+// Home page: one thing at a time.
+//   - four tabs: Start (hero, suggested path, the way into the rest), Coding exercises, Theory, Man drills; the page opens on Start
+//   - Start has ONE primary button: "Start the suggested path" for a new user, "Continue" with the last item opened after that
+//   - inside a tab every section can be folded to ONE row (progress bar, count, "next up" button); the choice is remembered, and the first section of a tab starts open
 //   - the groups inside the Scripts and exam sections fold too (click their heading)
-//   - a sticky bar with a jump chip (and the progress) of every section
-//   - a "Continue where you left off" card at the top: the last thing opened and the next exercise of the current track
+// This module also decides the order of the boxes on Start (hero, readiness, path, tiles); the others only fill their own box.
 // It rebuilds nothing of what the other modules draw: it wraps their output and reads their data.
 'use strict';
 const Home = (() => {
   const SECS = [
-    { key: 'tracks',  id: 'home-sec-tracks',      part: 'Coding' },
-    { key: 'intro',   id: 'home-sec-intro',       part: 'Coding' },
-    { key: 'scripts', id: 'home-sec-scripts',     part: 'Coding' },
-    { key: 'sexams',  id: 'home-sec-sexams',      part: 'Coding' },
-    { key: 'quizzes', id: 'theory-quizzes-title', part: 'Theory' },
-    { key: 'exams',   id: 'theory-exams-title',   part: 'Theory' },
-    { key: 'man',     id: 'home-sec-man',         part: 'Man drills' },
+    { key: 'tracks',  id: 'home-sec-tracks',      part: 'coding' },
+    { key: 'intro',   id: 'home-sec-intro',       part: 'coding' },
+    { key: 'scripts', id: 'home-sec-scripts',     part: 'coding' },
+    { key: 'sexams',  id: 'home-sec-sexams',      part: 'coding' },
+    { key: 'quizzes', id: 'theory-quizzes-title', part: 'theory' },
+    { key: 'exams',   id: 'theory-exams-title',   part: 'theory' },
+    { key: 'man',     id: 'home-sec-man',         part: 'man' },
   ];
-  const DEFAULT_OPEN = ['tracks'];
+  const TABS = [['start', 'Start'], ['coding', 'Coding exercises'], ['theory', 'Theory'], ['man', 'Man drills']];
+  const GROUP_TAB = { 'home-grp-exercises': 'coding', 'theory-home-title': 'theory', 'man-home-title': 'man' };   // the group headings (sidebar labels) -> their tab
+  const DEFAULT_OPEN = ['tracks', 'quizzes', 'man'];   // the first section of each tab (a tab with one folded row looks empty)
   const el = id => document.getElementById(id);
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const store = {
@@ -36,7 +39,7 @@ const Home = (() => {
       const h = el(s.id);
       if (!h || h.parentElement.classList.contains('home-sec')) continue;
       const sec = document.createElement('section'), summary = document.createElement('div'), inner = document.createElement('div');
-      sec.className = 'home-sec'; sec.dataset.sec = s.key;
+      sec.className = 'home-sec'; sec.dataset.sec = s.key; sec.dataset.part = s.part;
       summary.className = 'home-sec-summary'; inner.className = 'home-sec-body';
       h.parentNode.insertBefore(sec, h);
       sec.append(h, summary, inner);
@@ -62,8 +65,25 @@ const Home = (() => {
   // sidebar / keyboard jumps to a section show its contents
   function expandById(headId) {
     const s = SECS.find(x => x.id === headId);
+    setTab(s ? s.part : GROUP_TAB[headId] || tab, false);
     if (s && isCollapsed(s.key)) setCollapsed(s.key, false);
   }
+
+  // ---------------------------------------------------------------- the tabs
+  let tab = 'start', ready = false;   // (the sidebar asks this module for the tab, so it cannot be redrawn while the module is still loading)
+  const page = () => el('home-page');
+  function setTab(t, toTop = true) {
+    if (!TABS.some(x => x[0] === t)) t = 'start';
+    const changed = t !== tab;
+    tab = t;
+    const p = page(); if (p) p.dataset.tab = t;
+    if (changed || toTop) {
+      renderBar();
+      if (ready) renderHomeNav();   // the sidebar lists the tab that is open
+    }
+    if (toTop) { const b = el('home-body'); if (b) b.scrollTop = 0; }
+  }
+  const tabOfGroup = grp => GROUP_TAB[grp] || 'coding';
 
   // ---------------------------------------------------------------- what each section knows about progress
   const intro = () => (state.index || []).filter(t => t.id !== '18' && t.id !== '19' && t.id !== '20').flatMap(t => t.exercises.filter(e => e.tier === 0).map(e => ({ e, t })));
@@ -122,45 +142,44 @@ const Home = (() => {
         <span class="hs-more">Show ▾</span>`;
     }
     renderBar();
-    renderContinue();
+    renderHero();
+    renderTiles();
     hooks.forEach(fn => { try { fn(); } catch { /* a hook must not break the page */ } });
+    arrange();
   }
 
-  // ---------------------------------------------------------------- the sticky bar
+  // ---------------------------------------------------------------- the tab bar (sticky)
   function renderBar() {
     let bar = el('home-minibar');
     if (!bar) {
       bar = document.createElement('nav');
-      bar.id = 'home-minibar'; bar.className = 'home-minibar'; bar.setAttribute('aria-label', 'Sections');
+      bar.id = 'home-minibar'; bar.className = 'home-minibar'; bar.setAttribute('role', 'tablist'); bar.setAttribute('aria-label', 'Home');
       el('home-body').prepend(bar);
-      bar.addEventListener('click', ev => {
-        const b = ev.target.closest('[data-sec]');
-        if (!b) return;
-        setCollapsed(b.dataset.sec, false);
-        const h = el(SECS.find(s => s.key === b.dataset.sec).id);
-        h.scrollIntoView({ block: 'start' });
-      });
+      bar.addEventListener('click', ev => { const b = ev.target.closest('[data-tab]'); if (b) setTab(b.dataset.tab); });
     }
-    let html = '', part = null;
-    for (const s of SECS) {
-      const h = el(s.id), d = cache[s.key];
-      if (!h) continue;
-      if (s.part !== part) { html += `<span class="mb-part">${s.part}</span>`; part = s.part; }
-      html += `<button type="button" data-sec="${s.key}">${esc(h.textContent)}${d ? ` <i>${d.done}/${d.total}</i>` : ''}</button>`;
-    }
-    bar.innerHTML = html;
-    syncBar();
+    bar.innerHTML = TABS.map(([k, label]) => {
+      const d = tabStats(k);
+      return `<button type="button" role="tab" data-tab="${k}" aria-selected="${k === tab}"${k === tab ? ' class="active"' : ''}>${esc(label)}${d && d.done ? ` <i>${d.done}/${d.total}</i>` : ''}</button>`;
+    }).join('');
   }
-  function syncBar() {
-    const body = el('home-body'), bar = el('home-minibar');
-    if (!body || !bar) return;
-    const y = body.scrollTop + 110;
-    let cur = null;
-    for (const s of SECS) { const h = el(s.id); if (h && h.offsetParent && h.offsetTop <= y) cur = s.key; }
-    bar.querySelectorAll('button').forEach(b => b.classList.toggle('active', b.dataset.sec === cur));
+  // what a tab (and its tile on Start) counts: exercises and scripts, quiz questions, man questions and tasks
+  function tabStats(k) {
+    const c = cache;
+    if (k === 'coding') {
+      const pool = (state.flat || []).filter(e => e.tier > 0 && e.tier < 4);
+      const parts = [c.intro, c.scripts, c.sexams].filter(Boolean);
+      return { done: pool.filter(e => e.status === 'pass').length + parts.reduce((n, d) => n + d.done, 0), total: pool.length + parts.reduce((n, d) => n + d.total, 0),
+        text: `${pool.length} exercises · ${c.intro ? c.intro.total : 0} warm-ups · ${c.scripts ? c.scripts.total : 0} scripts · ${c.sexams ? c.sexams.total : 0} script exams` };
+    }
+    if (k === 'theory') {
+      const q = c.quizzes, e = c.exams;
+      return q && e && { done: q.done + e.done, total: q.total + e.total, text: `${q.total} quiz questions · ${e.total} practice exams` };
+    }
+    if (k === 'man') return c.man && { done: c.man.done, total: c.man.total, text: `${c.man.total} questions and tasks` };
+    return null;
   }
 
-  // ---------------------------------------------------------------- "continue where you left off"
+  // ---------------------------------------------------------------- the hero: the one thing to do next
   const LAST = 'homeLastOpen';
   function remember() {
     const m = location.hash.match(/^#\/(ex|script|sexam|exam|theory)\/([\w.-]+)(?:\/([\w-]+))?/);
@@ -190,29 +209,90 @@ const Home = (() => {
     const q = sub && c.groups.flatMap(g => g.questions).find(x => x.id === sub);
     return { kind: 'Quiz', title: c.title, sub: q ? q.title : '', status: q ? q.status : 'new' };
   }
-  function renderContinue() {
-    let box = el('home-continue');
+  const isFresh = () => !(state.flat || []).some(e => e.status === 'pass') && !Scripts.list().some(e => e.status === 'pass');
+  function renderHero() {
+    if (!state.flat || !state.flat.length) return;
+    let box = el('home-hero');
     if (!box) {
       box = document.createElement('div');
-      box.id = 'home-continue'; box.className = 'home-continue';
+      box.id = 'home-hero'; box.className = 'home-hero';
       el('home-body').insertBefore(box, el('home-grp-exercises'));
       box.addEventListener('click', ev => {
-        const b = ev.target.closest('[data-go]');
+        const b = ev.target.closest('[data-act]');
         if (!b) return;
-        if (b.dataset.go === 'next') { const n = nextOf('tracks'); if (n) n.run(); }
-        else location.hash = b.dataset.go;
+        const act = b.dataset.act;
+        if (b.tagName === 'A') ev.preventDefault();
+        if (act === 'path') { const n = ExamPath.next(null); if (n) ExamPath.open(n); }
+        else if (act === 'tour') NewUser.startTour();
+        else if (act === 'hide') { store.set('startHidden', true); renderHero(); }
+        else if (act === 'go') location.hash = b.dataset.go;
       });
     }
-    const last = store.get(LAST, null), d = describe(last), tr = cache.tracks, next = tr && tr.next;
-    const cards = [];
-    if (d) cards.push(`<div class="hc-card"><div class="hc-kind">Continue where you left off</div>
-      <div class="hc-title">${esc(d.title)}</div><div class="hc-sub">${esc(d.kind)}${d.sub ? ' · ' + esc(d.sub) : ''} · ${STATUS_TXT[d.status] || ''}</div>
-      <button class="hc-btn" type="button" data-go="${esc(last)}">Continue →</button></div>`);
-    if (next && last !== `#/ex/${next.label.split(' ')[0]}`) cards.push(`<div class="hc-card"><div class="hc-kind">Next up in ${esc(tr.what)}</div>
-      <div class="hc-title">${esc(next.label)}</div><div class="hc-sub">${tr.done}/${tr.total} done</div>
-      <button class="hc-btn" type="button" data-go="next">Start →</button></div>`);
-    box.innerHTML = cards.join('');
-    box.classList.toggle('hidden', !cards.length);
+    el('home-body').classList.toggle('fresh', isFresh());
+    const nx = ExamPath.next(null), last = store.get(LAST, null), d = describe(last);
+    if (isFresh() && !store.get('startHidden', false)) {
+      box.className = 'home-hero fresh';
+      box.innerHTML = `<h2>Learn bash for the exam, one small step at a time</h2>
+        <p>Each exercise gives you a task, a terminal and a Check button. The suggested path lists everything the exam needs, in order, starting with tiny warm-ups.</p>
+        <div class="hs-actions"><button class="hc-btn" type="button" data-act="path">Start the suggested path →</button>
+          <button type="button" data-act="tour">Take the 1-minute tour</button><button type="button" class="linklike" data-act="hide">I know my way around — hide this</button></div>
+        <details class="hero-how"><summary>How an exercise works</summary><ol>
+          <li><b>Read the task</b> on the left, then write your answer in <code>answer.sh</code> with the terminal or VS Code (they edit the same file).</li>
+          <li><b>Press Check</b> (<kbd>Ctrl</kbd> <kbd>Enter</kbd>). If it fails you see what differed and can try your script on the same files.</li>
+          <li><b>Stuck?</b> <i>Info</i> explains the commands, the <i>Reference</i> (<kbd>Ctrl</kbd> <kbd>K</kbd>) is the full manual, and <i>Show solution</i> is the last resort.</li></ol></details>`;
+      return;
+    }
+    const pathLink = nx && (!d || nx.hash !== last) ? `<a href="${esc(nx.hash)}" class="hero-alt" data-act="path">or the next item of the suggested path: <b>${esc(nx.label)}</b></a>` : '';
+    if (d) {
+      box.className = 'home-hero';
+      box.innerHTML = `<div class="hc-kind">Continue where you left off</div><div class="hc-title">${esc(d.title)}</div>
+        <div class="hc-sub">${esc(d.kind)}${d.sub ? ' · ' + esc(d.sub) : ''} · ${STATUS_TXT[d.status] || ''}</div>
+        <div class="hs-actions"><button class="hc-btn" type="button" data-act="go" data-go="${esc(last)}">Continue →</button>${pathLink}</div>`;
+    } else if (nx) {
+      box.className = 'home-hero';
+      box.innerHTML = `<div class="hc-kind">${isFresh() ? 'Start here' : 'Next on the suggested path'}</div><div class="hc-title">${esc(nx.label)}</div>
+        <div class="hs-actions"><button class="hc-btn" type="button" data-act="path">${isFresh() ? 'Start' : 'Continue'} →</button></div>`;
+    } else { box.className = 'home-hero hidden'; box.innerHTML = ''; }
+  }
+
+  // ---------------------------------------------------------------- the tiles: the way into the rest
+  function renderTiles() {
+    let box = el('home-tiles');
+    if (!box) {
+      box = document.createElement('div');
+      box.id = 'home-tiles'; box.className = 'home-tiles';
+      el('home-body').insertBefore(box, el('home-grp-exercises'));
+      box.addEventListener('click', ev => {
+        const t = ev.target.closest('[data-tab]');
+        if (t) setTab(t.dataset.tab);
+      });
+    }
+    const fresh = isFresh();
+    const tile = (k, title, desc) => {
+      const d = tabStats(k);
+      if (!d) return '';
+      return `<button type="button" class="home-tile" data-tab="${k}"><span class="ht-title">${esc(title)}</span><span class="ht-desc">${esc(desc)}</span>
+        ${fresh ? '' : `<span class="hs-bar"><i style="width:${d.total ? 100 * d.done / d.total : 0}%"></i></span>`}
+        <span class="ht-stat">${fresh ? esc(d.text) : `${d.done}/${d.total} done`}</span></button>`;
+    };
+    const n = (window.MANUAL && MANUAL.all) ? MANUAL.all().length : 0;
+    box.innerHTML = `<h2 class="home-sub">Or choose what to practise</h2><div class="home-tile-grid">
+      ${tile('coding', 'Coding exercises', 'Write bash in a real terminal and press Check: tracks, warm-ups, whole scripts and script exams.')}
+      ${tile('theory', 'Theory', 'Quizzes on the concepts behind the commands, and theory practice exams.')}
+      ${tile('man', 'Man page drills', 'Train with the only help the exam allows: the manual.')}
+      <a class="home-tile" href="#/reference"><span class="ht-title">Reference</span><span class="ht-desc">Every command and concept, grouped by topic and searchable.</span><span class="ht-stat">${n ? n + ' entries' : ''}</span></a></div>`;
+  }
+  // the order of the boxes on Start, whoever drew them
+  function arrange() {
+    const body = el('home-body'), h1 = el('home-grp-exercises');
+    if (!body || !h1) return;
+    let ref = h1;
+    for (const id of ['home-tiles', 'home-roadmap', 'home-readiness', 'home-hero']) {
+      const e = el(id);
+      if (!e) continue;
+      if (e.nextElementSibling !== ref) body.insertBefore(e, ref);
+      ref = e;
+    }
   }
 
   // ---------------------------------------------------------------- folding the groups inside a section (Scripts: stars/topics, exams: tiers)
@@ -238,8 +318,8 @@ const Home = (() => {
     if (!el('home-body')) return;
     wrap();
     apply();
+    page().dataset.tab = 'start';
     const body = el('home-body');
-    body.addEventListener('scroll', syncBar, { passive: true });
     body.addEventListener('click', ev => { const h = ev.target.closest('.home-tier-title'); if (h) toggleGroup(h); });
     body.addEventListener('keydown', ev => { const h = ev.target.closest && ev.target.closest('.home-tier-title'); if (h && (ev.key === 'Enter' || ev.key === ' ')) { ev.preventDefault(); toggleGroup(h); } });
     // the other modules redraw their grids when their data arrives: follow them
@@ -259,5 +339,6 @@ const Home = (() => {
     later();
   }
   init();
-  return { refresh: refreshSummaries, expandById, apply, onRefresh: fn => hooks.push(fn) };
+  ready = true;
+  return { refresh: refreshSummaries, expandById, apply, onRefresh: fn => hooks.push(fn), setTab, tab: () => tab, tabOfGroup, onShow: () => setTab('start') };
 })();

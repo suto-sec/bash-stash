@@ -1042,7 +1042,9 @@ function renderHomeNav() {
       <div class="t-bar"><div style="width:${n.total ? 100 * n.done / n.total : 0}%"></div></div>${kids}</details>`;
   };
   let html = '', lastGroup = null;
+  const tab = typeof Home !== 'undefined' ? Home.tab() : 'start';
   for (const [sec, headId, grp] of HOME_SECTIONS) {
+    if (tab !== 'start' && typeof Home !== 'undefined' && Home.tabOfGroup(grp) !== tab) continue;   // the sidebar lists the tab that is open
     const items = tree[sec].map(n => node(n, false, 1)).join('');
     if (!items) continue;
     if (grp !== lastGroup) { html += `<button class="home-group-label" data-scroll="${grp}">${esc($('#' + grp).textContent)}</button>`; lastGroup = grp; }
@@ -1061,7 +1063,7 @@ const sum2 = (arr, f) => arr.reduce((n, k) => n + k[f], 0);
 function syncHomeNav() {
   const body = $('#home-body'), nav = $('#home-topics');
   if (!body || !nav) return;
-  const at = id => $('#' + id).offsetTop;
+  const at = id => { const e = $('#' + id); return e && e.offsetParent ? e.offsetTop : Infinity; };   // a heading of another tab is not on screen
   const y = body.scrollTop + 120;
   let cur = null;
   for (const [sec, headId] of HOME_SECTIONS) if (at(headId) <= y) cur = sec;
@@ -1217,8 +1219,10 @@ function showReferencePage(show) {
   $('#reference-page').classList.toggle('hidden', !show);
 }
 function showHomePage(show) {
+  const wasShown = !$('#home-page').classList.contains('hidden');
   document.querySelector('.layout').classList.toggle('hidden', show);
   $('#home-page').classList.toggle('hidden', !show);
+  if (show && !wasShown && typeof Home !== 'undefined') Home.onShow();   // the home page always opens on Start
   // the home page covers the top bar: carry the settings button over to its own bar while it is shown
   const picker = $('#settings-picker');
   (show ? $('#home-head-slot') : document.querySelector('.topbar')).appendChild(picker);
