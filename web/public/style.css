@@ -431,16 +431,18 @@ input.switch:focus-visible, .seg button:focus-visible { outline: 2px solid var(-
 .reference-content { flex: 1; overflow-y: auto; padding: 24px 32px 60px; min-width: 0; }
 .ref-topic { margin-bottom: 26px; max-width: 1100px; }
 .ref-topic:last-child { margin-bottom: 0; }
-.ref-topic h3 { margin: 0 0 12px; font-size: 16px; color: var(--text); }
+.ref-topic h3 { margin: 0 0 12px; font-size: 14px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; display: flex; align-items: center; gap: 8px; }
+.ref-topic h3 .t-count { font-size: 11.5px; letter-spacing: 0; padding: 0 8px; border: 1px solid var(--border); border-radius: 10px; font-weight: 400; }
 .ref-topic h3 a { color: inherit; text-decoration: none; }
-.ref-topic h3 a:hover { text-decoration: underline; }
+.ref-topic h3 a:hover { color: var(--text); }
+.ref-topic { margin-bottom: 34px; }
 .glossary-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px; }
 .gl-item {
-  display: block; background: var(--panel-2); border: 1px solid var(--border); border-radius: 6px;
-  padding: 10px 12px; scroll-margin-top: 12px; text-decoration: none; color: inherit;
+  display: block; background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+  padding: 12px 14px; scroll-margin-top: 12px; text-decoration: none; color: inherit;
 }
-a.gl-item { cursor: pointer; transition: border-color .1s, background .1s; }
-a.gl-item:hover { border-color: var(--accent); background: var(--sel); }
+a.gl-item { cursor: pointer; transition: border-color .1s, background .1s, transform .1s; }
+a.gl-item:hover { border-color: var(--accent); background: var(--sel); transform: translateY(-1px); }
 .gl-item.focused { border-color: var(--accent); }
 .gl-item code { font-size: 12.5px; color: var(--accent); }
 .gl-item p { margin: 6px 0 0; font-size: 12.5px; color: var(--text); line-height: 1.5; }
@@ -977,3 +979,11 @@ kbd { font: 11px ui-monospace, Menlo, monospace; padding: 1px 5px; border: 1px s
 .home-tools { max-width: 1100px; margin: -12px auto 16px; display: flex; justify-content: flex-end; }
 #home-page[data-tab="start"] .home-tools { display: none; }
 @media (max-width: 700px) { .ref-page-head .top-btn kbd { display: none; } .ref-page-head > strong { display: none; } }   /* the narrow top bars of the home, readiness and reference pages */
+
+/* the exercise screen: the same buttons and eyebrow as the home page */
+.ex-topic { color: var(--accent); font-weight: 700; font-size: 11px; letter-spacing: .6px; }
+.ex-head h1 { font-size: 22px; }
+.actions #check-btn { padding: 7px 18px; font-size: 14px; }
+#prev-btn, #next-btn { color: var(--muted); }
+#prev-btn:hover, #next-btn:hover { color: var(--text); }
+.ref-intro { margin: 0 0 28px; max-width: 1100px; }
