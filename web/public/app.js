@@ -29,6 +29,8 @@ function visibleInTopic(t, e) {
   if (state.introCategory === 'all') return e.tier === 0;
   if (state.introCategory) return state.introCategory === t.id && e.tier === 0;
   if (state.track === 'path') return ExamPath.hasEx(e.id);   // the exam path: its exercises, warm-ups included
+  if (state.track === 'man') return e.tier >= 4;             // the man page tasks (topic 20): only through the Man drills section (or the path)
+  if (e.tier >= 4) return false;
   if (e.tier === 0) return false;
   return state.track === 'full' || e.tier <= TRACK_MAX[state.track];
 }
@@ -801,7 +803,7 @@ document.addEventListener('click', ev => {
 });
 
 // ------------------------------------------------------------------ home page (track picker)
-const TRACK_LABELS = { minimal: 'Minimal', intermediate: 'Intermediate', complete: 'Complete', path: 'Suggested path' };
+const TRACK_LABELS = { minimal: 'Minimal', intermediate: 'Intermediate', complete: 'Complete', path: 'Suggested path', man: 'Man tasks' };
 function updateTrackBadge() {
   const badge = $('#track-badge');
   if (state.script) {
@@ -843,6 +845,7 @@ function renderHomePage() {
   const stats = { full: [0, 0], minimal: [0, 0], intermediate: [0, 0] }; // [done, total]
   let introDone = 0, introTotal = 0;
   for (const e of state.flat) {
+    if (e.tier >= 4) continue;   // man tasks have their own card
     if (e.tier === 0) { introTotal++; if (e.status === 'pass') introDone++; continue; }
     stats.full[1]++; if (e.status === 'pass') stats.full[0]++;
     if (e.tier <= 1) { stats.minimal[1]++; if (e.status === 'pass') stats.minimal[0]++; }
@@ -857,6 +860,7 @@ function renderHomePage() {
   $('#intro-all-card').classList.toggle('current', state.introCategory === 'all');
   renderIntroGrid();
   Theory.renderHomeGrid();
+  renderManGrid();
   Exams.renderHomeGrid();
   Scripts.renderHomeGrid();
   SExams.renderHomeGrid();
@@ -866,12 +870,36 @@ function renderHomePage() {
   SExams.refresh();
 }
 
+// The Man page drills section: questions (theory collections that show the terminal beside them) and tasks (coding exercises of topic 20)
+const manTasks = () => state.flat.filter(e => e.tier >= 4);
+const manQuizzes = () => Theory.list().filter(c => c.ws);
+function renderManGrid() {
+  const grid = $('#man-grid');
+  if (!grid) return;
+  const qs = manQuizzes().map(c => {
+    const all = c.groups.flatMap(g => g.questions), p = all.filter(q => q.status === 'pass').length;
+    return `<button class="track-card" data-man-quiz="${esc(c.id)}"><div class="track-card-title">${esc(c.title)}</div>
+      <div class="track-card-desc">${esc(c.about || '')}</div><div class="track-card-count">${p}/${all.length} questions</div></button>`;
+  });
+  const tasks = manTasks();
+  const tc = tasks.length ? `<button class="track-card${state.track === 'man' ? ' current' : ''}" data-man-tasks="1"><div class="track-card-title">Tasks: look it up, then write it</div>
+      <div class="track-card-desc">Small coding exercises that need an option you will not remember: find it in the manual, then write the answer in the terminal or VS Code. Checked like any exercise.</div>
+      <div class="track-card-count">${tasks.filter(e => e.status === 'pass').length}/${tasks.length} exercises</div></button>` : '';
+  grid.innerHTML = qs.join('') + tc || '<p class="home-intro">No man drills built yet.</p>';
+}
+$('#man-grid').addEventListener('click', ev => {
+  const q = ev.target.closest('[data-man-quiz]');
+  if (q) { Theory.go(q.dataset.manQuiz); return; }
+  if (ev.target.closest('[data-man-tasks]')) selectTrack('man');
+});
+
 // Left navigation of the home page. It is the exercise sidebar (same markup and classes) as a tree:
 //   Tracks     -> track -> category -> exercise
 //   Introduction -> category -> exercise
 //   Quizzes    -> collection -> group -> question
 // Every entry that has contents shows an arrow (click it to open/close) and its name (click it to go there).
 const HOME_SECTIONS = [['tracks', 'home-sec-tracks', 'home-grp-exercises'], ['intro', 'home-sec-intro', 'home-grp-exercises'], ['quizzes', 'theory-quizzes-title', 'theory-home-title'], ['exams', 'theory-exams-title', 'theory-home-title']];
+HOME_SECTIONS.push(['man', 'home-sec-man', 'man-home-title']);
 HOME_SECTIONS.splice(2, 0, ['scripts', 'home-sec-scripts', 'home-grp-exercises'], ['sexams', 'home-sec-sexams', 'home-grp-exercises']);   // last section of the Scripting group, after Introduction
 const lsGet = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) || d; } catch { return d; } };
 const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* private mode */ } };
@@ -894,12 +922,12 @@ function homeTree() {
   const trackTitle = k => document.querySelector(`#track-grid [data-track="${k}"] .track-card-title`).textContent;
   const tracks = ['minimal', 'intermediate', 'full'].map(k => {
     const here = !state.theory && !state.introCategory && state.track === k;
-    const cats = state.index.map(t => ({ t, ex: t.exercises.filter(e => e.tier !== 0 && (k === 'full' || e.tier <= TRACK_MAX[k])) })).filter(x => x.ex.length)
+    const cats = state.index.map(t => ({ t, ex: t.exercises.filter(e => e.tier > 0 && e.tier < 4 && (k === 'full' || e.tier <= TRACK_MAX[k])) })).filter(x => x.ex.length)
       .map(({ t, ex }) => group(`track:${k}:${t.id}`, `${t.id} · ${t.title}`, `${t.id} ${t.title}`, `trackcat:${k}:${t.id}`, false,
         ex.map(e => leaf(e.title, `${e.id} ${e.title} ${e.cmds || ''}`, `trackex:${k}:${e.id}`, here && exCur(e), e.status, e.id))));
     return group(`track:${k}`, trackTitle(k), trackTitle(k), `track:${k}`, here, cats);
   });
-  const introCats = state.index.filter(t => t.id !== '18' && t.id !== '19' && t.exercises.some(e => e.tier === 0)).map(t =>
+  const introCats = state.index.filter(t => t.id !== '18' && t.id !== '19' && t.id !== '20' && t.exercises.some(e => e.tier === 0)).map(t =>
     group(`intro:${t.id}`, t.title, `${t.id} ${t.title}`, `intro:${t.id}`, !state.theory && state.introCategory === t.id,
       t.exercises.filter(e => e.tier === 0).map(e => leaf(e.title, `${e.id} ${e.title} ${e.cmds || ''}`, `introex:${t.id}:${e.id}`,
         !state.theory && state.introCategory === t.id && exCur(e), e.status, e.id)), { idTag: t.id }));
@@ -908,7 +936,13 @@ function homeTree() {
     !state.theory && state.introCategory === 'all', dotOf(allDone, allTotal));
   introAll.done = allDone; introAll.total = allTotal;
   const cur = Theory.current();
-  const quizzes = Theory.list().map(c => group(`quiz:${c.id}`, c.title, c.title, `quiz:${c.id}`, state.theory === c.id,
+  const quizTree = c => group(`quiz:${c.id}`, c.title, c.title, `quiz:${c.id}`, state.theory === c.id,
+    c.groups.map(g => group(`quizgroup:${c.id}:${g.id}`, g.title, g.title, `quizgroup:${c.id}:${g.id}`, false,
+      g.questions.map(q => leaf(q.title, q.title, `quizq:${c.id}:${q.id}`, !!cur && cur.cid === c.id && cur.qid === q.id, q.status)))));
+  const manTree = [...manQuizzes().map(quizTree)];
+  if (manTasks().length) manTree.push(group('man:tasks', 'Tasks: look it up, then write it', 'man tasks coding', 'track:man', state.track === 'man' && !state.introCategory && !state.theory,
+    manTasks().map(e => leaf(e.title, `${e.id} ${e.title} ${e.cmds || ''}`, `trackex:man:${e.id}`, state.track === 'man' && exCur(e), e.status, e.id))));
+  const quizzes = Theory.list().filter(c => !c.ws).map(c => group(`quiz:${c.id}`, c.title, c.title, `quiz:${c.id}`, state.theory === c.id,
     c.groups.map(g => group(`quizgroup:${c.id}:${g.id}`, g.title, g.title, `quizgroup:${c.id}:${g.id}`, false,
       g.questions.map(q => leaf(q.title, q.title, `quizq:${c.id}:${q.id}`, !!cur && cur.cid === c.id && cur.qid === q.id, q.status))))));
   const examTiers = ['easy', 'medium', 'hard'].filter(t => Exams.list().some(e => e.tier === t)).map(t => {
@@ -924,7 +958,7 @@ function homeTree() {
   const scriptGroups = Scripts.groups().map(g =>
     group(`scriptgroup:${g.key}`, g.label, g.label, `scriptgroup:${g.key}`, false,
       g.items.map(e => leaf(e.title, `${e.id} ${e.title} ${e.cmds} ${e.tags.join(' ')}`, `script:${e.id}`, state.script === e.id, e.status, e.id.slice(1)))));
-  return { tracks, intro: [introAll, ...introCats], scripts: scriptGroups, sexams: sexamTiers, quizzes, exams: examTiers };
+  return { tracks, intro: [introAll, ...introCats], scripts: scriptGroups, sexams: sexamTiers, quizzes, exams: examTiers, man: manTree };
 }
 function renderHomeNav() {
   const nav = $('#home-topics');
@@ -974,7 +1008,7 @@ function syncHomeNav() {
   const y = body.scrollTop + 120;
   let cur = null;
   for (const [sec, headId] of HOME_SECTIONS) if (at(headId) <= y) cur = sec;
-  const g = at('theory-home-title') <= y ? 'theory-home-title' : 'home-grp-exercises';
+  const g = at('man-home-title') <= y ? 'man-home-title' : at('theory-home-title') <= y ? 'theory-home-title' : 'home-grp-exercises';
   nav.querySelectorAll('.home-group-label').forEach(b => b.classList.toggle('active', b.dataset.scroll === g));
   nav.querySelectorAll('details[data-sec]').forEach(d => d.classList.toggle('active', d.dataset.sec === cur));
   // keep the highlighted section visible in the sidebar as the page scrolls (only when it changes)
@@ -991,7 +1025,7 @@ function homeGo(go) {
   const first = list => list.find(e => e.status !== 'pass') || list[0];
   const topic = id => state.index.find(t => t.id === id);
   if (act === 'track') selectTrack(a);
-  else if (act === 'trackcat') selectTrack(a, (first(topic(b).exercises.filter(e => e.tier !== 0 && (a === 'full' || e.tier <= TRACK_MAX[a]))) || {}).id);
+  else if (act === 'trackcat') selectTrack(a, (first(topic(b).exercises.filter(e => e.tier > 0 && e.tier < 4 && (a === 'full' || e.tier <= TRACK_MAX[a]))) || {}).id);
   else if (act === 'trackex') selectTrack(a, b);
   else if (act === 'intro') selectIntroCategory(a);
   else if (act === 'introex') selectIntroCategory(a, b);
@@ -1062,7 +1096,7 @@ $('#home-nav').addEventListener('click', ev => {
 });
 function renderIntroGrid() {
   const grid = $('#intro-grid');
-  grid.innerHTML = state.index.filter(t => t.id !== '18' && t.id !== '19').map(t => {
+  grid.innerHTML = state.index.filter(t => t.id !== '18' && t.id !== '19' && t.id !== '20').map(t => {
     const exs = t.exercises.filter(e => e.tier === 0);
     const done = exs.filter(e => e.status === 'pass').length;
     const cur = state.introCategory === t.id;
@@ -1077,6 +1111,7 @@ function selectIntroCategory(id, exId) {
   state.theory = null;
   state.exam = null;
   state.sexam = null;
+  if (state.script) Scripts.leave();   // else the step strip of the script stays on the exercise screen
   state.script = null;
   state.introCategory = id;
   try { localStorage.setItem('introCategory', id); } catch { /* private mode */ }
@@ -1091,6 +1126,7 @@ function selectTrack(track, exId) {
   state.theory = null;
   state.exam = null;
   state.sexam = null;
+  if (state.script) Scripts.leave();   // else the step strip of the script stays on the exercise screen
   state.script = null;
   state.introCategory = null;
   try { localStorage.setItem('track', state.track); localStorage.removeItem('introCategory'); } catch { /* private mode */ }
@@ -1134,7 +1170,8 @@ function showHomePage(show) {
 }
 function route() {
   if (!Exams.allowRoute(location.hash)) return;   // leaving a running exam attempt asks first
-  document.body.classList.toggle('theory-view', /^#\/(theory|exam)\//.test(location.hash));   // top bar: no Layout button in the quizzes and theory exams
+  const thm = location.hash.match(/^#\/(theory|exam)\/([\w-]+)/);
+  document.body.classList.toggle('theory-view', !!thm && !(thm[1] === 'theory' && Theory.isWs(thm[2])));   // (the man drills keep the Layout button: they have a terminal)   // top bar: no Layout button in the quizzes and theory exams
   const refCmd = location.hash.match(/^#\/reference\/cmd\/([^/]+)$/);
   const refTopic = location.hash.match(/^#\/reference\/topic\/([^/]+)$/);
   if (location.hash === '#/reference' || refCmd || refTopic) {
@@ -1155,20 +1192,20 @@ function route() {
   if (scm) {
     if (state.exam || Exams.visible()) { state.exam = null; Exams.hide(); }
     if (state.sexam || SExams.visible()) { state.sexam = null; SExams.hide(); }
-    if (!$('#theory-main').classList.contains('hidden')) Theory.hide();
+    if (Theory.visible()) Theory.hide();
     return Scripts.open(scm[1], scm[2]);
   }
   if (state.script) { state.script = null; Scripts.leave(); updateTrackBadge(); renderSidebar(); }
   const sxm = location.hash.match(/^#\/sexam\/([\w-]+)(?:\/(run)|\/attempt\/(\d+))?$/);
   if (sxm) {
     if (state.exam || Exams.visible()) { state.exam = null; Exams.hide(); }
-    if (!$('#theory-main').classList.contains('hidden')) Theory.hide();
+    if (Theory.visible()) Theory.hide();
     return SExams.open(sxm[1], sxm[2], sxm[3]);
   }
   if (state.sexam || SExams.visible()) { state.sexam = null; SExams.hide(); updateTrackBadge(); renderSidebar(); }
   const exm = location.hash.match(/^#\/exam\/([\w-]+)(?:\/attempt\/(\d+))?$/);
   if (exm) {
-    if (!$('#theory-main').classList.contains('hidden')) Theory.hide();
+    if (Theory.visible()) Theory.hide();
     return Exams.open(exm[1], exm[2]);
   }
   if (state.exam || Exams.visible()) { state.exam = null; Exams.hide(); updateTrackBadge(); renderSidebar(); }
@@ -1176,7 +1213,7 @@ function route() {
   if (th) return Theory.open(th[1], th[2]);
   // leaving the quiz view: back to the exercise panels. Checked on the panel itself, since picking a
   // track or intro category on the home page clears state.theory without hiding the quiz.
-  if (state.theory || !$('#theory-main').classList.contains('hidden')) {
+  if (state.theory || Theory.visible()) {
     state.theory = null;
     Theory.hide();
     updateTrackBadge();

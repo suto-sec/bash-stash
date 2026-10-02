@@ -119,7 +119,7 @@ function finishQuestion(q, col) {
 function parse(file, lang) {
   curFile = (lang ? lang + '/' : '') + path.basename(file);
   const lines = fs.readFileSync(file, 'utf8').split('\n');
-  const col = { id: '', title: '', about: '', groups: [], ids: new Set(), cur: null, lang, kind: 'collection', tier: '' };
+  const col = { id: '', title: '', about: '', groups: [], ids: new Set(), cur: null, lang, kind: 'collection', tier: '', ws: false };
   let q = null, section = null, lastItem = null;
   const addText = (obj, key, line) => { obj[key] = obj[key] ? obj[key] + '\n' + line : line; };
   for (let i = 0; i < lines.length; i++) {
@@ -134,6 +134,7 @@ function parse(file, lang) {
       col.groups.push(col.cur); continue;
     }
     if ((m = line.match(/^@@tier\s+(\w+)\s*$/))) { col.tier = m[1]; continue; }
+    if (/^@@workspace\s*$/.test(line)) { col.ws = true; continue; }   // shown with the terminal / VS Code beside it (the man drills)
     if ((m = line.match(/^@@topic\s+(\S+)\s*$/)) && q) { q.topic = m[1]; continue; }
     if (/^@@about\s*$/.test(line)) { section = 'about'; continue; }
     if ((m = line.match(/^@@group\s+(.+)$/))) {
@@ -213,7 +214,7 @@ function parse(file, lang) {
     for (const k of ['options', 'blanks', 'wrong', 'items', 'pairs', 'extras', 'buckets']) if (!qu[k].length) delete qu[k];
     if (!qu.note) delete qu.note;
   }
-  return { id: col.id, title: col.title, about: col.about.trim(), kind: col.kind, tier: col.tier, groups: col.groups };
+  return { id: col.id, title: col.title, about: col.about.trim(), kind: col.kind, tier: col.tier, ...(col.ws ? { ws: true } : {}), groups: col.groups };
 }
 
 // Soft lint (warning only): in a single-choice question the right option should not be conspicuously
@@ -234,6 +235,7 @@ function align(tr, en, file) {
   curFile = file; curLine = 1;
   const where = (g, k) => `group ${g + 1} ("${en.groups[g].title}"), question ${k + 1}`;
   tr.tier = en.tier;
+  if (en.ws) tr.ws = true;
   if (tr.kind !== en.kind) return err(`${tr.kind} file for a ${en.kind}`);
   if (tr.groups.length !== en.groups.length) return err(`${tr.groups.length} groups, English has ${en.groups.length}`);
   tr.groups.forEach((g, gi) => {
@@ -278,7 +280,7 @@ function report(c, prefix) {
   for (const w of lengthWarnings(c)) console.warn('  warning: ' + w);
 }
 
-const collOut = c => ({ id: c.id, title: c.title, about: c.about, groups: c.groups });   // same JSON shape as before exams existed
+const collOut = c => ({ id: c.id, title: c.title, about: c.about, ...(c.ws ? { ws: true } : {}), groups: c.groups });   // same JSON shape as before exams existed
 function buildCollections() {
   const wanted = collArgs.length ? new Set(collArgs.map(a => path.resolve(a))) : null;
   const english = {};

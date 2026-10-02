@@ -22,6 +22,7 @@ const Theory = (() => {
       search: 'Search questions…', overall: 'theory questions passed',
       counter: (n, m) => `Question ${n} of ${m}`,
       check: 'Check answer', next: 'Next ▶', prevTitle: 'Previous question (←)',
+      hintWs: '(click here first: the keys only work in this panel, never in the terminal)',
       hintChoice: 'Press 1–9 to pick, Enter to check', practice: 'Practice again', retry: 'Try again',
       correct: '✔ Correct', notQuite: '✘ Not quite',
       retryHint: 'Read the explanations above, then press “Try again” for a fresh attempt — the ✔ in the sidebar comes from answering it right.',
@@ -54,6 +55,7 @@ const Theory = (() => {
       search: 'Buscar preguntas…', overall: 'preguntas de teoría superadas',
       counter: (n, m) => `Pregunta ${n} de ${m}`,
       check: 'Comprobar', next: 'Siguiente ▶', prevTitle: 'Pregunta anterior (←)',
+      hintWs: '(haz clic aquí antes: las teclas solo funcionan en este panel, nunca en el terminal)',
       hintChoice: 'Pulsa 1–9 para elegir e Intro para comprobar', practice: 'Practicar otra vez', retry: 'Reintentar',
       correct: '✔ Correcto', notQuite: '✘ No del todo',
       retryHint: 'Lee las explicaciones de arriba y pulsa «Reintentar» para un intento nuevo: el ✔ de la barra lateral se consigue respondiendo bien.',
@@ -146,8 +148,9 @@ const Theory = (() => {
   // ---------------------------------------------------------------- home page cards
   function renderHomeGrid() {
     const grid = $('#theory-grid');
-    if (!index.length) { grid.innerHTML = `<p class="home-intro">${T('none')}</p>`; return; }
-    grid.innerHTML = index.map(c => {
+    const plain = index.filter(c => !c.ws);   // the man drills (with a terminal beside them) have their own home section
+    if (!plain.length) { grid.innerHTML = `<p class="home-intro">${T('none')}</p>`; return; }
+    grid.innerHTML = plain.map(c => {
       const t = total(c), p = passed(c);
       return `<button class="track-card${state.theory === c.id ? ' current' : ''}" data-theory="${esc(c.id)}">
         <div class="track-card-title">${esc(c.title)}</div>
@@ -170,11 +173,29 @@ const Theory = (() => {
   }
 
   // ---------------------------------------------------------------- show / hide the quiz panel
-  function showMain() {
-    $('#main').classList.add('hidden');
-    $('#theory-main').classList.remove('hidden');
+  // A collection with `ws` (the man drills) is shown inside the exercise screen: the quiz takes the place of the instructions
+  // panel, so the terminal, VS Code and the Layout choices are there beside it (to read the man pages while answering).
+  let wsMounted = false;
+  const isWs = cid => { const c = collection(cid); return !!(c && c.ws); };
+  function mountWs(on) {
+    const scroll = $('#theory-scroll'), pane = $('#statement-pane');
+    if (on && !wsMounted) { $('#cpanel-instr').appendChild(scroll); pane.classList.add('hidden'); wsMounted = true; }
+    else if (!on && wsMounted) { $('#theory-main').appendChild(scroll); pane.classList.remove('hidden'); wsMounted = false; }
+    document.body.classList.toggle('theory-ws', on);
+  }
+  function showMain(ws) {
+    mountWs(!!ws);
+    $('#main').classList.toggle('hidden', !ws);
+    $('#theory-main').classList.toggle('hidden', !!ws);
+    if (ws) {
+      const layout = $('#main').dataset.layout || 'default';
+      if (typeof term === 'undefined' || !term) { const keep = state.current; state.current = null; try { startTerminal(); } finally { state.current = keep; } }   // a fresh session starts in the home folder
+      if (layout !== 'default' && typeof openVSCode === 'function') openVSCode();
+      requestAnimationFrame(() => { if (typeof fit !== 'undefined' && fit) try { fit.fit(); } catch { /* hidden */ } });
+    }
   }
   function hide() {
+    mountWs(false);
     $('#theory-main').classList.add('hidden');
     $('#main').classList.remove('hidden');
     const r = $('#th-reset'); if (r) r.classList.add('hidden');
@@ -202,7 +223,7 @@ const Theory = (() => {
       catch { return; }
     }
     if (state.theory !== cid) return; // navigated away while loading
-    showMain();
+    showMain(c.ws);
     updateTrackBadge();
     renderSidebar();
     renderQuestion(cid, item);
@@ -328,7 +349,7 @@ const Theory = (() => {
     $('#th-check').disabled = true;
     $('#th-retry').classList.add('hidden');
     $('#th-feedback').classList.add('hidden');
-    $('#th-hint').textContent = q.type === 'single' || q.type === 'multi' ? T('hintChoice') : '';
+    $('#th-hint').textContent = q.type === 'single' || q.type === 'multi' ? T('hintChoice') + (wsMounted ? ' ' + T('hintWs') : '') : '';
     onChange();
     const first = body.querySelector('input,button') || qEl.querySelector('input');
     if (first && (q.type === 'fill')) first.focus();
@@ -375,7 +396,10 @@ const Theory = (() => {
 
   document.addEventListener('keydown', ev => {
     if (!state.theory || !view || ev.ctrlKey || ev.metaKey || ev.altKey) return;
-    if ($('#theory-main').classList.contains('hidden')) return;
+    if (wsMounted) {
+      // beside a terminal: only keys typed inside the quiz itself count (never in the terminal or VS Code, nor with the focus lost)
+      if (!ev.target.closest || !ev.target.closest('#theory-scroll') || ev.target.closest('.xterm')) return;
+    } else if ($('#theory-main').classList.contains('hidden')) return;
     const typing = ev.target.matches && ev.target.matches('input[type=text], input:not([type]), input.th-blank, textarea');
     if (ev.key === 'Enter') {
       if (ev.target.matches && ev.target.matches('button') && ev.target.id !== 'th-check') return; // let buttons act
@@ -662,6 +686,6 @@ const Theory = (() => {
   const BUILDERS = { single: buildChoice, multi: buildChoice, fill: buildFill, order: buildOrder, match: buildPlacer, sort: buildPlacer };
 
   applyStatic();
-  return { load, collection, renderHomeGrid, renderSidebar, open, hide, go: openCollection, t: T,
+  return { load, collection, isWs, visible: () => wsMounted || !$('#theory-main').classList.contains('hidden'), renderHomeGrid, renderSidebar, open, hide, go: openCollection, t: T,
     list: () => index, current: () => (state.theory && view ? { cid: view.cid, qid: view.item.q.id } : null) };
 })();
