@@ -1218,8 +1218,14 @@ $('#home-back').onclick = ev => {
 
 // ------------------------------------------------------------------ routing & start
 function showReferencePage(show) {
+  const wasShown = !$('#reference-page').classList.contains('hidden');
   document.querySelector('.layout').classList.toggle('hidden', show);
   $('#reference-page').classList.toggle('hidden', !show);
+  // the cursor is in the filter box as soon as the page opens (not on a touch screen, where it would pop the keyboard up)
+  if (show && !wasShown && !matchMedia('(pointer: coarse)').matches) {
+    const box = $('#reference-search');
+    box.focus({ preventScroll: true }); box.select();
+  }
 }
 function showHomePage(show) {
   const wasShown = !$('#home-page').classList.contains('hidden');
