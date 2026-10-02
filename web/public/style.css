@@ -896,7 +896,7 @@ kbd { font: 11px ui-monospace, Menlo, monospace; padding: 1px 5px; border: 1px s
 .rd-bar.w i { background: var(--info); }
 .rd-card.weak .rd-bar i, tr.weak .rd-bar:not(.w) i { background: var(--err); }
 .rd-card.mid .rd-bar i, tr.mid .rd-bar:not(.w) i { background: var(--warn); }
-.rd-chip { font-size: 11px; padding: 1px 8px; border-radius: 10px; border: 1px solid var(--border); color: var(--muted); }
+.rd-chip { font-size: 11px; padding: 1px 8px; border-radius: 10px; border: 1px solid var(--border); color: var(--muted); white-space: nowrap; display: inline-block; }
 .rd-chip.weak { color: var(--err); border-color: var(--err); }
 .rd-chip.mid { color: var(--warn); border-color: var(--warn); }
 .rd-chip.strong { color: var(--accent); border-color: var(--accent); }
@@ -904,6 +904,7 @@ kbd { font: 11px ui-monospace, Menlo, monospace; padding: 1px 5px; border: 1px s
 .rd-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
 .rd-table th { text-align: left; font-size: 12px; color: var(--muted); font-weight: 600; padding: 4px 8px; border-bottom: 1px solid var(--border); }
 .rd-table td { padding: 7px 8px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+.rd-table td:nth-child(2), .rd-table td:nth-child(3) { white-space: nowrap; }
 .rd-missed { padding-left: 18px; display: grid; gap: 4px; }
 .rd-how { margin-top: 26px; color: var(--muted); font-size: 13px; }
 .home-readiness { display: flex; align-items: center; gap: 16px; max-width: 1100px; margin: 0 auto 14px; padding: 12px 20px; border: 1px solid var(--border); border-radius: 12px; background: var(--panel); text-decoration: none; color: var(--text); }
