@@ -253,7 +253,11 @@
 
       <h2 class="home-section-title" id="home-sec-scripts">Scripts</h2>
       <p class="home-intro">Whole scripts built up one requirement at a time, with a check at every step. The first ones are tiny; the last ones look like exam scripts.</p>
-      <label class="home-groupby">Group by <select id="scripts-group"><option value="stars">Difficulty (stars)</option><option value="topic">Topic</option><option value="steps">Number of steps</option><option value="progress">Progress</option></select></label>
+      <div class="home-groupby">
+        <label>Group by <select id="scripts-group"><option value="stars">Difficulty (stars)</option><option value="topic">Topic</option><option value="steps">Number of steps</option><option value="progress">Progress</option></select></label>
+        <label>Order by <select id="scripts-order"><option value="num">Number</option><option value="title">Title</option><option value="stars">Difficulty (stars)</option><option value="steps">Number of steps</option><option value="progress">Progress</option><option value="topic">Topic</option></select></label>
+        <label>Direction <select id="scripts-dir"><option value="asc">Increasing (A→Z, 1→9)</option><option value="desc">Decreasing (Z→A, 9→1)</option></select></label>
+      </div>
       <div id="scripts-grid"></div>
 
       <h2 class="home-section-title" id="home-sec-sexams">Practice exams</h2>
