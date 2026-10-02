@@ -948,3 +948,6 @@ kbd { font: 11px ui-monospace, Menlo, monospace; padding: 1px 5px; border: 1px s
 .home-roadmap.folded .ep-stages { display: none; }
 .home-roadmap { padding: 14px 18px; border: 1px solid var(--border); border-radius: 12px; background: var(--panel); }
 .home-roadmap button.ep-fold { width: auto; height: auto; display: inline-block; padding: 6px 12px; background: var(--panel-2); color: var(--text); white-space: nowrap; }
+
+.home-tools { max-width: 1100px; margin: -12px auto 16px; display: flex; justify-content: flex-end; }
+#home-page[data-tab="start"] .home-tools { display: none; }
