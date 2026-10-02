@@ -1357,7 +1357,8 @@ setupSidebarHandle({ btn: $('#home-sidebar-toggle'), sidebar: $('#home-nav'), la
   updateTrackBadge();
   await loadIndex();
   updateTrackBadge(); // re-run now state.index is populated, for the Intro category title lookup
-  await route();
+  try { await route(); }
+  finally { document.documentElement.classList.remove('boot-home', 'boot-reference', 'boot-readiness'); }   // the real page is shown now
   let mode = 'term';
   try { mode = localStorage.getItem('mode') || 'term'; } catch { /* private mode */ }
   state.mode = mode;

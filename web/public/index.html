@@ -10,6 +10,8 @@
   <script>
     // apply the saved theme before first paint
     try { const t = localStorage.getItem('theme'); if (t) document.documentElement.dataset.theme = t; } catch {}
+    // a reload on a full page (home, reference, readiness): show its frame at once instead of the exercise screen until the script has routed
+    (function () { const m = location.hash.match(/^#\/(home|reference|readiness)\b/); if (m) document.documentElement.classList.add('boot-' + m[1]); })();
   </script>
 </head>
 <body>
