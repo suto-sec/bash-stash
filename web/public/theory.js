@@ -190,7 +190,7 @@ const Theory = (() => {
     if (ws) {
       const layout = $('#main').dataset.layout || 'default';
       if (typeof term === 'undefined' || !term) { const keep = state.current; state.current = null; try { startTerminal(); } finally { state.current = keep; } }   // a fresh session starts in the home folder
-      if (layout !== 'default' && typeof openVSCode === 'function') openVSCode();
+      if ((layout !== 'default' || state.mode === 'code') && typeof openVSCode === 'function') openVSCode();
       requestAnimationFrame(() => { if (typeof fit !== 'undefined' && fit) try { fit.fit(); } catch { /* hidden */ } });
     }
   }

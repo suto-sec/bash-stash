@@ -503,7 +503,23 @@ $('#cd-btn').onclick = async () => {
 // ------------------------------------------------------------------ VS Code
 // openPath forces a reload pointed at that specific file (used to jump to a freshly created
 // attempt); with no argument, it's a no-op once already open for this exercise.
+// The man page questions have no exercise behind them: VS Code opens on the home folder (and is reloaded for the next exercise).
+function openVSCodeHome() {
+  if (state.codeFor === '~') return;
+  state.codeFor = '~';
+  const pane = $('#code');
+  let frame = pane.querySelector('iframe');
+  if (!frame) {
+    frame = document.createElement('iframe');
+    frame.title = 'VS Code';
+    frame.allow = 'clipboard-read; clipboard-write';
+    pane.appendChild(frame);
+  }
+  $('#code-placeholder').classList.add('hidden');
+  frame.src = `/vscode/?folder=${encodeURIComponent('/home/alumno')}`;
+}
 function openVSCode(openPath) {
+  if (document.body.classList.contains('theory-ws')) return openVSCodeHome();
   if (!state.current || (!openPath && state.codeFor === state.current.id)) return;
   state.codeFor = state.current.id;
   const pane = $('#code');
@@ -882,8 +898,8 @@ function renderManGrid() {
       <div class="track-card-desc">${esc(c.about || '')}</div><div class="track-card-count">${p}/${all.length} questions</div></button>`;
   });
   const tasks = manTasks();
-  const tc = tasks.length ? `<button class="track-card${state.track === 'man' ? ' current' : ''}" data-man-tasks="1"><div class="track-card-title">Tasks: look it up, then write it</div>
-      <div class="track-card-desc">Small coding exercises that need an option you will not remember: find it in the manual, then write the answer in the terminal or VS Code. Checked like any exercise.</div>
+  const tc = tasks.length ? `<button class="track-card${state.track === 'man' ? ' current' : ''}" data-man-tasks="1"><div class="track-card-title">Exam tasks with the manual open</div>
+      <div class="track-card-desc">Small exam-style tasks on the commands the exam uses (find, grep, sort, cut, tar, cp, chmod, test): when the exact option or syntax is not in your head, check the manual page, then write the answer. Checked like any exercise.</div>
       <div class="track-card-count">${tasks.filter(e => e.status === 'pass').length}/${tasks.length} exercises</div></button>` : '';
   grid.innerHTML = qs.join('') + tc || '<p class="home-intro">No man drills built yet.</p>';
 }
@@ -940,7 +956,7 @@ function homeTree() {
     c.groups.map(g => group(`quizgroup:${c.id}:${g.id}`, g.title, g.title, `quizgroup:${c.id}:${g.id}`, false,
       g.questions.map(q => leaf(q.title, q.title, `quizq:${c.id}:${q.id}`, !!cur && cur.cid === c.id && cur.qid === q.id, q.status)))));
   const manTree = [...manQuizzes().map(quizTree)];
-  if (manTasks().length) manTree.push(group('man:tasks', 'Tasks: look it up, then write it', 'man tasks coding', 'track:man', state.track === 'man' && !state.introCategory && !state.theory,
+  if (manTasks().length) manTree.push(group('man:tasks', 'Exam tasks with the manual open', 'man tasks coding', 'track:man', state.track === 'man' && !state.introCategory && !state.theory,
     manTasks().map(e => leaf(e.title, `${e.id} ${e.title} ${e.cmds || ''}`, `trackex:man:${e.id}`, state.track === 'man' && exCur(e), e.status, e.id))));
   const quizzes = Theory.list().filter(c => !c.ws).map(c => group(`quiz:${c.id}`, c.title, c.title, `quiz:${c.id}`, state.theory === c.id,
     c.groups.map(g => group(`quizgroup:${c.id}:${g.id}`, g.title, g.title, `quizgroup:${c.id}:${g.id}`, false,
