@@ -1,0 +1,73 @@
+@@exam easy-10 | Examen fácil 10
+@@about
+Diez preguntas de respuesta única sobre lo básico: find por grupo, xargs, comparar ficheros, case, df y du, edición de línea, los poderes de root, escapes de echo, passwd y pstree.
+
+@@q single | find por grupo
+En `/srv` hay ficheros regulares y directorios que pertenecen al grupo `devs`, y ficheros de otros grupos. ¿Qué imprime `find /srv -group devs -type f`?
+(+) Las rutas de los ficheros regulares cuyo grupo es `devs`. :: `-group` selecciona por grupo y `-type f` deja solo los ficheros regulares; deben cumplirse ambos tests.
+(-) Las rutas de todas las entradas del grupo `devs`, incluidos los directorios. :: `-type f` elimina los directorios del resultado.
+(-) Las rutas de los ficheros cuyo propietario es el usuario `devs`. :: `-group` mira el grupo; el propietario se comprueba con `-user`.
+(-) Las rutas de los ficheros en los que pueden escribir los miembros de `devs`. :: `find` no comprueba lo que el grupo puede hacer, solo cuál es el grupo propietario (eso sería `-perm`).
+
+@@q single | Nombres que llegan por stdin
+`trash.txt` contiene los nombres de dos ficheros, uno por línea. ¿Qué mandato borra esos dos ficheros?
+(+) `xargs rm < trash.txt` :: `xargs` lee los nombres de su entrada y ejecuta `rm` con ellos como argumentos.
+(-) `rm < trash.txt` :: `rm` no lee su entrada estándar: se queja de «missing operand».
+(-) `cat trash.txt | rm` :: Por la tubería los nombres llegan por stdin, que `rm` ignora: «missing operand».
+(-) `rm -f < trash.txt` :: `-f` solo silencia los errores de ficheros inexistentes; la entrada se sigue ignorando.
+
+@@q single | Comparar byte a byte
+¿Qué mandato compara dos ficheros byte a byte e indica la posición de la primera diferencia?
+(+) `cmp` :: Por ejemplo `cmp f1 f2` imprime `f1 f2 differ: byte 3, line 1`.
+(-) `diff` :: Compara línea a línea y lista las líneas que cambian, no posiciones de byte.
+(-) `od` :: Vuelca el contenido de un fichero en octal, hexadecimal o caracteres; no compara nada.
+(-) `wc -c` :: Cuenta los bytes de un fichero; no dice dónde difieren dos ficheros.
+
+@@q single | Patrones de case
+¿Qué afirmación sobre el mandato `case` es FALSA?
+(-) Un `case` termina con `esac`. :: Cierto: es `case` escrito al revés, igual que `fi` cierra un `if`.
+(-) Cada rama termina con `;;`. :: Cierto: el doble punto y coma cierra los mandatos de la rama.
+(-) El patrón `*)` coincide con cualquier cosa, por eso se usa como rama por defecto. :: Cierto: los patrones se prueban en orden y gana la primera coincidencia.
+(+) Los patrones son expresiones regulares, así que `a.c)` coincide con `abc`. :: Falso: los patrones son comodines de la shell. Ahí el `.` es un carácter normal, así que `a.c` solo coincide con el texto `a.c`.
+
+@@q single | df y du
+¿Qué afirmación es CIERTA?
+(+) `df` informa del espacio de cada sistema de ficheros montado; `du` suma el espacio que ocupa un árbol de directorios. :: Usos típicos: `df -h` para ver cuánto se han llenado los discos y `du -sh dir` para ver cuánto ocupa un directorio.
+(-) `df` suma el espacio que ocupa un árbol de directorios y `du` informa del espacio libre de cada sistema de ficheros montado. :: Es al revés.
+(-) Los dos imprimen el espacio libre del disco; `du` es solo el nombre antiguo de `df`. :: Son mandatos distintos que responden a preguntas distintas.
+(-) `df -h` muestra el tamaño de cada fichero del directorio actual. :: `df` trabaja con sistemas de ficheros, no con ficheros individuales.
+
+@@q single | Editar la línea de mandatos
+¿Qué afirmación sobre editar y recuperar mandatos en la shell es FALSA?
+(-) `Tab` completa el nombre de un mandato o fichero hasta donde no hay ambigüedad. :: Cierto: pulsada dos veces lista las posibilidades.
+(-) `Ctrl+A` mueve el cursor al principio de la línea y `Ctrl+E` al final. :: Cierto: son las teclas estilo Emacs del editor de línea.
+(-) El mandato `history` imprime la lista numerada de los mandatos escritos antes. :: Cierto: `!N` repite el que tiene número N.
+(+) La flecha arriba recupera el mandato anterior y lo ejecuta al instante, sin esperar a Enter. :: Falso: solo lo pone en la línea para que puedas editarlo; se ejecuta al pulsar Enter.
+
+@@q single | root y los permisos
+El fichero `secret` pertenece a `ana` y tiene modo `000`. Con la sesión de `root` ejecutas `cat secret`. ¿Qué ocurre?
+(+) Se imprime el contenido. :: root se salta las comprobaciones de permisos de lectura y escritura; solo la ejecución necesita al menos un bit `x`.
+(-) «Permission denied», porque nadie tiene permiso de lectura. :: Las comprobaciones de permisos no se aplican a root.
+(-) «Permission denied», porque root no es el propietario. :: Para root no hace falta ser el propietario.
+(-) Imprime el contenido solo después de `chmod +r secret`, ya que ni root puede leer sin permiso. :: root no necesita cambiar antes el modo.
+
+@@q single | La opción -e de echo
+¿Qué opción hace que `echo` interprete secuencias de escape como `\n` y `\t`?
+(+) `-e` :: `echo -e "a\tb"` imprime `a`, un tabulador y `b`.
+(-) `-n` :: Solo suprime el salto de línea final.
+(-) `-E` :: Desactiva la interpretación de escapes, que ya es lo habitual en bash.
+(-) `-s` :: `echo` no tiene esa opción: simplemente imprime `-s` como texto.
+
+@@q single | Bloquear una cuenta
+¿Qué mandato bloquea la contraseña del usuario `ana`, de modo que no pueda iniciar sesión con ella?
+(+) `passwd -l ana` :: `-l` (lock) desactiva la contraseña; `-u` lo deshace.
+(-) `passwd -u ana` :: `-u` desbloquea la contraseña.
+(-) `passwd -e ana` :: `-e` caduca la contraseña: sigue siendo válida, pero debe cambiarla en el próximo inicio de sesión.
+(-) `passwd -d ana` :: `-d` borra la contraseña, dejando la cuenta sin ninguna: lo contrario de lo que se quiere.
+
+@@q single | El árbol de procesos
+¿Qué afirmación sobre `pstree` es CIERTA?
+(+) Muestra los procesos como un árbol: cada hijo bajo su padre, el PID 1 en la raíz. :: Con `pstree -p` los PID se muestran junto a los nombres.
+(-) Muestra solo los procesos del usuario actual, como una tabla plana con una columna por atributo. :: Una tabla plana de columnas es lo que imprime `ps`.
+(-) Dibuja el árbol de directorios del sistema de ficheros. :: Eso lo hace `tree`.
+(-) Ordena los procesos por uso de memoria. :: Ordenar por memoria se hace dentro de `top` o con `ps --sort`.

@@ -1,0 +1,73 @@
+@@exam medium-09 | Examen medio 9
+@@about
+Diez preguntas de respuesta única que combinan dos datos o piden seguir unos pasos: mayúsculas en los nombres, estados de tuberías, alias, read, permisos de directorios, valores por defecto de systemd, códigos de salida, ficheros de arranque, wc y PIDs en segundo plano.
+
+@@q single | Mayúsculas y nombres de fichero
+¿Qué afirmación sobre mayúsculas y minúsculas en Linux es FALSA?
+(-) `README` y `readme` pueden existir a la vez en el mismo directorio. :: Cierto: son nombres distintos.
+(-) Si solo existe `Documents`, `cd documents` falla. :: Cierto: los nombres distinguen mayúsculas y minúsculas.
+(-) `Echo hi` falla con «command not found», mientras que `echo hi` funciona. :: Cierto: los nombres de mandato también distinguen mayúsculas y minúsculas.
+(+) Si existe `Notes.txt`, `touch notes.txt` solo actualiza la hora de ese fichero. :: Falso: `notes.txt` es otro nombre, así que `touch` crea un segundo fichero vacío.
+
+@@q single | Estado de un grupo
+Escribes `(cd /tmp; false); echo $?`. ¿Qué se imprime?
+(+) `1` :: El estado de un grupo entre paréntesis es el de su último mandato, y `false` devuelve 1.
+(-) `0` :: `cd /tmp` tuvo éxito, pero no es el último mandato del grupo.
+(-) `/tmp` :: `echo $?` imprime un número de estado; nada en la línea imprime el directorio.
+(-) `127` :: 127 significa «command not found», y tanto `cd` como `false` existen.
+
+@@q single | Redefinir un alias
+En una shell interactiva escribes `alias ll='ls -l'`, después `alias ll='ls -la'` y después `alias ll`. ¿Qué imprime el último mandato?
+(+) `alias ll='ls -la'` :: Definir un alias de nuevo sustituye la definición anterior, y `alias nombre` muestra la actual.
+(-) `alias ll='ls -l'` :: La segunda definición sustituyó a la primera.
+(-) Las dos definiciones, una tras otra. :: Un alias tiene un solo valor a la vez.
+(-) `ls -la` :: `alias ll` imprime la definición con la forma `alias nombre='...'`, no la ejecuta.
+
+@@q single | Dos maneras de leer
+Compara `read -p "Name: " n` y `read -t 5 n`. ¿Qué afirmación es correcta?
+(+) El primero muestra un prompt; el segundo espera como máximo 5 segundos y luego falla. :: `-p` da el texto del prompt y `-t` un tiempo límite en segundos; al agotarse `read` devuelve un estado distinto de cero.
+(-) El primero espera 5 segundos y el segundo muestra un prompt. :: Las opciones son al revés.
+(-) Los dos esperan para siempre, ya que las opciones solo cambian cómo se guarda la variable. :: `-t` es justo lo que limita el tiempo de espera.
+(-) El segundo lee en `n` un fichero llamado `5`. :: `-t` toma el tiempo límite como argumento; `read` sigue leyendo la entrada estándar.
+
+@@q single | Listar necesita lectura
+¿Qué afirmación sobre los permisos de un directorio es FALSA?
+(-) Para crear un fichero en él necesitas permiso de escritura y de ejecución sobre él. :: Cierto: crear añade un nombre al directorio.
+(-) Para renombrar un fichero en él necesitas permiso de escritura y de ejecución sobre él. :: Cierto: renombrar cambia un nombre guardado en el directorio.
+(-) Con solo permiso de lectura puedes listar los nombres, pero no obtener los detalles de los ficheros. :: Cierto: `ls` muestra los nombres, mientras que `ls -l` responde «Permission denied» para cada entrada.
+(+) Con solo permiso de ejecución puedes listar sus nombres con `ls`. :: Falso: listar necesita permiso de lectura. Con solo `x` puedes atravesar el directorio hasta un fichero cuyo nombre ya conoces.
+
+@@q single | Un valor por defecto solo texto
+Quieres que los próximos arranques de una máquina con systemd empiecen en modo texto, sin el escritorio gráfico. ¿Qué mandato lo consigue?
+(+) `sudo systemctl set-default multi-user.target` :: Cambia el target por defecto para los siguientes arranques.
+(-) `sudo systemctl isolate multi-user.target` :: Cambia el sistema en marcha a ese target ahora, pero el valor por defecto del próximo arranque no cambia.
+(-) `sudo systemctl enable graphical.target` :: El target gráfico es el que da el escritorio.
+(-) `sudo systemctl get-default multi-user.target` :: `get-default` solo imprime el valor por defecto actual y no lleva argumento.
+
+@@q single | Un mandato que no existe
+Escribes `foo`, que no es un mandato interno, ni un alias, ni un programa del `PATH`. ¿Qué imprime `echo $?` justo después?
+(+) `127` :: La shell usa 127 para «command not found» (126 es para un fichero que existe pero no se puede ejecutar).
+(-) `0` :: El estado 0 significa éxito, y el mandato no se ejecutó.
+(-) `1` :: 1 es el estado de fallo genérico de muchos mandatos, no el que da la shell para un mandato inexistente.
+(-) `2` :: 2 lo usan muchos mandatos para un uso incorrecto; no es el estado de un mandato inexistente.
+
+@@q single | Ficheros de inicio de sesión
+¿Qué afirmación compara correctamente `~/.profile` y `~/.bashrc`?
+(+) `~/.profile` es para las shells de login; `~/.bashrc` para las interactivas que no son de login. :: Muchos `.profile` incluyen `~/.bashrc`, para que los dos tipos de shell tengan los mismos alias.
+(-) `~/.bashrc` se lee solo al iniciar sesión y `~/.profile` en cada ventana de terminal nueva que abres. :: Es al revés.
+(-) Los dos los lee solo `root`. :: Cada usuario los tiene en su directorio personal.
+(-) `~/.profile` configura el núcleo y `~/.bashrc` configura el gestor de arranque. :: Los dos son ficheros de arranque de la shell.
+
+@@q single | Contar entradas
+El directorio `e` contiene dos ficheros, `a` y `b`. ¿Qué mandato imprime solo el número de entradas de `e`, `2`?
+(+) `ls e | wc -l` :: `ls` imprime un nombre por línea cuando su salida es una tubería, y `wc -l` cuenta las líneas.
+(-) `ls -l e | wc -l` :: El listado largo empieza con una línea `total ...`, así que imprime `3`.
+(-) `wc -l e` :: `wc` intentaría leer `e` como un fichero, y es un directorio.
+(-) `ls e wc -l` :: Sin la tubería `ls` recibe `wc` y `-l` como más argumentos.
+
+@@q single | El PID de un trabajo en segundo plano
+¿Qué línea lanza `sleep 30` en segundo plano y después imprime su PID?
+(+) `sleep 30 & echo $!` :: `$!` es el PID del último trabajo en segundo plano.
+(-) `sleep 30 ; echo $!` :: `;` ejecuta `sleep` en primer plano: el `echo` espera 30 segundos, y `$!` está vacío porque no se lanzó nada en segundo plano.
+(-) `sleep 30 & echo $$` :: `$$` es el PID de la propia shell, no del trabajo en segundo plano.
+(-) `sleep 30 && echo $!` :: El `echo` se ejecuta cuando termina `sleep`, y `$!` está vacío si no se lanzó ningún trabajo en segundo plano.

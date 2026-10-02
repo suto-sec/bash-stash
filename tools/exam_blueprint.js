@@ -3,15 +3,16 @@
 // questions, the T1 topic, the subtopic to test and a suggested question style. It is what keeps the coverage even when
 // several people / agents write sets independently; build_theory.js checks that question N of a set uses the topic
 // assigned to slot N. Deterministic: running it again gives the same file.
-//   usage: node tools/exam_blueprint.js [setsPerTier=7]
+//   usage: node tools/exam_blueprint.js [setsPerTier=7 | easy,medium,hard (e.g. 15,15,7)]
 //   sets whose source file already exists keep their old slots; only the others are (re)dealt
 'use strict';
 const fs = require('fs');
 const path = require('path');
 
-const PER_TIER = Number(process.argv[2] || 7);
+const COUNTS = String(process.argv[2] || '7').split(',').map(Number);   // sets per tier: one number for all, or easy,medium,hard
 const SIZE = 10;
 const TIERS = ['easy', 'medium', 'hard'];
+const perTier = ti => COUNTS[ti] !== undefined ? COUNTS[ti] : COUNTS[0];
 
 // topic -> relative weight (about how much T1 slide / cheat-sheet / activity material it has) and its subtopics
 const TOPICS = {
@@ -54,8 +55,8 @@ function rng(seed) { let a = seed >>> 0; return () => { a = (a + 0x6D2B79F5) >>>
 const shuffle = (a, r) => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 
 // questions per topic in one tier: largest remainder of PER_TIER * SIZE * weight / total
-function quotas() {
-  const total = PER_TIER * SIZE, wsum = Object.values(TOPICS).reduce((s, t) => s + t.w, 0);
+function quotas(n) {
+  const total = n * SIZE, wsum = Object.values(TOPICS).reduce((s, t) => s + t.w, 0);
   const q = {}, rem = [];
   let used = 0;
   for (const [id, t] of Object.entries(TOPICS)) { const x = total * t.w / wsum; q[id] = Math.floor(x); used += q[id]; rem.push([x - q[id], id]); }
@@ -71,12 +72,13 @@ let old = {};
 try { old = JSON.parse(fs.readFileSync(file, 'utf8')).sets || {}; } catch (e) { /* first run */ }
 const written = id => fs.existsSync(path.join(__dirname, 'theory/exams', id + '.txt'));
 
-const out = { setsPerTier: PER_TIER, questionsPerSet: SIZE, topicQuota: quotas(), sets: {} };
+const out = { setsPerTier: COUNTS.length > 1 ? Object.fromEntries(TIERS.map((t, i) => [t, perTier(i)])) : COUNTS[0], questionsPerSet: SIZE, topicQuota: quotas(perTier(0)), sets: {} };
 TIERS.forEach((tier, ti) => {
-  const ids = Array.from({ length: PER_TIER }, (_, si) => `${tier}-${String(si + 1).padStart(2, '0')}`);
+  const quota = quotas(perTier(ti));
+  const ids = Array.from({ length: perTier(ti) }, (_, si) => `${tier}-${String(si + 1).padStart(2, '0')}`);
   const locked = ids.filter(id => old[id] && written(id));
   const free = ids.filter(id => !locked.includes(id));
-  const seen = {}, left = Object.assign({}, out.topicQuota);
+  const seen = {}, left = Object.assign({}, quota);
   for (const id of locked) {
     out.sets[id] = old[id];
     for (const row of old[id]) { seen[tier + row.topic] = (seen[tier + row.topic] || 0) + 1; left[row.topic] = (left[row.topic] || 0) - 1; }
