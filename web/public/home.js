@@ -61,6 +61,12 @@ const Home = (() => {
       sec.classList.toggle('collapsed', c);
       h.setAttribute('aria-expanded', String(!c));
     }
+    const fb = el('home-fold-btn');
+    if (fb) {
+      const anyOpen = SECS.filter(x => x.part === tab).some(x => !isCollapsed(x.key));
+      fb.textContent = anyOpen ? '▴ Collapse all sections' : '▾ Expand all sections';
+      fb.title = anyOpen ? 'Fold every section of this page to one row' : 'Open every section of this page';
+    }
   }
   // sidebar / keyboard jumps to a section show its contents
   function expandById(headId) {
@@ -79,6 +85,7 @@ const Home = (() => {
     const p = page(); if (p) p.dataset.tab = t;
     if (changed || toTop) {
       renderBar();
+      apply();
       if (ready) renderHomeNav();   // the sidebar lists the tab that is open
     }
     if (toTop) { const b = el('home-body'); if (b) b.scrollTop = 0; }
@@ -156,6 +163,15 @@ const Home = (() => {
       bar.id = 'home-minibar'; bar.className = 'home-minibar'; bar.setAttribute('role', 'tablist'); bar.setAttribute('aria-label', 'Home');
       el('home-body').prepend(bar);
       bar.addEventListener('click', ev => { const b = ev.target.closest('[data-tab]'); if (b) setTab(b.dataset.tab); });
+      const tools = document.createElement('div');   // under the tabs of every tab but Start: fold or unfold every section of the open tab
+      tools.id = 'home-tools'; tools.className = 'home-tools';
+      tools.innerHTML = '<button type="button" id="home-fold-btn" class="small"></button>';
+      bar.after(tools);
+      tools.querySelector('button').addEventListener('click', () => {
+        const secs = SECS.filter(x => x.part === tab), anyOpen = secs.some(x => !isCollapsed(x.key));
+        const m = collapsedMap(); secs.forEach(x => { m[x.key] = anyOpen; }); store.set('homeSecCollapsed', m);
+        apply();
+      });
     }
     bar.innerHTML = TABS.map(([k, label]) => {
       const d = tabStats(k);
