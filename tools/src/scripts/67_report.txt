@@ -90,7 +90,7 @@ done < <(find "$1" -type f -printf '%s %f\n')
 echo "Report written to $out"
 @@step 4 | Another output file
 @@readme
-`report.sh -o FILE DIR` writes the report to `FILE` instead (the message names that file, as given). The directory that must contain `FILE` has to exist, otherwise: error message that includes `FILE` on standard error and exit code **5** (nothing is created). Without `-o` everything is as in step 3. `-o` needs `FILE` and `DIR`.
+`report.sh -o FILE DIR` writes the report to `FILE` instead (the message names that file, as given). The directory that must contain `FILE` has to exist, otherwise: error message that includes `FILE` on standard error and exit code **5** (nothing is created). Without `-o` everything is as in step 3. `-o` needs `FILE` and `DIR` after it, otherwise it is the usage error (message **and the correct usage**, e.g. `Usage: report.sh [-o file] dir`, exit **1**).
 @@check
 ARGS=('proj' '-o out.txt proj' '-o reports/r.txt proj' '-o nodir/r.txt proj' '-o out.txt empty' '-o' '-o out.txt' '')
 COMPARE="stdout exit errmsg files"
