@@ -31,7 +31,7 @@ const Exams = (() => {
       hN: '#', hWhen: 'Date', hScore: 'Score', hTime: 'Time', hMode: 'Mode', review: 'Review', clear: 'Clear history',
       clearConfirm: t => `Delete the attempt history of "${t}"?`,
       questionN: n => `Question ${n}`, counter: (n, m) => `Question ${n} of ${m}`,
-      check: 'Check answer', skip: 'Skip', next: 'Next ▶', skipNext: 'Skip ▶', finish: 'Finish exam', prevTitle: 'Previous question (←)',
+      check: 'Check answer', skip: 'Skip', next: 'Next →', skipNext: 'Skip →', finish: 'Finish exam', prevTitle: 'Previous question (←)',
       hintEach: 'Press 1–4 to pick, Enter to check', hintNext: 'Press Enter for the next question', hintEnd: 'Press 1–4 to pick, Enter for the next question',
       scoreSoFar: (s, n) => `Score ${s}/${n}`, answeredOf: (a, n) => `${a}/${n} answered`,
       correct: '✔ Correct', notQuite: '✘ Not quite', skipped: '— Skipped',
@@ -65,7 +65,7 @@ const Exams = (() => {
       hN: 'N.º', hWhen: 'Fecha', hScore: 'Nota', hTime: 'Tiempo', hMode: 'Modo', review: 'Revisar', clear: 'Borrar historial',
       clearConfirm: t => `¿Borrar el historial de intentos de «${t}»?`,
       questionN: n => `Pregunta ${n}`, counter: (n, m) => `Pregunta ${n} de ${m}`,
-      check: 'Comprobar', skip: 'Saltar', next: 'Siguiente ▶', skipNext: 'Saltar ▶', finish: 'Terminar examen', prevTitle: 'Pregunta anterior (←)',
+      check: 'Comprobar', skip: 'Saltar', next: 'Siguiente →', skipNext: 'Saltar →', finish: 'Terminar examen', prevTitle: 'Pregunta anterior (←)',
       hintEach: 'Pulsa 1–4 para elegir e Intro para comprobar', hintNext: 'Pulsa Intro para la siguiente pregunta', hintEnd: 'Pulsa 1–4 para elegir e Intro para la siguiente pregunta',
       scoreSoFar: (s, n) => `Nota ${s}/${n}`, answeredOf: (a, n) => `${a}/${n} respondidas`,
       correct: '✔ Correcto', notQuite: '✘ No del todo', skipped: '— Saltada',
@@ -252,7 +252,7 @@ const Exams = (() => {
       <td><span class="exam-best ${a.score >= PASS ? 'good' : 'low'}">${a.score}/${a.total}</span></td>
       <td>${esc(fmtDur(a.seconds))}</td><td class="hint">${esc(modeLine(a.settings))}</td>
       <td><button class="small" data-act="review" data-n="${a.n}">${T('review')}</button></td></tr>`).join('');
-    return `<div class="theory-head"><div>
+    return `<section class="home-hero ex-hero"><div class="theory-head"><div>
         <div class="ex-topic">${esc(crumb())}</div><h1>${esc(e.title)}</h1>
         <div class="ex-meta"><span>${T('meta', e.questions.length)}</span></div></div>
         ${best == null ? '' : `<span class="badge ${best >= PASS ? 'pass' : 'attempted'}">${T('bestLine', best, cur.attempts.length)}</span>`}</div>
@@ -260,7 +260,7 @@ const Exams = (() => {
       <div class="ex-modes"><span class="ex-chip">${s.feedback === 'each' ? T('fbEach') : T('fbEnd')}</span><span class="ex-chip">${s.back ? T('backYes') : T('backNo')}</span></div>
       ${d ? `<div class="ex-draft">${T('draftLine', d.pos + 1, e.questions.length, esc(fmtDate(d.savedAt)))}</div>` : ''}
       <div class="th-actions">${d ? `<button class="primary" data-act="resume">${T('resume')}</button><button data-act="discard">${T('discard')}</button>`
-        : `<button class="primary" data-act="start">${T('start')}</button>`}<a class="small-link" href="#/home">${T('all')}</a>${d ? '' : `<span class="hint">${T('settingsHint')}</span>`}</div>
+        : `<button class="primary" data-act="start">${T('start')}</button>`}<a class="small-link" href="#/home">${T('all')}</a>${d ? '' : `<span class="hint">${T('settingsHint')}</span>`}</div></section>
       <h2 class="ex-h2">${T('history')}</h2>
       ${rows ? `<table class="ex-history"><thead><tr><th>${T('hN')}</th><th>${T('hWhen')}</th><th>${T('hScore')}</th><th>${T('hTime')}</th><th>${T('hMode')}</th><th></th></tr></thead><tbody>${rows}</tbody></table>
         <div class="th-actions"><button class="small" data-act="clear">${T('clear')}</button></div>`
@@ -294,10 +294,10 @@ const Exams = (() => {
       `<button class="${cls}" data-act="${act}"${dis ? ' disabled' : ''}${title ? ` title="${esc(title)}"` : ''}>${label}</button>`;
     let actions = '';
     if (s.feedback === 'each') {
-      actions = (s.back ? btn('prev', '◀', '', i === 0, T('prevTitle')) : '') + (!rev ? btn('check', T('check'), 'primary', picked == null) + btn('skip', T('skip'))
+      actions = (s.back ? btn('prev', '←', '', i === 0, T('prevTitle')) : '') + (!rev ? btn('check', T('check'), 'primary', picked == null) + btn('skip', T('skip'))
         : last ? btn('finish', T('finish'), 'primary') : btn('next', T('next'), 'primary'));
     } else if (s.back) {
-      actions = btn('prev', '◀', '', i === 0, T('prevTitle')) + btn('next', T('next'), last ? '' : 'primary', last) + btn('finish', T('finish'), last ? 'primary' : '');
+      actions = btn('prev', '←', '', i === 0, T('prevTitle')) + btn('next', T('next'), last ? '' : 'primary', last) + btn('finish', T('finish'), last ? 'primary' : '');
     } else {
       actions = last ? btn('finish', T('finish'), 'primary') : btn('next', picked == null ? T('skipNext') : T('next'), 'primary');
     }
