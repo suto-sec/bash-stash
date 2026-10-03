@@ -3,7 +3,7 @@
   "version": 1,
   "id": "example",
   "title": "Example pack",
-  "description": "A small pack that shows the format: one quiz with every question type and one practice exam.",
+  "description": "A small pack that shows the format: one quiz with every question type, one practice exam and one script with two steps.",
   "items": [
     {
       "kind": "quiz",
@@ -468,6 +468,34 @@
               "why": "`-n` tests for a non-empty string; it says nothing about files."
             }
           ]
+        }
+      ]
+    },
+    {
+      "kind": "script",
+      "id": "count-files",
+      "title": "Counting files",
+      "script": "count.sh",
+      "level": 2,
+      "tags": [
+        "arguments",
+        "exit codes",
+        "files"
+      ],
+      "cmds": "find -maxdepth 1 -type f, wc -l, test -d, exit codes",
+      "fixture": "setup() {\n  mkdir -p docs notes empty \"my docs\"\n  echo a > docs/a.txt; echo b > docs/b.txt; echo c > docs/.hidden; mkdir docs/sub; echo d > docs/sub/deep.txt\n  echo c > notes/c.md; echo x > \"my docs/two words.txt\"\n  echo x > notadir.txt\n}\nusage_ok() { [[ $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* || $ERR == *count.sh* ]]; }",
+      "steps": [
+        {
+          "title": "Count the files",
+          "readme": "Write `count.sh DIR`. It prints how many **regular files** are directly inside `DIR` (hidden files count, files in subdirectories and directories do not). Print only the number.\n\nExample: for a directory with `a.txt`, `.hidden` and a subdirectory `sub`, it prints `2`.",
+          "check": "ARGS=('docs' 'notes' 'empty' '\"my docs\"')\nCOMPARE=\"stdout exit\"",
+          "solution": "#!/bin/bash\nfind \"$1\" -maxdepth 1 -type f | wc -l"
+        },
+        {
+          "title": "The usual checks",
+          "readme": "Checks: not exactly one argument → an error message **and the correct usage** (e.g. `Usage: count.sh dir`) on standard error, exit **1**; the path does not exist → an error naming it, exit **2**; it exists but is not a directory → an error naming it, exit **3**. Otherwise as before.",
+          "check": "ARGS=('docs' 'notes' 'empty' '' 'docs notes' 'nothing' 'notadir.txt')\nCOMPARE=\"stdout exit errmsg\"\nextra_check() {\n  [[ $REF_CODE == 1 ]] && { usage_ok || fail \"the message should show the correct usage\"; }\n  [[ $REF_CODE == [23] ]] && mentions \"$(eval \"set -- $CASE\"; echo \"$1\")\"\n}",
+          "solution": "#!/bin/bash\nif (( $# != 1 )); then echo \"Error: one argument needed\" >&2; echo \"Usage: $0 dir\" >&2; exit 1; fi\n[[ -e $1 ]] || { echo \"Error: $1 does not exist\" >&2; exit 2; }\n[[ -d $1 ]] || { echo \"Error: $1 is not a directory\" >&2; exit 3; }\nfind \"$1\" -maxdepth 1 -type f | wc -l"
         }
       ]
     }
