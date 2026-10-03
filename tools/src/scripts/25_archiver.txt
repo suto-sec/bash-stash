@@ -1,0 +1,85 @@
+@@script s25 | archiver | Archiving a directory | archiver.sh
+@@level 4
+@@tags archives, files, exit codes
+@@cmds tar czf -C, basename, mkdir -p, test, exit codes
+@@fixture
+setup() {
+  mkdir -p proj/src "my docs" empty; local i
+  for i in 1 2 3; do echo "$i" > "proj/$(word)$i.txt"; done; echo c > proj/src/main.c; echo d > "my docs/two words.txt"
+  echo x > notadir.txt
+}
+usage_ok() { [[ $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* || $ERR == *archiver.sh* ]]; }
+pre_arch() { mkdir -p "$H/archives"; }
+pre_exist() { mkdir -p "$H/archives"; echo old > "$H/archives/proj.tgz"; }
+@@step 1 | Make the archive
+@@readme
+Write `archiver.sh DIR`. It creates `$HOME/archives/NAME.tgz`, a gzip-compressed tar archive of the directory `DIR`, where `NAME` is the name of `DIR` (without its path); `$HOME/archives` already exists in this step. Inside the archive the files are stored under `NAME/`. Print `Created <full path of the archive>`.
+
+`tar czf archive.tgz -C "$(dirname dir)" "$(basename dir)"` stores the directory under its own name.
+@@check
+ARGS=('proj $(pre_arch)' '"my docs" $(pre_arch)' 'empty $(pre_arch)')
+COMPARE="stdout exit files"
+@@solution
+#!/bin/bash
+name=$(basename "$1")
+out=$HOME/archives/$name.tgz
+tar czf "$out" -C "$(dirname "$1")" "$name"
+echo "Created $out"
+@@step 2 | Create the archives directory
+@@readme
+If `$HOME/archives` does not exist, create it and print exactly `Directory <full path> created` before the `Created` line.
+@@check
+ARGS=('proj $(pre_arch)' 'proj' '"my docs"' 'empty')
+COMPARE="stdout exit files"
+@@solution
+#!/bin/bash
+dest=$HOME/archives
+if [[ ! -d $dest ]]; then mkdir -p "$dest"; echo "Directory $dest created"; fi
+name=$(basename "$1")
+out=$dest/$name.tgz
+tar czf "$out" -C "$(dirname "$1")" "$name"
+echo "Created $out"
+@@step 3 | Check the argument
+@@readme
+Checks, in this order (before anything is created): not exactly one argument → error message **and the correct usage** (e.g. `Usage: archiver.sh dir`), exit **1**; `DIR` does not exist → error with its name, exit **2**; not a directory → error with its name, exit **3**.
+@@check
+ARGS=('proj' '"my docs"' '' 'proj empty' 'nothing' 'notadir.txt' 'proj $(pre_arch)')
+COMPARE="stdout exit errmsg files"
+extra_check() {
+  [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }
+  [[ $REF_CODE == [23] ]] && mentions "$(eval "set -- $CASE"; echo "$1")"
+}
+@@solution
+#!/bin/bash
+if (( $# != 1 )); then echo "Error: one directory is needed" >&2; echo "Usage: $0 dir" >&2; exit 1; fi
+[[ -e $1 ]] || { echo "Error: $1 does not exist" >&2; exit 2; }
+[[ -d $1 ]] || { echo "Error: $1 is not a directory" >&2; exit 3; }
+dest=$HOME/archives
+if [[ ! -d $dest ]]; then mkdir -p "$dest"; echo "Directory $dest created"; fi
+name=$(basename "$1")
+out=$dest/$name.tgz
+tar czf "$out" -C "$(dirname "$1")" "$name"
+echo "Created $out"
+@@step 4 | Never overwrite an archive
+@@readme
+If `$HOME/archives/NAME.tgz` **already exists**, do not touch it: print an error message that includes its path on standard error and exit with code **4** (the directory message, if the directory had to be created, is not an issue here: it exists by then).
+@@check
+ARGS=('proj' 'proj $(pre_exist)' '"my docs" $(pre_exist)' 'empty $(pre_arch)' '' 'nothing' 'notadir.txt')
+COMPARE="stdout exit errmsg files"
+extra_check() {
+  [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }
+  [[ $REF_CODE == [23] ]] && mentions "$(eval "set -- $CASE"; echo "$1")"
+  [[ $REF_CODE == 4 ]] && mentions "archives/proj.tgz"
+}
+@@solution
+#!/bin/bash
+if (( $# != 1 )); then echo "Error: one directory is needed" >&2; echo "Usage: $0 dir" >&2; exit 1; fi
+[[ -e $1 ]] || { echo "Error: $1 does not exist" >&2; exit 2; }
+[[ -d $1 ]] || { echo "Error: $1 is not a directory" >&2; exit 3; }
+dest=$HOME/archives
+if [[ ! -d $dest ]]; then mkdir -p "$dest"; echo "Directory $dest created"; fi
+name=$(basename "$1")
+out=$dest/$name.tgz
+if [[ -e $out ]]; then echo "Error: $out already exists" >&2; exit 4; fi
+tar czf "$out" -C "$(dirname "$1")" "$name"
+echo "Created $out"

@@ -1,0 +1,562 @@
+@@collection 11_scripting_logic | Scripts: condiciones, bifurcaciones, bucles y funciones
+@@about
+El mandato test y las condiciones, if y case, los bucles for, while y until, las funciones y el ámbito de las variables, leer y trazar scripts pequeños, y detectar los fallos típicos.
+
+@@group test y las condiciones
+@@q single | Qué es [
+¿Qué es `[` en `if [ -f "$1" ]; then`?
+(+) Un mandato (sinónimo de `test`) que evalúa la expresión hasta el `]` de cierre y devuelve 0 o 1. :: `if` solo mira su valor de retorno.
+(-) Una sintaxis especial de la palabra reservada `if`, que la shell analiza como parte de la propia sentencia y no como un mandato. :: Es un mandato normal, y por eso necesita espacios alrededor.
+(-) El comienzo de un índice de vector, que se cierra con el `]` del final de la expresión de la comprobación. :: Aquí no.
+(-) Un delimitador de expresión regular que le dice a `if` que compare el texto que va detrás. :: No tiene ese papel.
+
+@@q single | Los espacios importan
+¿Cuál de estas es una comprobación correcta?
+(+) `[ "$a" = "$b" ]` :: Espacios tras `[`, antes de `]` y alrededor de `=`.
+(-) `["$a" = "$b"]` :: Sin espacios, bash busca un mandato llamado `["$a"`.
+(-) `[ "$a"="$b" ]` :: Es una única palabra, que siempre es verdadera (cadena no vacía).
+(-) `[ "$a" = "$b"]` :: El `]` final tiene que ser una palabra aparte: «missing `]`».
+
+@@q sort | ¿Operador numérico o de cadenas?
+@@buckets Para números | Para cadenas | Para ficheros
+Clasifica cada operador de comprobación.
+(Para números) `-eq` :: Iguales como enteros.
+(Para números) `-lt` :: Menor que, como enteros.
+(Para números) `-ge` :: Mayor o igual, como enteros.
+(Para cadenas) `=` :: Iguales como texto.
+(Para cadenas) `-z` :: La cadena está vacía.
+(Para cadenas) `-n` :: La cadena no está vacía.
+(Para ficheros) `-d` :: La ruta es un directorio.
+(Para ficheros) `-s` :: El fichero existe y su tamaño es mayor que cero.
+(Para ficheros) `-e` :: La ruta existe.
+
+@@q match | Comprobaciones de ficheros
+Empareja cada comprobación con lo que verifica.
+(=) `-e ruta` => La ruta existe, sea del tipo que sea :: Fichero, directorio, enlace...
+(=) `-f ruta` => Existe y es un fichero regular :: No un directorio.
+(=) `-d ruta` => Existe y es un directorio :: No un fichero.
+(=) `-s ruta` => Existe y no está vacío :: Tamaño mayor que cero.
+(=) `-x ruta` => Existe y puedes ejecutarlo :: Comprueba el permiso del usuario actual.
+(-) Se modificó hoy :: Ningún operador de `test` comprueba eso; lo hace `find -mtime`.
+
+@@q match | Comprobaciones de cadenas y números
+Empareja cada expresión con su significado.
+(=) `[ -z "$s" ]` => `s` está vacía :: Longitud cero.
+(=) `[ -n "$s" ]` => `s` no está vacía :: Longitud distinta de cero.
+(=) `[ "$a" != "$b" ]` => Las dos cadenas son distintas :: Comparación de texto.
+(=) `[ "$n" -ge 10 ]` => `n` es al menos 10 como número :: Comparación de enteros.
+(=) `[ ! -e "$f" ]` => `f` no existe :: El `!` niega.
+(-) `n` es un número primo :: No existe esa comprobación.
+
+@@q single | Números como texto
+¿Qué devuelve `[ 10 \> 9 ]` (comparando con `\>`)?
+(+) Falso: compara alfabéticamente las cadenas `10` y `9`, y `1` va antes que `9`. :: Usa `-gt` para los números.
+(-) Verdadero, porque 10 es mayor que 9 cuando los dos se leen como números decimales normales. :: Eso es lo que diría `-gt`.
+(-) Un error, porque el signo mayor que no se permite dentro de una expresión de comprobación. :: Es una comparación de cadenas válida.
+(-) Verdadero, pero solo dentro de `[[ ]]`, donde la comparación siempre es numérica. :: Ahí también es una comparación de cadenas.
+
+@@q single | La sorpresa de la variable vacía
+`x=""` y después `[ $x = y ]` (sin comillas). ¿Qué pasa?
+(+) La comprobación queda como `[ = y ]`, que es un error de sintaxis: «unary operator expected». :: Entrecomilla siempre las variables dentro de `[ ]`.
+(-) Es falsa, sin ningún mensaje, porque una cadena vacía nunca es igual a `y`. :: La expresión está mal formada.
+(-) Es verdadera, porque una variable vacía se considera igual a cualquier otro valor. :: La palabra vacía desaparece.
+(-) A la variable `x` se le asigna el valor `y`, ya que aquí `=` es una asignación. :: Aquí `=` es una comparación.
+
+@@q single | -n sin comillas
+Con `v=""`, ¿qué devuelve `[ -n $v ]` (sin comillas)?
+(+) Verdadero (valor 0), porque la comprobación solo ve `[ -n ]`, una única palabra no vacía. :: La razón clásica para escribir `[ -n "$v" ]`.
+(-) Falso, porque `v` está vacía y `-n` solo es verdadero con cadenas que contienen texto. :: Solo con comillas se conserva la cadena vacía.
+(-) Un error de sintaxis, ya que `-n` necesita un operando y la variable sin comillas no aporta ninguno. :: Una sola palabra es una comprobación válida.
+(-) Depende de la configuración regional, porque la comprobación compara cadenas con sus reglas de ordenación. :: No.
+
+@@q single | Se esperaba un entero
+¿Qué hace `[ 10 -eq 10.0 ]`?
+(+) Falla con «integer expression expected», porque `test` solo compara enteros con `-eq`. :: La shell no tiene coma flotante.
+(-) Devuelve verdadero, ya que los dos números son iguales escritos como decimales, así que se cumple la comprobación. :: `10.0` no es un entero.
+(-) Devuelve falso sin ningún mensaje, porque 10.0 no es el mismo texto que 10. :: Se imprime un mensaje y el valor es 2.
+(-) Convierte los dos números en texto y los compara como cadenas, lo que da falso. :: `-eq` nunca lo hace.
+
+@@q single | Combinar condiciones
+¿Cuál de estas es la forma más clara de exigir dos condiciones?
+(+) `[ -f "$f" ] && [ -s "$f" ]` :: Dos comprobaciones unidas con el `&&` de la shell.
+(-) `[ -f "$f" && -s "$f" ]` :: `&&` no se permite dentro de un único `[ ]`; usa `-a` o dos comprobaciones.
+(-) `[ -f "$f" ; -s "$f" ]` :: Un punto y coma termina el mandato.
+(-) `[ -f "$f" or -s "$f" ]` :: No es una sintaxis válida.
+
+@@q single | Dobles corchetes
+¿Qué característica tiene `[[ ]]` que no tenga `[ ]`?
+(+) Comparación con patrones mediante `==`, expresiones regulares con `=~`, y sin división en palabras de las variables sin comillas. :: Es una palabra reservada de bash, no una característica portable de `sh`.
+(-) Puede comparar números en coma flotante, cosa que el `[ ]` normal no sabe hacer, así que se usa para los decimales. :: Bash no tiene coma flotante.
+(-) Funciona en todas las shells POSIX, así que los scripts que lo usan son totalmente portables. :: Es una extensión de bash, ksh y zsh.
+(-) Es más rápido porque es un programa aparte que no hace falta lanzar. :: Forma parte de la shell.
+
+@@q single | Condición aritmética
+¿Qué condición compara enteros con operadores familiares como `>`?
+(+) `(( x > 3 ))` :: Los dobles paréntesis evalúan una expresión aritmética; el valor es 0 cuando el resultado es distinto de cero.
+(-) `[ x > 3 ]` :: Redirige la salida a un fichero llamado `3`.
+(-) `[[ x > 3 ]]` :: Compara como cadenas el texto `x` y `3`.
+(-) `$(x > 3)` :: Sustitución de mandato.
+
+@@q single | Una redirección peligrosa
+¿Qué hace por error `[ $a > $b ]`?
+(+) Ejecuta `[ $a ]` y escribe su salida (nada) en un fichero nuevo con el nombre de `b`, creando un fichero de más. :: Usa `-gt` o `(( ))`.
+(-) Compara correctamente dos números, como haría `-gt`, y fija el valor de retorno que luego usa `if`. :: Aquí `>` es una redirección.
+(-) Compara alfabéticamente dos cadenas, como hace `\>`, y fija el valor de retorno. :: Solo con `\>`.
+(-) Solo produce un error de sintaxis, sin hacer nada más en el sistema de ficheros. :: Crea el fichero sin avisar.
+
+@@q fill | ¿Es un directorio?
+Comprueba que `$1` es un directorio: `if [ {{-d}} "$1" ]; then`
+(x) -f :: Solo es verdadero con ficheros regulares.
+(x) -e :: Verdadero con cualquier cosa que exista, ficheros incluidos.
+@@note
+`-d` comprueba que sea un directorio, `-f` un fichero regular y `-e` cualquier ruta.
+
+@@q fill | No vacía
+Comprueba que la variable `nombre` contiene algún texto: `if [ {{-n}} "$nombre" ]; then`
+(x) -z :: Es verdadero cuando la cadena está vacía: lo contrario.
+(x) -e :: Comprueba la ruta de un fichero.
+@@note
+`[ "$nombre" ]` es una forma más corta.
+
+@@q single | El valor de retorno como condición
+¿Qué `if` usa directamente el valor de retorno de `grep`, sin ninguna salida?
+(+) `if grep -q alumno /etc/passwd; then` :: `-q` silencia la salida; solo importa el valor de retorno.
+(-) `if [ grep -q alumno /etc/passwd ]; then` :: `[` intentaría interpretar `grep` como un operando.
+(-) `if $(grep alumno /etc/passwd); then` :: Intentaría *ejecutar* la salida.
+(-) `if grep alumno /etc/passwd == 0; then` :: No es válido.
+
+@@q single | Valor cuando no se ejecuta ninguna rama
+¿Cuánto vale `$?` tras `if false; then echo hola; fi`?
+(+) 0 :: Cuando no se ejecuta ninguna rama, la propia sentencia `if` tiene éxito.
+(-) 1 :: Ese era el valor de la condición.
+(-) Vacío. :: Siempre hay un número.
+(-) 127 :: Eso es «command not found».
+
+@@group if, elif y case
+@@q order | Anatomía de un if
+Ordena las palabras reservadas de un `if` completo de dos ramas.
+(>) `if [ condición ]` :: La condición va primero.
+(>) `then` :: Introduce los mandatos que se ejecutan cuando la condición es verdadera.
+(>) `else` :: Introduce los mandatos del otro caso.
+(>) `fi` :: Cierra el bloque: `if` escrito al revés.
+
+@@q single | Falta un separador
+¿Qué falla en `if [ -f "$f" ] then echo sí; fi` en una sola línea?
+(+) Hace falta un `;` (o un salto de línea) antes de `then`. :: Escribe `if [ -f "$f" ]; then ...`.
+(-) `then` no se puede usar en una línea, tiene que ir en una línea propia. :: Sí se puede, tras un separador.
+(-) `echo` tiene que ir entre comillas, porque si no no se encuentra. :: No hace falta.
+(-) `fi` tiene que escribirse en mayúsculas, como las demás palabras reservadas de la shell. :: Las palabras reservadas van en minúsculas.
+
+@@q single | elif
+¿Qué hace `elif`?
+(+) Da otra condición que comprobar cuando la anterior fue falsa, sin anidar un bloque nuevo. :: Solo se ejecuta la primera rama verdadera.
+(-) Se ejecuta cuando la condición del `if` es verdadera, antes de ejecutar la rama `then`. :: Esa es la parte `then`.
+(-) Significa «si no, si no», y se ejecuta cuando la condición anterior no fue falsa. :: Es «si no, si».
+(-) Termina el bloque, como `fi`, pero deja que el script siga con la sentencia que va detrás en el fichero. :: Eso es `fi`.
+
+@@q single | Traza: elif
+¿Qué imprime `n=5; if [ $n -lt 3 ]; then echo A; elif [ $n -lt 10 ]; then echo B; else echo C; fi`?
+(+) `B` :: La primera condición es falsa; la segunda es verdadera, así que se ejecuta su rama y se salta el resto.
+(-) `A` :: 5 no es menor que 3.
+(-) `C` :: Un `elif` verdadero impide el `else`.
+(-) `B` y `C` :: Solo se ejecuta una rama.
+
+@@q single | Cadena de y/o
+¿Qué imprime `true || echo A && echo B`?
+(+) `B` :: `||` y `&&` tienen la misma precedencia y se ejecutan de izquierda a derecha: `true` tiene éxito, así que se salta `echo A`, y después el valor 0 deja ejecutar `&& echo B`.
+(-) `A` :: `||` se salta su parte derecha cuando la izquierda tiene éxito.
+(-) `A` y `B` :: `A` se salta.
+(-) Nada. :: Se imprime `B`.
+
+@@q single | Estilo ternario
+¿Qué línea imprime `sí` cuando `x` está vacía, y `no` en caso contrario?
+(+) `[ -z "$x" ] && echo sí || echo no` :: Aquí funciona porque `echo sí` tiene éxito; si el mandato del medio pudiera fallar, también se ejecutaría el `||`.
+(-) `[ -z "$x" ] || echo sí && echo no` :: Ejecuta `echo no` siempre que la cadena llega hasta él: es otra lógica.
+(-) `if [ -z $x ] echo sí else echo no` :: Faltan palabras reservadas y separadores.
+(-) `echo [ -z "$x" ] sí no` :: Solo imprime las palabras.
+
+@@q single | Para qué sirve case
+¿Cuándo es `case` mejor opción que una cadena de `if`/`elif`?
+(+) Cuando un valor (una variable) se compara con varios patrones, como mandatos, opciones o formas de nombres de fichero. :: Se lee más claro y admite patrones con comodines.
+(-) Cuando hay que comparar números con `<` y `>`, cosa que `case` hace mejor y más rápido que `[ ]`. :: `case` compara patrones, no rangos numéricos.
+(-) Cuando hacen falta bucles, porque `case` repite sus ramas hasta que coincide un patrón. :: `case` no repite nada.
+(-) Cuando el script no tiene variables, porque `case` solo trabaja con palabras literales. :: Necesita un valor que comparar.
+
+@@q match | Patrones de case
+Empareja cada patrón con aquello con lo que coincide.
+(=) `a*` => Cualquier palabra que empiece por `a` :: Un patrón con comodines.
+(=) `[0-9]` => Un único dígito :: Una expresión entre corchetes.
+(=) `s|si` => La palabra `s` o la palabra `si` :: Alternativas con una barra.
+(=) `*` => Cualquier cosa (se usa como opción por defecto) :: Ponlo el último.
+(=) `*.txt|*.md` => Un nombre que termina en `.txt` o en `.md` :: Alternativas de comodines.
+(-) Una expresión regular como `a+` :: `case` usa comodines, no expresiones regulares.
+
+@@q single | Traza: case
+¿Qué imprime `for x in manzana 42 ""; do case "$x" in [0-9]*) echo -n "num ";; "") echo -n "vacio ";; *) echo -n "palabra ";; esac; done`?
+(+) `palabra num vacio ` :: `manzana` solo encaja con `*`, `42` empieza por un dígito y la cadena vacía coincide con `""`.
+(-) `palabra palabra palabra ` :: Los otros patrones sí coinciden.
+(-) `num palabra vacio ` :: El orden sigue el del bucle: primero manzana.
+(-) `palabra num palabra ` :: La cadena vacía coincide con el patrón `""`.
+
+@@q single | El doble punto y coma
+¿Qué hace `;;` en un `case`?
+(+) Termina los mandatos de una rama; tras él, el `case` acaba. :: Sin él, el siguiente patrón se analizaría como un mandato.
+(-) Repite la rama, volviendo al principio del `case` con el siguiente valor. :: No se repite nada.
+(-) Separa dos patrones de la misma rama, como hace la barra `|`. :: Eso es `|`.
+(-) Es una marca de comentario, y la shell ignora el resto de la línea. :: Los comentarios empiezan por `#`.
+
+@@q fill | Menú con case
+Completa la rama por defecto que recoge cualquier otro valor: `case "$1" in arrancar) echo vamos;; parar) echo alto;; {{*}}) echo uso;; esac`
+(x) else :: `case` no tiene `else`.
+(x) default :: Es la propia palabra «default» como patrón, que solo coincide con el texto `default`.
+@@note
+`*` coincide con cualquier cosa, así que tiene que ser el último patrón.
+
+@@q single | Comillas en case
+¿Por qué se escribe `case "$respuesta" in` con la variable entre comillas?
+(+) Para que un valor vacío, o uno con espacios, siga siendo una sola palabra en lugar de romper la sintaxis. :: Un hábito seguro en todas partes.
+(-) Porque `case` exige que su palabra vaya entre comillas, y da un error de sintaxis cuando no es así. :: En muchos casos funciona sin ellas.
+(-) Para que la comparación no distinga mayúsculas, de modo que `Si` y `si` elijan la misma rama. :: Las comillas no cambian el trato de las mayúsculas.
+(-) Para detener el script ante errores, porque una palabra entre comillas hace que `case` termine si hay un fallo. :: No es su propósito.
+
+@@group Bucles
+@@q match | Las formas de bucle
+Empareja cada bucle con cómo decide si continuar.
+(=) `for x in a b c` => Se ejecuta una vez por cada palabra de la lista :: La lista se expande primero.
+(=) `while cond` => Se repite mientras la condición tiene éxito (valor 0) :: Se comprueba antes de cada vuelta.
+(=) `until cond` => Se repite mientras la condición falla (valor distinto de cero) :: La imagen en espejo de `while`.
+(=) `for x` (sin `in`) => Se ejecuta una vez por cada parámetro posicional :: Atajo de `in "$@"`.
+(-) Se ejecuta siempre, por diseño :: Solo con una condición que nunca cambia.
+
+@@q single | for con un comodín
+`for f in *.txt; do ...; done` en un directorio sin ficheros `.txt`. ¿Qué valor toma `f`?
+(+) El texto literal `*.txt`, una vez: un comodín sin coincidencias se queda tal cual. :: Comprueba con `[ -e "$f" ]` o activa `nullglob`.
+(-) Ninguno: el bucle no se ejecuta, ya que no hay ficheros que recorrer. :: Con las opciones por defecto se ejecuta una vez.
+(-) Una cadena vacía, y el bucle se ejecuta una vez con `f` a ese valor vacío. :: El patrón se conserva.
+(-) El primer fichero del directorio, tenga la extensión que tenga. :: No.
+
+@@q single | seq y los rangos
+¿Qué cabecera de bucle recorre los números del 1 al 10?
+(+) `for i in $(seq 1 10)` o `for i in {1..10}` :: Las dos dan la lista; la expansión de llaves solo funciona con literales.
+(-) `for i in 1..10`, que bash expande a los números del 1 al 10 :: El texto `1..10` es una sola palabra.
+(-) `for i in (1,10)`, que toma el principio y el final del rango :: No es sintaxis de bash.
+(-) `for i = 1 to 10`, que es la forma clásica de un bucle con contador :: No es sintaxis de bash.
+
+@@q single | Límite variable entre llaves
+¿Por qué `n=5; for i in {1..$n}` no da cinco vueltas?
+(+) Las llaves se expanden antes que las variables, así que `{1..$n}` no es un rango y queda literal; usa `seq`. :: Otra vez el orden de las expansiones.
+(-) Porque `n` no se ha exportado, y el bucle se ejecuta en otro entorno. :: Exportar es irrelevante.
+(-) Porque las llaves solo se usan para vectores, y un rango necesita corchetes. :: Aquí no.
+(-) Porque `seq` es obligatorio en todo bucle que cuente, y un rango con llaves no puede sustituirlo en ningún caso. :: No es obligatorio.
+
+@@q single | Bucle al estilo C
+¿Qué forma es el `for` aritmético de bash?
+(+) `for ((i=0; i<3; i++)); do ...; done` :: Inicialización, condición y paso, como en C.
+(-) `for (i=0; i<3; i++); do ...; done` :: Los paréntesis simples abren una subshell.
+(-) `for i=0 to 3; do ...; done` :: No es bash.
+(-) `for i in (0..3); do ...; done` :: No es bash.
+
+@@q single | break y continue
+¿Qué diferencia hay entre `break` y `continue`?
+(+) `break` sale del bucle por completo; `continue` se salta el resto de la vuelta actual y empieza la siguiente. :: Los dos aceptan un número para bucles anidados.
+(-) Son idénticos y solo se diferencian en cómo se escriben en un script. :: Son distintos.
+(-) `continue` termina el script de inmediato, mientras que `break` solo termina el bucle que lo contiene y el script sigue. :: Eso es `exit`.
+(-) `break` solo funciona en bucles `while`, y `continue` solo en bucles `for`. :: Funcionan en todos los bucles.
+
+@@q single | Traza: continue y break
+¿Qué imprime `for i in 1 2 3 4 5; do [ $i -eq 2 ] && continue; [ $i -eq 4 ] && break; echo -n "$i "; done`?
+(+) `1 3 ` :: El 2 se lo salta `continue`; en el 4 el bucle termina, así que nunca se llega al 5.
+(-) `1 3 5 ` :: `break` detiene el bucle en el 4.
+(-) `1 2 3 ` :: El 2 se salta.
+(-) `1 3 4 ` :: En el 4 el bucle termina antes de imprimir.
+
+@@q single | Traza: break anidado
+¿Qué imprime `for i in 1 2 3; do for j in 1 2 3; do [ $j -eq 2 ] && break; echo -n "$i$j "; done; done`?
+(+) `11 21 31 ` :: `break` solo sale del bucle interior en `j=2`, y después el exterior sigue.
+(-) `11 ` :: Eso sería `break 2`.
+(-) `11 12 13 21 22 23 31 32 33 ` :: `break` detiene cada bucle interior en el 2.
+(-) `11 21 ` :: El bucle exterior da tres vueltas.
+
+@@q single | Traza: contador
+¿Qué imprime `n=0; for f in a b c; do n=$((n+1)); done; echo $n`?
+(+) `3` :: El cuerpo se ejecuta tres veces.
+(-) `0` :: El bucle cambia `n`.
+(-) `1` :: No solo la última vuelta.
+(-) `abc` :: `n` cuenta; no va juntando.
+
+@@q single | Traza: suma de pares
+¿Qué imprime `s=0; for i in 1 2 3 4; do if [ $((i%2)) -eq 0 ]; then s=$((s+i)); fi; done; echo $s`?
+(+) `6` :: Solo 2 y 4 son pares: 2 + 4.
+(-) `10` :: Eso suma los cuatro números.
+(-) `4` :: El 2 también se suma.
+(-) `0` :: Los números pares sí pasan la comprobación.
+
+@@q single | Traza: until
+¿Qué imprime `i=0; until [ $i -ge 3 ]; do i=$((i+1)); done; echo $i`?
+(+) `3` :: El bucle se repite mientras la condición es falsa y se detiene cuando `i` llega a 3.
+(-) `0` :: El cuerpo sí se ejecuta.
+(-) `2` :: Hay un paso más cuando `i` vale 2.
+(-) `4` :: Se detiene en cuanto la condición pasa a ser verdadera.
+
+@@q single | Traza: decreciente
+¿Qué imprime `k=5; while [ $k -gt 0 ]; do k=$((k-2)); done; echo $k`?
+(+) `-1` :: 5, 3 y 1 pasan la comprobación; después 1 pasa a -1 y el bucle termina.
+(-) `0` :: Los pasos se saltan el 0.
+(-) `1` :: Hay una resta más.
+(-) `-2` :: El último valor es -1.
+
+@@q single | Leer parejas
+¿Qué imprime `t=0; while read -r a b; do t=$((t+b)); done <<< $'x 1\ny 2\nz 3'; echo $t`?
+(+) `6` :: Cada línea da una etiqueta y un número; los números se suman.
+(-) `3` :: Ese es el número de líneas.
+(-) `0` :: El bucle lee tres líneas.
+(-) `123` :: Los números se suman, no se juntan.
+
+@@q single | Bucle en una tubería
+`c=0; printf 'a\nb\n' | while read l; do c=$((c+1)); done; echo $c` imprime `0`. ¿Por qué?
+(+) El bucle que va tras la tubería se ejecuta en una subshell, así que sus cambios a `c` se pierden al terminar. :: Redirige el fichero al bucle, o usa sustitución de procesos.
+(-) `read` no lee de tuberías, así que el bucle no se ejecuta nunca y `c` se queda en 0. :: Sí lee.
+(-) `printf` no imprime nada por culpa de las secuencias de escape, así que no hay líneas que leer. :: Imprime dos líneas.
+(-) `c` es una variable de solo lectura, y la asignación de dentro del bucle se ignora sin avisar. :: Es una variable normal.
+
+@@q order | Contar las líneas de cada fichero
+Ordena los pasos de un script que imprime, para cada argumento, el número de líneas de ese fichero.
+(>) Comprobar que se ha dado al menos un argumento :: Si no, imprimir el uso y terminar.
+(>) Recorrer los argumentos con `for f in "$@"` :: Una vuelta por fichero.
+(>) Dentro del bucle, comprobar que `$f` es un fichero que se puede leer :: Saltarse o avisar de los nombres incorrectos.
+(>) Imprimir la cuenta con `wc -l < "$f"` :: Solo una vez superadas las comprobaciones.
+
+@@group Funciones y ámbito
+@@q single | Definir y llamar
+¿Qué imprime este script? `saluda() { echo "Hola $1"; }; saluda Ana; saluda`
+(+) `Hola Ana` y después `Hola ` :: La segunda llamada no tiene argumento, así que `$1` está vacío.
+(-) `Hola Ana` y un error en la segunda llamada. :: Un argumento que falta simplemente está vacío.
+(-) `Hola Ana` dos veces. :: Cada llamada tiene sus propios parámetros.
+(-) Nada: las funciones hay que declararlas con `function`. :: Las dos formas son válidas.
+
+@@q single | Parámetros de una función
+Dentro de una función, ¿a qué se refieren `$1` y `$#`?
+(+) A los argumentos de la llamada a la función, no a los del script. :: Mientras se ejecutan, las funciones tienen sus propios parámetros posicionales.
+(-) A los argumentos del script, que la función hereda sin ningún cambio. :: Quedan ocultos mientras se ejecuta la función.
+(-) Al nombre de la función y al número de veces que se ha llamado. :: Eso es `$FUNCNAME`.
+(-) A nada: en bash las funciones no reciben argumentos, y ahí `$1` siempre está vacío. :: Sí los reciben.
+
+@@q single | Valores de retorno
+¿Cómo le da una función de bash un resultado a quien la llama?
+(+) Mediante su valor de retorno con `return n` (0 a 255), o imprimiendo texto que quien la llama captura con `$(...)`. :: No se pueden devolver valores cualesquiera.
+(-) Con `return "texto"`, que guarda una cadena que quien la llama lee de `$?`. :: `return` acepta un número.
+(-) Asignando el resultado a una variable con el mismo nombre que la función, que luego lee quien la llama. :: No es bash.
+(-) Exportando una variable, que quien la llama lee en cuanto termina la función. :: Exportar es para el entorno.
+
+@@q single | Traza: return
+¿Qué imprime `f() { return 3; echo nunca; }; f; echo $?`?
+(+) `3` :: `return` sale de la función de inmediato, y su número pasa a ser `$?`.
+(-) `nunca` y `0` :: `return` detiene la función.
+(-) `0` :: El valor es 3.
+(-) Nada. :: `echo $?` sí imprime.
+
+@@q single | Capturar la salida
+¿Qué imprime `suma() { echo $(( $1 + $2 )); }; r=$(suma 2 3); echo "r=$r"`?
+(+) `r=5` :: La función imprime `5`, y la sustitución lo captura.
+(-) `r=` :: La salida se capturó; no se perdió.
+(-) `r=0` :: No se usó `$?`.
+(-) `r=2 3` :: Los argumentos se suman.
+
+@@q single | Globales por defecto
+¿Qué imprime `x=1; f() { x=2; }; f; echo $x`?
+(+) `2` :: En bash las variables son globales salvo que se declaren `local`.
+(-) `1` :: Para eso hace falta `local x=2`.
+(-) Un error. :: Asignar dentro de una función no da problemas.
+(-) Nada. :: `echo` imprime el valor.
+
+@@q single | local
+¿Qué imprime `x=1; f() { local x=2; }; f; echo $x`?
+(+) `1` :: `local` limita la variable a la función y a las que esta llama.
+(-) `2` :: Ese es el comportamiento global.
+(-) Un error. :: `local` es válido dentro de las funciones.
+(-) Nada. :: Se imprime un valor.
+
+@@q single | exit dentro de una función
+Una función contiene `exit 1` y se la llama de forma normal. ¿Qué pasa?
+(+) Termina todo el script con valor 1. :: Usa `return 1` para salir solo de la función.
+(-) Solo termina la función. :: Eso es `return`.
+(-) Nada: `exit` se ignora en las funciones. :: Se respeta.
+(-) La shell imprime un aviso y continúa. :: No existe ese aviso.
+
+@@q single | Funciones y scripts
+¿Por qué dentro de un script una función suele ser mejor herramienta que un alias?
+(+) Una función puede recibir parámetros y contener lógica, y funciona en shells no interactivas, donde los alias no se expanden. :: Los alias son simples sustituciones de texto.
+(-) Las funciones siempre son más rápidas que los alias, porque la shell las compila antes. :: No es la cuestión.
+(-) Los alias no se pueden usar en absoluto en bash, así que las funciones son la única opción para los atajos, en scripts o en el prompt. :: De forma interactiva funcionan.
+(-) Las funciones no necesitan definirse, porque la shell las crea en la primera llamada. :: Hay que definirlas antes de usarlas.
+
+@@q single | Definir antes de usar
+Un script llama a `saludar` en la línea 3 pero define `saludar()` en la línea 10. ¿Qué pasa?
+(+) La llamada falla con «command not found», porque la función solo existe después de que bash haya ejecutado su definición. :: Pon las definiciones de las funciones antes del código que las llama.
+(-) Funciona, ya que bash lee todo el fichero antes de ejecutar el primer mandato. :: Bash ejecuta línea a línea.
+(-) Imprime el cuerpo de la función, porque el nombre se toma como texto normal cuando se usa antes de definirlo. :: No.
+(-) Define la función automáticamente la primera vez que se la llama. :: No.
+
+@@q single | Pasar todos los argumentos
+Una función tiene que procesar todos los argumentos que recibe, incluso los que tienen espacios. ¿Qué bucle es el correcto?
+(+) `for a in "$@"; do ...; done` :: Conserva cada argumento como una sola palabra.
+(-) `for a in $*; do ...; done` :: Parte los argumentos con espacios.
+(-) `for a in "$#"; do ...; done` :: Da una vuelta sobre la cuenta.
+(-) `for a in $@; do ...; done` :: También parte los argumentos.
+
+@@q single | Recursividad
+¿Qué es cierto sobre las funciones recursivas en bash?
+(+) Una función puede llamarse a sí misma, y cada llamada tiene sus propias variables `local`; sin `local` los resultados salen mal. :: El ejemplo del factorial funciona con `local`.
+(-) En bash no se permite la recursividad; la shell rechaza con un error de sintaxis una función que se llama a sí misma. :: Sí se permite.
+(-) Todas las variables son automáticamente locales en cada llamada, así que `local` nunca hace falta. :: Son globales por defecto.
+(-) La recursividad solo funciona si la función termina con `return`, nunca con `echo`. :: Capturar la salida también funciona.
+
+@@group Depuración y búsqueda de fallos
+@@q single | Trazar la ejecución
+¿Qué mandato ejecuta un script imprimiendo cada mandato antes de ejecutarlo?
+(+) `bash -x script.sh` :: Cada línea se muestra con el prefijo `+`.
+(-) `bash -n script.sh` :: Solo comprueba la sintaxis, sin ejecutar.
+(-) `bash -v script.sh` :: Imprime las líneas según se leen, sin expansiones.
+(-) `bash -e script.sh` :: Se detiene en el primer mandato que falla.
+
+@@q match | Opciones de depuración de bash
+Empareja cada opción con su efecto.
+(=) `bash -n script.sh` => Comprobar la sintaxis sin ejecutar los mandatos :: Un análisis en seco.
+(=) `bash -x script.sh` => Imprimir cada mandato con sus valores expandidos según se ejecuta :: Con el prefijo `+`.
+(=) `bash -v script.sh` => Imprimir cada línea según se lee, antes de expandirla :: Modo detallado.
+(=) `set -u` => Tratar como error las variables sin definir :: Detecta erratas en los nombres.
+(=) `set -e` => Terminar cuando falla un mandato :: Una red de seguridad tosca.
+(-) Ejecutar el script en segundo plano :: Eso es `&`.
+
+@@q single | Fallo: bucle sobre ficheros con espacios
+Un script tiene `for f in $(ls); do rm "$f"; done`. ¿Cuál es el problema principal?
+(+) `$(ls)` se divide por los espacios: `mis notas.txt` pasa a ser `mis` y `notas.txt`, nombres equivocados. :: Usa `for f in *; do`, que conserva intactos los nombres.
+(-) `ls` no se puede usar en un bucle, porque su salida no es una lista de palabras. :: Se puede, pero es frágil.
+(-) `rm` necesita la opción `-f`; si no, se detiene en el primer fichero que no puede borrar y el bucle termina ahí. :: Ese no es el problema.
+(-) Las comillas alrededor de `$f` están mal y hacen que `rm` busque un fichero llamado `$f`. :: Son lo que está bien.
+
+@@q single | Fallo: asignación con espacios
+¿Qué falla en `CUENTA = 0` al principio de un script?
+(+) Con espacios alrededor de `=`, bash ejecuta un mandato llamado `CUENTA`; debe ser `CUENTA=0`. :: Resultado: «CUENTA: command not found».
+(-) Los nombres de variable tienen que ir en mayúsculas, y `CUENTA` es correcto tal cual. :: Las mayúsculas son un convenio.
+(-) El `0` tiene que ir entre comillas, porque si no la shell lo toma por un mandato. :: No hace falta.
+(-) Nada: la línea es correcta y pone `CUENTA` a 0, como quería su autor. :: Falla.
+
+@@q single | Fallo: comparar números con =
+Un script usa `if [ $a = 10 ]` para comparar números. ¿Cuándo puede dar un resultado sorprendente?
+(+) `=` compara cadenas, así que `10` y `010` (o `10 `) son distintos aunque numéricamente sean iguales; usa `-eq` para los números. :: Además, una `a` vacía rompe la sintaxis si no va entre comillas.
+(-) `=` no es válido dentro de `[ ]`, y siempre hace que la comprobación falle con un error de sintaxis, así que hay que usar `-eq`. :: Es la comparación de cadenas.
+(-) Siempre devuelve verdadero, ya que la shell no sabe distinguir un número de un texto. :: Compara texto.
+(-) Solo puede comparar letras, así que una comprobación con dígitos nunca da un resultado útil. :: Los dígitos también son caracteres.
+
+@@q single | Fallo: rm con una variable vacía
+¿Qué peligro tiene `rm -rf $DIR/*` cuando `DIR` está vacía o sin definir?
+(+) Se expande a `rm -rf /*`, que intenta borrar todo lo que el usuario tenga permitido. :: Comprueba antes la variable y entrecomíllala: `[ -n "$DIR" ] && rm -rf "$DIR"/*`.
+(-) No pasa nada, porque no borra nada cuando `DIR` está vacía o sin definir. :: La ruta se reduce a `/*`.
+(-) Imprime un error y se detiene, porque `rm` se niega a ejecutarse sin un directorio. :: Nada lo detiene.
+(-) Solo borra los ficheros ocultos del directorio raíz, que son inofensivos. :: `/*` no coincide con los ficheros ocultos, pero incluye todas las demás entradas de primer nivel.
+
+@@q single | Fallo: el intérprete del shebang no existe
+Un script empieza por `#!/bin/bsh` (errata). ¿Qué pasa al ejecutarlo con `./script.sh`?
+(+) «bad interpreter: No such file or directory», porque el núcleo no encuentra el intérprete. :: También pasa cuando el fichero tiene finales de línea de Windows (`/bin/bash\r`).
+(-) Bash lo ejecuta igualmente e ignora la errata, ya que sabe reconocer un script de shell. :: Falla antes el núcleo.
+(-) Se ejecuta con `sh`, que es el intérprete por defecto que usa el núcleo con los scripts que tienen una línea shebang equivocada. :: No hay ninguna alternativa.
+(-) Pregunta qué intérprete usar y ofrece una lista de las shells del sistema. :: Nunca pregunta.
+
+@@q single | Fallo: tubería en un bucle y variable
+Un script cuenta coincidencias con `grep x fichero | while read l; do n=$((n+1)); done; echo $n` y no imprime nada útil. ¿Por qué?
+(+) Por la tubería, el bucle se ejecuta en una subshell, así que `n` no cambia en la shell padre. :: Usa `n=$(grep -c x fichero)` o redirige el fichero al bucle.
+(-) `grep` no produce líneas cuando su salida va a una tubería, así que el bucle no se ejecuta nunca. :: Sí las produce.
+(-) `read` no se permite dentro de bucles, y el script se detiene con un error en ese punto. :: Sí se permite.
+(-) `echo` no puede imprimir números, solo texto, así que falla el último mandato del script. :: Sí puede.
+
+@@q single | Fallo: comprobar lo que no es
+Un script quiere comprobar que `$1` es un fichero regular no vacío, pero escribe `if [ -f $1 ]`. ¿Qué fallo tiene, además de no comprobar el tamaño?
+(+) `$1` sin comillas se rompe con espacios o con un valor vacío (`[ -f ]` es verdadero); y `-f` no comprueba el tamaño (lo hace `-s`). :: Entrecomilla, y usa `-s` si importa que esté vacío.
+(-) `-f` comprueba directorios y no ficheros regulares, así que el script trataría cada directorio como si fuera un fichero. :: Eso es `-d`.
+(-) `[ -f ]` necesita tres argumentos, y falla cuando se le dan menos. :: Acepta cualquier número.
+(-) `$1` es el nombre del propio script, no el primer argumento que recibe. :: Eso es `$0`.
+
+@@q single | Fallo: mal uso del valor de retorno
+Una función termina con `return $resultado`, donde `resultado` contiene el texto `hecho`. ¿Qué pasa?
+(+) `return` protesta: «numeric argument required»; solo acepta números, así que imprime el texto y captúralo. :: Los valores de retorno son enteros.
+(-) Devuelve el texto `hecho` a quien la llama, que lo lee de la variable `$?`. :: Los valores de retorno solo son números.
+(-) Devuelve 0 sin avisar, ya que la shell trata como éxito un texto que no es un número y no se imprime nada. :: Se informa de un error.
+(-) Termina todo el script, porque `return` con un texto cierra la shell. :: `return` no termina el script.
+
+@@q single | Fallo: una redirección equivocada en una comprobación
+¿Qué falla en `if [ -f fichero.txt ] > /dev/null; then`?
+(+) Nada dañino, pero es inútil: `[` no imprime nada, así que no hay nada que descartar, y los errores van a stderr. :: Redirigir la salida de una comprobación es ruido.
+(-) Hace que la comprobación sea siempre falsa, porque se descarta la salida de la comprobación. :: El valor de retorno no se ve afectado.
+(-) Borra `fichero.txt`, ya que la redirección se aplica al fichero que está comprobando el mandato. :: No tiene relación.
+(-) Cambia el modo del fichero, porque la redirección lo abre para escritura. :: No.
+
+@@q single | Orden de las comprobaciones
+¿Qué orden hace robusto el comienzo de un script?
+(+) Validar argumentos y ficheros, hacer el trabajo, avisar de errores por stderr y usar códigos de salida distintos. :: Falla pronto y con mensajes claros.
+(-) Hacer primero el trabajo y comprobar después, para que el script sea lo más corto posible. :: El daño ya puede estar hecho.
+(-) Ignorar los errores para que el script sea corto, y dejar que quien lo llama se ocupe de cualquier problema. :: Los fallos silenciosos son difíciles de depurar.
+(-) Preguntar siempre al usuario con `read` en vez de usar argumentos, para que nunca falte nada al empezar el script. :: Los scripts también deben poder ejecutarse sin nadie delante.
+
+@@q single | Trazar unos cálculos
+¿Qué imprimen `x=3; y=4; echo $((x**2 + y**2))` y `echo "$x + $y = $((x+y))"`?
+(+) `25` y `3 + 4 = 7` :: `**` es la potencia; el texto se imprime y la última parte es aritmética.
+(-) `7` y `3 + 4 = 7` :: `**` es el operador de potencia, no una multiplicación.
+(-) `25` y `7` :: El segundo mandato imprime la cadena entera.
+(-) `3 + 4` dos veces. :: La aritmética se evalúa dentro de `$(( ))`.
+
+@@group Práctica variada
+@@q fill | ¿Se puede leer?
+Comprueba que `$f` es un fichero que se puede leer antes de usarlo: `if [ {{-r ;; -f}} "$f" ]; then`
+(x) -x :: Comprueba si puedes ejecutarlo.
+(x) -d :: Comprueba que sea un directorio.
+@@note
+`-r` comprueba el permiso; `-f` comprueba que sea un fichero regular (y `[ -f "$f" ] && [ -r "$f" ]` comprueba las dos cosas).
+
+@@q fill | Recorrer los argumentos
+Recorre todos los argumentos, conservando intactos los que tienen espacios: `for a in {{"$@"}}; do`
+(x) $* :: Sin comillas, parte los argumentos que contienen espacios.
+(x) "$#" :: Es la cuenta, como una sola palabra.
+@@note
+`"$@"` mantiene cada argumento como una palabra.
+
+@@q fill | Cuenta atrás
+Imprime 3, 2 y 1 con un bucle `while`: `i=3; while [ "$i" {{-gt}} 0 ]; do echo $i; i=$((i-1)); done`
+(x) -lt :: Solo daría vueltas mientras `i` fuera menor que 0, lo que es falso desde el principio.
+(x) > :: Dentro de `[ ]` es una redirección.
+@@note
+Las comparaciones numéricas usan `-eq -ne -lt -le -gt -ge`.
+
+@@q sort | Operador de comprobación
+@@buckets Comprueba un fichero | Compara números
+Clasifica cada operador de `test`.
+(Comprueba un fichero) `-e` :: La ruta existe.
+(Comprueba un fichero) `-s` :: El fichero no está vacío.
+(Comprueba un fichero) `-d` :: La ruta es un directorio.
+(Compara números) `-ge` :: Mayor o igual.
+(Compara números) `-ne` :: Distinto.
+(Compara números) `-lt` :: Menor que.
+
+@@q multi | Funciones y ámbito
+Marca las afirmaciones ciertas sobre las funciones de bash.
+(+) Dentro de la función, los argumentos se leen como `$1`, `$2`... :: Ocultan los parámetros propios del script mientras se ejecuta la función.
+(+) `return 3` sale de la función con valor 3. :: Quien la llama lo lee de `$?`.
+(+) Una variable asignada en una función es global salvo que se declare `local`. :: Las funciones comparten las variables del script.
+(-) Una función tiene que definirse después del código que la llama. :: Tiene que estar definida antes de que se ejecute la llamada.
+(-) `exit` dentro de una función solo sale de la función. :: Termina todo el script.
+
+@@q order | Montar un menú con case
+Ordena las partes de un pequeño script con menú.
+(>) `read -p "Opción: " c` :: Primero se pregunta al usuario.
+(>) `case "$c" in` :: Empezar la selección sobre la respuesta.
+(>) `a) echo añadir;; b) echo borrar;;` :: Las ramas de las respuestas conocidas.
+(>) `*) echo desconocido;; esac` :: La rama por defecto y la palabra de cierre.
+
+@@q match | Control de bucles
+Empareja cada construcción con su comportamiento.
+(=) `break` => Sale del bucle más interior :: El script sigue después del bucle.
+(=) `break 2` => Sale de dos bucles anidados :: Un número elige la profundidad.
+(=) `continue` => Salta a la siguiente vuelta del bucle más interior :: Se salta el resto del cuerpo.
+(=) `exit 3` => Termina el script con valor 3 :: No solo el bucle.
+(=) `return 1` => Sale de la función actual con valor 1 :: Solo es válido en una función.
+(-) Vuelve a empezar el script desde la primera línea :: Ninguna construcción hace eso.

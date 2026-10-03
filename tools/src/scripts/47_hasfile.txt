@@ -1,0 +1,89 @@
+@@script s47 | hasfile | Which names exist? | hasfile.sh
+@@level 2
+@@tags tests, files, loops
+@@cmds test -e -f -d, for, shift, counters, exit codes
+@@fixture
+setup() {
+  mkdir -p site/css site/img; echo a > site/index.html; echo b > site/about.html; echo c > "site/two words.txt"; echo d > site/css/main.css
+  mkdir empty; echo x > notadir.txt
+}
+usage_ok() { [[ $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* || $ERR == *hasfile.sh* ]]; }
+@@step 1 | Yes or no
+@@readme
+Write `hasfile.sh DIR NAME...`. For every `NAME` print `NAME: yes` if `DIR/NAME` exists (a file or a directory) and `NAME: no` otherwise, in the order given.
+@@check
+ARGS=('site index.html' 'site index.html missing.txt css "two words.txt"' 'site nothing' 'empty a b')
+COMPARE="stdout exit"
+@@solution
+#!/bin/bash
+dir=$1; shift
+for name in "$@"; do
+  if [[ -e $dir/$name ]]; then echo "$name: yes"; else echo "$name: no"; fi
+done
+@@step 2 | Check the directory
+@@readme
+Checks, in this order: fewer than two arguments → error message **and the correct usage** (e.g. `Usage: hasfile.sh dir name...`), exit **1**; `DIR` does not exist → error with its name, exit **2**; not a directory → error with its name, exit **3**.
+@@check
+ARGS=('site index.html' 'site a b c' '' 'site' 'nothing a' 'notadir.txt a')
+COMPARE="stdout exit errmsg"
+extra_check() {
+  [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }
+  [[ $REF_CODE == [23] ]] && mentions "$(eval "set -- $CASE"; echo "$1")"
+}
+@@solution
+#!/bin/bash
+if (( $# < 2 )); then echo "Error: a directory and a name are needed" >&2; echo "Usage: $0 dir name..." >&2; exit 1; fi
+[[ -e $1 ]] || { echo "Error: $1 does not exist" >&2; exit 2; }
+[[ -d $1 ]] || { echo "Error: $1 is not a directory" >&2; exit 3; }
+dir=$1; shift
+for name in "$@"; do
+  if [[ -e $dir/$name ]]; then echo "$name: yes"; else echo "$name: no"; fi
+done
+@@step 3 | Say what it is
+@@readme
+When it exists, say what it is: `NAME: file`, `NAME: directory` or `NAME: other`; `NAME: no` otherwise.
+@@check
+ARGS=('site index.html css missing' 'site img "two words.txt"' 'empty a' '' 'nothing a')
+COMPARE="stdout exit errmsg"
+extra_check() {
+  [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }
+  [[ $REF_CODE == [23] ]] && mentions "$(eval "set -- $CASE"; echo "$1")"
+}
+@@solution
+#!/bin/bash
+if (( $# < 2 )); then echo "Error: a directory and a name are needed" >&2; echo "Usage: $0 dir name..." >&2; exit 1; fi
+[[ -e $1 ]] || { echo "Error: $1 does not exist" >&2; exit 2; }
+[[ -d $1 ]] || { echo "Error: $1 is not a directory" >&2; exit 3; }
+dir=$1; shift
+for name in "$@"; do
+  p=$dir/$name
+  if [[ -f $p ]]; then echo "$name: file"
+  elif [[ -d $p ]]; then echo "$name: directory"
+  elif [[ -e $p ]]; then echo "$name: other"
+  else echo "$name: no"; fi
+done
+@@step 4 | An exit code for the missing
+@@readme
+After the lines, if at least one name did **not** exist, print `Missing: M` (how many) and exit with code **4**; otherwise print nothing more and exit 0.
+@@check
+ARGS=('site index.html css' 'site index.html missing.txt a' 'empty a b' '' 'nothing a' 'site')
+COMPARE="stdout exit errmsg"
+extra_check() {
+  [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }
+  [[ $REF_CODE == [23] ]] && mentions "$(eval "set -- $CASE"; echo "$1")"
+}
+@@solution
+#!/bin/bash
+if (( $# < 2 )); then echo "Error: a directory and a name are needed" >&2; echo "Usage: $0 dir name..." >&2; exit 1; fi
+[[ -e $1 ]] || { echo "Error: $1 does not exist" >&2; exit 2; }
+[[ -d $1 ]] || { echo "Error: $1 is not a directory" >&2; exit 3; }
+dir=$1; shift
+miss=0
+for name in "$@"; do
+  p=$dir/$name
+  if [[ -f $p ]]; then echo "$name: file"
+  elif [[ -d $p ]]; then echo "$name: directory"
+  elif [[ -e $p ]]; then echo "$name: other"
+  else echo "$name: no"; miss=$((miss + 1)); fi
+done
+if (( miss > 0 )); then echo "Missing: $miss"; exit 4; fi

@@ -1,0 +1,70 @@
+@@script s44 | fizz | Fizz and buzz | fizz.sh
+@@level 1
+@@tags loops, tests, arithmetic
+@@cmds for ((;;)), if / elif, arithmetic %, exit codes
+@@fixture
+setup() { :; }
+usage_ok() { [[ $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* || $ERR == *fizz.sh* ]]; }
+@@step 1 | The classic game
+@@readme
+Write `fizz.sh N`. It prints the numbers from 1 to `N`, one per line, but a multiple of 3 prints `Fizz`, a multiple of 5 prints `Buzz`, and a multiple of both prints `FizzBuzz`.
+
+`if (( i % 15 == 0 ))` ... `elif (( i % 3 == 0 ))` ... Test the multiples of 15 first.
+@@check
+ARGS=('1' '5' '15' '20')
+COMPARE="stdout exit"
+@@solution
+#!/bin/bash
+for ((i = 1; i <= $1; i++)); do
+  if (( i % 15 == 0 )); then echo FizzBuzz
+  elif (( i % 3 == 0 )); then echo Fizz
+  elif (( i % 5 == 0 )); then echo Buzz
+  else echo "$i"
+  fi
+done
+@@step 2 | Check the argument
+@@readme
+Exactly one argument → otherwise error message **and the correct usage** (e.g. `Usage: fizz.sh N`) on standard error, exit **1**; it must be a positive integer → otherwise an error that includes it, exit **2**.
+@@check
+ARGS=('1' '5' '15' '' '3 4' 'abc' '0' '-5' '2.5')
+COMPARE="stdout exit errmsg"
+extra_check() {
+  [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }
+  [[ $REF_CODE == 2 ]] && mentions "$(eval "set -- $CASE"; echo "$1")"
+}
+@@solution
+#!/bin/bash
+if (( $# != 1 )); then echo "Error: one number is needed" >&2; echo "Usage: $0 N" >&2; exit 1; fi
+[[ $1 =~ ^[1-9][0-9]*$ ]] || { echo "Error: '$1' is not a positive integer" >&2; exit 2; }
+for ((i = 1; i <= $1; i++)); do
+  if (( i % 15 == 0 )); then echo FizzBuzz
+  elif (( i % 3 == 0 )); then echo Fizz
+  elif (( i % 5 == 0 )); then echo Buzz
+  else echo "$i"
+  fi
+done
+@@step 3 | Count the words
+@@readme
+After the game print three lines: `Fizz: A`, `Buzz: B` and `FizzBuzz: C` with how many times each word was printed.
+@@check
+ARGS=('1' '5' '15' '30' '' 'x')
+COMPARE="stdout exit errmsg"
+extra_check() {
+  [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }
+  [[ $REF_CODE == 2 ]] && mentions "x"
+}
+@@solution
+#!/bin/bash
+if (( $# != 1 )); then echo "Error: one number is needed" >&2; echo "Usage: $0 N" >&2; exit 1; fi
+[[ $1 =~ ^[1-9][0-9]*$ ]] || { echo "Error: '$1' is not a positive integer" >&2; exit 2; }
+f=0 b=0 fb=0
+for ((i = 1; i <= $1; i++)); do
+  if (( i % 15 == 0 )); then echo FizzBuzz; fb=$((fb + 1))
+  elif (( i % 3 == 0 )); then echo Fizz; f=$((f + 1))
+  elif (( i % 5 == 0 )); then echo Buzz; b=$((b + 1))
+  else echo "$i"
+  fi
+done
+echo "Fizz: $f"
+echo "Buzz: $b"
+echo "FizzBuzz: $fb"

@@ -1,0 +1,114 @@
+@@script s66 | organize | Sorting files into folders | organize.sh
+@@level 5
+@@tags files, copy and move, case
+@@cmds mv, mkdir -p, case, ${name##*.}, test -e -d, counters, exit codes
+@@fixture
+setup() {
+  mkdir -p org org2/txt org3 empty
+  for n in a.txt b.txt c.md run.sh data "two words.txt" archive.tar.gz; do echo "$n" > "org/$n"; done; echo h > org/.hidden; mkdir org/subdir; echo i > org/subdir/inner.txt
+  for n in a.txt z.txt c.md; do echo "new $n" > "org2/$n"; done; echo "old a" > org2/txt/a.txt; echo "old a1" > org2/txt/a.txt.1
+  echo p > org3/p.txt; echo q > org3/q.md; chmod 555 org3
+  echo x > notadir.txt
+}
+usage_ok() { [[ $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* || $ERR == *organize.sh* ]]; }
+@@step 1 | One folder per extension
+@@readme
+Write `organize.sh DIR`. Every **regular file directly inside** `DIR` is moved into a subdirectory of `DIR` named like its **extension** (what follows the **last** dot: `a.txt` goes to `DIR/txt/`, `archive.tar.gz` to `DIR/gz/`). Create the subdirectories as needed. Files without a dot and hidden files (names starting with a dot) are left where they are. Subdirectories are never touched. Assume no destination file exists yet in this step.
+
+`ext=${name##*.}` is the extension (equal to the whole name when there is no dot).
+@@check
+ARGS=('org' 'empty')
+COMPARE="stdout exit files"
+@@solution
+#!/bin/bash
+for f in "$1"/*; do
+  [[ -f $f ]] || continue
+  name=$(basename "$f")
+  [[ $name == *.* ]] || continue
+  ext=${name##*.}
+  mkdir -p "$1/$ext"
+  mv -- "$f" "$1/$ext/"
+done
+exit 0
+@@step 2 | Say what was created
+@@readme
+Every subdirectory that had to be **created** is announced with exactly `Directory DIR/EXT created` (as `DIR` was given) before the first file goes into it. Existing subdirectories are silent.
+@@check
+ARGS=('org' 'org2' 'empty')
+COMPARE="stdout exit files"
+@@solution
+#!/bin/bash
+for f in "$1"/*; do
+  [[ -f $f ]] || continue
+  name=$(basename "$f")
+  [[ $name == *.* ]] || continue
+  ext=${name##*.}
+  if [[ ! -d $1/$ext ]]; then mkdir -p "$1/$ext"; echo "Directory $1/$ext created"; fi
+  mv -- "$f" "$1/$ext/"
+done
+exit 0
+@@step 3 | Files without extension
+@@readme
+Files **without** a dot in their name go to a subdirectory called `noext` (created and announced like the others). Hidden files and subdirectories are still left alone.
+@@check
+ARGS=('org' 'org2' 'empty')
+COMPARE="stdout exit files"
+@@solution
+#!/bin/bash
+for f in "$1"/*; do
+  [[ -f $f ]] || continue
+  name=$(basename "$f")
+  if [[ $name == *.* ]]; then ext=${name##*.}; else ext=noext; fi
+  if [[ ! -d $1/$ext ]]; then mkdir -p "$1/$ext"; echo "Directory $1/$ext created"; fi
+  mv -- "$f" "$1/$ext/"
+done
+exit 0
+@@step 4 | Never overwrite
+@@readme
+If the destination file **already exists** (`org2/txt/a.txt`), do not overwrite it: the new file is stored as `NAME.1`, or `NAME.2`, ... with the first number that is free (`a.txt.1` exists too in the checker). Print `renamed OLDNAME to NEWNAME` for those files (names only, without the directory), before moving them. Process the files in the order `for f in "$1"/*` gives.
+@@check
+ARGS=('org' 'org2' 'empty')
+COMPARE="stdout exit files"
+@@solution
+#!/bin/bash
+for f in "$1"/*; do
+  [[ -f $f ]] || continue
+  name=$(basename "$f")
+  if [[ $name == *.* ]]; then ext=${name##*.}; else ext=noext; fi
+  if [[ ! -d $1/$ext ]]; then mkdir -p "$1/$ext"; echo "Directory $1/$ext created"; fi
+  target=$name; k=0
+  while [[ -e $1/$ext/$target ]]; do k=$((k + 1)); target=$name.$k; done
+  [[ $target != "$name" ]] && echo "renamed $name to $target"
+  mv -- "$f" "$1/$ext/$target"
+done
+exit 0
+@@step 5 | Checks, failures and a summary
+@@readme
+Checks, before touching anything: not exactly one argument → error message **and the correct usage** (e.g. `Usage: organize.sh dir`), exit **1**; `DIR` does not exist → error with its name, exit **2**; not a directory → error with its name, exit **3**. When a directory cannot be created or a file cannot be moved (the read-only `org3`), print `could not move NAME` on standard error and do not count it. Finish with `Moved N files` and, if at least one file failed, with exit code **4**.
+@@check
+ARGS=('org' 'org2' 'empty' 'org3' '' 'org empty' 'nothing' 'notadir.txt')
+COMPARE="stdout exit errmsg files"
+extra_check() {
+  [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }
+  [[ $REF_CODE == [23] ]] && mentions "$(eval "set -- $CASE"; echo "$1")"
+}
+@@solution
+#!/bin/bash
+if (( $# != 1 )); then echo "Error: one directory is needed" >&2; echo "Usage: $0 dir" >&2; exit 1; fi
+[[ -e $1 ]] || { echo "Error: $1 does not exist" >&2; exit 2; }
+[[ -d $1 ]] || { echo "Error: $1 is not a directory" >&2; exit 3; }
+n=0 bad=0
+for f in "$1"/*; do
+  [[ -f $f ]] || continue
+  name=$(basename "$f")
+  if [[ $name == *.* ]]; then ext=${name##*.}; else ext=noext; fi
+  if [[ ! -d $1/$ext ]]; then
+    if mkdir -p "$1/$ext" 2>/dev/null; then echo "Directory $1/$ext created"; else echo "could not move $name" >&2; bad=1; continue; fi
+  fi
+  target=$name; k=0
+  while [[ -e $1/$ext/$target ]]; do k=$((k + 1)); target=$name.$k; done
+  [[ $target != "$name" ]] && echo "renamed $name to $target"
+  if mv -- "$f" "$1/$ext/$target" 2>/dev/null; then n=$((n + 1)); else echo "could not move $name" >&2; bad=1; fi
+done
+echo "Moved $n files"
+(( bad == 0 )) || exit 4

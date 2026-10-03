@@ -1,0 +1,92 @@
+@@script s63 | mergecsv | Merging two CSV files | mergecsv.sh
+@@level 4
+@@tags text, files, exit codes
+@@cmds head, tail -n +2, cmp / test, associative arrays, shift, exit codes
+@@fixture
+setup() {
+  mkfl a.csv "id,name" "1,ana" "2,luis" "3,eva"; mkfl b.csv "id,name" "3,eva" "4,juan" "5,mia"
+  mkfl other.csv "code,name" "9,x"; mkfl hdr.csv "id,name"; : > empty.csv; echo x > locked.csv; chmod 000 locked.csv; mkdir adir
+}
+usage_ok() { [[ $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* || $ERR == *mergecsv.sh* ]]; }
+@@step 1 | One header, all the rows
+@@readme
+Write `mergecsv.sh A B`. Both files are CSVs whose **first line is the header**. Print the header of `A` once, then the data rows of `A`, then the data rows of `B` (their headers are skipped). Assume both files have a header line.
+
+`head -n 1 "$1"` and `tail -n +2 "$1"`.
+@@check
+ARGS=('a.csv b.csv' 'a.csv hdr.csv' 'hdr.csv b.csv' 'hdr.csv hdr.csv')
+COMPARE="stdout exit"
+@@solution
+#!/bin/bash
+head -n 1 "$1"
+tail -n +2 "$1"
+tail -n +2 "$2"
+@@step 2 | Check the files
+@@readme
+Checks, in this order: not exactly two arguments → error message **and the correct usage** (e.g. `Usage: mergecsv.sh a.csv b.csv`), exit **1**; the first, then the second argument is not a readable non-empty regular file → error with its name, exit **2**; the two headers differ → error message, exit code **4** (nothing printed on standard output).
+@@check
+ARGS=('a.csv b.csv' 'hdr.csv a.csv' '' 'a.csv' 'a.csv b.csv hdr.csv' 'nothing.csv a.csv' 'a.csv nothing.csv' 'adir a.csv' 'locked.csv a.csv' 'a.csv empty.csv' 'a.csv other.csv' 'other.csv b.csv')
+COMPARE="stdout exit errmsg"
+extra_check() {
+  [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }
+  if [[ $REF_CODE == 2 ]]; then local a; a=$(eval "set -- $CASE"; [[ -s $W/$1 && -r $W/$1 && -f $W/$1 ]] && echo "$2" || echo "$1"); mentions "$a"; fi
+}
+@@solution
+#!/bin/bash
+if (( $# != 2 )); then echo "Error: two files are needed" >&2; echo "Usage: $0 a.csv b.csv" >&2; exit 1; fi
+for f in "$1" "$2"; do
+  [[ -f $f && -r $f && -s $f ]] || { echo "Error: cannot use $f" >&2; exit 2; }
+done
+if [[ $(head -n 1 "$1") != "$(head -n 1 "$2")" ]]; then echo "Error: the headers differ" >&2; exit 4; fi
+head -n 1 "$1"
+tail -n +2 "$1"
+tail -n +2 "$2"
+@@step 3 | Drop repeated rows
+@@readme
+With `-u` as the **first** argument, a data row that appeared before (in either file) is printed only the **first** time, keeping the original order (the repeated `3,eva`). `-u` alone or with one file is the usage error.
+
+An associative array remembers the rows seen: `[[ -z ${seen[$row]} ]] && { seen[$row]=1; echo "$row"; }`.
+@@check
+ARGS=('a.csv b.csv' '-u a.csv b.csv' '-u hdr.csv b.csv' '-u a.csv a.csv' '-u' '-u a.csv' '' '-u nothing.csv a.csv' '-u a.csv other.csv')
+COMPARE="stdout exit errmsg"
+extra_check() { [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }; }
+@@solution
+#!/bin/bash
+uniq=
+if [[ $1 == -u ]]; then uniq=1; shift; fi
+if (( $# != 2 )); then echo "Error: two files are needed" >&2; echo "Usage: $0 [-u] a.csv b.csv" >&2; exit 1; fi
+for f in "$1" "$2"; do
+  [[ -f $f && -r $f && -s $f ]] || { echo "Error: cannot use $f" >&2; exit 2; }
+done
+if [[ $(head -n 1 "$1") != "$(head -n 1 "$2")" ]]; then echo "Error: the headers differ" >&2; exit 4; fi
+head -n 1 "$1"
+declare -A seen
+while IFS= read -r row; do
+  if [[ -n $uniq ]]; then [[ -z ${seen[$row]:-} ]] || continue; seen[$row]=1; fi
+  echo "$row"
+done < <(tail -n +2 "$1"; tail -n +2 "$2")
+exit 0
+@@step 4 | Count the rows
+@@readme
+Finish with `Rows: N`, the number of data rows printed (the header does not count).
+@@check
+ARGS=('a.csv b.csv' '-u a.csv b.csv' 'hdr.csv hdr.csv' '' 'a.csv other.csv' 'nothing.csv a.csv' '-u a.csv')
+COMPARE="stdout exit errmsg"
+extra_check() { [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }; }
+@@solution
+#!/bin/bash
+uniq=
+if [[ $1 == -u ]]; then uniq=1; shift; fi
+if (( $# != 2 )); then echo "Error: two files are needed" >&2; echo "Usage: $0 [-u] a.csv b.csv" >&2; exit 1; fi
+for f in "$1" "$2"; do
+  [[ -f $f && -r $f && -s $f ]] || { echo "Error: cannot use $f" >&2; exit 2; }
+done
+if [[ $(head -n 1 "$1") != "$(head -n 1 "$2")" ]]; then echo "Error: the headers differ" >&2; exit 4; fi
+head -n 1 "$1"
+declare -A seen
+n=0
+while IFS= read -r row; do
+  if [[ -n $uniq ]]; then [[ -z ${seen[$row]:-} ]] || continue; seen[$row]=1; fi
+  echo "$row"; n=$((n + 1))
+done < <(tail -n +2 "$1"; tail -n +2 "$2")
+echo "Rows: $n"

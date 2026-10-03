@@ -1,0 +1,95 @@
+@@script s85 | dedupe | Duplicate files | dedupe.sh
+@@level 5
+@@tags files, find, exit codes
+@@cmds find -type f, md5sum, sort, uniq -w, rm, shift, exit codes
+@@fixture
+setup() {
+  mkdir -p pics/old pics/new "my pics" empty single
+  echo "sunset" > pics/a.txt; echo "sunset" > pics/b.txt; echo "sunset" > pics/old/a_copy.txt; echo "sunset" > "pics/new/two words.txt"
+  echo "forest" > pics/c.txt; echo "forest" > pics/new/c2.txt
+  echo "unique one" > pics/d.txt; echo "unique two" > pics/old/e.txt
+  : > pics/empty1; : > pics/old/empty2
+  printf 'x' > pics/new/tiny; printf 'x' > pics/tiny2
+  echo "hello" > "my pics/h1"; echo "hello" > "my pics/h2"; echo "bye" > "my pics/b1"
+  echo "one" > single/o; echo "two" > single/t
+  echo x > notadir.txt
+}
+usage_ok() { [[ $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* || $ERR == *dedupe.sh* ]]; }
+@@step 1 | The extra copies
+@@readme
+Write `dedupe.sh DIR`. Two regular files are **duplicates** when their **content is identical** (the name does not matter; two empty files are duplicates). Look at every regular file below `DIR`, sort their paths (as `sort` sorts text); in each group of duplicates the **first path** is the original and every other path is a **copy**. Print the paths of the copies, **sorted**.
+
+Hint: `md5sum` gives a hash per file; the files that share a hash are duplicates.
+@@check
+ARGS=('pics' '"my pics"' 'single' 'empty')
+COMPARE="stdout exit"
+@@solution
+#!/bin/bash
+find "$1" -type f -print0 | sort -z | xargs -0 md5sum | awk '{h=$1; sub(/^[^ ]+  /, ""); if (seen[h]++) print}' | sort
+exit 0
+@@step 2 | The usual checks
+@@readme
+`DIR` becomes optional (default: the current directory). Checks: more than one argument → an error message **and the correct usage** (e.g. `Usage: dedupe.sh [dir]`), exit **1**; `DIR` does not exist → an error with its name, exit **2**; not a directory → an error with its name, exit **3**.
+@@check
+ARGS=('pics' '"my pics"' 'single' 'empty' '' 'pics single' 'nothing' 'notadir.txt')
+COMPARE="stdout exit errmsg"
+extra_check() {
+  [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }
+  [[ $REF_CODE == [23] ]] && mentions "$(eval "set -- $CASE"; echo "$1")"
+}
+@@solution
+#!/bin/bash
+if (( $# > 1 )); then echo "Error: too many arguments" >&2; echo "Usage: $0 [dir]" >&2; exit 1; fi
+dir=${1:-.}
+[[ -e $dir ]] || { echo "Error: $dir does not exist" >&2; exit 2; }
+[[ -d $dir ]] || { echo "Error: $dir is not a directory" >&2; exit 3; }
+find "$dir" -type f -print0 | sort -z | xargs -0 -r md5sum | awk '{h=$1; sub(/^[^ ]+  /, ""); if (seen[h]++) print}' | sort
+exit 0
+@@step 3 | Remove them (-d)
+@@readme
+With `-d` as the **first** argument the copies are **deleted** (the originals stay) and for each one the script prints `removed PATH` instead of `PATH`. Without `-d` nothing is deleted. The other arguments and the checks are the same in both modes.
+@@check
+ARGS=('pics' '-d pics' '-d "my pics"' '-d single' '-d empty' '-d' '-d pics single' '-d nothing' '-d notadir.txt' '' 'nothing')
+COMPARE="stdout exit errmsg files"
+extra_check() {
+  [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }
+  [[ $REF_CODE == [23] ]] && mentions "$(eval "set -- $CASE"; [[ $1 == -d ]] && shift; echo "$1")"
+}
+@@solution
+#!/bin/bash
+del=
+if [[ $1 == -d ]]; then del=1; shift; fi
+if (( $# > 1 )); then echo "Error: too many arguments" >&2; echo "Usage: $0 [-d] [dir]" >&2; exit 1; fi
+dir=${1:-.}
+[[ -e $dir ]] || { echo "Error: $dir does not exist" >&2; exit 2; }
+[[ -d $dir ]] || { echo "Error: $dir is not a directory" >&2; exit 3; }
+find "$dir" -type f -print0 | sort -z | xargs -0 -r md5sum | awk '{h=$1; sub(/^[^ ]+  /, ""); if (seen[h]++) print}' | sort | while IFS= read -r f; do
+  if [[ -n $del ]]; then rm -- "$f"; echo "removed $f"; else echo "$f"; fi
+done
+exit 0
+@@step 4 | Summary and freed space
+@@readme
+Finish with `N duplicates, B bytes` without `-d` (B = the total size of the copies) or `Removed N files, freed B bytes` with `-d`. Without `-d`, if N is not 0 exit **4** (there is something to clean); in every other case exit 0. Compute B **before** deleting.
+@@check
+ARGS=('pics' '-d pics' '-d "my pics"' '"my pics"' '-d single' 'single' 'empty' '-d empty' '' '-d' 'nothing' '-d notadir.txt' 'pics single')
+COMPARE="stdout exit errmsg files"
+extra_check() {
+  [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }
+  [[ $REF_CODE == [23] ]] && mentions "$(eval "set -- $CASE"; [[ $1 == -d ]] && shift; echo "$1")"
+}
+@@solution
+#!/bin/bash
+del=
+if [[ $1 == -d ]]; then del=1; shift; fi
+if (( $# > 1 )); then echo "Error: too many arguments" >&2; echo "Usage: $0 [-d] [dir]" >&2; exit 1; fi
+dir=${1:-.}
+[[ -e $dir ]] || { echo "Error: $dir does not exist" >&2; exit 2; }
+[[ -d $dir ]] || { echo "Error: $dir is not a directory" >&2; exit 3; }
+n=0 bytes=0
+while IFS= read -r f; do
+  n=$((n + 1)); bytes=$((bytes + $(stat -c %s -- "$f")))
+  if [[ -n $del ]]; then rm -- "$f"; echo "removed $f"; else echo "$f"; fi
+done < <(find "$dir" -type f -print0 | sort -z | xargs -0 -r md5sum | awk '{h=$1; sub(/^[^ ]+  /, ""); if (seen[h]++) print}' | sort)
+if [[ -n $del ]]; then echo "Removed $n files, freed $bytes bytes"; exit 0; fi
+echo "$n duplicates, $bytes bytes"
+(( n == 0 )) || exit 4

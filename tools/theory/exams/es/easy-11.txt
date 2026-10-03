@@ -1,0 +1,73 @@
+@@exam easy-11 | Examen fácil 11
+@@about
+Diez preguntas de respuesta única sobre lo básico: ficheros de arranque, bucles for, edad de ficheros, here-strings, permiso de ejecución, búsquedas de palabra completa, tar, sesiones, señales y filtros.
+
+@@q single | Dónde viven los alias
+¿Qué fichero lee cada shell interactiva nueva que se abre en una ventana de terminal, y es el sitio habitual para poner tus alias?
+(+) `~/.bashrc` :: Es el fichero por usuario que bash lee cuando arranca una shell interactiva.
+(-) `/etc/passwd` :: Lista las cuentas del sistema; no es un fichero de configuración de la shell.
+(-) `~/.bash_history` :: Es donde la shell guarda los mandatos que escribiste, no un sitio para ajustes.
+(-) `/etc/shadow` :: Guarda los hashes de las contraseñas; no tiene nada que ver con el arranque de la shell.
+
+@@q single | Bucles for
+¿Qué afirmación sobre los bucles `for` en bash es FALSA?
+(-) `for f in *.txt; do ...; done` ejecuta el cuerpo una vez por cada fichero cuyo nombre coincide con el patrón. :: Cierto: la shell expande el comodín antes de empezar el bucle.
+(-) `for i in 1 2 3; do ...; done` ejecuta el cuerpo tres veces, con `i` valiendo 1, 2 y 3. :: Cierto.
+(-) `for i in {1..5}; do ...; done` ejecuta el cuerpo cinco veces. :: Cierto: la shell expande el rango a `1 2 3 4 5`.
+(+) `for i in $(seq 3); do ...; done` ejecuta el cuerpo una sola vez, porque `$(seq 3)` es una única palabra. :: Falso: la salida de `seq 3` se divide en las palabras `1`, `2` y `3`, así que el cuerpo se ejecuta tres veces.
+
+@@q single | La edad de un fichero
+¿Qué afirmación sobre `find -mtime` es CIERTA?
+(+) `-mtime -1` selecciona los ficheros modificados hace menos de 24 horas. :: Un signo menos significa «menos de», contado en periodos de 24 horas hacia atrás desde ahora.
+(-) `-mtime 1` selecciona los ficheros modificados durante las últimas 24 horas. :: Un `1` sin signo significa exactamente un periodo de 24 horas atrás, es decir, entre 24 y 48 horas.
+(-) `-mtime +7` selecciona los ficheros modificados exactamente hace siete días. :: `+7` significa «más de 7» periodos, no exactamente 7.
+(-) `-mtime` cuenta días de calendario, empezando a medianoche. :: Cuenta periodos de 24 horas hacia atrás desde el momento en que se ejecuta `find`.
+
+@@q single | Un texto como entrada de un mandato
+¿Qué mandato hace que `wc -c` lea el texto `hello` como entrada estándar, sin fichero ni tubería?
+(+) `wc -c <<< hello` :: Una here-string (`<<<`) entrega la palabra, seguida de un salto de línea, como entrada estándar: imprime `6`.
+(-) `wc -c < hello` :: `<` lee de un fichero llamado `hello`, que no existe: «No such file or directory».
+(-) `wc -c hello` :: `hello` se toma como el nombre de un fichero que leer, así que `wc` avisa de que no existe.
+(-) `wc -c << hello` :: `<<` inicia un here-document: la shell espera líneas hasta encontrar una que sea solo `hello`.
+
+@@q single | Ejecución solo para el propietario
+`script.sh` tiene modo `rw-r--r--`. ¿Qué mandato da permiso de ejecución al propietario y no cambia nada más?
+(+) `chmod u+x script.sh` :: `u+x` añade el bit de ejecución para el usuario (propietario) y deja todos los demás bits como estaban.
+(-) `chmod u=x script.sh` :: `=` fija exactamente los permisos indicados, así que el propietario perdería lectura y escritura.
+(-) `chmod a+x script.sh` :: También da permiso de ejecución al grupo y a los otros.
+(-) `chmod 100 script.sh` :: Fija el modo `--x------`: el grupo y los otros pierden su permiso de lectura.
+
+@@q single | Buscar una palabra completa
+El fichero tiene las líneas `a cat sleeps`, `concatenate` y `cat`. ¿Qué afirmación es CIERTA?
+(+) `grep -w cat` imprime `a cat sleeps` y `cat`, pero no `concatenate`. :: `-w` exige que la coincidencia sea una palabra completa, con caracteres que no son de palabra (o los límites de la línea) a ambos lados.
+(-) `grep -w cat` imprime las tres líneas, porque todas contienen `cat`. :: En `concatenate` las letras `cat` están dentro de una palabra más larga, así que `-w` las rechaza.
+(-) `grep cat` imprime solo `cat`, porque sin opciones busca una línea completa. :: Sin opciones `grep` imprime toda línea que contenga el patrón en cualquier posición.
+(-) `grep -w cat` imprime solo la línea `cat`, porque `-w` significa «la línea completa». :: La opción para coincidir con la línea completa es `-x`.
+
+@@q single | Crear un archivo comprimido
+¿Qué hace `tar -czf docs.tgz docs`?
+(+) Empaqueta `docs` en el archivo comprimido `docs.tgz` y deja `docs` como estaba. :: `c` crea, `z` comprime con gzip y `f` da el nombre del archivo.
+(-) Extrae el archivo `docs.tgz` en el directorio `docs`. :: Extraer necesita `x`, no `c`.
+(-) Lista el contenido de `docs.tgz` sin extraerlo. :: Listar se hace con `t`.
+(-) Comprime por separado cada fichero de `docs` y borra los originales. :: `tar` empaqueta todo en un único archivo y no borra nada; comprimir fichero a fichero es lo que hace `gzip`.
+
+@@q single | Leer la salida de who
+En la salida de `who`, una línea muestra `pts/0` en la segunda columna. ¿Qué significa?
+(+) Un pseudoterminal: una ventana de terminal o una sesión SSH. :: `pts/N` son pseudoterminales; una consola de texto aparecería como `ttyN`.
+(-) El usuario trabaja en la primera consola de texto de la máquina. :: Una consola de texto se muestra como `tty1`, `tty2`...
+(-) El usuario trabaja en la pantalla gráfica de la máquina. :: La pantalla gráfica se muestra como `:0`.
+(-) El usuario inició sesión como `pts` y es el primero de los usuarios conectados. :: La columna muestra el terminal al que está asociada la sesión, no un nombre de usuario ni un orden.
+
+@@q single | kill -9
+¿Qué hace `kill -9 4321`?
+(+) Envía `SIGKILL`: el proceso no puede capturarla ni ignorarla y termina al instante. :: La señal número 9 es `SIGKILL`; el núcleo termina directamente el proceso.
+(-) Envía la señal por defecto `SIGTERM`, marcada como urgente para entregarse antes que cualquier otra. :: `kill` sin número envía `SIGTERM` (15), y las señales no tienen prioridades.
+(-) Suspende el proceso 4321 hasta que se envíe `kill -18`. :: Suspender se hace con `SIGSTOP` (19) o `Ctrl+Z`.
+(-) Envía la señal a los 9 últimos procesos que se iniciaron. :: El número es la señal, y el argumento es el PID.
+
+@@q single | Qué es un filtro
+¿Qué afirmación sobre los filtros (mandatos que leen la entrada estándar y escriben en la salida estándar) es FALSA?
+(-) `sort`, `tr` y `wc` se pueden usar como filtros en una tubería. :: Cierto: sin argumento de fichero leen su entrada estándar.
+(-) `grep patrón` sin nombre de fichero lee la entrada estándar. :: Cierto: por eso funciona al final de una tubería.
+(-) `cat` sin argumentos copia su entrada estándar en su salida estándar. :: Cierto.
+(+) `ls` es un filtro: lee una lista de nombres de su entrada estándar y los imprime. :: Falso: `ls` ignora su entrada y lista el directorio actual (o sus argumentos), así que `echo /tmp | ls` no lista `/tmp`.

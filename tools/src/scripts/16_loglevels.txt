@@ -1,0 +1,85 @@
+@@script s16 | loglevels | Counting log levels | loglevels.sh
+@@level 3
+@@tags logs, text, exit codes
+@@cmds grep -c, grep, for, case, exit codes
+@@fixture
+setup() {
+  local i
+  for ((i = 0; i < 25; i++)); do echo "2024-03-0$(randr 1 9) 1$(rand 10):$(randr 10 59):$(randr 10 59) $(pick INFO INFO WARN ERROR INFO) $(words 3)"; done > app.log
+  for ((i = 0; i < 6; i++)); do echo "2024-04-01 09:0$i:00 INFO $(words 2)"; done > calm.log
+  : > empty.log; echo "x" > locked.log; chmod 000 locked.log; mkdir adir
+}
+usage_ok() { [[ $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* || $ERR == *loglevels.sh* ]]; }
+@@step 1 | The errors
+@@readme
+Log lines look like `2024-03-05 10:15:02 ERROR something failed`: date, time, **level**, message. Write `loglevels.sh FILE`: it prints `ERROR: N`, where N is the number of lines whose level (3rd word) is `ERROR`.
+
+`grep -c " ERROR " file` counts them (the spaces avoid matching words inside messages).
+@@check
+ARGS=('app.log' 'calm.log' 'empty.log')
+COMPARE="stdout exit"
+@@solution
+#!/bin/bash
+echo "ERROR: $(grep -c ' ERROR ' "$1")"
+@@step 2 | Every level
+@@readme
+Print one line per level, always in this order and also when the count is 0:
+
+```
+INFO: 17
+WARN: 4
+ERROR: 4
+```
+@@check
+ARGS=('app.log' 'calm.log' 'empty.log')
+COMPARE="stdout exit"
+@@solution
+#!/bin/bash
+for level in INFO WARN ERROR; do
+  echo "$level: $(grep -c " $level " "$1")"
+done
+@@step 3 | Check the file
+@@readme
+Checks: not exactly one argument → error message **and the correct usage** (e.g. `Usage: loglevels.sh file`), exit **1**; the argument is not a readable regular file → error with its name, exit **2**.
+@@check
+ARGS=('app.log' 'calm.log' '' 'app.log calm.log' 'nothing.log' 'adir' 'locked.log')
+COMPARE="stdout exit errmsg"
+extra_check() {
+  [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }
+  [[ $REF_CODE == 2 ]] && mentions "$(eval "set -- $CASE"; echo "$1")"
+}
+@@solution
+#!/bin/bash
+if (( $# != 1 )); then echo "Error: one log file is needed" >&2; echo "Usage: $0 file" >&2; exit 1; fi
+[[ -f $1 && -r $1 ]] || { echo "Error: cannot read $1" >&2; exit 2; }
+for level in INFO WARN ERROR; do
+  echo "$level: $(grep -c " $level " "$1")"
+done
+@@step 4 | Show one level
+@@readme
+`loglevels.sh -l LEVEL FILE` prints, instead of the counts, the **lines** of that level (as they are in the file). `LEVEL` must be `INFO`, `WARN` or `ERROR`; otherwise an error message that includes it and exit code **3**. All the earlier checks still apply (`-l` needs exactly `LEVEL` and `FILE` after it).
+@@check
+ARGS=('app.log' '-l ERROR app.log' '-l WARN app.log' '-l INFO calm.log' '-l ERROR empty.log' '-l DEBUG app.log' '-l ERROR' '' '-l ERROR nothing.log' 'nothing.log')
+COMPARE="stdout exit errmsg"
+extra_check() {
+  [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }
+  [[ $REF_CODE == 2 ]] && mentions "$(eval "set -- $CASE"; echo "${@: -1}")"
+  [[ $REF_CODE == 3 ]] && mentions "$(eval "set -- $CASE"; echo "$2")"
+}
+@@solution
+#!/bin/bash
+level=
+if [[ $1 == -l ]]; then
+  if (( $# != 3 )); then echo "Error: -l needs a level and a file" >&2; echo "Usage: $0 [-l LEVEL] file" >&2; exit 1; fi
+  level=$2; shift 2
+fi
+if (( $# != 1 )); then echo "Error: one log file is needed" >&2; echo "Usage: $0 [-l LEVEL] file" >&2; exit 1; fi
+[[ -f $1 && -r $1 ]] || { echo "Error: cannot read $1" >&2; exit 2; }
+if [[ -n $level ]]; then
+  case $level in INFO|WARN|ERROR) ;; *) echo "Error: unknown level '$level'" >&2; exit 3 ;; esac
+  grep " $level " "$1"
+  exit 0
+fi
+for l in INFO WARN ERROR; do
+  echo "$l: $(grep -c " $l " "$1")"
+done

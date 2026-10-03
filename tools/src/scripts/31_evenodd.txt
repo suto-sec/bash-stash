@@ -1,0 +1,62 @@
+@@script s31 | evenodd | Even or odd | evenodd.sh
+@@level 1
+@@tags tests, arithmetic, arguments
+@@cmds if, arithmetic $(( )) %, [[ =~ ]], exit codes
+@@fixture
+setup() { :; }
+usage_ok() { [[ $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* || $ERR == *evenodd.sh* ]]; }
+@@step 1 | One number
+@@readme
+Write `evenodd.sh N`. It prints `N is even` or `N is odd`:
+
+```
+evenodd.sh 7   ->   7 is odd
+```
+
+`$(( N % 2 ))` is 0 for even numbers.
+@@check
+ARGS=('7' '10' '0' '1' '123456')
+COMPARE="stdout exit"
+@@solution
+#!/bin/bash
+if (( $1 % 2 == 0 )); then
+  echo "$1 is even"
+else
+  echo "$1 is odd"
+fi
+@@step 2 | Check the argument
+@@readme
+Exactly one argument is required (otherwise: error message **and the correct usage** (e.g. `Usage: evenodd.sh N`) on standard error, exit **1**) and it must be a non-negative integer (digits only; otherwise an error that includes it, exit **2**).
+@@check
+ARGS=('7' '10' '' '1 2' 'abc' '-4' '3.5')
+COMPARE="stdout exit errmsg"
+extra_check() {
+  [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }
+  [[ $REF_CODE == 2 ]] && mentions "$(eval "set -- $CASE"; echo "$1")"
+}
+@@solution
+#!/bin/bash
+if (( $# != 1 )); then echo "Error: one number is needed" >&2; echo "Usage: $0 N" >&2; exit 1; fi
+[[ $1 =~ ^[0-9]+$ ]] || { echo "Error: '$1' is not a non-negative integer" >&2; exit 2; }
+if (( $1 % 2 == 0 )); then echo "$1 is even"; else echo "$1 is odd"; fi
+@@step 3 | Many numbers and a summary
+@@readme
+Accept **one or more** numbers (none: usage error, exit 1). Print one line for each, then a summary line `even: E, odd: O`. If **any** argument is not a non-negative integer, print the error (that includes it) on standard error, exit **2**, and print nothing on standard output: check all of them first.
+@@check
+ARGS=('7' '1 2 3 4 5' '10 20 30' '' '4 x 6' 'abc' '2 -3')
+COMPARE="stdout exit errmsg"
+extra_check() {
+  [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }
+  [[ $REF_CODE == 2 ]] && { local a; for a in $(eval "set -- $CASE"; echo "$@"); do [[ $a =~ ^[0-9]+$ ]] || { mentions "$a"; break; }; done; }
+}
+@@solution
+#!/bin/bash
+if (( $# == 0 )); then echo "Error: at least one number is needed" >&2; echo "Usage: $0 N..." >&2; exit 1; fi
+for n in "$@"; do
+  [[ $n =~ ^[0-9]+$ ]] || { echo "Error: '$n' is not a non-negative integer" >&2; exit 2; }
+done
+even=0 odd=0
+for n in "$@"; do
+  if (( n % 2 == 0 )); then echo "$n is even"; even=$((even + 1)); else echo "$n is odd"; odd=$((odd + 1)); fi
+done
+echo "even: $even, odd: $odd"

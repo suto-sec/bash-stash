@@ -1,0 +1,63 @@
+@@script s51 | mkfiles | Creating numbered files | mkfiles.sh
+@@level 2
+@@tags files, loops, exit codes
+@@cmds touch, for ((;;)), test -e, [[ == */* ]], exit codes
+@@fixture
+setup() { echo old > report2; mkdir adir1; }
+usage_ok() { [[ $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* || $ERR == *mkfiles.sh* ]]; }
+@@step 1 | Create them
+@@readme
+Write `mkfiles.sh PREFIX N`. It creates `N` empty files in the current directory named `PREFIX1`, `PREFIX2`, ... `PREFIXN` and prints `Created N files`.
+@@check
+ARGS=('log 3' 'x 1' '"my file" 2' 'data 12')
+COMPARE="stdout exit files"
+@@solution
+#!/bin/bash
+for ((i = 1; i <= $2; i++)); do
+  touch -- "$1$i"
+done
+echo "Created $2 files"
+@@step 2 | Check the arguments
+@@readme
+Checks, in this order: not exactly two arguments → error message **and the correct usage** (e.g. `Usage: mkfiles.sh prefix N`), exit **1**; `N` is not a positive integer → error that includes it, exit **2**; `PREFIX` is empty or contains a `/` → error that includes it, exit **3**. Nothing is created in those cases.
+@@check
+ARGS=('log 3' 'x 1' '' 'log' 'a b c' 'log 0' 'log x' 'log -2' 'a/b 2' '/tmp/x 2' 'a/b x')
+COMPARE="stdout exit errmsg files"
+extra_check() {
+  [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }
+  [[ $REF_CODE == 2 ]] && mentions "$(eval "set -- $CASE"; echo "$2")"
+  [[ $REF_CODE == 3 ]] && mentions "$(eval "set -- $CASE"; echo "$1")"
+}
+@@solution
+#!/bin/bash
+if (( $# != 2 )); then echo "Error: a prefix and a count are needed" >&2; echo "Usage: $0 prefix N" >&2; exit 1; fi
+[[ $2 =~ ^[1-9][0-9]*$ ]] || { echo "Error: '$2' is not a positive integer" >&2; exit 2; }
+if [[ -z $1 || $1 == */* ]]; then echo "Error: bad prefix '$1'" >&2; exit 3; fi
+for ((i = 1; i <= $2; i++)); do
+  touch -- "$1$i"
+done
+echo "Created $2 files"
+@@step 3 | Never touch existing files
+@@readme
+If **any** of the files to create already exists, create **none** of them: print an error message that includes the name of the **first** existing one on standard error and exit with code **4**. (In the checker `report2` exists, and `adir1` is a directory.)
+@@check
+ARGS=('log 3' 'report 3' 'report 1' 'report 5' 'adir 1' 'log' 'log x' 'a/b 2' '')
+COMPARE="stdout exit errmsg files"
+extra_check() {
+  [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }
+  [[ $REF_CODE == 2 ]] && mentions "$(eval "set -- $CASE"; echo "$2")"
+  [[ $REF_CODE == 3 ]] && mentions "$(eval "set -- $CASE"; echo "$1")"
+  [[ $REF_CODE == 4 ]] && mentions "$(eval "set -- $CASE"; for ((i = 1; i <= $2; i++)); do [[ -e $1$i ]] && { echo "$1$i"; break; }; done)"
+}
+@@solution
+#!/bin/bash
+if (( $# != 2 )); then echo "Error: a prefix and a count are needed" >&2; echo "Usage: $0 prefix N" >&2; exit 1; fi
+[[ $2 =~ ^[1-9][0-9]*$ ]] || { echo "Error: '$2' is not a positive integer" >&2; exit 2; }
+if [[ -z $1 || $1 == */* ]]; then echo "Error: bad prefix '$1'" >&2; exit 3; fi
+for ((i = 1; i <= $2; i++)); do
+  if [[ -e $1$i ]]; then echo "Error: $1$i already exists" >&2; exit 4; fi
+done
+for ((i = 1; i <= $2; i++)); do
+  touch -- "$1$i"
+done
+echo "Created $2 files"

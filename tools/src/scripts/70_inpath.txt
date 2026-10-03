@@ -1,0 +1,79 @@
+@@script s70 | inpath | Where is it in the PATH? | inpath.sh
+@@level 4
+@@tags files, tests, exit codes
+@@cmds tr, for, test -f -x, shift, exit codes, $PATH
+@@fixture
+setup() {
+  mkdir -p bin1 bin2 bin3 "my bin" empty
+  printf '#!/bin/sh\necho one\n' > bin1/tool; chmod 755 bin1/tool
+  printf '#!/bin/sh\necho two\n' > bin2/tool; chmod 644 bin2/tool
+  printf '#!/bin/sh\necho three\n' > bin3/tool; chmod 755 bin3/tool
+  printf '#!/bin/sh\n' > bin1/only1; chmod 755 bin1/only1
+  printf '#!/bin/sh\n' > "my bin/tool"; chmod 755 "my bin/tool"
+  mkdir -p bin3/dirtool; printf '#!/bin/sh\n' > bin2/plain; chmod 644 bin2/plain
+  echo x > notadir.txt
+}
+usage_ok() { [[ $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* || $ERR == *inpath.sh* ]]; }
+@@step 1 | Directories that have it
+@@readme
+`$PATH` is a list of directories separated by `:`. Write `inpath.sh NAME LIST`, where `LIST` is such a list (in the checks: `bin1:bin2:bin3`). It prints, **in the order of the list**, every directory of `LIST` that contains a **regular file** called `NAME`. Directories that do not exist are simply skipped.
+
+`echo "$LIST" | tr ':' '\n'` gives one directory per line.
+@@check
+ARGS=('tool bin1:bin2:bin3' 'tool bin3:bin1' 'only1 bin1:bin2:bin3' 'tool nothing:bin2' 'dirtool bin1:bin3' 'tool empty' 'plain bin1:bin2')
+COMPARE="stdout exit"
+@@solution
+#!/bin/bash
+while IFS= read -r d; do
+  [[ -f $d/$1 ]] && echo "$d"
+done < <(echo "$2" | tr ':' '\n')
+exit 0
+@@step 2 | Only the executable ones
+@@readme
+Print the **full path** (`DIR/NAME`) instead of the directory, and only when that file is **executable** by you (`test -x`). A `NAME` that is not executable in one directory is skipped there but may still be found in another.
+@@check
+ARGS=('tool bin1:bin2:bin3' 'tool bin3:bin2:bin1' 'only1 bin1:bin2:bin3' 'tool bin2' 'plain bin2' 'dirtool bin3' '"tool" "my bin:bin2"')
+COMPARE="stdout exit"
+@@solution
+#!/bin/bash
+while IFS= read -r d; do
+  [[ -f $d/$1 && -x $d/$1 ]] && echo "$d/$1"
+done < <(echo "$2" | tr ':' '\n')
+exit 0
+@@step 3 | The default is $PATH
+@@readme
+`LIST` is now optional: without it the script searches your real `$PATH`. Wrong number of arguments (none, or more than two) → an error message **and the correct usage** (e.g. `Usage: inpath.sh name [list]`), exit **1**.
+
+(In the checks the default is tried with `NAME` = `ls`: the lab's own `$PATH`.)
+@@check
+ARGS=('tool bin1:bin2:bin3' 'tool "my bin:bin2"' 'ls' 'sh' 'definitely-not-a-command' '' 'a b c')
+COMPARE="stdout exit errmsg"
+extra_check() { [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }; }
+@@solution
+#!/bin/bash
+if (( $# < 1 || $# > 2 )); then echo "Error: wrong number of arguments" >&2; echo "Usage: $0 name [list]" >&2; exit 1; fi
+list=${2:-$PATH}
+while IFS= read -r d; do
+  [[ -f $d/$1 && -x $d/$1 ]] && echo "$d/$1"
+done < <(echo "$list" | tr ':' '\n')
+exit 0
+@@step 4 | Not found, and how many
+@@readme
+Finish with `Found N times` (N = lines printed). If it was found **nowhere** print `NAME not found` on **standard error** instead of the summary and exit **2**. Found at least once: exit 0.
+@@check
+ARGS=('tool bin1:bin2:bin3' 'tool "my bin:bin2"' 'tool bin2' 'plain bin1:bin2' 'ls' 'definitely-not-a-command' 'tool nothing' '' 'a b c')
+COMPARE="stdout exit errmsg"
+extra_check() {
+  [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }
+  [[ $REF_CODE == 2 ]] && mentions "$(eval "set -- $CASE"; echo "$1")"
+}
+@@solution
+#!/bin/bash
+if (( $# < 1 || $# > 2 )); then echo "Error: wrong number of arguments" >&2; echo "Usage: $0 name [list]" >&2; exit 1; fi
+list=${2:-$PATH}
+n=0
+while IFS= read -r d; do
+  if [[ -f $d/$1 && -x $d/$1 ]]; then echo "$d/$1"; n=$((n + 1)); fi
+done < <(echo "$list" | tr ':' '\n')
+if (( n == 0 )); then echo "$1 not found" >&2; exit 2; fi
+echo "Found $n times"

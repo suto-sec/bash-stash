@@ -1,0 +1,84 @@
+@@exam easy-08 | Easy exam 8
+@@tier easy
+@@about
+Ten single-choice questions on the basics: password files, GRUB, pipes, tests, command substitution, process states, pagers, links and inodes.
+
+@@q single | The shadow file
+@@topic users-sessions
+Which statement about `/etc/shadow` is TRUE?
+(+) It holds the hashed passwords and ordinary users cannot read it. :: Its mode is `-rw-r----- root shadow`: only root and the group `shadow` can read it.
+(-) It holds the passwords in plain text, so root can tell them to users who forget them. :: Only a one-way hash is stored; nobody can read the password back from it.
+(-) It is readable by everybody, because every login has to consult it. :: The login program runs as root. The world-readable file is `/etc/passwd`, which holds no hashes.
+(-) It lists the home directory and the login shell of every user. :: Those fields are in `/etc/passwd`.
+
+@@q single | Changing the GRUB menu
+@@topic boot-systemd
+On a Debian-like system you want a longer menu timeout in GRUB. Which procedure is right?
+(+) Edit `/etc/default/grub` and then run `update-grub`, which regenerates `/boot/grub/grub.cfg`. :: `grub.cfg` is generated from the settings in `/etc/default/grub` and the scripts in `/etc/grub.d/`.
+(-) Edit `/boot/grub/grub.cfg` by hand: `update-grub` only reads it. :: `update-grub` writes that file, so a manual edit is lost the next time it runs.
+(-) Edit `/etc/default/grub` and reboot: GRUB reads that file directly at boot. :: GRUB reads `grub.cfg`, which only changes when `update-grub` is run.
+(-) Run `update-grub` after editing `/etc/default/grub`: that command also installs GRUB in the first sector of the disk. :: Writing the boot loader to the disk is the job of `grub-install`; `update-grub` only rewrites the configuration.
+
+@@q single | Error message in a pipe
+@@topic redirection-pipes
+`/nonexistent` does not exist. What happens when you type `ls /nonexistent | wc -l`?
+(+) The error message of `ls` appears on the screen and `wc` prints `0`. :: The pipe connects only stdout; the error message goes to stderr, which is still the terminal, so `wc` receives nothing.
+(-) `wc` prints `1`, because the error message is one line. :: The message never reaches `wc`: it travels on stderr, not through the pipe.
+(-) Nothing appears: the message is passed to `wc`, which only prints counts. :: `wc` would then print `1`; in fact the message goes straight to the terminal.
+(-) `wc` waits for input for ever, because `ls` produced no output. :: `ls` ends, its stdout is closed, and `wc` sees the end of the input and prints `0`.
+
+@@q single | Testing strings and files
+@@topic scripts
+Which statement about `test` / `[ ]` is FALSE?
+(-) `[ -z "$x" ]` is true when the variable `x` is empty. :: True: `-z` is true for a string of length zero.
+(-) `[ -d /tmp ]` is true when `/tmp` is a directory. :: True: `-d` tests for a directory.
+(-) `[ -s notes ]` is true when `notes` exists and is not empty. :: True: `-s` means "exists and has a size greater than zero".
+(+) `[ -e name ]` is true only when `name` is a regular file. :: False: `-e` is true for anything that exists (file, directory, link...). The test for a regular file is `-f`.
+
+@@q single | Saving a count in a variable
+@@topic expansion-vars
+`data.txt` has 3 lines. Which command makes `echo "$n"` print `3`?
+(+) `n=$(wc -l < data.txt)` :: Command substitution replaces `$(...)` with what the command prints; with `<` the output is just the number.
+(-) `n=wc -l < data.txt` :: The shell sees the assignment `n=wc` before the command `-l`: it fails with "-l: command not found".
+(-) `n='wc -l < data.txt'` :: Single quotes keep the text as it is: `n` would contain the words `wc -l < data.txt`.
+(-) `n=${wc -l < data.txt}` :: `${...}` is parameter expansion, not command substitution: bash answers "bad substitution".
+
+@@q single | The T state
+@@topic jobs-procs
+You run `ps -o stat= -p 4321` and it prints `T`. What is that process doing?
+(+) It is stopped (suspended), for example after `Ctrl+Z` or a `SIGSTOP`. :: `T` is the stopped state; `fg`, `bg` or `kill -CONT` make it run again.
+(-) It is running on a CPU or ready to run. :: That is `R`.
+(-) It is sleeping, waiting for an event such as a read to complete. :: That is `S` (interruptible sleep).
+(-) It has finished but its parent has not collected its exit status yet. :: That is a zombie, shown as `Z`.
+
+@@q single | Paging a file
+@@topic filters
+Which statement about viewing files is FALSE?
+(-) `cat file` writes the whole file at once, without pausing. :: True: for a long file only the last lines stay on the screen.
+(-) `less file` lets you go back with `b` or the arrow keys and search with `/`. :: True: that is what makes `less` more convenient than `more`.
+(-) `more file` shows the file one screen at a time. :: True: it is the older pager.
+(+) `less` has to read the whole file before it shows the first screen. :: False: `less` shows the first screen at once and loads the rest as needed, which is why it opens huge files immediately.
+
+@@q single | Argument order of ln -s
+@@topic files-fs
+Which command creates a symbolic link called `latest` that points to `/var/log/syslog`?
+(+) `ln -s /var/log/syslog latest` :: The order is the target first and the name of the new link second.
+(-) `ln -s latest /var/log/syslog` :: It tries to create a link named `/var/log/syslog` pointing to `latest`: it fails because that file already exists.
+(-) `ln /var/log/syslog latest` :: Without `-s` it makes a hard link, not a symbolic link.
+(-) `ln -s -t latest /var/log/syslog` :: `-t` expects the directory in which the links are created; `latest` does not exist, so it fails.
+
+@@q single | The inode after mv
+@@topic files-fs
+In one directory you run `ls -i a.txt`, then `mv a.txt b.txt`, then `ls -i b.txt`. What do the two `ls -i` print?
+(+) The same inode number both times. :: `mv` inside one file system only changes the name stored in the directory entry; the inode (the file itself) is not touched.
+(-) Two different inode numbers, because `b.txt` is a new file. :: No new file is created: the same inode just has another name.
+(-) The second command fails: after the `mv` there is no inode left. :: The inode still exists, now reached through the name `b.txt`.
+(-) The same number, but only because `mv` leaves a hard link called `a.txt` behind. :: `mv` removes the old name; nothing is left behind under `a.txt`.
+
+@@q single | Jumping in a pager
+@@topic shell-help
+You are reading a long manual page with `man`. Which key takes you to the end of the page?
+(+) `G` :: In `less` (the pager used by `man`) `G` goes to the last line and `g` to the first.
+(-) `g` :: It goes to the beginning of the page.
+(-) `q` :: It quits the pager.
+(-) `h` :: It shows the help screen of the pager.

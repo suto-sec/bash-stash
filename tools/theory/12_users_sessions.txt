@@ -1,0 +1,450 @@
+@@collection 12_users_sessions | Users, groups, sessions & sudo
+@@about
+Accounts and groups, the files /etc/passwd, /etc/shadow and /etc/group, passwords, su and sudo, sessions and terminals, who is logged in, and the startup files of a shell.
+
+@@group Users and root
+@@q single | Who is root
+Which statement about the account `root` is correct?
+(+) It is the administrator account, always has UID 0, and is not limited by permission checks. :: It is identified by its UID, not its name.
+(-) It is an ordinary user account, whose name happens to be treated in a special way by some of the programs. :: The kernel treats UID 0 differently.
+(-) It can be recognised by its home directory, which is always `/home/root` on Linux. :: Its home is normally `/root`.
+(-) It has UID 1, the lowest number that the system hands out to a user account. :: UID 1 is usually `daemon`.
+
+@@q single | Why not work as root
+Why is it discouraged to use the root account for daily work?
+(+) A typing mistake or a malicious program then runs with unlimited power over the whole system. :: Least privilege limits the damage.
+(-) Because root cannot run graphical programs, so the desktop would not start for it. :: It can, although it is not advisable.
+(-) Because root is slower than an ordinary user, since every command that root runs is checked twice by the kernel. :: Speed is identical.
+(-) Because root cannot use the network, which is reserved for ordinary users. :: It can.
+
+@@q multi | Tasks that usually require root
+Select the operations an ordinary user normally cannot do.
+(+) Configuring network interfaces. :: A system-wide change.
+(+) Mounting a disk that is not listed for user mounts in `/etc/fstab`. :: Changes the system's file-system tree.
+(+) Shutting down the machine (on a multi-user system). :: Affects everybody.
+(+) Changing the owner of a file to another user with `chown`. :: Only root may give files away.
+(-) Creating files in their own home directory. :: Users own it.
+(-) Changing their own password. :: Everyone may do that with `passwd`.
+
+@@q single | UID ranges
+On a typical Debian or Ubuntu system, which UIDs do ordinary (human) users get?
+(+) From 1000 upwards; the numbers below 1000 are for root and the system accounts. :: Older Red Hat systems start at 500.
+(-) From 1 upwards, as soon as the administrator creates the first ordinary account. :: Low numbers belong to the system.
+(-) Only UID 0, which every human user shares with root, but with fewer rights. :: That is root.
+(-) From 65534 downwards, which is the number of the account called `nobody`. :: 65534 is `nobody`.
+
+@@q sort | Kind of account
+@@buckets Human user | System account
+Decide the likely kind of each account on a typical Linux system.
+(Human user) `alumno`, UID 1000, shell `/bin/bash` :: A login account created for a person.
+(Human user) `sally`, UID 1002, home `/home/sally` :: A regular user with a home directory.
+(Human user) `luke`, UID 1001, shell `/bin/bash` :: A regular user.
+(System account) `daemon`, UID 1, shell `/usr/sbin/nologin` :: Used by services, not for logging in.
+(System account) `www-data`, UID 33, shell `/usr/sbin/nologin` :: Runs a web server.
+(System account) `nobody`, UID 65534 :: An unprivileged identity for processes.
+
+@@q single | nologin
+What does the shell `/usr/sbin/nologin` (or `/bin/false`) in an account's entry achieve?
+(+) The account cannot get an interactive shell; a login attempt is refused with a message. :: Typical for service accounts.
+(-) The account cannot own files, so nothing can be stored under its name. :: It can.
+(-) The account is deleted from the system the next time that it is used in a login attempt, together with its files. :: It exists but cannot log in interactively.
+(-) The account can log in without a password, as no shell asks for one. :: The opposite.
+
+@@q match | Managing accounts
+Match each command with its purpose (Debian-style tools).
+(=) `adduser luke` => Create a new user with home directory and defaults :: A friendly wrapper around `useradd`.
+(=) `deluser luke` => Remove a user account :: Optionally with the home directory.
+(=) `addgroup devs` => Create a new group :: Adds a line to `/etc/group`.
+(=) `adduser luke devs` => Add the existing user to the group :: Supplementary membership.
+(=) `usermod -aG devs luke` => Append `luke` to group `devs` without removing other groups :: The `-a` is essential.
+(-) Change the password of the current user :: That is `passwd`.
+
+@@q single | The -a in usermod
+What happens if you run `usermod -G devs luke` (without `-a`)?
+(+) `luke`'s supplementary groups are replaced by `devs` alone, so the other groups are lost. :: Always use `-aG` to append.
+(-) `luke` is added to `devs` and keeps all of their other groups, as it happens with `-a`. :: That needs `-a`.
+(-) `luke` becomes the owner of the group `devs`, and may add other users to it. :: No such thing.
+(-) Nothing happens, because the list of groups of a user is read-only. :: It is changed.
+
+@@q single | Group membership takes effect
+You add a user to a new group while they are logged in. When does the user's shell see the new group?
+(+) After logging out and in again (a new login session), because the group list is read at login. :: `newgrp` or `su - user` are workarounds.
+(-) Immediately, in every terminal that the user already has open on the machine. :: Existing processes keep their old groups.
+(-) Only after the next reboot of the machine, when the group files are read again by the system from the disk. :: A new login is enough.
+(-) Never: groups cannot be added to a user account that already exists. :: They can.
+
+@@group The account files
+@@q match | Files of the account database
+Match each file with its content.
+(=) `/etc/passwd` => One line per account: name, UID, GID, comment, home, shell :: Readable by everyone.
+(=) `/etc/shadow` => The hashed passwords and password ageing data :: Not readable by ordinary users.
+(=) `/etc/group` => The groups and their members :: Readable by everyone.
+(=) `/etc/sudoers` => Who may run which commands with `sudo` :: Edit it with `visudo`.
+(-) The list of people currently logged in :: That is kept in a runtime database shown by `who`.
+
+@@q single | Fields of passwd
+How many colon-separated fields does a line of `/etc/passwd` have?
+(+) 7 :: name, password marker, UID, GID, comment (GECOS), home directory and shell.
+(-) 4 :: That is the number of fields of `/etc/group`.
+(-) 9 :: That is the number of fields of `/etc/shadow`.
+(-) 5 :: No file in the set has five.
+
+@@q order | Fields of a passwd line
+Put the fields of `/etc/passwd` in their order, from first to last.
+(>) User name :: The login name.
+(>) Password marker (`x`) :: Says that the hash is in `/etc/shadow`.
+(>) UID :: The numeric user id.
+(>) GID :: The primary group.
+(>) Comment (GECOS) :: Full name and contact data.
+(>) Home directory :: Where the user starts.
+(>) Login shell :: The program started at login.
+
+@@q fill | Which field is the shell
+In `/etc/passwd`, the login shell is field number `{{7}}` and the home directory is field number `{{6}}`.
+(x) 5 :: That is the comment (GECOS) field.
+(x) 3 :: That is the UID.
+@@note
+`cut -d: -f7 /etc/passwd` prints the shells.
+
+@@q single | The x in passwd
+What does the `x` in the second field of a `/etc/passwd` line mean?
+(+) The password is not stored there; the hash is in `/etc/shadow`. :: Older systems kept hashes in `passwd`, which everybody can read.
+(-) The account is disabled, and the user cannot log in until it is unlocked. :: A locked account shows `!` or `*` in shadow.
+(-) The password is empty, so the user can log in by just pressing Enter. :: An empty password would be a blank field.
+(-) The user is an administrator with the right to run any command. :: Administrators are identified by UID 0 or group membership.
+
+@@q single | Why shadow
+Why were password hashes moved from `/etc/passwd` to `/etc/shadow`?
+(+) `/etc/passwd` must be readable by everyone, so hashes there could be copied and cracked; `/etc/shadow` is root-only. :: Separate data with different secrecy needs.
+(-) To save disk space, because the hashes take a lot of room in the account database. :: Not a reason.
+(-) To make logins faster, since the system reads the smaller `/etc/passwd` first. :: Not a reason.
+(-) Because `/etc/passwd` was too small to hold the long hashes that the modern algorithms produce for each user. :: Size is not the issue.
+
+@@q single | Shadow permissions
+Which permissions does `/etc/shadow` typically have?
+(+) `-rw-r-----`, owned by root with the group `shadow`. :: Ordinary users cannot read it.
+(-) `-rw-r--r--`, so that every program can read the hashes it needs. :: That would expose the hashes.
+(-) `-rwxrwxrwx`, so that the password tools of any user can change it. :: World-writable would be a disaster.
+(-) `----------`, owned by `nobody`, so that not even root can read it. :: Nobody could then use it.
+
+@@q fill | Hash and lock markers
+In the password field of `/etc/shadow`, a value beginning with `{{!}}` (or equal to `*`) means the account cannot log in with a password.
+(x) # :: That would just be a character in a (broken) hash.
+@@note
+`passwd -l user` locks an account by putting `!` in front of the hash.
+
+@@q match | Hash prefixes
+Match each prefix in a shadow hash with the algorithm it denotes.
+(=) `$1$` => MD5 (obsolete) :: Weak and deprecated.
+(=) `$5$` => SHA-256 :: Salted and iterated.
+(=) `$6$` => SHA-512 :: A long-time default on many distributions.
+(=) `$y$` => yescrypt :: The newer default on recent Debian and Ubuntu.
+(-) Plain text :: Hashes never store the password itself.
+
+@@q single | What is a salt
+What is the purpose of the random "salt" stored inside a password hash?
+(+) It makes two users with the same password get different hashes, and defeats precomputed (rainbow) tables. :: An attacker must attack each hash separately.
+(-) It encrypts the hash with a secret key that only the administrator knows. :: A hash is not encrypted.
+(-) It is the user's secret question, which is asked when the password has been forgotten and must be reset. :: No.
+(-) It lets root recover the original password whenever a user forgets it. :: Hashes are one-way.
+
+@@q single | Fields of group
+How is a line of `/etc/group` built?
+(+) `name:password-marker:GID:member1,member2,...` :: Four fields; the last lists the supplementary members.
+(-) `name:UID:GID:home:shell`, like the fields of a user account :: That mixes account data.
+(-) `GID:name`, with the members kept in another file :: Too few fields.
+(-) `name:members`, without any numbers or password marker :: The GID is also stored.
+
+@@q single | Primary group
+The user `luke` has primary group GID 1001 in `/etc/passwd`. Is that user listed in the members field of group 1001 in `/etc/group`?
+(+) Not necessarily: the primary group comes from the GID in `passwd`; the member list holds supplementary members. :: `id luke` shows both.
+(-) Yes, always: every user must be listed as a member of their primary group, or the system refuses the account. :: Not required.
+(-) No, and the user does not belong to that group at all, since no entry lists them. :: The user is in that group through the GID field of the `passwd` entry.
+(-) Only if that user is root, since the administrator is listed in every group. :: Unrelated.
+
+@@q fill | Display a user's groups
+Show the groups of the user `luke`: `{{groups ;; id -Gn ;; id -nG}} luke`
+(x) who :: It lists logged-in users.
+(x) whoami :: It prints only the current user's name.
+@@note
+`id luke` adds the numeric ids as well.
+
+@@group Passwords, su and sudo
+@@q match | passwd options
+Match each command with its effect.
+(=) `passwd` => Change your own password :: Asks for the old one first.
+(=) `sudo passwd luke` => Set the password of another user :: Requires privileges.
+(=) `passwd -l luke` => Lock the account's password :: Login by password is no longer possible.
+(=) `passwd -u luke` => Unlock the account :: Undo `-l`.
+(=) `passwd -e luke` => Force a password change at the next login :: Expire the password.
+(-) Show luke's current password :: Passwords cannot be shown; only hashes are stored.
+
+@@q single | Can root recover a password
+Root has forgotten what password a user chose. Can root read it?
+(+) No: only a hash is stored, so root can set a new password but cannot recover the old one. :: Hashing is one-way.
+(-) Yes, by looking at the file with `cat /etc/shadow`, where the passwords of every user are kept in the clear. :: That shows hashes.
+(-) Yes, by asking for the status of the account with `passwd -s`, which shows it. :: Shows status only.
+(-) Yes, but only if the user belongs to the group `shadow`, which may read it. :: Still only a hash.
+
+@@q match | su variants
+Match each command with what it does.
+(=) `su` => Become root (asking root's password), keeping most of your environment :: A non-login shell.
+(=) `su -` => Become root with a full login environment :: Loads root's startup files and HOME.
+(=) `su luke` => Become `luke`, asking luke's password :: Root is not asked.
+(=) `su -c 'ls /root'` => Run one command as root and return :: Non-interactive.
+(-) Log out of the current session :: That is `exit`.
+
+@@q single | su versus su -
+What is the practical difference between `su` and `su -`?
+(+) `su -` starts a login shell, loading root's environment, `HOME` and `PATH`; plain `su` keeps much of yours. :: Also the working directory becomes root's home.
+(-) `su -` does not ask for a password, while plain `su` always asks for the password of the target user first. :: Both ask, unless you are root.
+(-) `su` is for root only, while `su -` can be used to become any user. :: Both can name any user.
+(-) There is no difference: the dash is ignored by the command. :: The environment differs.
+
+@@q single | What sudo is
+What does `sudo command` do?
+(+) It runs one command as another user (root by default), after checking `/etc/sudoers`, asking for **your** password. :: No root password is needed.
+(-) It opens a permanent root shell that remains open until you explicitly log out of it with the `exit` command. :: That is `sudo -s` or `sudo -i`.
+(-) It changes your user to root until you log out, for all the commands you type. :: Only for that command.
+(-) It asks for the root password, and then runs the command as the administrator. :: It asks for yours.
+
+@@q match | sudo forms
+Match each command with its effect.
+(=) `sudo ls /root` => Run one command as root :: Then return to your own shell.
+(=) `sudo -s` => Start a root shell, keeping much of your environment :: A shell as root.
+(=) `sudo -i` => Start a root login shell :: Like `su -`.
+(=) `sudo -u luke cmd` => Run a command as the user `luke` :: Not only root.
+(=) `sudo -l` => List what you are allowed to run with sudo :: Reads the sudoers rules.
+(-) Edit `/etc/sudoers` directly :: Use `visudo`.
+
+@@q single | Benefits of sudo
+Which is an advantage of `sudo` over sharing the root password?
+(+) Each use is logged with the user's name, rights can be limited per command, and no shared secret has to be changed. :: Accountability and granularity.
+(-) `sudo` needs no password at all, which is why it is quicker than logging in as root. :: It normally asks for the user's password.
+(-) `sudo` gives every user full root rights by default, which is convenient on small systems where everybody is trusted. :: Rights come from the rules.
+(-) `sudo` works without any configuration, since every user may use it after installation. :: It needs `/etc/sudoers`.
+
+@@q single | Reading sudoers
+What does the rule `%admin ALL=(ALL) ALL` mean?
+(+) Members of the group `admin` may run any command on any host as any user. :: The `%` marks a group; the first ALL is the host, `(ALL)` the target user, the last ALL the commands.
+(-) The user called `admin` may run any command as root without a password. :: Without `%` it would be a user.
+(-) It is a comment, which `sudo` ignores when it reads the configuration. :: Comments start with `#`.
+(-) Every user of the system may run any command, as members of a group called `admin`. :: The rule names only a group.
+
+@@q single | NOPASSWD rule
+What does the sudoers line `ana lab01 = PASSWD: /usr/bin/systemctl, NOPASSWD: /usr/bin/uptime` allow?
+(+) User `ana`, on host `lab01`, may run `systemctl` (with their password) and `uptime` (without it) as root. :: Tags apply to the commands that follow them.
+(-) Root may run `systemctl` and `uptime` on the host `lab01`, but only when it has been asked for its password by `sudo`. :: The first word is the user.
+(-) Everyone may run `uptime` on the host `lab01` without a password, and `systemctl` with one. :: Only `ana`.
+(-) `ana` may run any command on the machine, without being asked for a password. :: Only the listed ones.
+
+@@q single | Editing sudoers
+Why should you edit the sudoers file with `visudo` instead of a plain editor?
+(+) `visudo` locks the file and checks its syntax before saving, since a broken sudoers can lock everybody out. :: A safety measure.
+(-) Because the file is in a binary format that an ordinary text editor could not write without corrupting it. :: It is text.
+(-) Because only the editor `vi` has the permission to write files inside `/etc`. :: Any editor can, with permission.
+(-) Because `visudo` changes the owner of the file to the user who has edited it. :: No.
+
+@@q single | Who may read sudoers
+Why is `/etc/sudoers` normally `-r--r-----` owned by root?
+(+) It controls privilege escalation, so ordinary users should neither read nor change it. :: Its rules are sensitive.
+(-) Because it is an executable program that the kernel runs as root at each login. :: It is a text file.
+(-) Because it is a log of the commands run with `sudo`, which only root may read. :: It is configuration.
+(-) To make `sudo` faster, since the system then skips the permission check of the file. :: Not a reason.
+
+@@q single | The setuid helper
+How can the `passwd` program, run by an ordinary user, modify the root-only file `/etc/shadow`?
+(+) `passwd` has the setuid bit (mode `4755`), so it runs with the privileges of its owner, root. :: It is written carefully to change only the caller's entry.
+(-) Because `/etc/shadow` is world-writable, so every user is allowed to write in it. :: It is not.
+(-) Because every user is secretly a member of the group root while running `passwd`. :: No.
+(-) Because the kernel skips all the permission checks for programs that are named `passwd`. :: Names do not matter.
+
+@@group Sessions, terminals and who is logged in
+@@q match | Who-am-I commands
+Match each command with its output.
+(=) `whoami` => The user name of the current effective user :: Just the name.
+(=) `id` => User id, group id and all group memberships :: Numbers with names.
+(=) `groups` => The names of the groups of the current user :: Also works with a user name.
+(=) `who` => The users logged in now, with terminal and login time :: From the runtime login records.
+(=) `last` => The history of past logins :: From `/var/log/wtmp`.
+(-) The processes of the user :: That is `ps -u`.
+
+@@q single | w versus who
+Which information does `w` show that `who` does not?
+(+) What each logged-in user is running now, plus the idle time and the system load. :: A one-stop overview.
+(-) The history of the logins that took place before, including the reboots. :: That is `last`.
+(-) The passwords of the users, in the form of their hashes, for auditing purposes. :: Nothing like that exists.
+(-) The list of the failed logins, with the addresses they came from. :: That is `lastb`.
+
+@@q single | last
+Where does `last` get its data?
+(+) From the login records in `/var/log/wtmp`, which keeps past sessions, reboots and logouts. :: `lastb` reads the failed attempts from `btmp`.
+(-) From `/etc/passwd`, where the date of the last login of each user is stored. :: Account data, not sessions.
+(-) From the current process list, by looking at which shells are running now. :: Past sessions are not processes anymore.
+(-) From the history file of the shell, which records the commands that were typed in each session of the user. :: Commands, not logins.
+
+@@q match | Terminal names
+Match each terminal name in `who` or `w` with its meaning.
+(=) `tty1` => A virtual text console :: Reached with `Ctrl+Alt+F1`.
+(=) `pts/0` => A pseudo-terminal, e.g. a terminal window or an SSH session :: No physical device.
+(=) `:0` => The graphical display :: A desktop session.
+(=) An IP address or host in parentheses => Where a remote connection came from :: Such as an SSH client.
+(-) The disk the user logged in from :: Terminals are not disks.
+
+@@q single | The tty command
+What does the command `tty` print?
+(+) The name of the terminal device connected to standard input, such as `/dev/pts/0`. :: "not a tty" when input is not a terminal.
+(-) The name of the user who runs the command, as `whoami` does, with the host. :: That is `whoami`.
+(-) The list of all the terminals that are currently in use, as `who` would show. :: That is `who`.
+(-) The speed of the terminal line, in bits per second, and its current settings. :: Not its purpose.
+
+@@q single | Session types
+Which statement about login sessions is correct?
+(+) Users can log in on a text console, a display manager or remotely with SSH; each makes a session tied to a terminal. :: Each appears in `who`.
+(-) Only one user can be logged in at a time, because the system has a single keyboard. :: Linux is multi-user.
+(-) Remote logins are impossible unless the machine runs a graphical desktop for the user who connects from outside. :: SSH works from text.
+(-) Sessions are not recorded anywhere, so the administrator cannot see who logged in. :: They are in `utmp` and `wtmp`.
+
+@@q single | Remote root login
+Why is it advisable to forbid `root` logins over SSH?
+(+) An attacker only has to guess one well-known user name, and actions are not tied to a person. :: Two barriers instead of one, with accountability.
+(-) Because root has no password, so anyone could connect to the machine as root. :: Root normally has one, or none for direct login.
+(-) Because SSH cannot handle the account with UID 0, and the connection would always fail at once for that user. :: It can.
+(-) Because root logins over the network are much slower than those of other users. :: Not a reason.
+
+@@q single | Finding brute force
+Which file on a Debian-based system would you search to see failed SSH login attempts?
+(+) `/var/log/auth.log` :: It records authentication events such as `Failed password for ... from IP`.
+(-) `/etc/ssh/ssh_config` :: Client configuration.
+(-) `/etc/shadow` :: Hashes, not events.
+(-) `/var/log/dpkg.log` :: Package operations.
+
+@@q single | Failed logins command
+Which command lists the failed login attempts recorded in `/var/log/btmp`?
+(+) `lastb` :: Needs root privileges.
+(-) `last` :: Successful logins.
+(-) `who` :: Current users.
+(-) `w` :: Current activity.
+
+@@q order | Investigating a suspicious login
+Put the steps in order to investigate unusual access to a machine.
+(>) See who is connected now with `who` or `w` :: The present state comes first.
+(>) Review the history with `last` :: Who logged in before, from where, and when.
+(>) Search `auth.log` for failed attempts and their addresses :: Find brute-force patterns.
+(>) Lock the affected account with `passwd -l` and change its password :: Act only after understanding the situation.
+
+@@group Startup files and the environment
+@@q sort | Which startup file
+@@buckets System-wide | Per user
+Decide for each file whether it applies to everybody or only to one user.
+(System-wide) `/etc/profile` :: Read by login shells of all users.
+(System-wide) `/etc/bash.bashrc` :: Interactive bash shells of all users (on Debian and Ubuntu).
+(Per user) `~/.bashrc` :: Your own interactive shells.
+(Per user) `~/.profile` :: Your own login shells.
+(Per user) `~/.bash_logout` :: Run when your login shell exits.
+(System-wide) `/etc/environment` :: Simple variable settings for all sessions.
+
+@@q single | Login and non-login shells
+What is a login shell?
+(+) The first shell of a session, started at login (console, SSH, `su -`), which reads the profile files. :: Different files for different situations.
+(-) Any shell that asks the user for a password before it lets them type commands. :: Not the definition.
+(-) A shell that is run as root, because only the administrator is able to log in to the system from the console. :: Root status is not involved.
+(-) A shell that runs scripts, which is started by the kernel without any user present. :: Scripts run in non-interactive shells.
+
+@@q single | Where to set PATH
+You want `~/bin` in your `PATH` for every login session. Where do you put `export PATH="$PATH:$HOME/bin"`?
+(+) In `~/.profile` (or `~/.bash_profile`), which a login shell reads once. :: Children inherit the exported variable.
+(-) In `/etc/passwd`, on the line of your account, after the name of the shell. :: That file is the account database.
+(-) In `~/.bash_history`, where the shell keeps the settings of the last session. :: That is a history file.
+(-) In a file inside `/tmp`, which every new session reads before it starts. :: Not read at login.
+
+@@q single | Aliases persistently
+Where does an alias definition usually go so that it is available in every new terminal?
+(+) `~/.bashrc` :: Read by interactive non-login shells; a login shell often sources it from `~/.profile`.
+(-) `~/.bash_logout` :: Run at logout.
+(-) `/etc/shadow` :: The password file.
+(-) `/etc/fstab` :: The mount table.
+
+@@q single | Reload without logging out
+You edited `~/.bashrc` and want the changes in the current terminal without opening a new one. Which command does it?
+(+) `source ~/.bashrc` :: It runs the file in the current shell.
+(-) `bash ~/.bashrc` :: That runs it in a child shell, which ends.
+(-) `./.bashrc` :: The file is not executable and would run in a child.
+(-) `exit` :: Closes the terminal.
+
+@@q single | The home directory
+What is the home directory of a user for?
+(+) It is the user's working area at login, holding their files and personal configuration (dot-files). :: `cd` without arguments returns there.
+(-) It holds the programs of the system, which every user needs in order to work. :: That is `/usr` and `/bin`.
+(-) It is shared among all the users of the machine, so that they can exchange files with each other easily. :: Each has their own.
+(-) It stores the password of the user, in the form of a hash that only root can read. :: That is in `/etc/shadow`.
+
+@@q fill | Variables of your identity
+The variable `{{HOME}}` holds your home directory and `{{USER}}` your login name.
+(x) PWD :: That holds the current directory.
+(x) SHELL :: That holds the path of your login shell, not your name.
+@@note
+`echo "$USER lives in $HOME"`.
+
+@@q single | Changing shell
+Which command changes the default login shell of your account?
+(+) `chsh` :: It updates the last field of your `/etc/passwd` entry.
+(-) `su` :: Switches user.
+(-) `cd` :: Changes directory.
+(-) `passwd -s` :: Shows status.
+
+@@group Mixed practice
+@@q fill | Identity of a user
+Show the numeric uid, gid and all groups of the user `luke`: `{{id}} luke`
+(x) whoami :: That prints only the name of the current user.
+(x) groups :: That prints only the group names, without the numbers.
+@@note
+`id -Gn luke` lists the group names only.
+
+@@q fill | Lock an account
+Lock the password of the account `temp` so no one can log in with it: `passwd {{-l}} temp`
+(x) -u :: That unlocks it.
+(x) -e :: That forces a password change at the next login.
+@@note
+Use `passwd -S temp` to see the status.
+
+@@q fill | Add to a group
+Add the existing user `luke` to the group `devs` without removing their other groups: `usermod {{-aG ;; -a -G ;; -Ga}} devs luke`
+(x) -G :: Without `-a` the other supplementary groups are replaced.
+(x) -g :: That changes the primary group instead.
+@@note
+Debian's `adduser luke devs` does the same.
+
+@@q sort | Readable by everyone or not
+@@buckets Readable by ordinary users | Restricted
+Who can normally read these files on a typical Debian system?
+(Readable by ordinary users) `/etc/passwd` :: Programs need it to map UIDs to names.
+(Readable by ordinary users) `/etc/group` :: Also needed for name lookups.
+(Restricted) `/etc/shadow` :: Holds the password hashes.
+(Restricted) `/etc/sudoers` :: Privilege rules, mode 0440.
+(Restricted) `/var/log/btmp` :: The failed-login records, readable only by root and a group.
+
+@@q multi | Fields of an account line
+Select the statements that are true about `alumno:x:1000:1000:Alumno,,,:/home/alumno:/bin/bash`.
+(+) The user id is 1000. :: Third field.
+(+) The home directory is `/home/alumno`. :: Sixth field.
+(+) The login shell is `/bin/bash`. :: Seventh field.
+(+) The password hash is not in this file. :: The `x` points to `/etc/shadow`.
+(-) The account is locked. :: A locked password shows `!` in shadow; nothing here says so.
+(-) The user is an administrator because the UID is 1000. :: Administrators are UID 0 or members of a group like `sudo`.
+
+@@q order | Give a colleague sudo rights
+Put the steps in order to let the user `ana` run commands as root with `sudo` on a Debian-like system.
+(>) `sudo usermod -aG sudo ana` :: Add the user to the administrators group.
+(>) Ask the user to log out and in again :: The group list is read at login.
+(>) The user runs `id` to check the group list :: `sudo` should now appear.
+(>) The user runs `sudo whoami` and sees `root` :: Proof that it works.
+
+@@q match | Session commands
+Match each command with what it shows or does.
+(=) `whoami` => Your effective user name :: Just the name.
+(=) `w` => Logged-in users and what each is running :: With load and idle time.
+(=) `last -n 5` => The last five logins, from the wtmp records :: The history.
+(=) `lastb` => Failed login attempts (as root) :: Reads btmp.
+(=) `su - luke` => A login shell as `luke`, after luke's password :: Starts a full login environment.
+(-) Shows the hashed passwords :: No such command; they are in `/etc/shadow`.

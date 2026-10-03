@@ -1,0 +1,69 @@
+@@script s55 | uniqlines | Distinct lines | uniqlines.sh
+@@level 3
+@@tags text, pipes, files
+@@cmds sort -u, wc -l, associative arrays, sort -k, shift, exit codes
+@@fixture
+setup() {
+  mkfl words.txt "pear" "apple" "pear" "fig" "apple" "pear" "kiwi"
+  mkfl one.txt "same" "same" "same"; : > empty.txt; echo x > locked.txt; chmod 000 locked.txt; mkdir adir
+}
+usage_ok() { [[ $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* || $ERR == *uniqlines.sh* ]]; }
+@@step 1 | Sorted and distinct
+@@readme
+Write `uniqlines.sh FILE`. It prints the lines of `FILE` sorted, each one **only once** (`sort -u`).
+@@check
+ARGS=('words.txt' 'one.txt' 'empty.txt')
+COMPARE="stdout exit"
+@@solution
+#!/bin/bash
+sort -u "$1"
+@@step 2 | How many
+@@readme
+After the lines print `Distinct: N` (how many different lines there are; 0 for an empty file).
+@@check
+ARGS=('words.txt' 'one.txt' 'empty.txt')
+COMPARE="stdout exit"
+@@solution
+#!/bin/bash
+sort -u "$1"
+echo "Distinct: $(sort -u "$1" | wc -l)"
+@@step 3 | Check the file
+@@readme
+Not exactly one argument → error message **and the correct usage** (e.g. `Usage: uniqlines.sh file`), exit **1**; the argument is not a readable regular file → error with its name, exit **2**.
+@@check
+ARGS=('words.txt' 'empty.txt' '' 'words.txt one.txt' 'nothing.txt' 'adir' 'locked.txt')
+COMPARE="stdout exit errmsg"
+extra_check() {
+  [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }
+  [[ $REF_CODE == 2 ]] && mentions "$(eval "set -- $CASE"; echo "$1")"
+}
+@@solution
+#!/bin/bash
+if (( $# != 1 )); then echo "Error: one file is needed" >&2; echo "Usage: $0 file" >&2; exit 1; fi
+[[ -f $1 && -r $1 ]] || { echo "Error: cannot read $1" >&2; exit 2; }
+sort -u "$1"
+echo "Distinct: $(sort -u "$1" | wc -l)"
+@@step 4 | Count the repetitions
+@@readme
+With `-c` as the **first** argument, print `COUNT LINE` for each distinct line instead (how many times it appears, a space, the line), the most repeated first and, for the same count, alphabetically; the `Distinct: N` line stays at the end. `-c` alone is the usage error.
+@@check
+ARGS=('words.txt' '-c words.txt' '-c one.txt' '-c empty.txt' '-c' '' '-c nothing.txt' 'nothing.txt' '-c locked.txt')
+COMPARE="stdout exit errmsg"
+extra_check() {
+  [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }
+  [[ $REF_CODE == 2 ]] && mentions "$(eval "set -- $CASE"; echo "${@: -1}")"
+}
+@@solution
+#!/bin/bash
+count=
+if [[ $1 == -c ]]; then count=1; shift; fi
+if (( $# != 1 )); then echo "Error: one file is needed" >&2; echo "Usage: $0 [-c] file" >&2; exit 1; fi
+[[ -f $1 && -r $1 ]] || { echo "Error: cannot read $1" >&2; exit 2; }
+if [[ -n $count ]]; then
+  declare -A n
+  while IFS= read -r l; do n[$l]=$(( ${n[$l]:-0} + 1 )); done < "$1"
+  for l in "${!n[@]}"; do echo "${n[$l]} $l"; done | sort -k1,1nr -k2
+else
+  sort -u "$1"
+fi
+echo "Distinct: $(sort -u "$1" | wc -l)"

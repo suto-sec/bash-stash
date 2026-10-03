@@ -1,0 +1,93 @@
+@@script s26 | rotate | Rotating a log | rotate.sh
+@@level 4
+@@tags files, copy and move, loops
+@@cmds cp, mv, rm -f, for ((;;)), test -e, exit codes
+@@fixture
+setup() {
+  echo "log a" > a.log
+  echo "log b" > b.log; echo "b1" > b.log.1
+  echo "log c" > c.log; echo "c1" > c.log.1; echo "c2" > c.log.2; echo "c3" > c.log.3; echo "c4" > c.log.4
+  echo "log d" > "my d.log"; echo "d1" > "my d.log.1"; mkdir adir
+}
+usage_ok() { [[ $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* || $ERR == *rotate.sh* ]]; }
+@@step 1 | One copy
+@@readme
+Write `rotate.sh FILE`. It copies `FILE` to `FILE.1` (replacing it if it exists), then **empties** `FILE` (it stays as an empty file) and prints `Rotated FILE`.
+
+`cp -- file file.1` and `: > file`.
+@@check
+ARGS=('a.log' 'b.log' '"my d.log"')
+COMPARE="stdout exit files"
+@@solution
+#!/bin/bash
+cp -- "$1" "$1.1"
+: > "$1"
+echo "Rotated $1"
+@@step 2 | Shift the older copies
+@@readme
+Older copies must not be lost: before copying, `FILE.1` becomes `FILE.2`, `FILE.2` becomes `FILE.3`, and so on for as many numbered copies as exist (start from the **highest** one, or they overwrite each other). Then `FILE` is copied to `FILE.1` and emptied as before.
+@@check
+ARGS=('a.log' 'b.log' 'c.log' '"my d.log"')
+COMPARE="stdout exit files"
+@@solution
+#!/bin/bash
+n=1
+while [[ -e $1.$n ]]; do n=$((n + 1)); done
+for ((i = n - 1; i >= 1; i--)); do
+  mv -- "$1.$i" "$1.$((i + 1))"
+done
+cp -- "$1" "$1.1"
+: > "$1"
+echo "Rotated $1"
+@@step 3 | Keep only a few
+@@readme
+Only the newest copies are kept: an optional second argument `KEEP` (default **3**) is the highest number a copy may have. Before shifting, delete every `FILE.N` with `N >= KEEP`, so after the rotation the numbered copies are `FILE.1` to `FILE.KEEP`. `KEEP` is a positive integer.
+@@check
+ARGS=('a.log' 'c.log' 'c.log 2' 'c.log 1' 'c.log 10' 'b.log 5' '"my d.log" 2')
+COMPARE="stdout exit files"
+@@solution
+#!/bin/bash
+keep=${2:-3}
+for g in "$1".[0-9]*; do
+  [[ -e $g ]] || continue
+  n=${g##*.}
+  [[ $n =~ ^[0-9]+$ ]] && (( n >= keep )) && rm -f -- "$g"
+done
+n=1
+while [[ -e $1.$n ]]; do n=$((n + 1)); done
+for ((i = n - 1; i >= 1; i--)); do
+  mv -- "$1.$i" "$1.$((i + 1))"
+done
+cp -- "$1" "$1.1"
+: > "$1"
+echo "Rotated $1"
+@@step 4 | Check the arguments
+@@readme
+Checks, in this order, before touching anything: not one or two arguments → error message **and the correct usage** (e.g. `Usage: rotate.sh file [keep]`), exit **1**; `FILE` is not a regular file → error with its name, exit **2**; `KEEP` is not a positive integer → error that includes it, exit **3**.
+@@check
+ARGS=('a.log' 'c.log 2' '"my d.log"' '' 'a.log 2 3' 'nothing.log' 'adir' 'a.log 0' 'a.log x' 'nothing.log x')
+COMPARE="stdout exit errmsg files"
+extra_check() {
+  [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }
+  [[ $REF_CODE == 2 ]] && mentions "$(eval "set -- $CASE"; echo "$1")"
+  [[ $REF_CODE == 3 ]] && mentions "$(eval "set -- $CASE"; echo "$2")"
+}
+@@solution
+#!/bin/bash
+if (( $# < 1 || $# > 2 )); then echo "Error: wrong number of arguments" >&2; echo "Usage: $0 file [keep]" >&2; exit 1; fi
+[[ -f $1 ]] || { echo "Error: $1 is not a regular file" >&2; exit 2; }
+keep=${2:-3}
+[[ $keep =~ ^[1-9][0-9]*$ ]] || { echo "Error: '$keep' is not a positive integer" >&2; exit 3; }
+for g in "$1".[0-9]*; do
+  [[ -e $g ]] || continue
+  n=${g##*.}
+  [[ $n =~ ^[0-9]+$ ]] && (( n >= keep )) && rm -f -- "$g"
+done
+n=1
+while [[ -e $1.$n ]]; do n=$((n + 1)); done
+for ((i = n - 1; i >= 1; i--)); do
+  mv -- "$1.$i" "$1.$((i + 1))"
+done
+cp -- "$1" "$1.1"
+: > "$1"
+echo "Rotated $1"

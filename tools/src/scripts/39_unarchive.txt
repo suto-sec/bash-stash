@@ -1,0 +1,74 @@
+@@script s39 | unarchive | Extracting an archive | unarchive.sh
+@@level 4
+@@tags archives, files, exit codes
+@@cmds tar xzf -C, tar tzf, mkdir -p, test -d, exit codes
+@@fixture
+setup() {
+  mkdir -p src/docs/sub; echo a > src/docs/a.txt; echo b > "src/docs/two words.txt"; echo c > src/docs/sub/c.txt
+  tar czf docs.tgz -C src docs; tar czf docs2.tar.gz -C src docs; rm -rf src
+  echo "just text" > notes.txt; echo "not really gzip" > fake.tgz
+  mkdir emptyout fullout; echo x > fullout/old.txt; echo x > notanarchive.txt
+}
+usage_ok() { [[ $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* || $ERR == *unarchive.sh* ]]; }
+@@step 1 | Extract into a directory
+@@readme
+Write `unarchive.sh ARCHIVE DEST`. It extracts the gzip tar archive `ARCHIVE` into the existing directory `DEST` and prints `Extracted N entries`, where N is the number of entries the archive lists (`tar tzf archive | wc -l`: files and directories).
+@@check
+ARGS=('docs.tgz emptyout' 'docs2.tar.gz emptyout' 'docs.tgz fullout')
+COMPARE="stdout exit files"
+@@solution
+#!/bin/bash
+tar xzf "$1" -C "$2"
+echo "Extracted $(tar tzf "$1" | wc -l) entries"
+@@step 2 | Create the directory
+@@readme
+If `DEST` does not exist, create it and print exactly `Directory DEST created` (with `DEST` as it was given) before the `Extracted` line. `DEST` becomes optional: by default it is `extracted` (in the current directory).
+@@check
+ARGS=('docs.tgz emptyout' 'docs.tgz newdir' 'docs.tgz "my new dir"' 'docs.tgz' 'docs2.tar.gz fullout')
+COMPARE="stdout exit files"
+@@solution
+#!/bin/bash
+dest=${2:-extracted}
+if [[ ! -d $dest ]]; then mkdir -p "$dest"; echo "Directory $dest created"; fi
+tar xzf "$1" -C "$dest"
+echo "Extracted $(tar tzf "$1" | wc -l) entries"
+@@step 3 | Check the archive
+@@readme
+Checks, in this order, before creating anything: one or two arguments, otherwise error message **and the correct usage** (e.g. `Usage: unarchive.sh archive [dest]`), exit **1**; `ARCHIVE` is not a regular file → error with its name, exit **2**; its name does not end in `.tgz` or `.tar.gz` → error with its name, exit **3**.
+@@check
+ARGS=('docs.tgz emptyout' 'docs.tgz' '' 'docs.tgz emptyout fullout' 'nothing.tgz' 'adir.tgz' 'notanarchive.txt' 'notes.txt newdir' 'nothing.txt')
+COMPARE="stdout exit errmsg files"
+extra_check() {
+  [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }
+  [[ $REF_CODE == [23] ]] && mentions "$(eval "set -- $CASE"; echo "$1")"
+}
+@@solution
+#!/bin/bash
+if (( $# < 1 || $# > 2 )); then echo "Error: wrong number of arguments" >&2; echo "Usage: $0 archive [dest]" >&2; exit 1; fi
+[[ -f $1 ]] || { echo "Error: $1 is not a regular file" >&2; exit 2; }
+case $1 in *.tgz|*.tar.gz) ;; *) echo "Error: $1 is not a .tgz or .tar.gz archive" >&2; exit 3 ;; esac
+dest=${2:-extracted}
+if [[ ! -d $dest ]]; then mkdir -p "$dest"; echo "Directory $dest created"; fi
+tar xzf "$1" -C "$dest"
+echo "Extracted $(tar tzf "$1" | wc -l) entries"
+@@step 4 | Never mix with old files
+@@readme
+If `DEST` already exists and is **not empty**, extract nothing: print an error message that includes `DEST` on standard error and exit with code **4**. An existing **empty** directory is fine. (`ls -A dir` lists hidden entries too, and prints nothing for an empty directory.)
+@@check
+ARGS=('docs.tgz emptyout' 'docs.tgz fullout' 'docs.tgz newdir' 'docs2.tar.gz' 'docs.tgz' '' 'nothing.tgz' 'notanarchive.txt')
+COMPARE="stdout exit errmsg files"
+extra_check() {
+  [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }
+  [[ $REF_CODE == [23] ]] && mentions "$(eval "set -- $CASE"; echo "$1")"
+  [[ $REF_CODE == 4 ]] && mentions "$(eval "set -- $CASE"; echo "${2:-extracted}")"
+}
+@@solution
+#!/bin/bash
+if (( $# < 1 || $# > 2 )); then echo "Error: wrong number of arguments" >&2; echo "Usage: $0 archive [dest]" >&2; exit 1; fi
+[[ -f $1 ]] || { echo "Error: $1 is not a regular file" >&2; exit 2; }
+case $1 in *.tgz|*.tar.gz) ;; *) echo "Error: $1 is not a .tgz or .tar.gz archive" >&2; exit 3 ;; esac
+dest=${2:-extracted}
+if [[ -d $dest && -n $(ls -A "$dest") ]]; then echo "Error: $dest is not empty" >&2; exit 4; fi
+if [[ ! -d $dest ]]; then mkdir -p "$dest"; echo "Directory $dest created"; fi
+tar xzf "$1" -C "$dest"
+echo "Extracted $(tar tzf "$1" | wc -l) entries"

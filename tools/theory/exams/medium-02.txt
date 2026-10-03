@@ -1,0 +1,87 @@
+@@exam medium-02 | Medium exam 2
+@@tier medium
+@@about
+Ten single-choice questions that combine two facts or ask you to trace two or three steps: exit codes, redirections, masks, file times and the keys of `less`.
+
+@@q single | Stop the script if the copy fails
+@@topic scripts
+A script must copy `a` to `b` and, only if the copy fails, print `copy failed` and end with exit status 2. Which snippet does it?
+(-) `cp a b && { echo "copy failed"; exit 2; }` :: The block after `&&` runs when `cp` succeeds, the opposite of what is wanted.
+(-) `cp a b; echo "copy failed"; exit 2` :: With `;` the message and the `exit 2` run always, even when the copy worked.
+(+) `cp a b || { echo "copy failed"; exit 2; }` :: The block after `||` runs only when `cp` returns a non-zero status.
+(-) `cp a b | echo "copy failed"; exit 2` :: The pipe does not test anything: `echo` runs anyway, and so does `exit 2`.
+
+@@q single | Showing a password hash
+@@topic users-sessions
+You are the normal user `ana`, who is allowed to use `sudo`. Which command shows the line of `/etc/shadow` that holds the password hash of `ana`?
+(-) `grep '^ana:' /etc/shadow` :: `/etc/shadow` is readable only by root, so this fails with "Permission denied".
+(-) `grep '^ana:' /etc/passwd` :: This line has an `x` in the password field: the hash is not stored there.
+(+) `sudo grep '^ana:' /etc/shadow` :: `sudo` runs `grep` as root, who can read the file.
+(-) `grep '^ana:' /etc/group` :: `/etc/group` lists groups and their members; it has no passwords of users.
+
+@@q single | Searching inside less
+@@topic shell-help
+You open a long file with `less`. The word `main` appears on lines 12, 80 and 140 only. You press `G`, then type `50g`, then type `/main` and Enter. Where are you?
+(-) On line 12, the first line that contains `main`. :: A forward search starts at the current position, not at the top of the file.
+(+) On line 80, the first match after line 50. :: `G` goes to the end, `50g` jumps to line 50, and `/` searches forward from there.
+(-) On line 140, the last match, because you pressed `G` first. :: The `50g` moved you back to line 50 before the search.
+(-) On line 50, because `50g` has fixed the position. :: `/main` then moves to the next line that contains the word.
+
+@@q single | Two sed in a pipe
+@@topic filters
+What does this print?
+```
+printf 'one two\ntwo two\nthree\n' | sed 's/two/2/' | sed '/three/d'
+```
+(-) `one 2`, `2 2` :: Without the `g` flag only the first `two` of each line changes.
+(+) `one 2`, `2 two` :: The first `sed` replaces the first `two` of every line and the second one deletes the `three` line.
+(-) `one 2`, `2 two`, `three` :: The `d` command deletes the lines that contain `three`.
+(-) `one two`, `two two` :: The first `sed` changes the lines; the second one does not undo that.
+
+@@q single | At the GRUB prompt
+@@topic boot-systemd
+At the `grub>` prompt you want to hand control to the boot loader of a Windows installation, instead of loading a Linux kernel. Which command does that, after the right partition has been selected?
+(-) `linux +1` :: `linux` loads a Linux kernel image; it cannot start another loader.
+(-) `initrd +1` :: `initrd` loads the initial RAM disk of a Linux kernel.
+(+) `chainloader +1` :: Chain loading passes control to the loader found in the first sector of the selected partition.
+(-) `set root=(hd0,2)` :: That only selects the partition; nothing is started until `chainloader` and `boot`.
+
+@@q single | The order of the redirections
+@@topic redirection-pipes
+`ls /nope /etc/hostname 2>&1 > f | wc -l` is run. What happens?
+(-) It prints `0`, and `f` contains the error message and the listing. :: Redirections are read from left to right, so the error does not follow the output to the file.
+(-) It prints `2`, and `f` is empty. :: The listing goes to `f`: stdout was redirected there after `2>&1`.
+(+) It prints `1`, and `f` contains the listing of `/etc/hostname`. :: `2>&1` copied stdout, which was the pipe, so the error goes to `wc`; then `> f` sends only stdout to the file.
+(-) It prints `1`, and `f` contains the error message. :: It is the other way round: the error goes through the pipe and the listing to the file.
+
+@@q single | Default permissions with umask 022
+@@topic permissions
+With `umask 022`, which statement is FALSE?
+(-) `mkdir d` creates a directory with the mode `rwxr-xr-x`. :: True: 777 minus 022 is 755.
+(-) `touch f` creates a file with the mode `rw-r--r--`. :: True: files start from 666, so the result is 644.
+(+) `touch f` creates a file with the mode `rwxr-xr-x`, as the directories. :: False: new regular files are not created with execute permission; they get 644.
+(-) The group and the others cannot write in the new files and directories. :: True: 022 removes `w` for the group and for the others.
+
+@@q single | Classifying processes
+@@topic jobs-procs
+Which statement about the types of process is FALSE?
+(-) A command typed in a shell and run with `&` is still an interactive process. :: True: it belongs to the shell, in the background.
+(-) A script started by the scheduler at 03:00 is a batch process. :: True: it was planned for a given moment.
+(-) `cron` is a daemon. :: True: it works in the background doing a task of the system.
+(+) A daemon stops when the user who started it closes the terminal. :: False: daemons are not tied to a user's terminal; they run for the system.
+
+@@q single | Modification time only
+@@topic files-fs
+`notes.txt` has an old access time and an old modification time. Which command changes only its modification time to now?
+(-) `touch -a notes.txt` :: `-a` changes the access time only.
+(-) `touch notes.txt` :: Without options both times are updated.
+(+) `touch -m notes.txt` :: `-m` changes the modification time only.
+(-) `touch -c notes.txt` :: `-c` means "do not create the file if it does not exist"; the times are updated as usual, both.
+
+@@q single | Numbers in text and in arithmetic
+@@topic expansion-vars
+What does `a=2; b=3; echo $a+$b $((a+b)) $(($a*$b))` print?
+(-) `5 5 6` :: `$a+$b` is not arithmetic: the shell just puts the two texts around a `+`.
+(-) `2+3 5 23` :: Inside `$(( ))` the `*` multiplies, it does not join the texts.
+(-) `2+3 23 6` :: Inside `$(( ))` the `+` adds the numbers.
+(+) `2+3 5 6` :: Only `$(( ))` does arithmetic; variables are strings otherwise, and inside it `a` and `$a` are the same variable.

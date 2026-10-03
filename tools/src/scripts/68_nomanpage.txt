@@ -1,0 +1,106 @@
+@@script s68 | nomanpage | Commands without a manual page | nomanpage.sh
+@@level 3
+@@tags files, exit codes, tests
+@@cmds ls, test -e -d -f, for, case, shift, exit codes
+@@fixture
+setup() {
+  mkdir -p bin man/man1 empty "my bin" noman
+  local c
+  for c in ls cat grep sort cut tr; do echo "#!/bin/sh" > "bin/$c"; touch "man/man1/$c.1.gz"; done
+  for c in mytool helper-x backup2 python3.11; do echo "#!/bin/sh" > "bin/$c"; done
+  touch "man/man1/helper.1.gz" "man/man1/python3.11.1.gz"
+  echo x > "my bin/two words"; echo x > "my bin/ls"; touch "man/man1/ls.1.gz"
+  echo x > notadir.txt
+}
+usage_ok() { [[ $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* || $ERR == *nomanpage.sh* ]]; }
+@@step 1 | List the commands without a page
+@@readme
+In the lab the manual pages of section 1 live in files called `NAME.1.gz` (for `ls`: `ls.1.gz`) inside one directory. Write `nomanpage.sh BINDIR MANDIR`. It prints, one per line and **sorted**, the name of every entry of `BINDIR` that has **no** file `MANDIR/NAME.1.gz`. Names may contain spaces and dots.
+
+Example: if `bin` holds `ls cat tool` and `man` holds `ls.1.gz cat.1.gz`, the output is `tool`.
+@@check
+ARGS=('bin man/man1' '"my bin" man/man1' 'empty man/man1' 'bin noman')
+COMPARE="stdout exit"
+@@solution
+#!/bin/bash
+while IFS= read -r f; do
+  [[ -e $2/$f.1.gz ]] || echo "$f"
+done < <(ls "$1")
+@@step 2 | The usual checks
+@@readme
+Checks, in this order:
+
+- not exactly two arguments → an error message **and the correct usage** (e.g. `Usage: nomanpage.sh bindir mandir`) and exit **1**;
+- `BINDIR` or `MANDIR` does not exist → an error message with its name and exit **2** (check `BINDIR` first);
+- `BINDIR` or `MANDIR` exists but is not a directory → an error message with its name and exit **3** (again `BINDIR` first).
+
+Everything else stays as before.
+@@check
+ARGS=('bin man/man1' '"my bin" man/man1' 'empty man/man1' '' 'bin' 'bin man/man1 noman' 'nothing man/man1' 'bin nothing' 'notadir.txt man/man1' 'bin notadir.txt')
+COMPARE="stdout exit errmsg"
+extra_check() {
+  [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }
+  if [[ $REF_CODE == [23] ]]; then
+    local bad; bad=$(cd "$W"; eval "set -- $CASE"; if [[ $REF_CODE == 2 ]]; then [[ -e $1 ]] && echo "$2" || echo "$1"; else [[ -d $1 ]] && echo "$2" || echo "$1"; fi)
+    mentions "$bad"
+  fi
+}
+@@solution
+#!/bin/bash
+if (( $# != 2 )); then echo "Error: two arguments needed" >&2; echo "Usage: $0 bindir mandir" >&2; exit 1; fi
+for d in "$1" "$2"; do [[ -e $d ]] || { echo "Error: $d does not exist" >&2; exit 2; }; done
+for d in "$1" "$2"; do [[ -d $d ]] || { echo "Error: $d is not a directory" >&2; exit 3; }; done
+while IFS= read -r f; do
+  [[ -e $2/$f.1.gz ]] || echo "$f"
+done < <(ls "$1")
+@@step 3 | Count them
+@@readme
+After the names print one last line `N commands without a manual page` (with N = how many names were printed; also `0 commands…` when every command has a page).
+@@check
+ARGS=('bin man/man1' '"my bin" man/man1' 'empty man/man1' '' 'nothing man/man1' 'notadir.txt man/man1' 'bin noman')
+COMPARE="stdout exit errmsg"
+extra_check() {
+  [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }
+  if [[ $REF_CODE == [23] ]]; then
+    local bad; bad=$(cd "$W"; eval "set -- $CASE"; if [[ $REF_CODE == 2 ]]; then [[ -e $1 ]] && echo "$2" || echo "$1"; else [[ -d $1 ]] && echo "$2" || echo "$1"; fi)
+    mentions "$bad"
+  fi
+}
+@@solution
+#!/bin/bash
+if (( $# != 2 )); then echo "Error: two arguments needed" >&2; echo "Usage: $0 bindir mandir" >&2; exit 1; fi
+for d in "$1" "$2"; do [[ -e $d ]] || { echo "Error: $d does not exist" >&2; exit 2; }; done
+for d in "$1" "$2"; do [[ -d $d ]] || { echo "Error: $d is not a directory" >&2; exit 3; }; done
+n=0
+while IFS= read -r f; do
+  [[ -e $2/$f.1.gz ]] || { echo "$f"; n=$((n + 1)); }
+done < <(ls "$1")
+echo "$n commands without a manual page"
+@@step 4 | Only the number
+@@readme
+With `-c` as the **first** argument print only the number N (nothing else), e.g. `nomanpage.sh -c bin man/man1` prints `4`. The other arguments and all the checks are the same as without `-c` (with `-c`, "two arguments" means two besides the `-c`).
+@@check
+ARGS=('bin man/man1' '-c bin man/man1' '-c "my bin" man/man1' '-c empty man/man1' '-c bin' '-c' '-c nothing man/man1' '-c bin notadir.txt' '"my bin" man/man1' 'nothing man/man1')
+COMPARE="stdout exit errmsg"
+extra_check() {
+  [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }
+  if [[ $REF_CODE == [23] ]]; then
+    local bad; bad=$(cd "$W"; eval "set -- $CASE"; [[ $1 == -c ]] && shift; if [[ $REF_CODE == 2 ]]; then [[ -e $1 ]] && echo "$2" || echo "$1"; else [[ -d $1 ]] && echo "$2" || echo "$1"; fi)
+    mentions "$bad"
+  fi
+}
+@@solution
+#!/bin/bash
+only=
+if [[ $1 == -c ]]; then only=1; shift; fi
+if (( $# != 2 )); then echo "Error: two arguments needed" >&2; echo "Usage: $0 [-c] bindir mandir" >&2; exit 1; fi
+for d in "$1" "$2"; do [[ -e $d ]] || { echo "Error: $d does not exist" >&2; exit 2; }; done
+for d in "$1" "$2"; do [[ -d $d ]] || { echo "Error: $d is not a directory" >&2; exit 3; }; done
+n=0
+while IFS= read -r f; do
+  if [[ ! -e $2/$f.1.gz ]]; then
+    n=$((n + 1))
+    [[ -n $only ]] || echo "$f"
+  fi
+done < <(ls "$1")
+if [[ -n $only ]]; then echo "$n"; else echo "$n commands without a manual page"; fi

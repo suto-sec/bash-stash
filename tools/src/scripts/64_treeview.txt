@@ -1,0 +1,99 @@
+@@script s64 | treeview | A tree view | treeview.sh
+@@level 4
+@@tags files, find, loops
+@@cmds find -mindepth, sort, ${var#prefix}, tr -cd /, wc -c, test -d, exit codes
+@@fixture
+setup() {
+  mkdir -p proj/src/deep proj/docs empty; echo a > proj/readme.txt; echo b > proj/src/main.c; echo c > proj/src/deep/util.c; echo d > proj/docs/guide.md
+  echo e > proj/zeta.txt; mkdir proj/assets; echo x > notadir.txt
+}
+usage_ok() { [[ $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* || $ERR == *treeview.sh* ]]; }
+@@step 1 | Indented names
+@@readme
+Write `treeview.sh DIR`. It prints every entry below `DIR` (files and directories, any depth), **sorted by path** (as `sort` orders the paths found by `find`), each one on its own line: the **name only**, preceded by **two spaces for each level** below `DIR` (entries directly inside `DIR` have no indentation).
+
+```
+assets
+docs
+  guide.md
+```
+
+`rel=${p#"$1"/}` is the path relative to `DIR`; `tr -cd / <<< "$rel" | wc -c` counts its slashes (the depth); `${rel##*/}` is the name.
+@@check
+ARGS=('proj' 'empty' 'proj/src')
+COMPARE="stdout exit"
+@@solution
+#!/bin/bash
+while IFS= read -r p; do
+  rel=${p#"$1"/}
+  depth=$(tr -cd / <<< "$rel" | wc -c)
+  printf '%*s%s\n' $((depth * 2)) '' "${rel##*/}"
+done < <(find "$1" -mindepth 1 | sort)
+@@step 2 | Mark the directories
+@@readme
+Directories get a `/` at the end of their name (`docs/`, `deep/`).
+@@check
+ARGS=('proj' 'empty' 'proj/src')
+COMPARE="stdout exit"
+@@solution
+#!/bin/bash
+while IFS= read -r p; do
+  rel=${p#"$1"/}
+  depth=$(tr -cd / <<< "$rel" | wc -c)
+  name=${rel##*/}
+  [[ -d $p ]] && name+=/
+  printf '%*s%s\n' $((depth * 2)) '' "$name"
+done < <(find "$1" -mindepth 1 | sort)
+@@step 3 | Check the directory
+@@readme
+Not exactly one argument → error message **and the correct usage** (e.g. `Usage: treeview.sh dir`), exit **1**; `DIR` does not exist → error with its name, exit **2**; not a directory → error with its name, exit **3**.
+@@check
+ARGS=('proj' 'empty' '' 'proj empty' 'nothing' 'notadir.txt')
+COMPARE="stdout exit errmsg"
+extra_check() {
+  [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }
+  [[ $REF_CODE == [23] ]] && mentions "$(eval "set -- $CASE"; echo "$1")"
+}
+@@solution
+#!/bin/bash
+if (( $# != 1 )); then echo "Error: one directory is needed" >&2; echo "Usage: $0 dir" >&2; exit 1; fi
+[[ -e $1 ]] || { echo "Error: $1 does not exist" >&2; exit 2; }
+[[ -d $1 ]] || { echo "Error: $1 is not a directory" >&2; exit 3; }
+while IFS= read -r p; do
+  rel=${p#"$1"/}
+  depth=$(tr -cd / <<< "$rel" | wc -c)
+  name=${rel##*/}
+  [[ -d $p ]] && name+=/
+  printf '%*s%s\n' $((depth * 2)) '' "$name"
+done < <(find "$1" -mindepth 1 | sort)
+@@step 4 | Limit the depth
+@@readme
+`treeview.sh -d N DIR` shows only the entries up to `N` levels below `DIR` (`-d 1` = only what is directly inside). `N` must be a positive integer, otherwise an error that includes it and exit code **4**; `-d` needs `N` and `DIR` (otherwise the usage error).
+@@check
+ARGS=('proj' '-d 1 proj' '-d 2 proj' '-d 9 proj' '-d 1 empty' '-d 0 proj' '-d x proj' '-d' '-d 2' '' 'nothing' '-d 2 nothing' '-d x nothing')
+COMPARE="stdout exit errmsg"
+extra_check() {
+  [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }
+  [[ $REF_CODE == [23] ]] && mentions "$(eval "set -- $CASE"; echo "${@: -1}")"
+  [[ $REF_CODE == 4 ]] && mentions "$(eval "set -- $CASE"; echo "$2")"
+}
+@@solution
+#!/bin/bash
+max=
+if [[ $1 == -d ]]; then
+  if (( $# != 3 )); then echo "Error: -d needs a number and a directory" >&2; echo "Usage: $0 [-d N] dir" >&2; exit 1; fi
+  max=$2; shift 2
+fi
+if (( $# != 1 )); then echo "Error: one directory is needed" >&2; echo "Usage: $0 [-d N] dir" >&2; exit 1; fi
+[[ -e $1 ]] || { echo "Error: $1 does not exist" >&2; exit 2; }
+[[ -d $1 ]] || { echo "Error: $1 is not a directory" >&2; exit 3; }
+if [[ -n $max && ! $max =~ ^[1-9][0-9]*$ ]]; then echo "Error: '$max' is not a positive integer" >&2; exit 4; fi
+while IFS= read -r p; do
+  rel=${p#"$1"/}
+  depth=$(tr -cd / <<< "$rel" | wc -c)
+  [[ -n $max ]] && (( depth + 1 > max )) && continue
+  name=${rel##*/}
+  [[ -d $p ]] && name+=/
+  printf '%*s%s\n' $((depth * 2)) '' "$name"
+done < <(find "$1" -mindepth 1 | sort)
+exit 0

@@ -1,0 +1,73 @@
+@@script s18 | tailn | The last lines | tailn.sh
+@@level 3
+@@tags text, files, arguments
+@@cmds tail -n, test, regular expressions [[ =~ ]], exit codes
+@@fixture
+setup() {
+  local i
+  for ((i = 1; i <= 20; i++)); do echo "line $i $(word)"; done > long.txt
+  for ((i = 1; i <= 3; i++)); do echo "short $i"; done > short.txt
+  : > empty.txt; echo x > locked.txt; chmod 000 locked.txt; mkdir adir
+}
+usage_ok() { [[ $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* || $ERR == *tailn.sh* ]]; }
+@@step 1 | The last five
+@@readme
+Write `tailn.sh FILE`. It prints the **last 5 lines** of `FILE` (all of them if the file has fewer): `tail -n 5 file`.
+@@check
+ARGS=('long.txt' 'short.txt' 'empty.txt')
+COMPARE="stdout exit"
+@@solution
+#!/bin/bash
+tail -n 5 "$1"
+@@step 2 | Check the file
+@@readme
+Checks: not exactly one argument → error message **and the correct usage** (e.g. `Usage: tailn.sh file`), exit **1**; not a readable regular file → error with its name, exit **2**.
+@@check
+ARGS=('long.txt' 'short.txt' '' 'long.txt short.txt' 'nothing.txt' 'adir' 'locked.txt')
+COMPARE="stdout exit errmsg"
+extra_check() {
+  [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }
+  [[ $REF_CODE == 2 ]] && mentions "$(eval "set -- $CASE"; echo "$1")"
+}
+@@solution
+#!/bin/bash
+if (( $# != 1 )); then echo "Error: one file is needed" >&2; echo "Usage: $0 file" >&2; exit 1; fi
+[[ -f $1 && -r $1 ]] || { echo "Error: cannot read $1" >&2; exit 2; }
+tail -n 5 "$1"
+@@step 3 | Your own N
+@@readme
+An optional second argument `N` replaces the 5. It must be a positive integer (digits only, at least 1): otherwise an error message that includes it and exit code **3**. One or two arguments are valid. The file checks come first.
+@@check
+ARGS=('long.txt' 'long.txt 2' 'long.txt 30' 'short.txt 1' '' 'long.txt 2 3' 'nothing.txt 2' 'long.txt 0' 'long.txt x' 'nothing.txt x' 'long.txt -1')
+COMPARE="stdout exit errmsg"
+extra_check() {
+  [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }
+  [[ $REF_CODE == 2 ]] && mentions "$(eval "set -- $CASE"; echo "$1")"
+  [[ $REF_CODE == 3 ]] && mentions "$(eval "set -- $CASE"; echo "$2")"
+}
+@@solution
+#!/bin/bash
+if (( $# < 1 || $# > 2 )); then echo "Error: wrong number of arguments" >&2; echo "Usage: $0 file [N]" >&2; exit 1; fi
+[[ -f $1 && -r $1 ]] || { echo "Error: cannot read $1" >&2; exit 2; }
+n=${2:-5}
+[[ $n =~ ^[1-9][0-9]*$ ]] || { echo "Error: '$n' is not a positive integer" >&2; exit 3; }
+tail -n "$n" "$1"
+@@step 4 | A header line
+@@readme
+Before the lines print `== FILE: last N lines ==` (with the file name and the value of `N` actually asked for, 5 by default). It is printed also for an empty file.
+@@check
+ARGS=('long.txt' 'long.txt 2' 'short.txt 10' 'empty.txt' '' 'nothing.txt' 'long.txt x')
+COMPARE="stdout exit errmsg"
+extra_check() {
+  [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }
+  [[ $REF_CODE == 2 ]] && mentions "$(eval "set -- $CASE"; echo "$1")"
+  [[ $REF_CODE == 3 ]] && mentions "$(eval "set -- $CASE"; echo "$2")"
+}
+@@solution
+#!/bin/bash
+if (( $# < 1 || $# > 2 )); then echo "Error: wrong number of arguments" >&2; echo "Usage: $0 file [N]" >&2; exit 1; fi
+[[ -f $1 && -r $1 ]] || { echo "Error: cannot read $1" >&2; exit 2; }
+n=${2:-5}
+[[ $n =~ ^[1-9][0-9]*$ ]] || { echo "Error: '$n' is not a positive integer" >&2; exit 3; }
+echo "== $1: last $n lines =="
+tail -n "$n" "$1"

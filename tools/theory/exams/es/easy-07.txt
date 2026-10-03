@@ -1,0 +1,73 @@
+@@exam easy-07 | Examen fácil 7
+@@about
+Diez preguntas de respuesta única sobre lo básico: un concepto en cada una, con las típicas opciones parecidas.
+
+@@q single | find y permisos
+¿Qué lista `find . -type f -perm 644`?
+(-) Los ficheros que tienen al menos los permisos `rw-r--r--`, aunque tengan más. :: Eso es `-perm -644`, con un signo menos antes del modo.
+(-) Los ficheros que tienen alguno de los permisos `rw-r--r--`. :: Eso es `-perm /644`, con una barra antes del modo.
+(+) Los ficheros regulares cuyos permisos son exactamente `rw-r--r--`. :: Un modo sin prefijo debe coincidir exactamente.
+(-) Los ficheros regulares que pertenecen al usuario llamado `644`. :: El dueño se selecciona con `-user`; `-perm` compara los bits de permisos.
+
+@@q single | Pruebas numéricas
+¿Qué afirmación sobre `test` y `[ ]` es FALSA?
+(-) `[ 4 -le 4 ]` tiene éxito, con estado de salida 0, ya que 4 es igual a 4. :: Verdadero: 4 es menor o igual que 4.
+(-) `[ 3 -ne 5 ]` tiene éxito, con estado de salida 0, ya que son distintos. :: Verdadero: 3 y 5 son diferentes.
+(-) `[ 2 -gt 9 ]` falla, con estado de salida 1, ya que 2 es menor. :: Verdadero: 2 no es mayor que 9.
+(+) `[ 10 -lt 9 ]` tiene éxito, ya que `10` se ordena antes que `9`. :: Falso: `-lt` compara números, y 10 no es menor que 9, así que el estado es 1.
+
+@@q single | Clases de caracteres
+¿Qué línea coincide con `grep 'b[^ae]g'`?
+(-) `bag` :: La clase `[^ae]` excluye `a` y `e`.
+(-) `beg` :: La clase `[^ae]` excluye también la `e`.
+(+) `bug` :: `u` es un carácter que no es ni `a` ni `e`.
+(-) `bg` :: La clase necesita un carácter entre `b` y `g`; aquí no hay ninguno.
+
+@@q single | El final de un log
+¿Qué mandato muestra las últimas 20 líneas de `/var/log/syslog`?
+(-) `head -n 20 /var/log/syslog` :: `head` muestra las primeras líneas, no las últimas.
+(-) `tail -n+20 /var/log/syslog` :: Imprime desde la línea 20 hasta el final, sean cuantas sean.
+(-) `grep -c 20 /var/log/syslog` :: Cuenta las líneas que contienen el texto `20`.
+(+) `tail -n 20 /var/log/syslog` :: `tail -n N` imprime las últimas N líneas, que es donde están las entradas más recientes.
+
+@@q single | sed
+¿Qué afirmación sobre `sed` es FALSA?
+(-) `sed 's/-/+/g'` sustituye todos los guiones de cada línea. :: Verdadero: la bandera `g` significa todas las apariciones de la línea.
+(-) Sin la bandera `g`, `s/-/+/` sustituye solo el primer guion de cada línea. :: Verdadero.
+(-) `sed '/x/d'` imprime la entrada sin las líneas que contienen `x`. :: Verdadero: `d` borra las líneas seleccionadas.
+(+) `sed 's/-/+/' file` cambia el contenido del propio `file`. :: Falso: imprime el resultado por stdout y deja el fichero como estaba; cambiar el fichero necesita `-i`.
+
+@@q single | Permisos por defecto de ficheros nuevos
+¿Qué mandato hace que los ficheros regulares nuevos creados por la shell tengan el modo `rw-r-----` (640)?
+(-) `umask 022` :: Deja los ficheros nuevos como `rw-r--r--` (644).
+(-) `umask 640` :: La máscara indica lo que se quita: esta da `-----w-rw-`.
+(+) `umask 027` :: No quita nada al dueño, quita `w` al grupo y todo a los otros: 666 pasa a 640.
+(-) `umask 777` :: Quita todos los permisos: los ficheros nuevos tendrían el modo 000.
+
+@@q single | Quién expande los comodines
+¿Qué afirmación sobre `ls *.txt` es VERDADERA?
+(-) `ls` recibe el texto `*.txt` y busca por sí mismo los ficheros que coinciden. :: La shell expande el patrón antes de que arranque `ls`.
+(+) La shell sustituye `*.txt` por los nombres de los ficheros que coinciden y se los pasa a `ls`. :: Por eso `echo *.txt` muestra la lista de nombres.
+(-) En este patrón `*` coincide con exactamente un carácter. :: `*` coincide con cualquier número de caracteres, incluso ninguno; `?` es el de exactamente uno.
+(-) El patrón `[!ab]*` coincide con nombres que empiezan por `a` o por `b`. :: `[!ab]` es lo contrario: un carácter que no es `a` ni `b`.
+
+@@q single | Letras opcionales
+`words` contiene las líneas `color`, `colour` y `colr`. ¿Qué imprime `grep -E 'colou?r' words`?
+(-) Solo `colour`. :: La `u` es opcional, así que `color` también coincide.
+(-) Solo `color`. :: `colour`, con la `u`, también coincide.
+(-) Las tres líneas. :: `colr` no tiene una `o` seguida de `r`, así que no coincide.
+(+) `color` y `colour` :: `?` significa cero o una aparición del carácter anterior.
+
+@@q single | El dispositivo nulo
+¿Qué afirmación sobre `/dev/null` es VERDADERA?
+(-) `command > /dev/null` también oculta los mensajes de error del mandato. :: Descarta solo stdout; los errores necesitan `2> /dev/null`.
+(+) Todo lo que se escribe en él se descarta. :: Es el "agujero negro" que sirve para tirar la salida que no interesa.
+(-) Es un directorio donde se guardan los ficheros borrados hasta que se eliminan del todo. :: Es un fichero especial, no un directorio papelera.
+(-) Lo que se escribe en él se puede leer después con `cat /dev/null`. :: Leerlo no da nada: no almacena datos.
+
+@@q single | Demonios
+¿Qué tipo de proceso es un demonio (daemon)?
+(-) Un proceso interactivo, porque está ligado a la shell de un usuario. :: Los procesos interactivos pertenecen a una shell, ejecutándose en primer o segundo plano.
+(-) Un proceso por lotes: se ejecuta una vez, a la hora en que se planificó. :: Los procesos por lotes se planifican para un instante dado, como los scripts lanzados con una planificación.
+(+) Un proceso en segundo plano que realiza una tarea del sistema, como un servicio. :: Los demonios trabajan en segundo plano para el sistema sin estar ligados al terminal de un usuario.
+(-) Un proceso que se suspendió con Ctrl+Z. :: Eso es un trabajo parado de una shell, no un demonio.

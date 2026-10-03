@@ -1,0 +1,95 @@
+@@script s09 | safecopy | Copy without overwriting | safecopy.sh
+@@level 2
+@@tags files, copy and move, exit codes
+@@cmds cp, test -f -d -e, basename, exit codes
+@@fixture
+setup() {
+  echo "one" > a.txt; echo "two words" > "my file.txt"; echo "three" > b.txt
+  mkdir out sub; echo "old" > out/b.txt; echo "x" > out/keep.txt
+}
+usage_ok() { [[ $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* || $ERR == *safecopy.sh* ]]; }
+@@step 1 | Copy a file
+@@readme
+Write `safecopy.sh SOURCE DEST`. It copies the file `SOURCE` to the path `DEST` (a new file name) and prints `Copied SOURCE to DEST`.
+
+```
+safecopy.sh a.txt copy.txt   ->   Copied a.txt to copy.txt
+```
+
+The files used by the checker are in the terminal folder (use **Reset exercise instance** to rebuild them).
+@@check
+ARGS=('a.txt copy.txt' '"my file.txt" out/new.txt' 'b.txt sub/b2.txt')
+COMPARE="stdout exit files"
+@@solution
+#!/bin/bash
+cp -- "$1" "$2"
+echo "Copied $1 to $2"
+@@step 2 | Check the arguments
+@@readme
+Checks, in this order (errors go to standard error, nothing on standard output):
+
+1. Not exactly two arguments: error message **and the correct usage** (e.g. `Usage: safecopy.sh source dest`), exit code **1**.
+2. `SOURCE` is not a regular file (missing, or a directory): error message that includes its name, exit code **2**.
+@@check
+ARGS=('a.txt copy.txt' '"my file.txt" out/new.txt' '' 'a.txt' 'a.txt b.txt c.txt' 'nothing.txt copy.txt' 'sub copy.txt')
+COMPARE="stdout exit errmsg files"
+extra_check() {
+  [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }
+  [[ $REF_CODE == 2 ]] && mentions "$(eval "set -- $CASE"; echo "$1")"
+}
+@@solution
+#!/bin/bash
+if (( $# != 2 )); then
+  echo "Error: two arguments are needed" >&2
+  echo "Usage: $0 source dest" >&2
+  exit 1
+fi
+if [[ ! -f $1 ]]; then echo "Error: $1 is not a regular file" >&2; exit 2; fi
+cp -- "$1" "$2"
+echo "Copied $1 to $2"
+@@step 3 | Into a directory
+@@readme
+If `DEST` is an existing **directory**, the file is copied inside it with its own name, and the message shows the final path: `safecopy.sh a.txt out` prints `Copied a.txt to out/a.txt`. (If `DEST` ends with a slash, do not print a double slash: `out/` also gives `out/a.txt`.)
+@@check
+ARGS=('a.txt copy.txt' 'a.txt out' 'a.txt out/' '"my file.txt" out' 'b.txt sub' '' 'nothing.txt out')
+COMPARE="stdout exit errmsg files"
+extra_check() {
+  [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }
+  [[ $REF_CODE == 2 ]] && mentions "$(eval "set -- $CASE"; echo "$1")"
+}
+@@solution
+#!/bin/bash
+if (( $# != 2 )); then
+  echo "Error: two arguments are needed" >&2
+  echo "Usage: $0 source dest" >&2
+  exit 1
+fi
+if [[ ! -f $1 ]]; then echo "Error: $1 is not a regular file" >&2; exit 2; fi
+dest=$2
+if [[ -d $dest ]]; then dest=${dest%/}/$(basename "$1"); fi
+cp -- "$1" "$dest"
+echo "Copied $1 to $dest"
+@@step 4 | Never overwrite
+@@readme
+If the final destination **already exists**, do not touch it: print an error message that includes its path on standard error and exit with code **3**, with nothing copied and nothing printed on standard output.
+@@check
+ARGS=('a.txt copy.txt' 'a.txt out' 'b.txt out' 'b.txt out/b.txt' 'a.txt a.txt' 'b.txt out/' '' 'nothing.txt out' 'a.txt out/keep.txt')
+COMPARE="stdout exit errmsg files"
+extra_check() {
+  [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }
+  [[ $REF_CODE == 2 ]] && mentions "$(eval "set -- $CASE"; echo "$1")"
+  [[ $REF_CODE == 3 ]] && mentions "$(eval "set -- $CASE"; d=$2; [[ -d $d ]] && d=${d%/}/$(basename "$1"); echo "$d")"
+}
+@@solution
+#!/bin/bash
+if (( $# != 2 )); then
+  echo "Error: two arguments are needed" >&2
+  echo "Usage: $0 source dest" >&2
+  exit 1
+fi
+if [[ ! -f $1 ]]; then echo "Error: $1 is not a regular file" >&2; exit 2; fi
+dest=$2
+if [[ -d $dest ]]; then dest=${dest%/}/$(basename "$1"); fi
+if [[ -e $dest ]]; then echo "Error: $dest already exists" >&2; exit 3; fi
+cp -- "$1" "$dest"
+echo "Copied $1 to $dest"

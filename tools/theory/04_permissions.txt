@@ -1,0 +1,492 @@
+@@collection 04_permissions | Permissions, chmod, umask & ownership
+@@about
+Reading and changing permission bits on files and directories, octal and symbolic modes, the umask, chown and chgrp, and the special bits.
+
+@@group Reading permissions
+@@q single | Three classes of users
+Every file has permissions for three classes of users. Which are they?
+(+) The owner (user), the owner's group, and everyone else (others). :: The kernel checks them in that order and uses the first class that matches you.
+(-) Root, the administrators and the guests, each with their own set of permissions. :: Unix permissions are not organised by such roles.
+(-) Read users, write users and execute users, depending on what they are allowed to do. :: Read/write/execute are the *permissions*, not the classes of people.
+(-) The creator of the file, the last user who edited it, and the last user who read it. :: Nothing like that is recorded.
+
+@@q match | Reading a mode string
+Match each mode string of `ls -l` with what it tells you.
+(=) `-rwxr-xr--` => A regular file: owner rwx, group r-x, others r-- :: The first character is the file type, then three triplets.
+(=) `drwx------` => A directory only its owner can use :: Group and others have no permissions at all.
+(=) `lrwxrwxrwx` => A symbolic link :: The `l` type; the permissions shown are not used.
+(=) `-r--------` => A regular file readable only by its owner :: Even the owner cannot write to it.
+(-) A device file :: Devices start with `b` or `c`.
+
+@@q single | Who is checked
+Your user owns a file with mode `---rw-rw-` (owner has nothing, group and others can read and write), and you are a member of its group. Can you read it?
+(+) No: you are the owner, so only the owner's (empty) permissions count, even though the others would allow it. :: The kernel picks the first matching class, it does not add them up.
+(-) Yes, because the group permissions allow reading and reading through the group class applies to you as a member of it. :: The owner class wins, and it denies.
+(-) Yes, because the `others` class allows reading and everybody belongs to that class. :: Others apply only if you are neither owner nor group member.
+(-) Yes, because the owner of a file can always read it, whatever the mode says. :: Owning a file does not override its mode (only root ignores it).
+
+@@q single | Root and permissions
+How do permission bits affect the user `root`?
+(+) Root can read and write anything, and can execute a file only if some execute bit is set. :: Execute still needs an `x` somewhere.
+(-) Root is bound by exactly the same permission checks as every other user. :: Root bypasses read and write checks.
+(-) Root can never read a file whose mode is 000, because no bit is set. :: It can.
+(-) Root may execute any file whatever its mode, even when no execute bit is set for anybody on that file. :: A file with no `x` anywhere cannot be executed, even by root.
+
+@@q single | Meaning of r, w, x on a file
+What do the three permissions allow on an ordinary file?
+(+) `r` read the contents, `w` change the contents, `x` run it as a program. :: For a script, reading is also needed when run via an interpreter.
+(-) `r` rename the file, `w` delete the file, `x` copy the file to another place. :: Renaming and deleting depend on the directory, not on the file's bits.
+(-) `r` list the file, `w` create the file, `x` enter the file like a folder. :: That describes directories.
+(-) `r` run the file, `w` read the file, `x` write to the file. :: The letters are mixed up.
+
+@@q sort | What the permission allows on a directory
+@@buckets Read (r) | Write (w) | Execute (x)
+On a **directory**, which permission is needed for each action?
+(Read (r)) List the names of its entries with `ls dir` :: Reading the directory means reading its name list.
+(Write (w)) Create a new file inside it :: A new entry must be written into the directory.
+(Write (w)) Delete a file inside it (together with x) :: Removing a name changes the directory.
+(Execute (x)) `cd` into it :: `x` means "traverse" or "search".
+(Execute (x)) Access `dir/file` by its path :: Without `x` you cannot walk through the directory to the entry.
+(Read (r)) See the names but not the details with `ls` when `x` is missing :: Reading gives names only; details need `x`.
+
+@@q single | x on a directory
+A directory has mode `r--` for you (read but no execute). What happens with `ls dir` and `cat dir/file`?
+(+) `ls dir` shows the names, but `cat dir/file` fails with "Permission denied". :: Without `x` you can read names but not reach any entry.
+(-) Both work, because read permission on a directory is enough for everything. :: You cannot traverse without `x`.
+(-) Both fail, because without `x` the directory cannot be used at all. :: Listing the names needs only `r`.
+(-) `cat dir/file` works, because you know the name, while `ls dir` fails. :: Reversed.
+
+@@q single | Deleting needs the directory
+A file is owned by you with mode `r--r--r--` inside a directory where you have `rwx`. Can you delete it with `rm`?
+(+) Yes: deleting removes a name from the directory, which needs `w` on the directory, not on the file. :: `rm` may ask for confirmation for a read-only file; `rm -f` does not.
+(-) No, because the file itself is not writable, and deleting a file needs the same write permission on the file as editing it. :: That only blocks changing its contents.
+(-) Yes, but only if you use `sudo`, because `rm` refuses files without write permission. :: Not needed.
+(-) No, because read-only files can never be removed by an ordinary user. :: That is a common myth.
+
+@@q single | Creating needs w and x
+You have `r-x` on a directory. What happens with `touch dir/newfile`?
+(+) It fails: creating an entry needs write permission on the directory. :: `x` lets you reach it, but not modify it.
+(-) It works, because you can enter the directory and that is all `touch` needs. :: Entering is not enough.
+(-) It works, because `touch` always runs with the privileges of the root user. :: It runs as you.
+(-) It fails only because of the file name, which `touch` does not accept. :: The name is irrelevant.
+
+@@q single | w without x
+A directory has mode `-w-` for you (write but no execute). Can you create files in it?
+(+) No: without `x` you cannot operate on any entry in it, so create and delete both fail. :: Write and execute go together for changing a directory's contents.
+(-) Yes, write permission on the directory is all that is needed to create new entries inside it, execute is optional. :: Execute is needed to reach the directory.
+(-) Yes, but only empty files, because writing their contents would need execute. :: Size is irrelevant.
+(-) Only the root user can, as ordinary users cannot write to such a directory. :: A user with `wx` can.
+
+@@q multi | Needed to run a script directly
+To run a shell script with `./script.sh` (without naming an interpreter), what do you need?
+(+) Execute permission on the script. :: The kernel refuses to execute a file without an `x` bit.
+(+) Read permission on the script. :: The shell must be able to read the script to interpret it.
+(+) A valid first line such as `#!/bin/bash`. :: It tells the kernel which interpreter to start.
+(-) Write permission on the script. :: Not needed to run it.
+(-) Ownership by root. :: Any owner is fine.
+
+@@q single | bash script.sh
+`script.sh` has mode `rw-r--r--` (no execute bit). Which command still runs it?
+(+) `bash script.sh` :: Bash opens the file as data and interprets it; only read permission is needed.
+(-) `./script.sh` :: The kernel refuses to execute without an `x` bit.
+(-) `script.sh` :: Same problem, and it is not in `PATH` either.
+(-) `exec script.sh` :: `exec` also needs to execute the file.
+
+@@group Changing permissions with chmod
+@@q match | Octal digits
+Match each octal digit with the permissions it represents.
+(=) `7` => rwx :: 4 + 2 + 1.
+(=) `6` => rw- :: 4 + 2.
+(=) `5` => r-x :: 4 + 1.
+(=) `4` => r-- :: Read only.
+(=) `0` => --- :: No permission.
+(-) 8 :: There is no eighth value; octal digits go from 0 to 7.
+
+@@q match | From symbolic to octal
+Match each mode string with its octal number.
+(=) `rwxr-xr-x` => 755 :: Typical for programs and directories.
+(=) `rw-r--r--` => 644 :: Typical for ordinary files.
+(=) `rwx------` => 700 :: Private to the owner.
+(=) `rw-rw----` => 660 :: Owner and group can read and write.
+(=) `r--r--r--` => 444 :: Read-only for everybody.
+(-) 888 :: Not valid in octal.
+
+@@q fill | Numbers to symbols
+The mode `640` means: owner `{{rw-}}`, group `{{r--}}`, others `{{---}}`.
+(x) rwx :: That would be 7 for the owner, not 6.
+@@note
+6 = 4+2 (rw-), 4 = r--, 0 = nothing.
+
+@@q fill | Symbols to numbers
+What octal mode corresponds to `rwxr-x---`? `chmod {{750}} file`
+(x) 755 :: 755 would give others r-x as well.
+(x) 570 :: The digits are in the wrong order: owner first, then group, then others.
+@@note
+rwx = 7, r-x = 5, --- = 0, always in the order user, group, others.
+
+@@q fill | Add execute for the owner
+Give only the owner execute permission on `run.sh`: `chmod {{u+x}} run.sh`
+(x) +x :: Without a class, `+x` gives execute to everybody (minus the umask bits), not only to the owner.
+(x) o+x :: That gives execute to others, not to the owner.
+@@note
+`u` = user (owner), `g` = group, `o` = others, `a` = all.
+
+@@q fill | Remove write from others
+Make `report.txt` unwritable for others but leave the rest untouched: `chmod {{o-w}} report.txt`
+(x) o=w :: `=` sets exactly, so others would end up with *only* write.
+(x) w-o :: The class comes first: `who` then operator then permission.
+@@note
+`+` adds, `-` removes, `=` assigns exactly.
+
+@@q single | The three operators
+What is the difference between `chmod g+w f`, `chmod g-w f` and `chmod g=w f`?
+(+) Add write for the group, remove write from the group, and set the group to exactly write and nothing else. :: `=` replaces the whole triplet.
+(-) All three give the group write permission, and only differ in what they do with the other permissions the group already has. :: Only the first does so additively.
+(-) `=` leaves the other bits of the group alone and only adds the ones you name. :: That is what `+` and `-` do.
+(-) `+` changes the owner, `-` changes the group and `=` changes the others. :: The class letter chooses who, not the operator.
+
+@@q single | chmod a-wx
+What does `chmod a-wx file` do?
+(+) Removes write and execute from the owner, the group and others. :: `a` means all three classes.
+(-) Removes all the permissions, including read, from the owner, group and others. :: Read is not touched.
+(-) Sets exactly write and execute for everybody, and removes read from everybody. :: That would be `a=wx`.
+(-) Adds write and execute for everybody, leaving the read permission unchanged. :: The minus removes.
+
+@@q single | Combined changes
+What is the result of `chmod u-x,go+w n` on a file with mode `rwxr-----`?
+(+) `rw-rw--w-` :: The owner loses `x`; group and others gain `w`.
+(-) `rwxrw--w-` :: The owner's `x` was removed.
+(-) `rw-r-----` :: The `go+w` part adds write for group and others.
+(-) `rwxrwxrwx` :: Nothing grants execute here.
+
+@@q single | X capital
+What is special about `chmod -R a+X dir`?
+(+) It adds execute only to directories and to files that already have an execute bit for someone. :: Convenient to open a tree for reading without making ordinary files executable.
+(-) It adds execute to every file and directory below `dir`, without exception. :: That is `a+x`.
+(-) It removes the execute bit from all the directories below `dir`, but keeps it on the ordinary files that already had it. :: It does the opposite for directories.
+(-) It is the same as `chmod 777`, giving all permissions to everybody. :: Nothing like that.
+
+@@q single | Recursive changes
+What does `chmod -R 755 dir` do?
+(+) Sets mode 755 on `dir` and on everything inside it, files included. :: Often too much: ordinary files get an execute bit.
+(-) Sets mode 755 on the directory `dir` only, leaving the files inside it alone. :: `-R` descends.
+(-) Sets mode 755 only on the directories below `dir`, leaving the files unchanged. :: Files are changed as well.
+(-) Sets the permissions of the parent directory of `dir` to 755 as well. :: Only `dir` and its contents.
+
+@@q multi | Numeric vs symbolic
+Select the pairs that describe the same result on a file that currently has no permissions at all (`---------`).
+(+) `chmod 644 f` and `chmod u=rw,go=r f` :: Both produce `rw-r--r--`.
+(+) `chmod 700 f` and `chmod u=rwx f` :: Both give the owner everything and nobody else anything.
+(+) `chmod 000 f` and `chmod a= f` :: Both leave no permissions at all.
+(-) `chmod 755 f` and `chmod u+rwx f` :: The first also grants r-x to group and others.
+(-) `chmod 600 f` and `chmod 6 f` :: A single digit sets the *others* class only (mode 006).
+
+@@q order | Give the team write access
+You want your group to be able to edit `plan.txt`, which is currently `rw-r-----` and owned by you with another group. Put the steps in order.
+(>) Look at the current owner and group with `ls -l plan.txt` :: Always check the current state first.
+(>) Change the group with `chgrp team plan.txt` :: The group must be the intended one before permissions for it matter.
+(>) Add group write with `chmod g+w plan.txt` :: Now the right group receives the right permission.
+(>) Verify with `ls -l plan.txt` :: Confirm the final mode is `rw-rw----`.
+
+@@q single | Only the owner may chmod
+Who can change the permissions of a file?
+(+) Its owner and root. :: A user with write permission on the file but who is not its owner cannot run `chmod` on it.
+(-) Anyone who has write permission on the file. :: Write access changes the contents, not the mode.
+(-) Anyone in the file's group. :: The group gives access, not control.
+(-) Only root. :: The owner may change it too.
+
+@@group The umask
+@@q single | What umask does
+What does the `umask` do?
+(+) It defines which permission bits are removed from newly created files and directories. :: Applied by the creating process, before you ever see the new file.
+(-) It changes the permissions of all the files that already exist in the current directory. :: It does not touch existing files.
+(-) It sets the owner and the group of the files that you create from now on. :: Ownership comes from the creating user.
+(-) It hides files from `ls` unless the option for hidden files is used. :: That has nothing to do with permissions.
+
+@@q fill | Default file permissions
+With `umask 022`, a new directory gets mode `{{755}}` and a new regular file gets `{{644}}`.
+(x) 777 :: Directories start from 777; the umask removes 022 from it.
+(x) 666 :: That is the starting point for files, before the umask is applied.
+@@note
+Directories start from 777, files from 666 (files never get execute automatically), then the umask bits are removed.
+
+@@q fill | Private files
+To make new files readable and writable only by you (and new directories accessible only to you) set `umask {{077}}`
+(x) 700 :: That would *remove* all permissions from the owner and give nothing to the rest, because the umask says what to take away.
+(x) 022 :: That still lets group and others read.
+@@note
+077 removes every bit from group and others.
+
+@@q match | Results of common umasks
+Match each umask with the mode a new **file** gets.
+(=) `022` => 644 :: The usual default.
+(=) `002` => 664 :: Group can write too: common with private groups.
+(=) `077` => 600 :: Private to the owner.
+(=) `027` => 640 :: Group reads, others get nothing.
+(-) 755 :: That is a directory result for `022`; ordinary files do not get the execute bit.
+
+@@q single | Computing with an odd umask
+After `umask 0174`, what mode does a new **directory** get?
+(+) `603` (`rw-----wx`) :: 777 with the bits 1, 7 and 4 removed per class: 6, 0, 3.
+(-) `174` :: The umask says what is removed, not what is set.
+(-) `777` :: The umask changes it.
+(-) `602` :: That would be the result for a regular file (666 minus 174).
+
+@@q single | Same umask, new file
+After `umask 0174`, what mode does a new **regular file** get?
+(+) `602` (`rw-----w-`) :: 666 with the umask bits removed per class: 6, 0, 2.
+(-) `603` :: That is the directory result; files never start with execute.
+(-) `777` :: Not the default for files.
+(-) `174` :: That is the umask itself.
+
+@@q single | Numeric umask is not subtraction
+`umask 033` with a new file: 666 minus 033 gives 633 by subtraction. Why is the real result 644 (`rw-r--r--`)?
+(+) The umask clears bits instead of subtracting: 033 clears `w` and `x` for group and others, so `rw-` loses only `w` and becomes `r--`. :: Bitwise, not arithmetic. For files the result is 6, 4, 4, and subtracting would wrongly suggest 633.
+(-) Because subtraction is in fact the correct method, but the shell prints a different value than the one that it really stores. :: The bit logic is the real rule.
+(-) Because regular files always get mode 644, whatever the umask is set to. :: It depends on the umask.
+(-) Because the umask applies only to directories and never to regular files. :: It applies to files too.
+
+@@q single | umask is per process
+You run `umask 077` in a terminal. Which statement is true?
+(+) It affects only that shell and the programs it starts from now on; other terminals keep their own. :: To keep it, put the line in `~/.bashrc` or `~/.profile`.
+(-) It changes the umask of the whole system for every user who logs in from now on. :: It is a per-process setting inherited by children.
+(-) It is stored on the disk, so it survives a reboot and is applied again to every future session of every user. :: Not unless you put it in a startup file.
+(-) It changes the mode of all the existing files of your home directory at once. :: Only new files are affected.
+
+@@q single | Show the symbolic form
+Which command prints the current umask in symbolic form (showing the permissions that will be *kept*)?
+(+) `umask -S` :: Shows something like `u=rwx,g=rx,o=rx`.
+(-) `umask -l` :: Not a valid option for that.
+(-) `umask` alone :: Prints the octal form.
+(-) `chmod -S` :: `chmod` does not report the umask.
+
+@@group Ownership: chown and chgrp
+@@q single | Changing owner
+Which command gives the file `report.txt` to user `luke`?
+(+) `chown luke report.txt` :: Normally only root may change a file's owner.
+(-) `chmod luke report.txt` :: `chmod` changes permission bits, not ownership.
+(-) `chgrp luke report.txt` :: That would change the *group* to a group called luke.
+(-) `passwd luke report.txt` :: `passwd` sets passwords.
+
+@@q fill | Owner and group at once
+Change owner to `luke` and group to `devs` in one command: `chown luke{{:}}devs report.txt`
+(x) ; :: A semicolon would end the command in the shell.
+(x) , :: Not a separator in `chown`.
+@@note
+The historical form `luke.devs` also works on most systems, but `:` is the portable one.
+
+@@q single | chgrp permission
+Who may change the group of a file with `chgrp`?
+(+) Root, or the file's owner if the owner is also a member of the new group. :: Other users cannot assign a file to groups they do not belong to.
+(-) Any user, since the group of a file is not considered a sensitive attribute. :: That would make it possible to dump files into other teams.
+(-) Only the members of the old group of the file, who are trusted by the owner. :: The owner matters.
+(-) Nobody at all: the group of a file is fixed when the file is created. :: It can be changed.
+
+@@q multi | Recursive ownership
+Select the commands that change the owner of `project` and everything below it.
+(+) `chown -R luke project` :: Recurses through the tree.
+(+) `chown -R luke:devs project` :: Changes owner and group recursively.
+(-) `chown luke project` :: Only the top directory is changed.
+(-) `chmod -R luke project` :: `chmod` does not take a user name.
+
+@@q single | Who owns a new file
+Who is the owner of a file created by `touch f` run by user `alumno`?
+(+) `alumno` :: A new file belongs to the user (and the primary group) of the creating process.
+(-) `root` :: Only if root created it.
+(-) The owner of the directory. :: The directory's owner is irrelevant, unless a setgid bit gives the group.
+(-) `nobody` :: That is a special account for unprivileged services.
+
+@@q single | Find the owner
+Which command shows the owner and group of a file, together with its permissions, link count and size, in one line?
+(+) `ls -l file` :: The third and fourth columns are the owner and the group.
+(-) `ls -a file` :: Only hides or shows dot-files.
+(-) `cat file` :: It prints the contents.
+(-) `umask` :: It reports the default mask.
+
+@@group Special bits
+@@q sort | Special permission bits
+@@buckets setuid | setgid | sticky
+Match each description to the special bit.
+(setuid) A program runs with the privileges of the file's owner, not of the user who launches it :: Used by `passwd` so ordinary users can update the password file.
+(setuid) Shown as an `s` in the owner's execute position :: `-rwsr-xr-x`.
+(setgid) New files created in a directory inherit the directory's group :: Handy for shared project folders.
+(setgid) A program runs with the file's group instead of the launching user's group :: The group counterpart of setuid.
+(sticky) In a shared directory, users can delete only their own files :: That is why `/tmp` is safe to share.
+(sticky) Shown as a `t` in the others' execute position :: `drwxrwxrwt`.
+
+@@q single | The /tmp directory
+Why is `/tmp` mode `drwxrwxrwt` and not just `drwxrwxrwx`?
+(+) The sticky bit (`t`) stops users from deleting or renaming other users' files, although everyone can write there. :: Without it, anyone could remove anyone else's temporary files.
+(-) The `t` means that the directory is temporary, and that it is deleted completely, with all of its contents, at each shutdown. :: Clean-up of `/tmp` is done by other mechanisms.
+(-) The `t` means that the contents of the directory are stored encrypted on the disk. :: Not related.
+(-) The `t` means that only the owner of the directory may list the files inside it. :: Listing still needs `r`.
+
+@@q single | Risk of setuid root
+Why are setuid-root programs a favourite target for attackers?
+(+) A flaw in such a program can make it run attacker-chosen actions with root privileges. :: Hence they should be few and carefully audited.
+(-) They are always readable by everyone, which leaks the secrets of the administrator. :: Readability is not the concern.
+(-) They use up a large amount of disk space compared with ordinary programs. :: Size is irrelevant.
+(-) They slow the whole system down, since every call has to be checked by the kernel. :: Performance is not the issue.
+
+@@q fill | Find setuid files
+Search the system for files that have the setuid bit set: `find / -type f -perm {{-4000 ;; /4000 ;; -u+s ;; /u+s}} 2>/dev/null`
+(x) 4000 :: Without a sign it matches files whose mode is *exactly* 4000, which is almost never the case.
+@@note
+`-perm -MODE` means "all of these bits are set"; `-perm /MODE` means "at least one".
+
+@@group Predict the result
+@@q single | Permission denied or not
+`ls -ld secret` shows `d--x------ 2 alumno alumno`, and you are `alumno`. Which command works?
+(+) `cat secret/note.txt` (if `note.txt` itself is readable) :: `x` on the directory lets you reach a file whose name you know.
+(-) `ls secret`, which only needs to read the names of the entries :: Listing needs `r`.
+(-) `touch secret/new`, which adds a new entry to the directory :: Creating needs `w`.
+(-) `rm secret/note.txt`, which removes a name from the directory :: Deleting needs `w` on the directory.
+
+@@q single | Effect on other users
+`chmod 600 diary.txt` is run on a file owned by you with group `users`. What can a user from group `users` do with it?
+(+) Nothing: group and others have no permissions. :: Only the owner can read and write.
+(-) Read it, because members of the same group as the owner are allowed to read it through the group class. :: The group digit is 0.
+(-) Write to it. :: No write for the group.
+(-) See its contents but not change them. :: No read either.
+
+@@q single | What chmod +x does
+On a fresh file with mode `rw-r--r--`, what does `chmod +x file` give with `umask 022`?
+(+) `rwxr-xr-x` :: Without a class letter, `+x` applies to every class the umask does not forbid; `022` only forbids write, so all three get `x`.
+(-) `rwxr--r--` :: That would be `u+x`.
+(-) `rw-r--r-x` :: That would be `o+x`.
+(-) `rw-r--r--` :: `+x` did something.
+
+@@q single | Protect against accidents
+You want to protect `final.txt` from accidental changes by yourself. Which mode does that?
+(+) `chmod 444 final.txt` (or `u-w`): without write permission it cannot be edited or overwritten by redirection. :: Root can still write.
+(-) `chmod 000 final.txt`, and keep reading it whenever you need to see the contents. :: With 000 you cannot read it either.
+(-) `chown root final.txt`, so that the file belongs to the administrator and you can no longer overwrite it by accident. :: As a normal user you cannot give files away, and it would lock you out anyway.
+(-) `umask 000`, which makes every file you create from now on immune to changes. :: It affects new files, not this one.
+
+@@group Scenarios
+@@q match | Choose the mode
+Match each situation with the most sensible mode.
+(=) A private SSH key that only you may read => 600 :: SSH refuses keys that other users can read.
+(=) A script everyone may run but only you may edit => 755 :: Owner rwx, others r-x.
+(=) A document you share read-only with your group => 640 :: Owner rw, group r, others nothing.
+(=) A directory where your team creates files together (setgid aside) => 770 :: Owner and group have full access; others none.
+(-) 777 for everything :: World-writable files are almost never the right answer.
+
+@@q single | 777 is tempting
+A script "does not work" and a forum answer says `chmod 777` fixes it. Why is that a poor habit?
+(+) It lets every user modify the file, which is a security risk; usually only the owner's execute bit was missing. :: Give the minimum: `chmod u+x` or 755.
+(-) Because 777 is not a valid mode for ordinary files, only for directories. :: It is valid, just unwise.
+(-) Because it removes the execute bit from the file instead of adding it. :: It adds it.
+(-) Because it changes the owner of the file to the last user who modified it, which makes the ownership of the script unclear. :: Ownership is untouched.
+
+@@q single | Private directory
+You want a directory `notes` that nobody else can even list. Which command makes it so?
+(+) `chmod 700 notes` :: Only the owner keeps `r`, `w` and `x`.
+(-) `chmod 644 notes` :: Without `x` even you cannot enter, and others may list its names.
+(-) `chmod a+r notes` :: That lets everyone read it.
+(-) `umask 700` :: It would change defaults for new files, in a weird way, but leave `notes` alone.
+
+@@q single | Shared group folder
+Several people in group `team` must edit files in `/srv/shared`. Which combination is the usual setup?
+(+) Group `team` owns the directory, mode `2770` (setgid plus rwx for owner and group). :: New files inherit group `team` and members can all edit them.
+(-) Mode `1777` with no particular group, so that everybody who has an account on the machine may write there. :: That is the `/tmp` style: everybody can write, and only owners delete their own files.
+(-) Mode `444` for everyone, so that nobody can change the files by mistake. :: Nobody could then create files.
+(-) Mode `000` for the directory, and using `sudo` for every access to it. :: It blocks the team from working.
+
+@@q single | Reading stat output
+`stat -c '%a %U:%G' report` prints `640 luke:devs`. Who may modify `report`?
+(+) Only `luke` :: Owner has `6` (rw-); the group has `4` (r--); others have nothing.
+(-) Everyone in `devs` :: They can only read.
+(-) Everybody :: Others have no permission at all.
+(-) Nobody :: The owner can write.
+
+@@q single | Permission of the target file
+You are user `sally` and run `cat /home/luke/notes.txt`. The file is `-rw-r--r--` owned by luke, but the directory `/home/luke` is `drwx------`. What happens?
+(+) "Permission denied": you cannot traverse `/home/luke`, because you lack `x` on it. :: Every directory on the path needs `x` for you.
+(-) It prints the file, because the file itself is readable by everyone on the machine. :: The directory blocks you first.
+(-) It prints the file, but without formatting, since you cannot read the directory. :: Nothing is partially printed.
+(-) It asks for luke's password before it shows the contents of the file. :: Unix does not prompt for that.
+
+@@q order | Open up a tree for reading
+You must let the group read the whole tree `site/` (files and directories), without making ordinary files executable. Put the steps in order.
+(>) Check the current state with `ls -lR site | head` :: Know what you are changing.
+(>) Run `chmod -R g+rX site` :: The capital `X` adds execute only to directories (and already-executable files).
+(>) Verify with `ls -l site` that files are `rw-r-----` or similar and directories `rwxr-x---` :: Check the outcome.
+(>) Test as a group member by reading a deep file :: Proof that every directory on the path is traversable.
+
+@@q multi | Things that need write on the directory
+Select the operations that require write permission on the **directory** containing the file.
+(+) Creating a new file in it :: Adds an entry.
+(+) Deleting an existing file from it :: Removes an entry.
+(+) Renaming a file inside it :: Changes an entry.
+(-) Editing the contents of an existing, writable file :: Needs write on the file itself.
+(-) Reading the contents of a file :: Needs read on the file (and `x` on the directory).
+
+@@q single | chmod on a symbolic link
+What happens when you run `chmod 600 soft` where `soft` is a symbolic link to `f`?
+(+) The mode of the target `f` changes; the link's own mode is never used. :: `chmod` follows symbolic links by default.
+(-) The link itself becomes `rw-------`, and the target `f` keeps its old mode. :: The link's bits are fixed and ignored.
+(-) It fails, because the permissions of a symbolic link cannot be changed at all. :: It succeeds on the target.
+(-) Both the link and the target are changed, to the same new mode. :: Only the target.
+
+@@q single | Which user am I for the file
+`ls -l` shows `-rw-rw-r-- 1 luke devs`. You are `sally`, not in `devs`. What access do you have?
+(+) Read only, from the `others` class. :: `r--` for others.
+(-) Read and write, from the group class. :: You are not in the group.
+(-) None, only the owner may touch the file. :: Others can read.
+(-) Full access, since the file name looks public. :: Names mean nothing.
+
+@@group Mixed practice
+@@q fill | Symbols for 640
+Write the mode 640 in symbolic form for `chmod`: `chmod {{u=rw,g=r,o=}} file`
+(x) u=rwx,g=r,o=r :: That is 744: the owner gets execute and others may read.
+(x) a=r :: That is 444: nobody may write.
+@@note
+`u=rw,g=r,o=` sets each class exactly; leaving `o=` empty removes all permissions for others.
+
+@@q fill | Octal for a private directory
+A directory only its owner may list, enter and modify has the octal mode `{{700}}`.
+(x) 600 :: Without `x` the owner could not even enter the directory.
+(x) 755 :: That lets group and others list and enter it.
+@@note
+Directories need `x` to be entered, so 700 is the private directory, 600 is the private file.
+
+@@q fill | Default file mode
+With `umask 027`, a new regular file gets the mode `{{640}}` and a new directory gets `{{750}}`.
+(x) 750 :: That is the directory mode; files do not get execute bits.
+(x) 600 :: That would be `umask 077`.
+@@note
+Files: 666 minus the umask bits; directories: 777 minus the umask bits.
+
+@@q sort | Files or directories
+@@buckets Needed on a file | Needed on a directory
+Which permission is being used in each case?
+(Needed on a file) `r` to print its contents with `cat` :: Reading the data.
+(Needed on a file) `w` to append a line with `>>` :: Changing the data.
+(Needed on a file) `x` to start it as a program :: Execution of the file itself.
+(Needed on a directory) `x` to `cd` into it :: Traversal.
+(Needed on a directory) `w` to create a file inside it :: Changing the list of names.
+(Needed on a directory) `r` to see the names with `ls` :: Reading the list of names.
+
+@@q multi | Commands that change permissions or owners
+Select the commands that can change who may access `report.txt`.
+(+) `chmod 600 report.txt` :: Changes the permission bits.
+(+) `chown luke report.txt` :: Changes the owner (as root).
+(+) `chgrp devs report.txt` :: Changes the group.
+(-) `touch report.txt` :: It only updates the times (or creates the file).
+(-) `umask 077` :: It affects files created afterwards, not this one.
+
+@@q order | Prepare a script to run
+Put the steps in order to make a downloaded script safe to run.
+(>) Read it with `less script.sh` :: Never run code you have not looked at.
+(>) Check the permissions with `ls -l script.sh` :: See whether it already has an execute bit and who owns it.
+(>) Add execute permission for yourself only with `chmod u+x script.sh` :: Minimum needed.
+(>) Run it with `./script.sh` :: Only now is it executed.
+
+@@q match | Read the mode
+Match each `ls -l` mode string with the most accurate description.
+(=) `-rw-r-----` => A file: the owner reads and writes, the group reads, others have nothing :: 640.
+(=) `drwxr-xr-x` => A directory everybody may enter and list, only the owner may modify :: 755.
+(=) `-rwsr-xr-x` => An executable with the setuid bit set :: The `s` replaces the owner's `x`.
+(=) `drwxrwxrwt` => A world-writable directory with the sticky bit :: Like `/tmp`.
+(-) A symbolic link to a file :: Links start with `l`.

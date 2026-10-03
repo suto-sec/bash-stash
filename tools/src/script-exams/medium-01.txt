@@ -1,0 +1,111 @@
+@@sexam medium-01 | lowstock | Low stock report | Informe de stock bajo
+@@script lowstock.sh
+@@cmds read, IFS, sort, arithmetic, test, exit codes
+@@objectives
+args | Argument checking and error messages | Comprobación de argumentos y mensajes de error | 3
+core | Selecting, sorting and printing the items | Seleccionar, ordenar e imprimir los artículos | 4
+edge | Special cases (no low items, blank lines, spaces) | Casos especiales (ninguno bajo, líneas vacías, espacios) | 3
+@@readme en
+Write a shell script called `lowstock.sh` that takes a file and an optional threshold:
+
+```
+lowstock.sh file [threshold]
+```
+
+`file` is a CSV inventory. Its first line is a header (`item,qty,price`) and every other line is `name,qty,price`, with `qty` and `price` non-negative integers. Names contain no commas but may contain spaces. Blank lines may appear and must be ignored.
+
+The script prints the items whose `qty` is **lower than** `threshold` (default **5**), one per line as `name: qty`, ordered by quantity from lowest to highest and, for the same quantity, by name in alphabetical order. After them it prints two summary lines:
+
+```
+Low stock items: N
+Total value: V
+```
+
+where `N` is how many items were listed and `V` the sum of `qty * price` of those items (`0` and `0` if there is none; then only the two summary lines are printed).
+
+Errors (messages go to standard error). Check them in this order:
+
+1. No argument, or more than two: print an error message **and the correct usage**, exit code **1**.
+2. `file` does not exist or is not a regular file: error message that includes its name, exit code **2**.
+3. `file` is not readable: error message that includes its name, exit code **4**.
+4. `threshold` is not a positive integer (only digits, at least 1): error message that includes the value, exit code **3**.
+
+Don't forget:
+- Argument checking and error messages, in the right order (3 points).
+- Selecting the items, sorting them and printing them in the exact format, with the right default (4 points).
+- Special cases: no low item, blank lines, names with spaces, ties in the quantity (3 points).
+@@readme es
+Escribe un script de shell llamado `lowstock.sh` que reciba un fichero y un umbral opcional:
+
+```
+lowstock.sh fichero [umbral]
+```
+
+`fichero` es un inventario en CSV. Su primera línea es una cabecera (`item,qty,price`) y cada una de las demás es `nombre,qty,price`, con `qty` y `price` enteros no negativos. Los nombres no contienen comas pero pueden contener espacios. Pueden aparecer líneas en blanco, que se ignoran.
+
+El script imprime los artículos cuyo `qty` es **menor que** `umbral` (por defecto **5**), uno por línea con el formato `nombre: qty`, ordenados por cantidad de menor a mayor y, a igual cantidad, por nombre en orden alfabético. A continuación imprime dos líneas de resumen:
+
+```
+Low stock items: N
+Total value: V
+```
+
+donde `N` es cuántos artículos se han listado y `V` la suma de `qty * price` de esos artículos (`0` y `0` si no hay ninguno; entonces solo se imprimen las dos líneas de resumen).
+
+Errores (los mensajes van a la salida de error). Compruébalos en este orden:
+
+1. Ningún argumento, o más de dos: mensaje de error **y el uso correcto**, código **1**.
+2. `fichero` no existe o no es un fichero regular: mensaje de error que incluya su nombre, código **2**.
+3. `fichero` no se puede leer: mensaje de error que incluya su nombre, código **4**.
+4. `umbral` no es un entero positivo (solo dígitos, al menos 1): mensaje de error que incluya el valor, código **3**.
+
+No olvides:
+- Comprobación de argumentos y mensajes de error, en el orden correcto (3 puntos).
+- Seleccionar los artículos, ordenarlos e imprimirlos con el formato exacto y el valor por defecto correcto (4 puntos).
+- Casos especiales: ningún artículo bajo, líneas en blanco, nombres con espacios, empates en la cantidad (3 puntos).
+@@check
+SEEDS=2
+COMPARE="stdout exit errmsg"
+setup() {
+  local i
+  echo "item,qty,price" > inv.csv
+  for ((i = 1; i <= 12; i++)); do echo "$(word)$i,$(randr 0 12),$(randr 1 90)" >> inv.csv; done
+  mkfl many.csv "item,qty,price" "delta,2,10" "alpha,2,5" "charlie,1,100" "bravo,2,1" "echo,7,9" "foxtrot,3,4" "golf,3,6" "hotel,0,50"
+  echo "item,qty,price" > none.csv
+  for ((i = 1; i <= 6; i++)); do echo "$(word)$i,$(randr 5 20),$(randr 1 90)" >> none.csv; done
+  mkfl blanks.csv "item,qty,price" "" "green apple,4,10" "" "red pear,2,7" "kiwi,9,3" "" "big melon,0,25" "plum,4,12" ""
+  mkfl locked.csv "item,qty,price" "alpha,1,1"; chmod 000 locked.csv
+  mkdir -p adir
+}
+ARGS=('' 'inv.csv 3 extra' 'nofile.csv' 'adir' 'inv.csv abc' 'inv.csv 0' 'inv.csv -2' 'locked.csv' 'nofile.csv abc'
+      'inv.csv' 'inv.csv 10' 'many.csv' 'many.csv 3'
+      'none.csv' 'blanks.csv 20' 'inv.csv 1' 'blanks.csv')
+CASE_OBJ=(args args args args args args args args args  core core core core  edge edge edge edge)
+extra_check() {
+  case $REF_CODE in
+    1) [[ $ERR == *lowstock.sh* || $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* ]] || fail "the usage message should show how to call the script" ;;
+    2|4) mentions "$(eval "set -- $CASE"; echo "$1")" ;;
+    3) mentions "$(eval "set -- $CASE"; echo "$2")" ;;
+  esac
+}
+@@solution
+#!/bin/bash
+usage() { echo "Usage: $0 file [threshold]" >&2; }
+if (( $# < 1 || $# > 2 )); then echo "Error: wrong number of arguments" >&2; usage; exit 1; fi
+file=$1 thr=${2:-5}
+[[ -f $file ]] || { echo "Error: $file does not exist or is not a regular file" >&2; exit 2; }
+[[ -r $file ]] || { echo "Error: cannot read $file" >&2; exit 4; }
+[[ $thr =~ ^[1-9][0-9]*$ ]] || { echo "Error: threshold '$thr' must be a positive integer" >&2; exit 3; }
+rows= n=0 total=0
+{
+  read -r _header
+  while IFS=, read -r item qty price; do
+    [[ -n $item ]] || continue
+    if (( qty < thr )); then rows+="$qty,$item"$'\n'; n=$((n + 1)); total=$((total + qty * price)); fi
+  done
+} < "$file"
+if [[ -n $rows ]]; then
+  printf '%s' "$rows" | sort -t, -k1,1n -k2 | while IFS=, read -r q i; do echo "$i: $q"; done
+fi
+echo "Low stock items: $n"
+echo "Total value: $total"

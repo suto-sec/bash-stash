@@ -1,0 +1,449 @@
+@@collection 13_boot_services | Arranque, GRUB, systemd y apagado
+@@about
+Qué pasa entre el encendido y el prompt de inicio de sesión: el firmware, las tablas de particiones, el gestor de arranque, el núcleo, el primer proceso, las unidades y los targets de systemd, gestionar servicios con systemctl y apagar de forma limpia.
+
+@@group Del encendido al núcleo
+@@q order | La secuencia de arranque
+Ordena las etapas del arranque de un PC típico con Linux.
+(>) El firmware (BIOS o UEFI) comprueba e inicializa el hardware :: No se puede cargar nada hasta que el hardware sea utilizable.
+(>) El firmware encuentra el disco de arranque y lee su tabla de particiones y su código de arranque :: Tiene que saber dónde está el gestor de arranque.
+(>) Se ejecuta el gestor de arranque (por ejemplo GRUB), que te deja elegir un núcleo o un sistema :: La etapa 1 carga la etapa 2, que muestra el menú.
+(>) El núcleo se carga en memoria y arranca (con un disco RAM inicial) :: El gestor le cede el control.
+(>) El núcleo lanza el primer proceso (PID 1, normalmente systemd) :: Todo lo demás parte de él.
+(>) Arrancan los servicios y aparece un prompt de inicio de sesión :: El sistema está listo para los usuarios.
+
+@@q single | Qué hace el firmware
+¿Cuál es el trabajo del firmware (BIOS o UEFI) al encender?
+(+) Inicializar y comprobar el hardware básico, y después encontrar y lanzar un gestor de arranque desde un dispositivo de almacenamiento. :: Vive en una memoria no volátil de la placa base.
+(-) Cargar los módulos del núcleo del sistema operativo y preparar los controladores de cada uno de los dispositivos. :: Eso lo hace después el núcleo.
+(-) Lanzar la shell de inicio del usuario propietario de la máquina, una vez que el hardware está listo. :: Mucho más tarde en el arranque.
+(-) Planificar los procesos que se ejecutan en la máquina desde el momento en que se enciende. :: Eso es el planificador del núcleo.
+
+@@q single | Por qué un gestor de arranque
+¿Por qué hace falta un gestor de arranque como GRUB entre el firmware y el núcleo?
+(+) El firmware solo carga un pequeño trozo de código; el gestor entiende los sistemas de ficheros, ofrece un menú y carga el núcleo. :: Cubre ese hueco.
+(-) Porque el núcleo no puede ejecutarse en absoluto si antes el gestor de arranque no le ha mostrado un menú gráfico al usuario. :: El menú es opcional.
+(-) Porque el firmware no puede leer ningún disco, así que otro programa tiene que leerlos por él. :: Puede leer los primeros bloques o la partición EFI.
+(-) Porque GRUB sustituye al núcleo cuando el sistema ya ha arrancado y gestiona él mismo la máquina. :: El núcleo toma el control.
+
+@@q match | Ideas sobre BIOS y UEFI
+Empareja cada término con su descripción.
+(=) BIOS => El firmware antiguo que arranca desde el primer sector (MBR) de un disco :: Diseño heredado de 16 bits.
+(=) UEFI => La interfaz de firmware moderna, capaz de lanzar gestores de arranque desde una partición FAT especial :: La partición del sistema EFI.
+(=) Secure Boot => Una característica de UEFI que solo lanza software de arranque firmado con claves de confianza :: Una defensa contra el malware de arranque.
+(=) MBR => El esquema antiguo de tabla de particiones y sector de arranque :: Limitado a cuatro particiones primarias.
+(=) GPT => La tabla de particiones nueva, que admite muchas particiones y discos muy grandes :: Funciona con UEFI.
+(-) El planificador de procesos del núcleo :: Ninguno de los términos de arriba lo es; GRUB, por ejemplo, es un gestor de arranque.
+
+@@q single | Límites de MBR
+¿Qué limitación pertenece al esquema de particiones MBR clásico?
+(+) Como mucho cuatro particiones primarias (o tres más una extendida), y no se pueden usar discos de más de unos 2 TB. :: GPT elimina los dos límites.
+(-) No puede contener un sistema de ficheros de Linux, así que las instalaciones de Linux de una máquina necesitan otro esquema. :: Sí puede.
+(-) Solo admite firmware UEFI, así que no se puede usar en máquinas que arrancan con BIOS. :: Es propio del arranque con BIOS.
+(-) Está limitado a una sola partición por disco, así que el disco no se puede dividir de ninguna forma. :: Se permiten cuatro primarias.
+
+@@q single | Ventajas de GPT
+¿Qué ventaja tiene GPT frente a MBR?
+(+) Admite más particiones (128) y discos mayores, guarda copia de la tabla y usa identificadores únicos. :: Más robusto y escalable.
+(-) Es obligatorio en todo disco de menos de 1 GB, que el esquema antiguo no sabe manejar en la práctica. :: No existe esa regla.
+(-) Hace el arranque más lento a propósito, porque la tabla se verifica en cada inicio. :: No es una característica.
+(-) Solo admite sistemas de 32 bits, por eso se usa en pequeñas máquinas empotradas. :: También se usa en sistemas de 64 bits.
+
+@@q single | La partición del sistema EFI
+¿Dónde guarda normalmente un sistema UEFI sus gestores de arranque?
+(+) En una pequeña partición con formato FAT, la partición del sistema EFI (ESP), a menudo montada en `/boot/efi`. :: El firmware sabe leer FAT.
+(-) Solo en los primeros 446 bytes del disco, que es donde también vivía el código de arranque de la antigua BIOS. :: Esa es la zona del código de arranque de BIOS/MBR.
+(-) En `/etc/grub.d`, donde se guardan los scripts del gestor junto a su menú. :: Son trozos de configuración, no el gestor de arranque.
+(-) Solo en la RAM, porque el firmware los carga desde la red en cada inicio. :: Tienen que estar guardados en algún sitio.
+
+@@q single | Modo heredado
+¿Qué significa el «modo heredado» (legacy, CSM) en una máquina UEFI?
+(+) El firmware se comporta como una BIOS y arranca desde el MBR, para que los sistemas antiguos puedan seguir arrancando. :: El modo de instalación tiene que coincidir con el esquema de particiones.
+(-) El firmware se desactiva, y la máquina arranca directamente desde el primer disco que encuentra, sin ninguna comprobación. :: Está activo.
+(-) El núcleo se carga dos veces, una el firmware y otra el gestor de arranque. :: No.
+(-) El disco se formatea con un sistema de ficheros más antiguo antes de instalar el gestor de arranque. :: No.
+
+@@group GRUB y el núcleo
+@@q match | Ficheros de GRUB
+Empareja cada fichero o directorio con su papel.
+(=) `/boot/grub/grub.cfg` => La configuración que lee GRUB al arrancar :: Normalmente se genera, no se edita a mano.
+(=) `/etc/default/grub` => Ajustes generales como la entrada por defecto y el tiempo de espera :: Se edita y después se regenera.
+(=) `/etc/grub.d/` => Scripts que producen partes del menú :: Los combina `update-grub`.
+(=) `update-grub` => El mandato que reconstruye `grub.cfg` :: Se ejecuta tras cambiar los ajustes.
+(=) `grub-install /dev/sda` => Escribe GRUB en un disco :: Se hace una vez (o al reparar).
+(-) Las entradas del menú de GRUB :: Eso es `grub.cfg`; `/etc/fstab` lista los sistemas de ficheros que montar.
+
+@@q single | Editar grub.cfg
+En Ubuntu y Debian, ¿por qué no deberías editar directamente `/boot/grub/grub.cfg`?
+(+) Lo genera `update-grub` a partir de `/etc/default/grub` y `/etc/grub.d/`, así que los cambios a mano se sobrescriben. :: Cambia las fuentes y después regenéralo.
+(-) Porque es un fichero binario que solo se puede cambiar con las herramientas del gestor. :: Es texto.
+(-) Porque solo el propio núcleo tiene permiso para escribir en el directorio `/boot` del disco, ni siquiera root. :: Root sí puede.
+(-) Porque se guarda en un hardware de solo lectura que ningún usuario puede modificar. :: Es un fichero normal.
+
+@@q fill | Regenerar el menú
+Tras cambiar `/etc/default/grub`, reconstruye el menú de arranque con: `{{update-grub ;; sudo update-grub ;; grub-mkconfig -o /boot/grub/grub.cfg ;; sudo grub-mkconfig -o /boot/grub/grub.cfg}}`
+(x) grub-install :: Escribe el gestor de arranque en un disco; no regenera el menú.
+(x) mkinitrd :: Construye el disco RAM inicial.
+@@note
+El mandato que hay por debajo es `grub-mkconfig`.
+
+@@q single | Lo que puede hacer GRUB
+¿Cuál de estas cosas puede hacer GRUB?
+(+) Mostrar un menú de sistemas y núcleos, editar las opciones de arranque, ofrecer una línea de mandatos y encadenar otros gestores. :: Una herramienta flexible.
+(-) Lanzar los servicios de usuario tras el arranque y mantenerlos en marcha hasta el apagado. :: Ese es el trabajo del PID 1.
+(-) Gestionar las cuentas de usuario de la máquina y crear otras nuevas para quienes la usan al arrancar el sistema. :: No.
+(-) Sustituir en cada arranque el controlador del sistema de ficheros del núcleo por uno propio. :: No.
+
+@@q single | Rescate con GRUB
+El sistema no arranca por una entrada de menú estropeada. ¿Qué te permite hacer la línea de mandatos de GRUB?
+(+) Fijar el dispositivo raíz, cargar a mano un núcleo y un disco RAM inicial y arrancar, para poner en marcha la máquina y repararla. :: Por ejemplo `linux /boot/vmlinuz root=...`, `initrd ...`, `boot`.
+(-) Editar directamente las contraseñas de los usuarios, para que nadie se quede sin acceso al sistema cuando arranca la máquina. :: No es su propósito.
+(-) Actualizar el firmware de la máquina, que es la causa habitual de una entrada de menú estropeada. :: No.
+(-) Nada, porque GRUB no tiene modo interactivo, y una entrada estropeada obliga a reinstalar. :: Sí lo tiene.
+
+@@q order | Arranque manual desde el prompt de GRUB
+Ordena los mandatos de GRUB para arrancar a mano un sistema Linux.
+(>) `set root=(hd0,1)` :: Elegir la partición que contiene el núcleo.
+(>) `linux /boot/vmlinuz root=/dev/sda1` :: Cargar el núcleo e indicarle dónde está el sistema de ficheros raíz.
+(>) `initrd /boot/initrd.img` :: Cargar el disco RAM inicial.
+(>) `boot` :: Arrancar el núcleo cargado.
+
+@@q single | Lo primero que hace el núcleo
+Después de que el gestor de arranque le cede el control, ¿qué hace el núcleo antes de lanzar el primer proceso?
+(+) Detecta la CPU y la memoria, prepara la memoria y los dispositivos, monta el sistema de ficheros raíz y después lanza el PID 1. :: Ese es su trabajo de arranque.
+(-) Lanza él mismo todos los demonios, uno tras otro, antes de que exista ningún otro proceso. :: Eso lo hace el PID 1.
+(-) Pregunta al usuario qué servicios lanzar y espera la respuesta en la consola. :: No hay ninguna interacción.
+(-) Formatea los discos que encuentra, para que los sistemas de ficheros estén listos para los servicios que arrancan después. :: Nunca automáticamente.
+
+@@q single | initrd
+¿Qué es el disco RAM inicial (initrd / initramfs)?
+(+) Un pequeño sistema de ficheros raíz temporal en memoria, con las herramientas necesarias para encontrar el sistema de ficheros raíz real. :: Se descarta cuando se monta la raíz real.
+(-) Una copia de seguridad del directorio personal del usuario, que el núcleo restaura en cada arranque. :: No.
+(-) La partición de intercambio, que el núcleo usa como memoria extra mientras el sistema arranca y antes de que la RAM esté lista. :: No.
+(-) Una lista de los servicios que hay que lanzar, que el núcleo le pasa al primer proceso. :: No.
+
+@@q single | Raíz montada en solo lectura
+¿Por qué el núcleo suele montar al principio el sistema de ficheros raíz en solo lectura?
+(+) Para poder comprobarlo (fsck) con seguridad antes de que nada escriba en él; después se vuelve a montar en lectura y escritura. :: Protege contra la corrupción.
+(-) Porque el núcleo no puede escribir en ningún disco hasta que haya entrado el primer usuario. :: Sí puede.
+(-) Porque el disco raíz siempre es un CD o un DVD, que solo se puede leer. :: No siempre.
+(-) Porque los permisos del sistema de ficheros raíz prohíben incluso a root escribir en él durante todo el arranque. :: No es la razón.
+
+@@q match | PID bajos
+Empareja cada proceso con su papel.
+(=) PID 0 => La tarea ociosa/planificador del núcleo (no es un proceso normal) :: No aparece en `ps`.
+(=) PID 1 => El primer proceso de espacio de usuario, `init`, hoy normalmente `systemd` :: El antecesor de todos los demás.
+(=) `kthreadd` => El padre de los hilos del núcleo :: Aparecen entre corchetes en `ps`.
+(=) `getty` o el gestor de pantalla => Presenta el prompt de inicio de sesión :: Lo lanza el PID 1.
+(-) El primer proceso de la máquina, `bash` :: Tu shell llega mucho después, lanzada por el PID 1 a través del inicio de sesión.
+
+@@q single | Mensajes del núcleo
+¿Qué mandato muestra los mensajes que imprimió el núcleo durante el arranque (detección del hardware, controladores)?
+(+) `dmesg` :: Imprime el búfer circular del núcleo.
+(-) `history` :: Muestra los mandatos de la shell.
+(-) `last` :: Muestra los inicios de sesión anteriores.
+(-) `uname` :: Solo muestra el nombre y la versión del núcleo.
+
+@@q single | Parámetros del núcleo
+¿Qué se le puede pasar al núcleo desde el gestor de arranque?
+(+) Opciones como el dispositivo raíz, `single` o `systemd.unit=rescue.target` (un modo de reparación). :: Modifican cómo arrancan el núcleo y el PID 1.
+(-) Contraseñas nuevas para las cuentas de usuario, que el núcleo guarda en el fichero shadow. :: No es su propósito.
+(-) Alias de la shell, que el primer proceso carga antes de lanzar las shells de inicio de sesión. :: Eso es cosa de bash.
+(-) La fecha y la hora del siguiente apagado, que el núcleo programa para la máquina y anuncia a los usuarios. :: Eso es `shutdown`.
+
+@@group El PID 1 y systemd
+@@q single | El primer proceso
+¿Qué papel tiene el proceso con PID 1?
+(+) Lanza y supervisa los servicios, adopta los procesos huérfanos y da acceso al sistema. :: En los Linux modernos suele ser systemd.
+(-) Es lo mismo que el núcleo, solo que ejecutándose en modo usuario y con menos prioridad que los demás procesos. :: Es un proceso de espacio de usuario.
+(-) Solo existe mientras la máquina se apaga, cuando detiene a todos los demás procesos. :: Se ejecuta todo el tiempo.
+(-) Es la shell del primer usuario que inicia sesión, y todos los demás procesos son hijos suyos. :: Arranca antes de que entre ningún usuario.
+
+@@q match | Tipos de sistema init
+Empareja cada sistema con su familia.
+(=) System V init => El arranque secuencial clásico con scripts en `/etc/init.d` :: Niveles de ejecución y scripts.
+(=) systemd => El gestor moderno, en paralelo y basado en dependencias, estándar en la mayoría de distribuciones :: Usa ficheros de unidad.
+(=) launchd => El sistema init de macOS :: Otra familia.
+(=) init al estilo BSD => El enfoque de FreeBSD, OpenBSD y NetBSD :: Scripts rc centrales.
+(-) El sistema init de Linux, GRUB :: GRUB es el gestor de arranque; se ejecuta antes que el sistema init.
+
+@@q multi | Ventajas de systemd
+Marca las características que ofrece systemd.
+(+) Lanza los servicios en paralelo, siguiendo las dependencias declaradas. :: Arranques más rápidos.
+(+) Puede reiniciar los servicios que fallan. :: Supervisión.
+(+) Sigue los procesos de un servicio con grupos de control (cgroups), no solo con PID. :: Encuentra todos los hijos de un servicio.
+(+) Puede lanzar servicios bajo demanda (por ejemplo cuando aparece un socket o un dispositivo). :: Activación por sucesos.
+(-) Necesita un escritorio gráfico para funcionar. :: Funciona en servidores.
+(-) Sustituye al núcleo. :: Se ejecuta por encima de él.
+
+@@q single | Qué es una unidad
+¿Qué es una «unidad» (unit) de systemd?
+(+) Un fichero de configuración que describe algo que gestiona systemd: un servicio, un montaje, un socket, un temporizador, un target... :: Se nombra con un sufijo como `.service` o `.target`.
+(-) Una medida de tiempo de CPU, que systemd usa para repartir el procesador entre todos los servicios en ejecución. :: No.
+(-) Un único proceso en ejecución, que systemd lanza y vigila hasta que se detiene. :: Una unidad lo describe; el proceso es otra cosa.
+(-) Una cuenta de usuario del sistema, con su directorio personal y su shell de inicio. :: No.
+
+@@q match | Tipos de unidad
+Empareja cada tipo de unidad con su propósito.
+(=) `.service` => Un demonio o programa que ejecuta systemd :: Como `ssh.service`.
+(=) `.target` => Un grupo de unidades que marca un estado del sistema :: Como `multi-user.target`.
+(=) `.mount` => Un punto de montaje de un sistema de ficheros :: Generado desde `/etc/fstab` o escrito a mano.
+(=) `.timer` => Una programación que dispara otra unidad :: Una alternativa moderna a cron.
+(=) `.socket` => Un socket de red o local que puede lanzar un servicio bajo demanda :: Activación por socket.
+(-) La definición de una cuenta de usuario :: Las cuentas están en `/etc/passwd`; `.user` no es un tipo de unidad.
+
+@@q single | Dónde están las unidades
+¿Dónde se guardan normalmente los ficheros de unidad que instalan los paquetes, y dónde pone el administrador sus propios cambios?
+(+) Los paquetes, en `/lib/systemd/system`; lo local va en `/etc/systemd/system`, que tiene prioridad. :: No edites los ficheros de los paquetes.
+(-) Los dos en `/bin`, donde se guardan los programas del sistema, y en ningún otro sitio. :: Ahí están los programas.
+(-) Los de los paquetes en `/etc/systemd/system` y los locales en `/tmp`, que se limpia en cada arranque de la máquina. :: Al revés y mal.
+(-) Solo en el directorio personal del usuario que administra la máquina, en una carpeta oculta. :: Esas son para las unidades de usuario.
+
+@@q single | Qué es un target
+¿Qué es un target en systemd?
+(+) Un grupo de unidades con nombre que representa una etapa o estado del sistema, y que sustituye a los antiguos niveles de ejecución. :: Alcanzar un target significa que se han lanzado sus unidades.
+(-) Un fichero que guarda la tabla de particiones del disco desde el que arranca el sistema. :: No.
+(-) Una forma de dirigir la salida de un programa a la impresora configurada como predeterminada en el sistema. :: No.
+(-) La CPU de destino del núcleo, para la que se compiló el código máquina de los programas. :: No.
+
+@@q match | Niveles de ejecución y targets
+Empareja cada nivel de ejecución clásico con su target de systemd.
+(=) 0 => `poweroff.target` :: Detener el sistema.
+(=) 1 => `rescue.target` :: Modo de mantenimiento monousuario.
+(=) 3 => `multi-user.target` :: Multiusuario, modo texto con red.
+(=) 5 => `graphical.target` :: Multiusuario con inicio de sesión gráfico.
+(=) 6 => `reboot.target` :: Reiniciar el sistema.
+(-) `sleep.target` :: Es un target real, pero no tiene número de nivel de ejecución clásico.
+
+@@q single | Target por defecto
+¿Qué mandato muestra el target con el que arranca el sistema?
+(+) `systemctl get-default` :: A menudo `graphical.target` en escritorios y `multi-user.target` en servidores.
+(-) `systemctl status` :: Muestra el estado del sistema y de los servicios.
+(-) `runlevel 5` :: No es un mandato.
+(-) `who -r` :: Solo informa del nivel de ejecución en algunos sistemas.
+
+@@q single | Cambiar de target ahora
+¿Qué hace `systemctl isolate rescue.target`?
+(+) Detiene los servicios que no pertenecen al target de rescate y lleva la máquina al modo de mantenimiento. :: Cambia el sistema en marcha a ese target.
+(-) Hace que el modo de rescate sea el predeterminado en todos los arranques siguientes, pero no cambia el estado del sistema en marcha. :: Eso es `systemctl set-default`.
+(-) Borra el fichero de unidad del target, para que no se pueda volver a usar. :: No.
+(-) Aísla el cable de red de la máquina, desactivando las interfaces de red. :: No literalmente.
+
+@@q fill | Fijar el predeterminado
+Haz que el sistema arranque en modo texto (sin inicio de sesión gráfico) la próxima vez: `systemctl {{set-default}} multi-user.target`
+(x) isolate :: Cambia el estado actual, pero no el del siguiente arranque.
+(x) enable :: Activa una unidad para que arranque al iniciar; no elige el target predeterminado.
+@@note
+`isolate` cambia ahora; `set-default` decide los arranques siguientes.
+
+@@group Gestionar servicios
+@@q match | Acciones básicas de systemctl
+Empareja cada mandato con su efecto.
+(=) `systemctl start cups` => Lanzar el servicio ahora :: Se ejecuta hasta que se detenga o se apague la máquina.
+(=) `systemctl stop cups` => Detener el servicio ahora :: Si estaba activado para el arranque, lo sigue estando.
+(=) `systemctl restart cups` => Detenerlo y volver a lanzarlo :: Recarga el programa.
+(=) `systemctl status cups` => Mostrar su estado, las últimas líneas de su registro y si está activado :: Activo/inactivo.
+(=) `systemctl reload cups` => Pedirle que vuelva a leer su configuración sin detenerse :: Solo si el servicio lo admite.
+(-) Mostrar la página de manual :: Ninguno de estos mandatos lo hace; `systemctl cups` sin acción ni siquiera es válido.
+
+@@q single | enable frente a start
+¿Qué diferencia hay entre `systemctl start ssh` y `systemctl enable ssh`?
+(+) `start` ejecuta el servicio ahora; `enable` hace que arranque automáticamente al iniciar, pero no lo lanza ahora. :: Usa `enable --now` para las dos cosas.
+(-) Son idénticos, y los dos lanzan el servicio y hacen que vuelva a arrancar en cada inicio. :: Son distintos.
+(-) `enable` solo lanza el servicio para el usuario root, mientras que `start` lo hace para todos los que tienen sesión abierta. :: No.
+(-) `start` hace que el servicio arranque en cada inicio, mientras que `enable` lo ejecuta una sola vez. :: Solo afecta a la sesión actual.
+
+@@q single | disable frente a stop
+¿Qué hace `systemctl disable ssh`?
+(+) Quita el arranque automático al iniciar, pero deja en marcha el servicio que ya se está ejecutando. :: Combínalo con `stop` para detenerlo ya.
+(-) Detiene el servicio de inmediato. :: Eso es `stop`.
+(-) Borra el paquete. :: No.
+(-) Impide que el servicio se vuelva a lanzar, incluso a mano, hasta que vuelvas a ejecutar `enable`. :: Eso lo hace `mask`; `disable` solo quita el arranque automático.
+
+@@q single | mask
+¿Qué consigue `systemctl mask ssh` además de lo que hace `disable`?
+(+) Enlaza la unidad con `/dev/null`, así que no se puede lanzar de ninguna forma: ni al arrancar, ni a mano, ni como dependencia. :: Un bloqueo fuerte.
+(-) Oculta el servicio a `ps`, de modo que sus procesos dejan de aparecer en la lista. :: No.
+(-) Hace más silencioso el registro del servicio, descartando todos los mensajes de baja prioridad del journal. :: No.
+(-) Es lo mismo que `restart`, con otro nombre que se usa para los ficheros de unidad. :: No.
+
+@@q fill | Lanzar y activar a la vez
+Lanza el servicio ahora y también en cada arranque: `systemctl {{enable --now}} ssh`
+(x) start :: Ejecutaría el servicio, pero no lo activaría para el arranque.
+(x) reload :: Solo vuelve a leer la configuración.
+@@note
+Equivale a `systemctl enable ssh` seguido de `systemctl start ssh`.
+
+@@q single | ¿Está en marcha?
+¿Qué mandato imprime `active` o `inactive` para un servicio, de modo que un script pueda comprobarlo?
+(+) `systemctl is-active ssh` :: Su valor de retorno es 0 cuando la unidad está activa.
+(-) `systemctl list ssh` :: No es una forma válida.
+(-) `systemctl show` :: Imprime muchas propiedades.
+(-) `ps ssh` :: No es un uso correcto de `ps`.
+
+@@q single | Mandatos al estilo antiguo
+En muchos sistemas siguen existiendo `service cups start` y `/etc/init.d/cups start`. ¿Qué son?
+(+) La forma de System V de controlar un servicio; `service` reenvía a `systemctl`, pero ejecutar el script directamente se salta systemd. :: Mejor usa `systemctl`.
+(-) Las únicas formas posibles de controlar un servicio en cualquier sistema actual, sea cual sea su sistema init. :: systemd es el estándar.
+(-) Mandatos que borran para siempre el servicio y su fichero de unidad de la máquina. :: Lo lanzan.
+(-) Mandatos que solo puede usar root y que se le niegan a cualquier usuario normal. :: Los usuarios normales pueden necesitar `sudo` en los dos casos.
+
+@@q single | Registros de un servicio
+¿Qué mandato muestra los mensajes de registro del servicio `ssh` que ha recogido systemd?
+(+) `journalctl -u ssh` :: Lee el journal y filtra por unidad.
+(-) `dmesg -u ssh` :: `dmesg` muestra los mensajes del núcleo.
+(-) `last ssh` :: Muestra inicios de sesión.
+(-) `systemctl log ssh` :: No es una acción válida.
+
+@@q single | Unidades fallidas
+¿Qué mandato lista las unidades que no pudieron arrancar?
+(+) `systemctl --failed` :: Una comprobación rápida de salud tras el arranque.
+(-) `systemctl list-failures` :: No es una acción válida.
+(-) `journalctl -f` :: Sigue los mensajes nuevos, no las unidades fallidas.
+(-) `systemctl is-enabled` :: Informa de si una unidad concreta está activada.
+
+@@q single | Dependencias
+¿Qué significa que un fichero de unidad diga `After=network.target` y `Wants=network.target`?
+(+) El servicio arranca después de alcanzarse el target de red, y systemd intenta además levantar la red. :: `After` fija el orden; `Wants`, una dependencia débil.
+(-) El servicio arranca antes de alcanzarse el target de red, para preparar primero la red según sus necesidades. :: `After` significa después.
+(-) El servicio se borra cada vez que cae la red, y se vuelve a instalar después. :: No.
+(-) El servicio controla la red, y la arranca y la detiene según hace falta. :: Solo depende de ella.
+
+@@q single | Reiniciar si falla
+¿Qué ajuste de una unidad de servicio hace que systemd vuelva a lanzar el programa cuando falla?
+(+) `Restart=on-failure` (en la sección `[Service]`) :: systemd lo supervisa y lo reinicia.
+(-) `After=crash.target`, que ordena el servicio después del fallo :: No es un ajuste.
+(-) `Enabled=yes`, que mantiene vivo el servicio en todo momento :: No es un ajuste.
+(-) `WantedBy=failure`, que enlaza el servicio con el target de fallo :: No tiene sentido.
+
+@@group Apagar
+@@q match | Mandatos de apagado
+Empareja cada mandato con su efecto.
+(=) `shutdown -h now` => Detener y apagar inmediatamente :: Avisa antes a los usuarios.
+(=) `shutdown -r +5` => Reiniciar dentro de cinco minutos :: Un retraso con aviso.
+(=) `shutdown -h 15:20` => Apagar a las 15:20 :: Una hora del reloj.
+(=) `shutdown -c` => Cancelar un apagado programado :: Antes de que ocurra.
+(=) `reboot` => Reiniciar la máquina :: También `systemctl reboot`.
+(-) Matar todas las sesiones de usuario y borrar sus ficheros :: Ninguna opción hace eso; `shutdown -k` solo envía los avisos, sin apagar.
+
+@@q single | Quién puede apagar
+¿Quién puede ejecutar normalmente `shutdown` en un sistema multiusuario?
+(+) Solo root (por ejemplo con `sudo`). :: Afecta a todos los usuarios.
+(-) Cualquier usuario con sesión abierta. :: No por defecto.
+(-) Solo el primer usuario que inició sesión. :: No existe esa regla.
+(-) Solo el usuario `nobody`. :: No.
+
+@@q order | Qué pasa al apagar
+Ordena las etapas de un apagado limpio.
+(>) Se avisa a los usuarios con un mensaje :: Para que puedan guardar su trabajo.
+(>) Los procesos reciben `SIGTERM` y los servicios se detienen en orden :: Una petición educada de terminar.
+(>) Los procesos que sobreviven al periodo de gracia reciben `SIGKILL` :: El final forzado.
+(>) Los sistemas de ficheros se sincronizan y se desmontan :: Escribir los búferes en disco y desengancharlos.
+(>) La máquina se apaga o se reinicia :: El último paso.
+
+@@q single | Por qué primero SIGTERM
+¿Por qué la secuencia de apagado envía `SIGTERM` antes que `SIGKILL`?
+(+) Los programas pueden capturar `SIGTERM` para guardar datos y terminar limpiamente; solo los que no acaban a tiempo reciben `SIGKILL`. :: Reduce el riesgo de corrupción.
+(-) Porque `SIGKILL` no se puede enviar a los servicios, solo a los procesos de los usuarios normales que tienen terminal. :: Sí se puede.
+(-) Porque `SIGTERM` apaga el hardware, mientras que `SIGKILL` solo termina los procesos. :: Es una señal normal.
+(-) Porque `SIGKILL` es más lento que `SIGTERM`, y el apagado tiene que hacerse rápido. :: No es la razón.
+
+@@q single | Por qué desmontar
+¿Por qué hay que desmontar los sistemas de ficheros (o volver a montarlos en solo lectura) antes de apagar?
+(+) Puede haber datos esperando en los búferes de memoria; desmontar los escribe en disco y marca el sistema de ficheros como limpio. :: Un corte de luz repentino puede dejar inconsistencias.
+(-) Porque los discos desmontados gastan menos electricidad, lo que importa cuando un portátil va con batería. :: No es la razón.
+(-) Porque si no el núcleo se negaría a apagar hasta que se hubieran desmontado todos los discos. :: No se niega.
+(-) Para borrar los ficheros temporales que los programas han dejado en el disco antes de que se detenga la máquina. :: Eso se hace en otro sitio.
+
+@@q single | Mensaje de apagado propio
+¿Qué mandato avisa a los usuarios con tu propio mensaje y apaga en 10 minutos?
+(+) `shutdown -h +10 "Mantenimiento en 10 minutos"` :: El texto se envía a todos los terminales.
+(-) `shutdown -c "Mantenimiento"`, que anuncia el mensaje y luego sigue :: `-c` cancela.
+(-) `echo Mantenimiento | shutdown`, que lee el mensaje de su entrada :: El mensaje no se lee de stdin.
+(-) `halt +10`, que detiene la máquina tras un retraso de diez minutos :: `halt` detiene al momento.
+
+@@q single | Atajo para reiniciar
+¿Qué efecto normal tiene pulsar `Ctrl+Alt+Supr` en una consola de texto de Linux?
+(+) Provoca un reinicio a través del sistema init (systemd lo asocia a `reboot.target`). :: En muchos sistemas se puede desactivar.
+(-) Abre un administrador de tareas donde puedes elegir qué procesos terminar, como en Windows. :: Eso es cosa del escritorio.
+(-) Bloquea la pantalla y pide la contraseña del usuario antes de que pase nada más. :: No por defecto.
+(-) Nada en absoluto, porque el núcleo ignora esa combinación de teclas en una consola de texto. :: El núcleo se la pasa al sistema init.
+
+@@group Sistemas de ficheros en el arranque
+@@q single | fstab
+¿Para qué se usa `/etc/fstab`?
+(+) Lista los sistemas de ficheros (dispositivo, punto de montaje, tipo, opciones) que se montan al arrancar. :: También lista las zonas de intercambio.
+(-) Guarda las contraseñas de los usuarios, de una forma que solo puede leer el administrador. :: Eso es `/etc/shadow`.
+(-) Contiene el menú de arranque de GRUB, con una entrada por cada núcleo instalado. :: Esa es la configuración de GRUB.
+(-) Registra quién entró y cuándo, cosa que `last` lee después para mostrar el historial. :: Eso es `wtmp`.
+
+@@q single | Intercambio (swap)
+¿Qué es el espacio de intercambio (swap)?
+(+) Espacio en disco que el núcleo puede usar para guardar páginas de memoria que no se están usando, dejando más sitio en la RAM. :: Se activa durante el arranque.
+(-) Un directorio para ficheros temporales, que los programas llenan mientras se ejecutan y que luego limpia el sistema. :: Eso es `/tmp`.
+(-) Una cuenta de usuario especial, propietaria de los ficheros que el núcleo mueve entre discos. :: No.
+(-) Una copia de seguridad del directorio `/home`, que se hace automáticamente en cada apagado. :: No.
+
+@@q single | Limpiar /tmp
+¿Por qué muchos sistemas limpian `/tmp` al arrancar?
+(+) Los ficheros temporales no están pensados para sobrevivir a un reinicio, y los restos podrían llenar el disco o confundir a los programas. :: Forma parte de la limpieza inicial.
+(-) Porque `/tmp` se guarda dentro del gestor de arranque, que lo vacía en cada inicio. :: No.
+(-) Porque el núcleo no puede montar el sistema de ficheros de `/tmp` mientras ese directorio tenga todavía ficheros de la última sesión. :: No.
+(-) Para borrar las contraseñas que los usuarios escribieron en los programas durante la última sesión. :: No.
+
+@@group Práctica variada
+@@q fill | Reiniciar un servicio
+Detén y vuelve a lanzar el servicio `cron` con un solo mandato: `systemctl {{restart}} cron`
+(x) reload :: Pide al programa que vuelva a leer su configuración sin detenerse.
+(x) enable :: Solo fija el arranque automático al iniciar.
+@@note
+`systemctl status cron` muestra el resultado.
+
+@@q fill | Al arrancar y ahora
+Lanza `nginx` ahora y también en cada arranque: `systemctl {{enable --now ;; enable --now}} nginx`
+(x) start :: Lo lanza ahora, pero no arrancará al iniciar.
+(x) enable :: Fija el arranque al iniciar, pero no lo lanza ahora.
+@@note
+Equivale a `enable` seguido de `start`.
+
+@@q fill | Apagar en diez minutos
+Apaga la máquina dentro de diez minutos: `shutdown {{-h +10 ;; -P +10 ;; -h +10 ;; --poweroff +10}}`
+(x) -r +10 :: En su lugar, reinicia.
+(x) -c :: Cancela un apagado programado.
+@@note
+`shutdown -c` lo cancela antes de que se cumpla el plazo.
+
+@@q sort | Etapa del arranque
+@@buckets Antes de que se ejecute el núcleo | Después de que haya arrancado el núcleo
+Clasifica cada paso del arranque.
+(Antes de que se ejecute el núcleo) El firmware comprueba el hardware :: La autocomprobación de encendido.
+(Antes de que se ejecute el núcleo) GRUB muestra el menú :: El gestor de arranque.
+(Antes de que se ejecute el núcleo) El firmware lee la tabla de particiones :: Buscar el código de arranque.
+(Después de que haya arrancado el núcleo) El PID 1 lanza los servicios :: systemd.
+(Después de que haya arrancado el núcleo) El sistema de ficheros raíz se vuelve a montar en lectura y escritura :: El espacio de usuario inicial.
+(Después de que haya arrancado el núcleo) Aparece el prompt de inicio de sesión :: El último paso.
+
+@@q multi | Cosas que puede gestionar systemd
+Marca los tipos de unidad que puede gestionar systemd.
+(+) Un servicio como `ssh.service` :: Un demonio.
+(+) Un punto de montaje como `home.mount` :: Un sistema de ficheros.
+(+) Un temporizador como `backup.timer` :: Una programación.
+(+) Un target como `multi-user.target` :: Un grupo de unidades.
+(-) La contraseña de un usuario :: Las contraseñas son cosa de `/etc/shadow`.
+(-) Un fichero de texto normal en `/home` :: No es una unidad.
+
+@@q order | Cambiar el target predeterminado
+Ordena los mandatos para que un servidor arranque a partir de ahora sin inicio de sesión gráfico.
+(>) `systemctl get-default` :: Mirar primero el predeterminado actual.
+(>) `sudo systemctl set-default multi-user.target` :: Cambiar el predeterminado para los arranques siguientes.
+(>) `sudo reboot` :: Reiniciar para que el cambio surta efecto.
+(>) `systemctl get-default` :: Confirmar el nuevo predeterminado.
+
+@@q match | La familia del apagado
+Empareja cada mandato con su efecto.
+(=) `poweroff` => Apaga la máquina :: También `systemctl poweroff`.
+(=) `reboot` => Reinicia la máquina :: También `systemctl reboot`.
+(=) `shutdown -r now` => Reinicia inmediatamente, avisando a los usuarios :: Un apagado con mensaje.
+(=) `shutdown -c` => Cancela un apagado pendiente :: Solo antes de que se cumpla el plazo.
+(=) `systemctl rescue` => Pasa al modo de rescate monousuario :: Modo de mantenimiento.
+(-) Formatea el sistema de ficheros raíz :: Ningún mandato de apagado hace eso.
