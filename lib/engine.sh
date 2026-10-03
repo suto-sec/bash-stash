@@ -46,6 +46,7 @@ ex_dir() { # id or id prefix -> exercise dir
   [[ $id =~ ^(easy|medium|hard)-[0-9]+$ ]] && m=( "$LAB"/script-exams/"$id"_* )
   # Scripts (s01, s01.2 = its step 2): one script built in steps, each step validated; see tools/SCRIPTS_AUTHORING.md
   [[ $id =~ ^(s[0-9]{2}|imp-[a-z0-9]+(-[a-z0-9]+)*)(\.[0-9]+)?$ ]] && { id=${id%%.*}; m=( "$LAB"/scripts/"$id"_* ); }   # (imp-<pack>-<item>: an imported script)
+  [[ $id == imp-* && ! -d ${m[0]} ]] && m=( "$LAB"/script-exams/"$id"_* )   # (an imported practice exam shares the id space of the imported scripts)
   [[ -d ${m[0]} ]] || die "No exercise with id '$id'"
   (( ${#m[@]} == 1 )) || die "Ambiguous id '$id'"
   echo "${m[0]}"

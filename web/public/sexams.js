@@ -11,7 +11,7 @@ const SExams = (() => {
       title: 'Practice exams', crumb: 'Script exam',
       intro: 'One bash script per exam, written in VS Code and the terminal only, graded out of 10 by objectives (pass at 5). Three levels, seven exams each. Settings (⚙) decide whether you can run the checker while you work or only when you submit. An unfinished attempt is kept: resume it or discard it from the exam\'s overview.',
       none: 'No script exams built yet (run <code>node tools/build_script_exams.js</code>).',
-      tier_easy: 'Easy', tier_medium: 'Medium', tier_hard: 'Hard',
+      tier_easy: 'Easy', tier_medium: 'Medium', tier_hard: 'Hard', tier_imported: 'Imported',
       passedCount: (p, t) => `${p}/${t} passed`, notTaken: 'Not attempted yet',
       bestLine: (b, n) => `Best ${b}/10 · ${n} attempt${n === 1 ? '' : 's'}`, lastLine: d => `Last: ${d}`, inProgress: 'In progress',
       meta: 'One script · graded out of 10 by objectives · pass at 5/10',
@@ -37,7 +37,7 @@ const SExams = (() => {
       title: 'Exámenes de práctica', crumb: 'Examen de script',
       intro: 'Un script de bash por examen, escrito solo con VS Code y el terminal, con nota sobre 10 por objetivos (aprobado en 5). Tres niveles, siete exámenes cada uno. Los ajustes (⚙) deciden si puedes ejecutar el corrector mientras trabajas o solo al entregar. Un intento sin terminar se conserva: puedes continuarlo o descartarlo desde la vista general del examen.',
       none: 'Todavía no hay exámenes de script (ejecuta <code>node tools/build_script_exams.js</code>).',
-      tier_easy: 'Fácil', tier_medium: 'Medio', tier_hard: 'Difícil',
+      tier_easy: 'Fácil', tier_medium: 'Medio', tier_hard: 'Difícil', tier_imported: 'Importado',
       passedCount: (p, t) => `${p}/${t} aprobados`, notTaken: 'Sin intentar',
       bestLine: (b, n) => `Mejor ${b}/10 · ${n} intento${n === 1 ? '' : 's'}`, lastLine: d => `Último: ${d}`, inProgress: 'En curso',
       meta: 'Un script · nota sobre 10 por objetivos · aprobado en 5/10',
@@ -87,26 +87,27 @@ const SExams = (() => {
     try { index = await (await api(qLang())).json(); } catch { index = []; }
     if (!Array.isArray(index)) index = [];
   }
-  const list = () => index;
+  const list = () => index.filter(e => !e.imp);          // the course exams; imported packs have their own tab
+  const imported = () => index.filter(e => e.imp);
   const entry = id => index.find(e => e.id === id);
   const statusOf = e => e.best == null ? 'new' : e.best >= PASS ? 'pass' : 'attempted';
   const tierLabel = t => T('tier_' + t);
   async function refresh() { await load(); renderHomeGrid(); }
 
   // ---------------------------------------------------------------- home grid
+  const card = e => {
+    const cls = e.best == null ? '' : e.best >= PASS ? 'good' : 'low';
+    return `<button class="track-card exam-card${state.sexam === e.id ? ' current' : ''}" data-sexam="${esc(e.id)}">
+      <div class="track-card-title">${esc(e.title)}</div>
+      <div class="track-card-desc">${e.best == null ? T('notTaken') : `<span class="exam-best ${cls}">${T('bestLine', e.best, e.attempts)}</span>`}</div>
+      <div class="track-card-count">${e.inProgress ? `<span class="exam-draft">${T('inProgress')}</span>` : e.last ? T('lastLine', `${e.last.score}/10 · ${fmtDate(e.last.finishedAt)}`) : '&nbsp;'}</div>
+    </button>`;
+  };
   function renderHomeGrid() {
     $('#sexams-intro').textContent = T('intro');
     $('#home-sec-sexams').textContent = T('title');
     const grid = $('#sexams-grid');
     if (!index.length) { grid.innerHTML = `<p class="home-intro">${T('none')}</p>`; return; }
-    const card = e => {
-      const cls = e.best == null ? '' : e.best >= PASS ? 'good' : 'low';
-      return `<button class="track-card exam-card${state.sexam === e.id ? ' current' : ''}" data-sexam="${esc(e.id)}">
-        <div class="track-card-title">${esc(e.title)}</div>
-        <div class="track-card-desc">${e.best == null ? T('notTaken') : `<span class="exam-best ${cls}">${T('bestLine', e.best, e.attempts)}</span>`}</div>
-        <div class="track-card-count">${e.inProgress ? `<span class="exam-draft">${T('inProgress')}</span>` : e.last ? T('lastLine', `${e.last.score}/10 · ${fmtDate(e.last.finishedAt)}`) : '&nbsp;'}</div>
-      </button>`;
-    };
     grid.innerHTML = ['easy', 'medium', 'hard'].filter(t => index.some(e => e.tier === t)).map(t => {
       const es = index.filter(e => e.tier === t);
       return `<h3 class="home-tier-title">${T('tier_' + t)} <span>${T('passedCount', es.filter(e => statusOf(e) === 'pass').length, es.length)}</span></h3>
@@ -146,8 +147,13 @@ const SExams = (() => {
   async function open(id, mode, n) {
     if (!entry(id)) await load();
     if (!entry(id)) { location.replace('#/home'); return; }
-    const [d, attempts] = await Promise.all([fetchDetail(id), api(`/${id}/attempts`).then(r => r.json())]);
+    let [d, attempts] = await Promise.all([fetchDetail(id), api(`/${id}/attempts`).then(r => r.json())]);
     if (!d) { location.replace('#/home'); return; }
+    if (d.needsConsent) {                                       // an imported exam is code: shown first, then allowed (or not)
+      const ok = typeof Imp !== 'undefined' && await Imp.askConsent(d.imp);
+      if (!ok) { location.hash = '#/home'; return; }
+      await load(); d = await fetchDetail(id);
+    }
     if (!location.hash.startsWith(`#/sexam/${id}`)) return;       // navigated away while loading
     state.sexam = id; state.theory = null; state.exam = null;
     if (mode === 'run') {
@@ -332,5 +338,5 @@ const SExams = (() => {
     btn.disabled = false; btn.textContent = T('check'); busy = false;
   };
 
-  return { load, list, entry, statusOf, open, hide, visible, onLang, refresh, renderHomeGrid, renderSidebar, go, t: T, tierLabel, current: () => cur };
+  return { load, list, entry, statusOf, open, hide, visible, onLang, refresh, renderHomeGrid, renderSidebar, go, t: T, tierLabel, imported, cardHTML: card, current: () => cur };
 })();

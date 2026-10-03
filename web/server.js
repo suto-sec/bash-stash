@@ -170,6 +170,7 @@ function deletePack(id, withProgress) {
     try { for (const f of fs.readdirSync(dir)) if (f.startsWith(`imp-${id}-`) && f.endsWith(ext)) fs.unlinkSync(path.join(dir, f)); } catch { /* none */ }
   }
   try { for (const f of fs.readdirSync(SC_PROGRESS)) if (f.startsWith(`imp-${id}-`)) fs.rmSync(path.join(SC_PROGRESS, f), { recursive: true, force: true }); } catch { /* none */ }
+  try { for (const f of fs.readdirSync(path.join(PROGRESS, 'script-exams'))) if (f.startsWith(`imp-${id}-`)) fs.rmSync(path.join(PROGRESS, 'script-exams', f), { recursive: true, force: true }); } catch { /* none */ }
   try { const play = path.join(process.env.HOME || '/home/alumno', 'play'); for (const f of fs.readdirSync(play)) if (f.startsWith(`imp-${id}-`)) fs.rmSync(path.join(play, f), { recursive: true, force: true }); } catch { /* none */ }
 }
 // the request body as text (a pack can be a few hundred KB), parsed here so a syntax error can be reported
@@ -187,9 +188,12 @@ function readRaw(req, max = 3e6) {
 // pack, inside the sandbox (sandboxArgs), and a snapshot of the progress was taken first.
 const crypto = require('crypto');
 const scriptItems = pack => pack.items.filter(i => i.kind === 'script');
+const examItems = pack => pack.items.filter(i => i.kind === 'scriptexam');
+const codeItems = pack => pack.items.filter(i => i.kind === 'script' || i.kind === 'scriptexam');
 function packCode(pack) {          // every piece of code of a pack, as the user sees it and as the consent hash covers it
-  return scriptItems(pack).map(i => ({ id: i.id, title: i.title, script: i.script, fixture: i.fixture,
-    steps: i.steps.map(st => ({ n: st.n, title: st.title, check: st.check, solution: st.solution })) }));
+  return codeItems(pack).map(i => i.kind === 'script'
+    ? { id: i.id, title: i.title, script: i.script, fixture: i.fixture, steps: i.steps.map(st => ({ n: st.n, title: st.title, check: st.check, solution: st.solution })) }
+    : { id: i.id, title: i.title, script: i.script, fixture: i.fixture, objectives: i.objectives, steps: [{ n: 1, title: 'the exam', check: i.check, solution: i.solution }] });
 }
 const packCodeHash = pack => crypto.createHash('sha256').update(JSON.stringify(packCode(pack))).digest('hex');
 const consentFile = id => path.join(IMPORT_DIR, id, 'consent.json');
@@ -198,7 +202,7 @@ function packConsented(id) {
   if (!importer.SLUG.test(id || '')) return false;
   const pack = readPacks().find(p => p.id === id);
   if (!pack) return false;
-  if (!scriptItems(pack).length) return true;
+  if (!codeItems(pack).length) return true;
   const c = readConsent(id);
   return !!c && c.hash === packCodeHash(pack);
 }
@@ -237,15 +241,31 @@ function materialize(pack) {
     }
   }
 }
-function syncMaterialized() {        // the folders of the imported scripts follow the packs: written for the existing ones, removed for the others
-  const want = new Set(readPacks().flatMap(p => scriptItems(p).map(i => `imp-${p.id}-${i.id}_script`)));
-  for (const base of [path.join(LAB, 'scripts'), path.join(LAB, 'solutions/scripts')]) {
-    try { for (const n of fs.readdirSync(base)) if (n.startsWith('imp-') && !want.has(n)) fs.rmSync(path.join(base, n), { recursive: true, force: true }); } catch { /* none */ }
+function materializeExams(pack) {     // a script practice exam: script-exams/imp-<pack>-<item>_exam/{meta.json,README.md,README.es.md,check.sh} and solutions/script-exams/<same>.sh
+  for (const it of examItems(pack)) {
+    const id = `imp-${pack.id}-${it.id}`, name = `${id}_exam`;
+    const dir = path.join(LAB, 'script-exams', name), sol = path.join(LAB, 'solutions/script-exams', name + '.sh');
+    fs.rmSync(dir, { recursive: true, force: true }); fs.rmSync(sol, { force: true });
+    fs.mkdirSync(dir, { recursive: true }); fs.mkdirSync(path.dirname(sol), { recursive: true });
+    const tx = t => ({ en: t, es: t });
+    fs.writeFileSync(path.join(dir, 'meta.json'), JSON.stringify({ id, slug: 'exam', tier: 'imported', title: tx(it.title), script: it.script, cmds: it.cmds || '', total: 10,
+      objectives: it.objectives.map(o => ({ id: o.id, label: tx(o.label), points: o.points })), imp: pack.id, packTitle: pack.title }, null, 1) + '\n');
+    fs.writeFileSync(path.join(dir, 'README.md'), it.statement.trim() + '\n'); fs.writeFileSync(path.join(dir, 'README.es.md'), it.statement.trim() + '\n');
+    fs.writeFileSync(path.join(dir, 'check.sh'), `# checker spec for the imported practice exam ${id} (see lib/engine.sh; graded by objectives with bin/sgrade)\nSCRIPT_NAME=${it.script}\nOBJECTIVES=(\n${it.objectives.map(o => `  "${o.id}|${o.label}|${o.points}"`).join('\n')}\n)\n${(it.fixture || '').trim()}\n${it.check.trim()}\n`);
+    fs.writeFileSync(sol, it.solution.trim() + '\n', { mode: 0o755 });
   }
-  for (const p of readPacks()) materialize(p);
+}
+function syncMaterialized() {        // the folders of the imported scripts and exams follow the packs: written for the existing ones, removed for the others
+  const packs = readPacks();
+  const wantS = new Set(packs.flatMap(p => scriptItems(p).map(i => `imp-${p.id}-${i.id}_script`)));
+  const wantX = new Set(packs.flatMap(p => examItems(p).map(i => `imp-${p.id}-${i.id}_exam`)));
+  for (const [base, want, ext] of [[path.join(LAB, 'scripts'), wantS, ''], [path.join(LAB, 'solutions/scripts'), wantS, ''], [path.join(LAB, 'script-exams'), wantX, ''], [path.join(LAB, 'solutions/script-exams'), wantX, '.sh']]) {
+    try { for (const n of fs.readdirSync(base)) if (n.startsWith('imp-') && !want.has(ext ? n.slice(0, -ext.length) : n)) fs.rmSync(path.join(base, n), { recursive: true, force: true }); } catch { /* none */ }
+  }
+  for (const p of packs) { materialize(p); materializeExams(p); }
 }
 function packStatus(p) {
-  const code = scriptItems(p).length > 0, c = code ? readConsent(p.id) : null;
+  const code = codeItems(p).length > 0, c = code ? readConsent(p.id) : null;
   return { code, consented: code ? packConsented(p.id) : null, consentAt: c && c.hash === packCodeHash(p) ? c.at : null, snapshotAt: code && fs.existsSync(SNAP(p.id)) ? fs.statSync(SNAP(p.id)).mtime.toISOString() : null };
 }
 
@@ -418,7 +438,7 @@ function gradeAttempt(exam, body, prev) {
 // (the script being written; the terminal and VS Code open there) and <id>/archive/ (earlier scripts).
 const SX = path.join(LAB, 'script-exams');
 const SX_PROGRESS = path.join(PROGRESS, 'script-exams');
-const SX_ID = /^(easy|medium|hard)-\d\d$/;
+const SX_ID = /^((easy|medium|hard)-\d\d|imp-[a-z0-9]+(-[a-z0-9]+)*)$/;      // (and the practice exams of imported packs: imp-<pack>-<item>)
 const SX_PASS = 5;
 const SX_MAX_ATTEMPTS = 200;
 function sxDir(id) {
@@ -455,7 +475,8 @@ function sxIndex(lang) {
     return { id: m.id, tier: m.tier, title: sxText(m.title, lang), script: m.script, cmds: m.cmds, total: m.total, pass: SX_PASS,
       attempts: at.length, best: at.length ? Math.max(...at.map(a => a.score)) : null,
       last: last ? { n: last.n, score: last.score, finishedAt: last.finishedAt } : null,
-      inProgress: cur ? { startedAt: cur.startedAt } : null };
+      inProgress: cur ? { startedAt: cur.startedAt } : null,
+      ...(m.imp ? { imp: m.imp, packTitle: m.packTitle, consent: packConsented(m.imp) } : {}) };
   });
 }
 function sxDetail(m, lang) {
@@ -463,7 +484,8 @@ function sxDetail(m, lang) {
   const cur = sxCurrent(m.id);
   return { id: m.id, tier: m.tier, title: sxText(m.title, lang), script: m.script, cmds: m.cmds, total: m.total, pass: SX_PASS,
     objectives: m.objectives.map(o => ({ id: o.id, label: sxText(o.label, lang), points: o.points })),
-    readme, attempt: cur, workDir: sxWorkDir(m.id), scriptPath: path.join(sxWorkDir(m.id), m.script) };
+    readme, attempt: cur, workDir: sxWorkDir(m.id), scriptPath: path.join(sxWorkDir(m.id), m.script),
+    ...(m.imp ? { imp: m.imp, packTitle: m.packTitle, needsConsent: !packConsented(m.imp) } : {}) };
 }
 function sxArchive(m, why) {      // keep whatever script is in the work dir before it is replaced
   const file = path.join(sxWorkDir(m.id), m.script);
@@ -487,7 +509,8 @@ function sxStart(m, body) {
 }
 function sxGrade(m, file) {       // -> Promise of the parsed bin/sgrade report
   return new Promise((resolve, reject) => {
-    const p = spawn(path.join(LAB, 'bin/sgrade'), [m.id, file], { cwd: LAB, env: process.env });
+    const [sc, sa] = sandboxArgs(m.id, path.join(LAB, 'bin/sgrade'), [m.id, file]);
+    const p = spawn(sc, sa, { cwd: LAB, env: process.env });
     let out = '', err = '';
     p.stdout.on('data', d => { out += d; });
     p.stderr.on('data', d => { err += d; });
@@ -792,12 +815,13 @@ async function api(req, res, url) {
       if (req.method === 'GET' && parts[3] === 'code') {
         const scan = require('./scanner').scan;
         sandboxArgs('imp-x', 'true', []);          // (probes once whether the network can be cut off)
-        return send(res, 200, { id: pack.id, title: pack.title, ...packStatus(pack), sandboxNoNet: !!NET_ISOLATION, items: scriptItems(pack).map(i => ({ id: i.id, title: i.title, script: i.script,
+        return send(res, 200, { id: pack.id, title: pack.title, ...packStatus(pack), sandboxNoNet: !!NET_ISOLATION, items: codeItems(pack).map(i => i.kind === 'scriptexam' ? ({ id: i.id, title: i.title, script: i.script, fixture: { code: i.fixture, findings: i.fixture ? scan(i.fixture) : [] },
+          steps: [{ n: 1, title: 'the whole exam', check: { code: i.check, findings: scan(i.check) }, solution: { code: i.solution, findings: scan(i.solution) } }] }) : ({ id: i.id, title: i.title, script: i.script,
           fixture: { code: i.fixture, findings: i.fixture ? scan(i.fixture) : [] },
           steps: i.steps.map(st => ({ n: st.n, title: st.title, check: { code: st.check, findings: scan(st.check) }, solution: { code: st.solution, findings: scan(st.solution) } })) })) });
       }
       if (req.method === 'POST' && parts[3] === 'consent') {          // "I have read the code": a snapshot of the progress first, then the pack may run
-        if (!scriptItems(pack).length) return send(res, 200, { ok: true });
+        if (!codeItems(pack).length) return send(res, 200, { ok: true });
         try { takeSnapshot(pack.id); } catch (e) { return send(res, 500, { error: 'The snapshot of your progress could not be made, so the pack was not allowed: ' + e.message }); }
         fs.writeFileSync(consentFile(pack.id), JSON.stringify({ hash: packCodeHash(pack), at: new Date().toISOString() }));
         logHistory('allowed', pack, 'its code may run in the sandbox; a snapshot of your progress and answers was saved first');
@@ -830,6 +854,17 @@ async function api(req, res, url) {
             const c = st.n > 1 ? await run(`${id}.${st.n}`, sol(st.n - 1)) : null;
             results.push({ item: it.id, title: it.title, n: st.n, stepTitle: st.title, refPasses: a.code === 0, emptyFails: b.code !== 0, previousFails: c ? c.code !== 0 : null, detail: a.code === 0 ? '' : a.out });
           }
+        }
+        for (const it of examItems(pack)) {         // a practice exam: its own solution earns all 10 points, an empty script does not
+          const id = `imp-${pack.id}-${it.id}`, sol = path.join(LAB, 'solutions/script-exams', `${id}_exam.sh`);
+          const grade = file => new Promise(resolve => {
+            const [c, a] = sandboxArgs(id, path.join(LAB, 'bin/sgrade'), [id, file]);
+            let out = '';
+            const ch = spawn(c, a, { cwd: LAB }); ch.stdout.on('data', d => { out += d; }); ch.stderr.on('data', d => { out += d; });
+            ch.on('close', () => { const m = /^SCORE\|([\d.]+)\|/m.exec(out); resolve({ score: m ? +m[1] : -1, out: out.slice(out.indexOf('\n---\n') + 5).split('\n').slice(-14).join('\n') }); });
+          });
+          const a = await grade(sol), b = await grade(noop);
+          results.push({ item: it.id, title: it.title, kind: 'scriptexam', n: 1, stepTitle: `the whole exam: its solution scores ${a.score}/10, an empty script ${b.score}/10`, refPasses: a.score >= 9.99, emptyFails: b.score >= 0 && b.score < 10, previousFails: null, detail: a.score >= 9.99 ? '' : a.out });
         }
         try { fs.unlinkSync(noop); } catch { /* gone */ }
         logHistory('self-test', pack, `${results.filter(r => r.refPasses && r.emptyFails && r.previousFails !== false).length}/${results.length} steps fine`);
@@ -986,6 +1021,7 @@ async function api(req, res, url) {
       try { sxArchive(m, 'discarded'); fs.unlinkSync(sxCurrentFile(m.id)); } catch { /* nothing in progress */ }
       return send(res, 200, { ok: true });
     }
+    if (m.imp && ['check', 'submit'].includes(parts[3]) && !packConsented(m.imp)) return send(res, 403, { error: 'consent', imp: m.imp });
     if (parts[3] === 'check' && req.method === 'POST') {
       const cur = sxCurrent(m.id);
       if (!cur) return send(res, 409, { error: 'no attempt in progress' });

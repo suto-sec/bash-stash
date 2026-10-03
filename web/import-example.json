@@ -3,7 +3,7 @@
   "version": 1,
   "id": "example",
   "title": "Example pack",
-  "description": "A small pack that shows the format: one quiz with every question type, one practice exam and one script with two steps.",
+  "description": "A small pack that shows the format: one quiz with every question type, one practice exam, one script with two steps and one script practice exam.",
   "items": [
     {
       "kind": "quiz",
@@ -498,6 +498,34 @@
           "solution": "#!/bin/bash\nif (( $# != 1 )); then echo \"Error: one argument needed\" >&2; echo \"Usage: $0 dir\" >&2; exit 1; fi\n[[ -e $1 ]] || { echo \"Error: $1 does not exist\" >&2; exit 2; }\n[[ -d $1 ]] || { echo \"Error: $1 is not a directory\" >&2; exit 3; }\nfind \"$1\" -maxdepth 1 -type f | wc -l"
         }
       ]
+    },
+    {
+      "kind": "scriptexam",
+      "id": "biggest-file",
+      "title": "The biggest file",
+      "script": "biggest.sh",
+      "cmds": "find -type f -printf, sort -n, head, test, exit codes",
+      "statement": "Write `biggest.sh DIR`. It prints the **name** (without the directory) of the largest **regular file directly inside** `DIR`. Hidden files count; subdirectories and the files below them do not. When two files have the same size, print the one that comes first alphabetically.\n\nChecks (in this order):\n\n- not exactly one argument → an error message **and the correct usage** on standard error (e.g. `Usage: biggest.sh dir`), exit **1**;\n- `DIR` does not exist → an error message with its name, exit **2**;\n- `DIR` exists but is not a directory → an error message with its name, exit **3**;\n- `DIR` has no regular file → print nothing, exit **4**.",
+      "objectives": [
+        {
+          "id": "args",
+          "label": "Argument checking and error messages",
+          "points": 3
+        },
+        {
+          "id": "core",
+          "label": "Finding the biggest file",
+          "points": 4
+        },
+        {
+          "id": "edge",
+          "label": "Special cases (spaces, hidden files, ties, no files)",
+          "points": 3
+        }
+      ],
+      "fixture": "setup() {\n  mkdir -p docs \"mixed dir/sub\" empty onlydirs/a ties\n  local i f\n  for i in 1 2 3 4 5; do bigfile \"docs/$(word)$i.txt\" $(randr 10 900); done\n  bigfile \"mixed dir/small file\" 40; bigfile \"mixed dir/.hidden big\" 5000; bigfile \"mixed dir/sub/deeper\" 90000\n  bigfile ties/b.txt 700; bigfile ties/a.txt 700; bigfile ties/c.txt 100\n  echo x > notadir.txt\n}\nusage_ok() { [[ $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* || $ERR == *biggest.sh* ]]; }",
+      "check": "SEEDS=2\nCOMPARE=\"stdout exit errmsg\"\nARGS=('docs' '\"mixed dir\"' 'ties' 'empty' 'onlydirs' '' 'docs ties' 'nothing' 'notadir.txt')\nCASE_OBJ=(core edge edge edge edge args args args args)\nextra_check() {\n  [[ $REF_CODE == 1 ]] && { usage_ok || fail \"the usage message should show how to call the script\"; }\n  [[ $REF_CODE == [23] ]] && mentions \"$(eval \"set -- $CASE\"; echo \"$1\")\"\n}",
+      "solution": "#!/bin/bash\nif (( $# != 1 )); then echo \"Error: one argument needed\" >&2; echo \"Usage: $0 dir\" >&2; exit 1; fi\n[[ -e $1 ]] || { echo \"Error: $1 does not exist\" >&2; exit 2; }\n[[ -d $1 ]] || { echo \"Error: $1 is not a directory\" >&2; exit 3; }\nbest=$(find \"$1\" -maxdepth 1 -type f -printf '%s %f\\n' | sort -k1,1nr -k2,2 | head -n 1)\n[[ -n $best ]] || exit 4\necho \"${best#* }\""
     }
   ]
 }

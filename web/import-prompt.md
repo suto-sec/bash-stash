@@ -1,10 +1,10 @@
 # Prompt: write a content pack for bash stash
 
-You are going to write practice material for **bash stash**, a web app that trains for a university Linux / shell-scripting exam (bash, files, permissions, find, grep, pipes, scripts, processes, users, boot). The material is delivered as **one JSON file** (a "pack") that the user imports in the app (Home → Imported → choose file). A pack can hold quizzes, practice exams and **scripts** (exercises in which the learner writes a bash script that an automatic checker grades).
+You are going to write practice material for **bash stash**, a web app that trains for a university Linux / shell-scripting exam (bash, files, permissions, find, grep, pipes, scripts, processes, users, boot). The material is delivered as **one JSON file** (a "pack") that the user imports in the app (Home → Imported → choose file). A pack can hold quizzes, practice exams, **scripts** (exercises in which the learner writes a bash script that an automatic checker grades) and **script practice exams** (one bigger script graded out of 10 by objectives).
 
 ## What I want from you
 
-1. Ask me (the user) for anything you need that is missing: the **topic**, the **kinds** (quiz, exam and/or script), how many questions or scripts, the difficulty. If I already told you, do not ask again.
+1. Ask me (the user) for anything you need that is missing: the **topic**, the **kinds** (quiz, exam, script and/or scriptexam), how many questions or scripts, the difficulty. If I already told you, do not ask again.
 2. Write the pack following the format below **exactly**.
 3. Reply with **only the JSON**: no explanations before or after it, no Markdown headings. A single fenced block (```json … ```) or the bare JSON are both fine. The file will be saved as `<pack id>.json`.
 4. Before replying, run the **checklist** at the end and fix what fails.
@@ -28,12 +28,12 @@ The app checks the file when it is imported and shows every problem with its pla
   "id": "my-pack",
   "title": "Short title of the pack",
   "description": "One or two sentences (optional).",
-  "items": [ { "kind": "quiz", … }, { "kind": "exam", … }, { "kind": "script", … } ]
+  "items": [ { "kind": "quiz", … }, { "kind": "exam", … }, { "kind": "script", … }, { "kind": "scriptexam", … } ]
 }
 ```
 
 - `id`: lowercase identifier, `a-z 0-9 -`, at most 40 characters. Importing a pack with the same `id` replaces the old one (the user is asked).
-- `items`: 1 to 100. Every item has a `kind` (`quiz`, `exam` or `script`) and an `id` (same identifier rules; unique per kind inside the pack).
+- `items`: 1 to 100. Every item has a `kind` (`quiz`, `exam`, `script` or `scriptexam`) and an `id` (same identifier rules; unique per kind inside the pack).
 - Do not add other fields: they are ignored.
 
 ### Item kind `quiz`
@@ -152,6 +152,28 @@ Fields: `id`; `title`; `script` (the file name the learner's script is run as: l
 
 For error handling follow the usual exam pattern: wrong number of arguments → message and usage on stderr, exit 1; a path that does not exist → exit 2; the wrong kind of thing → exit 3; use `COMPARE="stdout exit errmsg"` plus `extra_check` as in the example.
 
+### Item kind `scriptexam`: one whole script, graded out of 10 by objectives (this item contains CODE)
+
+Like the real exam: a statement, **one** script to write, no steps and no hints. The learner is graded by **objectives** (for example "argument checking" 3 points, "core behaviour" 4, "special cases" 3); each test case belongs to one objective and the points of an objective are earned in proportion to the cases it passes. 5 out of 10 passes.
+
+```json
+{ "kind": "scriptexam", "id": "biggest-file", "title": "The biggest file", "script": "biggest.sh", "cmds": "find, sort, head, test",
+  "statement": "Write `biggest.sh DIR`. It prints the name of the largest regular file directly inside `DIR` … (every check, in order, with its exit code)",
+  "objectives": [ { "id": "args", "label": "Argument checking and error messages", "points": 3 },
+                  { "id": "core", "label": "Finding the biggest file", "points": 4 },
+                  { "id": "edge", "label": "Special cases (spaces, hidden files, ties, no files)", "points": 3 } ],
+  "fixture": "setup() {\n  mkdir -p docs empty …\n  …\n}\nusage_ok() { … }",
+  "check": "SEEDS=2\nCOMPARE=\"stdout exit errmsg\"\nARGS=('docs' '\"mixed dir\"' '' 'nothing' …)\nCASE_OBJ=(core edge args args …)\nextra_check() { … }",
+  "solution": "#!/bin/bash\n…" }
+```
+
+- `objectives`: 2 to 6, each `{id, label, points}` with a short lowercase `id` (letters and digits) and **points that add up to exactly 10**.
+- `fixture`, `check` and `solution` work exactly as for a script (see above): `setup()` builds the test files, `ARGS=( … )` lists the cases, `COMPARE`, `SORT_OUTPUT`, `extra_check`, and the `solution` is the complete reference script.
+- **`CASE_OBJ=( … )` is required**: one objective id per entry of `ARGS`, in the same order and with the same length. It says which objective each case counts for. Every objective needs at least one case (the importer warns about an objective with none), and usually several.
+- Do **not** define `OBJECTIVES` or `SCRIPT_NAME` in the code: the app builds them from `objectives` and `script`.
+- `statement`: Markdown, up to 8000 characters. Like an exam paper: it states everything that is tested (messages, exit codes, order, special cases) but gives no solution.
+- Make it a fair exam: a competent learner who follows the statement should score 10/10; an empty script must score less than 10 (the app's Self-test checks both with your `solution`).
+
 ## Limits
 
 Texts: question `text` and `note` up to 4000 characters; option, step, pair and item texts and `why` up to 1200; titles up to 200; a script's `readme` up to 6000 and each piece of code (`fixture`, `check`, `solution`) up to 20000 characters. At most 100 items per pack, 200 questions per quiz, 8 steps per script, and the file at most 3 MB.
@@ -166,6 +188,7 @@ Texts: question `text` and `note` up to 4000 characters; option, step, pair and 
 - [ ] No option is the obvious winner by length; no "all of the above".
 - [ ] Every exam has exactly 10 single-choice questions.
 - [ ] Every command behaviour mentioned is correct on a standard GNU/Linux bash.
+- [ ] Every scriptexam: points add up to 10, `CASE_OBJ` has as many entries as `ARGS`, no `OBJECTIVES` in the code, the statement lists every check.
 - [ ] Every script: `script` ends in `.sh`; `level` 1 to 5; 1 to 3 valid `tags`; each step has `title`, `readme`, `check` (with `ARGS=(`) and `solution`.
 - [ ] Every `solution` is a complete script, runs on a standard bash, and is the cumulative result of the steps so far.
 - [ ] Every checker covers the error cases of the statement and the edge cases of the fixture; the statement mentions each one.

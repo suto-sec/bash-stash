@@ -22,8 +22,8 @@ const Imp = (() => {
     try { history = await json('/api/import/history'); } catch { history = []; }
     if (!Array.isArray(history)) history = [];
   }
-  const KIND = { quiz: 'quiz', exam: 'practice exam', script: 'script' };
-const COUNT_WORD = { quiz: 'question', exam: 'question', script: 'step' };
+  const KIND = { quiz: 'quiz', exam: 'practice exam', script: 'script', scriptexam: 'script practice exam' };
+const COUNT_WORD = { quiz: 'question', exam: 'question', script: 'step', scriptexam: 'objective' };
   const when = iso => { try { return new Date(iso).toLocaleDateString(undefined, { dateStyle: 'medium' }); } catch { return ''; } };
   const whenFull = iso => { try { return new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }); } catch { return ''; } };
   const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
@@ -71,11 +71,11 @@ const COUNT_WORD = { quiz: 'question', exam: 'question', script: 'step' };
   }
   const selftestHtml = () => {
     if (!selftest) return '';
-    if (selftest.running) return '<div class="imp-report"><div class="hint">Running the self-test: every step is checked with its own solution and with an empty script…</div></div>';
+    if (selftest.running) return '<div class="imp-report"><div class="hint">Running the self-test: every step (every exam) is checked with its own solution and with an empty script…</div></div>';
     if (selftest.error) return `<div class="imp-report"><div class="imp-bad">${esc(selftest.error)}</div></div>`;
     const bad = selftest.results.filter(r => !r.refPasses || !r.emptyFails || r.previousFails === false);
     return `<div class="imp-report"><div class="${bad.length ? 'imp-bad' : 'imp-ok'}"><b>Self-test of “${esc(selftest.id)}”:</b> ${bad.length ? `${plural(bad.length, 'step')} to fix` : `all ${selftest.results.length} steps are fine`}.</div>
-      <ul class="imp-list">${selftest.results.map(r => `<li class="${!r.refPasses || !r.emptyFails || r.previousFails === false ? 'imp-errors' : ''}"><b>${esc(r.title)} · step ${r.n}</b> (${esc(r.stepTitle)}): its own solution ${r.refPasses ? 'passes ✓' : 'does NOT pass ✗'}; an empty script ${r.emptyFails ? 'fails ✓' : 'passes ✗ (the checker tests nothing)'}${r.previousFails === null ? '' : `; the previous step's solution ${r.previousFails ? 'fails ✓' : 'passes ✗ (this step adds nothing the checker can see)'}`}${r.detail ? `<pre class="imp-pre">${esc(r.detail)}</pre>` : ''}</li>`).join('')}</ul>
+      <ul class="imp-list">${selftest.results.map(r => `<li class="${!r.refPasses || !r.emptyFails || r.previousFails === false ? 'imp-errors' : ''}"><b>${esc(r.title)}${r.kind === 'scriptexam' ? '' : ` · step ${r.n}`}</b> (${esc(r.stepTitle)}): its own solution ${r.refPasses ? (r.kind === 'scriptexam' ? 'earns all 10 points ✓' : 'passes ✓') : (r.kind === 'scriptexam' ? 'does NOT earn all 10 points ✗' : 'does NOT pass ✗')}; an empty script ${r.emptyFails ? (r.kind === 'scriptexam' ? 'does not earn them ✓' : 'fails ✓') : 'passes ✗ (the checker tests nothing)'}${r.previousFails === null ? '' : `; the previous step's solution ${r.previousFails ? 'fails ✓' : 'passes ✗ (this step adds nothing the checker can see)'}`}${r.detail ? `<pre class="imp-pre">${esc(r.detail)}</pre>` : ''}</li>`).join('')}</ul>
       <button type="button" class="small" id="imp-st-close">Close</button></div>`;
   };
 
@@ -90,11 +90,12 @@ const COUNT_WORD = { quiz: 'question', exam: 'question', script: 'step' };
   // before the import: what the code of the file looks like (read from the file in the browser; the checks already ran on the server)
   function previewCode(f) {
     let items = [];
-    try { items = JSON.parse(f.text).items.filter(i => i && i.kind === 'script'); } catch { /* the server accepted it, so this is a formality */ }
+    try { items = JSON.parse(f.text).items.filter(i => i && (i.kind === 'script' || i.kind === 'scriptexam')); } catch { /* the server accepted it, so this is a formality */ }
     const d = { items: items.map(i => ({ title: String(i.title), script: String(i.script), fixture: i.fixture ? { code: i.fixture } : null,
-      steps: (i.steps || []).map(st => ({ n: st.n || '', title: String(st.title), check: { code: st.check }, solution: { code: st.solution } })) })) };
+      steps: i.kind === 'scriptexam' ? [{ n: 1, title: 'the whole exam', check: { code: i.check }, solution: { code: i.solution } }]
+        : (i.steps || []).map(st => ({ n: st.n || '', title: String(st.title), check: { code: st.check }, solution: { code: st.solution } })) })) };
     d.items.forEach(it => it.steps.forEach((st, i) => { st.n = i + 1; }));
-    return `<div class="imp-codenote"><b>This pack contains code</b> (${plural(items.length, 'script')}). It does not run now: you will see it again, and have to allow the pack, before it runs the first time.
+    return `<div class="imp-codenote"><b>This pack contains code</b> (${plural(items.length, 'script or script exam')}). It does not run now: you will see it again, and have to allow the pack, before it runs the first time.
       <details class="imp-code"><summary>Read the code now</summary>${codeHtml(d)}</details></div>`;
   }
   function fileCard(f) {
@@ -240,6 +241,8 @@ const COUNT_WORD = { quiz: 'question', exam: 'question', script: 'step' };
     const q = $1('imp-quizzes-grid'), e = $1('imp-exams-grid');
     if (q) q.innerHTML = byPack(Theory.imported(), Theory.cardHTML);
     if (e) e.innerHTML = byPack(Exams.imported(), Exams.cardHTML);
+    const sx = $1('imp-sexams-grid');
+    if (sx) sx.innerHTML = byPack(SExams.imported(), SExams.cardHTML);
     const sc = $1('imp-scripts-grid');
     if (sc) sc.innerHTML = byPack(Scripts.imported(), x => `<button class="track-card exam-card${state.script === x.id ? ' current' : ''}" data-script="${esc(x.id)}">
         <div class="track-card-title">${esc(x.title)}</div>
@@ -248,7 +251,7 @@ const COUNT_WORD = { quiz: 'question', exam: 'question', script: 'step' };
         <div class="track-card-count">${x.consent ? `<span class="${x.status === 'pass' ? 'exam-best good' : ''}">${x.passed.length}/${x.steps.length} steps passed</span>` : '<span class="imp-bad">needs your OK before it runs</span>'}</div></button>`);
   }
   async function refresh() {
-    await Promise.all([loadPacks(), Theory.load(), Exams.load(), Scripts.load()]);
+    await Promise.all([loadPacks(), Theory.load(), Exams.load(), Scripts.load(), SExams.load()]);
     renderLoad(); renderLists(); renderHistory();
     if (typeof renderHomeNav === 'function') renderHomeNav();
     if (typeof Home !== 'undefined') Home.refresh();
@@ -273,6 +276,7 @@ const COUNT_WORD = { quiz: 'question', exam: 'question', script: 'step' };
     else if (t.closest('[data-rollback]')) rollback(t.closest('[data-rollback]').dataset.rollback);
     else if (t.closest('#imp-scripts-grid [data-script]')) { const e = Scripts.entry(t.closest('[data-script]').dataset.script); Scripts.go(e.id, (e.steps.find(x => !e.passed.includes(x.n)) || e.steps[e.steps.length - 1]).n); }
     else if (t.closest('#imp-quizzes-grid [data-theory]')) Theory.go(t.closest('[data-theory]').dataset.theory);
+    else if (t.closest('#imp-sexams-grid [data-sexam]')) SExams.go(t.closest('[data-sexam]').dataset.sexam);
     else if (t.closest('#imp-exams-grid [data-exam]')) Exams.go(t.closest('[data-exam]').dataset.exam);
   });
   document.addEventListener('change', ev => {
