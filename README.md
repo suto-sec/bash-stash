@@ -23,6 +23,11 @@ Everything you do is stored in the `.progress/` folder of the project (delete it
 
 ## Install
 
+> **Tested on Linux only.** The lab image, the container and the installer scripts were built and tested on **Linux with podman**. Docker, macOS and
+> Windows (WSL) are supported by the same `./lab` script and are described below, but **they have not been tested**: the macOS and Windows steps follow
+> the documented behaviour of Docker Desktop and WSL, and `install/macos.sh` and `install/windows.ps1` have never been run on a Mac or a Windows
+> machine. If something fails there, please open an issue with the exact error text.
+
 You need three things on your computer: **a container engine** (podman or Docker), **git**, and **a Linux-style terminal**.
 There are installer scripts that do it for you, and a step-by-step guide if you prefer to do it by hand. Pick your system:
 
@@ -50,9 +55,9 @@ Already have the project? Run `./install/linux.sh`, `./install/macos.sh` or `pow
 All of them accept `--help` (Linux/macOS) or `Get-Help .\install\windows.ps1` (Windows), and `--dry-run` / `-DryRun` shows what would happen without changing anything.
 Read a script before you run it if you like: they are short and in plain text.
 
-> Honest status: `install/linux.sh` was run here on Linux with podman and its choices for the other distributions were checked with dry runs;
-> `install/macos.sh` and `install/windows.ps1` follow the documented behaviour of Homebrew, Docker Desktop and WSL but could not be run on a Mac or a
-> Windows machine by the author. If one of them fails, the step-by-step guides below do the same by hand.
+> Status: `install/linux.sh` was run here on Linux with podman and its choices for the other distributions were checked with dry runs (it never
+> installed anything on another distribution). `install/macos.sh` and `install/windows.ps1` have not been run on a Mac or a Windows machine.
+> If one of them fails, the step-by-step guides below do the same by hand.
 
 ### Linux (by hand)
 
