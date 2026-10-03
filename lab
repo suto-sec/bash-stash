@@ -15,13 +15,16 @@
 #                      "dev" one at the same time. No web port is published for
 #                      a non-default instance unless LAB_PORT is set explicitly.
 set -e
+case $(uname -s) in
+  MINGW*|MSYS*|CYGWIN*) echo "This script needs a Linux shell. On Windows run it inside WSL (see README: Install > Windows)." >&2; exit 1 ;;
+esac
 HERE=$(cd "$(dirname "$0")" && pwd)
 IMG=bash-stash
 NAME=bash-stash${LAB_INSTANCE:+-$LAB_INSTANCE}
 
 if command -v podman >/dev/null; then RT=podman; USERNS=(--userns=keep-id:uid=1000,gid=1000)
 elif command -v docker >/dev/null; then RT=docker; USERNS=()
-else echo "Need podman or docker" >&2; exit 1; fi
+else echo "Need podman or docker (see README: Install)" >&2; exit 1; fi
 
 PORT=${LAB_PORT:-8080}
 PUBLISH=(); [[ -z $LAB_INSTANCE || -n ${LAB_PORT:-} ]] && PUBLISH=(-p "127.0.0.1:$PORT:8080")
@@ -48,9 +51,16 @@ in_lab() { # [-t] cmd...
 case ${1:-} in
   build) build ;;
   web)   ensure
-         for _ in $(seq 60); do curl -fs "http://127.0.0.1:$PORT/api/ping" >/dev/null 2>&1 && break; sleep 0.5; done
-         echo "bash stash is running at http://localhost:$PORT"
-         command -v xdg-open >/dev/null && xdg-open "http://localhost:$PORT" >/dev/null 2>&1 &
+         if command -v curl >/dev/null; then
+           for _ in $(seq 60); do curl -fs "http://127.0.0.1:$PORT/api/ping" >/dev/null 2>&1 && break; sleep 0.5; done
+         else sleep 6; fi
+         echo "bash stash is running at http://localhost:$PORT   (open it in your browser if it did not open by itself)"
+         # the default browser: Linux (xdg-open), macOS (open), WSL (wslview or Windows' explorer.exe)
+         if   grep -qi microsoft /proc/version 2>/dev/null && command -v wslview >/dev/null; then wslview "http://localhost:$PORT" >/dev/null 2>&1 &
+         elif grep -qi microsoft /proc/version 2>/dev/null && command -v explorer.exe >/dev/null; then explorer.exe "http://localhost:$PORT" >/dev/null 2>&1 &
+         elif command -v xdg-open >/dev/null; then xdg-open "http://localhost:$PORT" >/dev/null 2>&1 &
+         elif command -v open >/dev/null; then open "http://localhost:$PORT" >/dev/null 2>&1 &
+         fi
          ;;
   reset) "$RT" rm -f "$NAME" >/dev/null 2>&1; echo "container removed" ;;
   root)  ensure; shift; if (( $# )); then "$RT" exec -u root "$NAME" "$@"; else "$RT" exec -it -u root "$NAME" bash -l; fi ;;

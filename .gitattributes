@@ -1,0 +1,10 @@
+# Shell scripts must keep Unix line endings (a Windows checkout with CRLF would break ./lab and the container build)
+lab text eol=lf
+*.sh text eol=lf
+bin/* text eol=lf
+lib/* text eol=lf
+container/** text eol=lf
+*.js text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+*.txt text eol=lf

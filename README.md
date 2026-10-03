@@ -1,190 +1,286 @@
 # bash stash — bash from zero to exam
 
-272 auto-checked exercises (19 topics) covering the Unix shell, core commands, bash scripting and
-basic system administration, in an Ubuntu container with a classroom-like setup.
-The goal: be able to write an exam-style script like `deploy_bins.sh` (exercise 1801) from scratch, with
-only a terminal, VS Code and `man`.
+A self-hosted study lab for the Unix shell, bash scripting and basic system administration, built to prepare a university
+operating-systems exam where you write a bash script with **only a terminal, VS Code and `man`**. Everything runs on your own
+computer, in a container, and you use it in your browser.
 
-## Requirements
+- **741 auto-checked coding exercises** in 20 topics, **87 scripts** built up step by step, and **script practice exams**
+- **834 theory quiz questions** in 6 formats, **32 theory practice exams**, **71 man-page drills** (questions and tasks)
+- a **reference manual** with 200 entries (every option, real example output), and a **suggested path** with an **exam-readiness** page
+- a terminal and **VS Code** in the browser, side by side with the statement
+- **import your own** quizzes, exams, scripts and script exams from one JSON file (for example written by an AI assistant)
 
-Linux (or WSL) with **podman** (recommended) or **docker**. Nothing else: the Ubuntu image carries
-everything, including VS Code for the browser. The first start builds the image (a few minutes).
+Everything you do is stored in the `.progress/` folder of the project (delete it to start over). Nothing leaves your computer.
 
-## Start: web UI
+---
 
-```bash
-./lab web        # starts the lab and opens http://localhost:8080
-```
+## Install (step by step)
 
-- **Left:** every topic and exercise with its status (✔ passed, ● in progress, ◉ solution viewed,
-  ○ not started), search, and overall progress.
-- **Middle:** the statement, **Check** (`Ctrl+Enter`) with the checker's diff when something is
-  wrong, and **Show solution** (asks for confirmation if you haven't passed the exercise yet; the
-  exercise is then marked *solution viewed* until you pass it).
-- **Right:** your workspace, switchable at any time between
-  - **Terminal**: a real bash shell in the lab, opened in the exercise folder (buttons: `cd here`,
-    `nano answer`, new session), exactly like an exam without a GUI;
-  - **VS Code**: plain VS Code in the browser (no extensions, AI chat disabled), opened on the
-    exercise folder with `answer.sh`, with its own integrated terminal.
+You need three things on your computer: **a container engine** (podman or Docker), **git**, and **a Linux-style terminal**.
+After that, two commands start everything. Pick your system:
 
-  Both edit the same files, so you can switch whenever you like.
-- ☀/☾ switches the light/dark theme of the site, the terminal and VS Code.
+| your system | what to install | where you type the commands |
+|---|---|---|
+| **Linux** | podman (or Docker), git, curl | any terminal |
+| **macOS** | Docker Desktop, git | the Terminal app |
+| **Windows 10/11** | WSL 2 with Ubuntu, and Docker Desktop (or podman inside Ubuntu) | **the Ubuntu terminal** (not PowerShell, not Git Bash) |
 
-The web UI only listens on `127.0.0.1` and only accepts requests from pages served by itself.
+Disk space: about **4 GB free** (the lab image is about 1.8 GB). The first start downloads and builds it and takes **5 to 15 minutes**;
+every start after that takes a few seconds.
 
-## Other host commands
+### Linux
 
-`./lab root` (root shell), `./lab reset` (throw the container away; your files are safe), `./lab build` (rebuild the image),
-`./lab <command>` (run any command inside the lab, for the maintenance tools below). Everything you do as a learner happens in the web UI:
-the lab terminal inside it is a normal bash with the full manual pages installed (`man`, `info`, `whatis`, `apropos`): practise using them, it's your only help in the exam.
+1. Open a terminal and install the tools (choose your distribution):
 
-## Workflow
+   ```bash
+   # Ubuntu 24.04 / Debian 12 and newer
+   sudo apt update && sudo apt install -y podman git curl
 
-1. Open an exercise.
-2. Write your solution in its `answer.sh` (quizzes: `answer.txt`) with the terminal or VS Code.
-3. Press **Check**. On failure each failing case shows what was run (arguments, stdin), plain-language hints (wrong order, missing final newline, stderr instead of stdout, exit code...), and *expected* vs *yours* side by side with a character-level diff (**show whitespace** makes spaces and tabs visible). **Try with these test files** builds that exact case in `~/play/<id>-failing/` (your practice folder is untouched) and types the command in the terminal.
-4. Only after passing (or being truly stuck), compare with the solution
-   (`solutions/<topic>/<id>_<name>.sh`): they are written to be the clean/idiomatic version.
+   # Fedora
+   sudo dnf install -y podman git curl
 
-## Topics (in study order)
+   # Arch / Manjaro
+   sudo pacman -S --needed podman git curl
+   ```
 
-| # | topic | exercises |
-|---|-------|-----------|
-| 01 | echo, quoting, substitution | 12 |
-| 02 | directories & navigation | 14 |
-| 03 | files, copies & links | 15 |
-| 04 | tar, gzip, compress | 8 |
-| 05 | filters: wc head tail cut sort uniq tr sed tee nl paste diff od split | 24 |
-| 06 | grep & regular expressions | 16 |
-| 07 | find | 16 |
-| 08 | permissions, chmod, umask, chown | 12 |
-| 09 | redirection | 12 |
-| 10 | pipes, xargs, command substitution | 16 |
-| 11 | variables, arithmetic, environment | 12 |
-| 12 | processes, jobs, signals | 10 |
-| 13 | script parameters & exit codes | 13 |
-| 14 | test, if, case | 14 |
-| 15 | loops & read | 18 |
-| 16 | functions | 10 |
-| 17 | users, groups, sessions, auth.log, cron, sudoers | 18 |
-| 18 | **exam-style scripts** (`deploy_bins.sh`, the log analyser `ipLog.sh` and 20 more) | 22 |
-| 19 | theory quizzes (man/less/info, shell, inodes/umask, redirection, users/sudo, processes, boot/GRUB/UEFI, systemd, "what does it print", globs vs regex) | 10 |
+   Podman must be **version 4.3 or newer** (`podman --version`). On older systems (for example Ubuntu 22.04) use Docker instead:
+   `sudo apt install -y docker.io git curl && sudo usermod -aG docker $USER`, then **log out and in again**.
+   If you use Docker, your Linux user id must be 1000 (check with `id -u`; the first user of a normal installation is).
+2. Download the project and start it:
 
-Difficulty goes ★☆☆☆☆ → ★★★★★ inside each topic and overall. `exercises/INDEX.md` lists them all.
-If you are short of time before the exam: do topics 07, 13, 14, 15 and then all of 18.
+   ```bash
+   git clone https://github.com/suto-sec/bash-stash.git
+   cd bash-stash
+   ./lab web
+   ```
+
+3. Wait until it prints `bash stash is running at http://localhost:8080`. Your browser opens by itself; if it does not, open that address.
+
+### macOS
+
+1. Install **Docker Desktop** from <https://www.docker.com/products/docker-desktop/> (or `brew install --cask docker`), start it and wait until
+   the whale icon in the menu bar stops moving. Git comes with the Xcode command line tools (`xcode-select --install`).
+2. In the Terminal app:
+
+   ```bash
+   git clone https://github.com/suto-sec/bash-stash.git
+   cd bash-stash
+   ./lab web
+   ```
+
+3. Wait for `bash stash is running at http://localhost:8080`. The browser opens by itself; otherwise open that address.
+
+### Windows
+
+Windows cannot run the `./lab` script directly, so you use **WSL** (the Windows Subsystem for Linux, built into Windows 10/11).
+All the commands below are typed in the **Ubuntu** terminal, never in PowerShell or Git Bash.
+
+1. **Install WSL with Ubuntu.** Open **PowerShell as administrator** (right-click Start → *Terminal (Admin)*) and run:
+
+   ```powershell
+   wsl --install -d Ubuntu-24.04
+   ```
+
+   Restart the computer when it asks. Then open **Ubuntu** from the Start menu; the first time it asks you to invent a Linux username and password
+   (the password is not shown while you type; that is normal).
+2. **Install the container engine.** Choose one:
+   - *Simplest:* install **Docker Desktop** for Windows (<https://www.docker.com/products/docker-desktop/>), start it, open
+     *Settings → Resources → WSL integration*, switch **Ubuntu-24.04** on and press *Apply*.
+   - *Without Docker Desktop:* in the Ubuntu terminal run `sudo apt update && sudo apt install -y podman git curl`.
+3. In the **Ubuntu terminal** download the project **into your Linux home folder** and start it:
+
+   ```bash
+   cd ~
+   git clone https://github.com/suto-sec/bash-stash.git
+   cd bash-stash
+   ./lab web
+   ```
+
+   Do **not** put the project under `/mnt/c/...` (your Windows drives): it is very slow there and breaks permissions.
+4. When it prints `bash stash is running at http://localhost:8080`, open that address in your normal Windows browser (WSL forwards `localhost`).
+
+> **Windows vs Linux, in short:** after the install, everything is identical: same commands, same screens, same files. The differences are only
+> *getting there*: on Linux the tools are installed with the package manager and `./lab` runs natively; on Windows you first create a Linux
+> environment with WSL and run everything inside it; on macOS you use Docker Desktop and the Terminal app. The `lab` script detects Git Bash/Cygwin and
+> tells you to use WSL, and opens the right browser on Linux, macOS and WSL.
+
+### Daily use
+
+| you want to | type (in the project folder) |
+|---|---|
+| start the lab | `./lab web` |
+| stop it and free the memory | `./lab reset` (your progress and answers are safe: they live in the project folder) |
+| open a shell inside the lab | `./lab` |
+| use another port (if 8080 is taken) | `LAB_PORT=8090 ./lab web`, then open `http://localhost:8090` |
+| update to the newest version | `git pull`, then `./lab reset`, then `./lab build`, then `./lab web` |
+| start from zero | delete the `.progress/` folder (and your `answer.sh` files if you want those blank too) |
+| remove everything | `./lab reset`, `podman rmi bash-stash` (or `docker rmi bash-stash`), then delete the project folder |
+
+### If something goes wrong
+
+| what you see | what to do |
+|---|---|
+| `Need podman or docker` | the engine is not installed (or not in this terminal): redo step 1 of your system. On Windows, run it in the Ubuntu terminal and enable WSL integration in Docker Desktop. |
+| `permission denied: ./lab` | the file lost its executable bit (it happens when the project was downloaded as a ZIP): run `chmod +x lab` or start with `bash lab web`. |
+| `Cannot connect to the Docker daemon` | Docker is not running: start Docker Desktop (Windows/macOS) or `sudo systemctl start docker` (Linux). On Linux also check `groups` shows `docker` (log out and in after `usermod`). |
+| podman: `no subuid ranges found` / `cannot find newuidmap` | rootless podman needs: `sudo apt install uidmap` and `sudo usermod --add-subuids 100000-165535 --add-subgids 100000-165535 $USER`, then `podman system migrate`. |
+| `address already in use` / port 8080 busy | use another port: `LAB_PORT=8090 ./lab web`. |
+| `bad interpreter` or `\r: command not found` | the files got Windows line endings. In WSL: `git config --global core.autocrlf false`, delete the folder, clone again **inside WSL**. (The repository now forces Unix line endings, so a fresh clone is fine.) |
+| the page is blank or says it cannot connect right after `./lab web` | wait about 30 seconds and reload: the terminal and VS Code services are still starting. |
+| the first start seems stuck | the image is being built (a few minutes, about 1.8 GB). `podman ps` / `docker ps` should show `bash-stash` when it is done. |
+| `selinux` / `Permission denied` in the container (Fedora and friends) | the script already mounts the project with the `:Z` label; if it still fails, run `./lab reset` and start again, and make sure the project is in your home folder. |
+| anything else | `./lab reset` and `./lab web` again. Logs: `./lab root cat /tmp/web.log`. |
+
+The web page only listens on `127.0.0.1` (your own computer) and only accepts requests from pages served by itself.
+
+---
+
+## Using it
+
+Open `http://localhost:8080`. The home page has five tabs:
+
+- **Start**: one big button (the suggested path for a new user, *Continue* afterwards), your **exam readiness**, the suggested path folded to a row,
+  and tiles to the rest.
+- **Coding exercises**: *Tracks* (Minimal 272, Intermediate 342, Full 642 exercises), *Introduction* (83 tiny warm-ups), *Scripts*
+  (87, grouped and ordered the way you choose, in steps or all at once) and *Practice exams* (whole-script exams graded out of 10).
+- **Theory**: 13 *quizzes* (830+ questions) and 32 *practice exams* (10 single-choice questions each, three difficulty levels).
+- **Man drills**: 55 questions and 16 coding tasks that you solve with the manual open, like in the exam.
+- **Imported**: your own content (see below).
+
+Everywhere: **Ctrl+K** searches everything (exercises, scripts, exams, quizzes, manual entries); **Alt+G** then a key jumps to a place
+(*h* home, *r* reference, *t* tracks, *c* scripts, *x* script exams, *q* quizzes, *e* theory exams, *m* man drills, *d* readiness,
+*n*/*p* next and previous, *f* the filter box, *?* the full list). The top bar has buttons for both, plus *Readiness*, *Reference*, *Layout* and
+the settings (⚙: theme, theory language, how exams behave, scripts in steps or all at once, shortcuts).
+
+### The exercise screen
+
+- **Left:** the topics with the status of every exercise (✔ passed, ● in progress, ◉ solution viewed, ○ not started), search, and the totals.
+- **Middle:** the statement, **Check** (`Ctrl+Enter`) with the checker's diff when something is wrong, **Info** (what the commands do),
+  and **Show solution** (asks for confirmation if you have not passed yet; the exercise is then marked *solution viewed* until you pass it).
+- **Right:** a real **terminal** (bash, with the full manual pages) and **VS Code** in the browser, switchable at any time. Both edit the same
+  files. The **Layout** button arranges statement, terminal and VS Code side by side as you like.
+
+### Workflow
+
+1. Open an exercise and read the statement.
+2. Write your solution in `answer.sh` (scripts: the file named in the statement) with the terminal or VS Code.
+3. Press **Check**. If it fails, each failing case shows what was run, plain-language hints (wrong order, missing final newline, stderr instead of
+   stdout, exit code...) and *expected* vs *yours* with a character-level diff. **Try with these test files** builds that exact case in
+   `~/play/<id>-failing/` and types the command in the terminal.
+4. Only after passing (or being truly stuck), compare with the solution (`solutions/<topic>/<id>_<name>.sh`, written to be clean and idiomatic).
+
+### Scripts
+
+Whole scripts built up step by step: every step adds one requirement and has its own check, and your file keeps growing from step to step.
+In the home page you can **group** them (difficulty, topic, number of steps, progress), **order** them (number, title, difficulty, steps, progress, topic;
+increasing or decreasing) and reset both; the same panel is at the top of the sidebar while you work on a script. The setting
+*Scripts → Instructions* switches between **in steps** and **all at once** (every part on one page and one check of the finished script;
+passing it counts every step as passed).
+
+### Script practice exams
+
+One bash script per exam, graded out of 10 by objectives (pass at 5), in three levels. The checker can run **any time** or **only on submit**
+(⚙ → *Script practice exams*), exactly as you prefer to practise. An unfinished attempt is kept.
+
+### Theory quizzes and practice exams
+
+Quizzes are graded in the browser with instant feedback in six formats: single choice, multiple choice, fill in the blank, put in order, match the
+pairs, and sort into categories. After each answer *every* option is explained. Practice exams are 10 single-choice questions; the settings decide
+whether answers are checked after each question or at the end, and whether you may go back. Quizzes and exams exist in **English and Spanish**
+(⚙ → *Theory language*; it only affects the theory parts).
+
+### Reference manual
+
+The **Reference** page is a manual written like a good `man` page for the commands, syntax and concepts of the course: synopsis, description,
+**every option**, worked examples whose output was produced by really running them, exit status, common mistakes, *see also*; 200 entries in 14
+categories. The filter box takes the cursor when the page opens and understands symbols (`$@`, `>>`, `2>&1`, `[[`...). Every command in an
+exercise's *Info* panel links to its entry.
+
+### Suggested path and readiness
+
+The **suggested path** is the exam material in order (12 stages, from quoting and variables to exam rehearsal), mixing warm-ups, exercises, scripts,
+quizzes and practice exams, and leaving out what the exam is unlikely to ask. The **Readiness** page shows, per topic, how ready you are (practice,
+quizzes and theory-exam answers, weighted like the real exam), the topics where one more hour pays most, and the questions you missed.
+
+### Importing your own content
+
+**Home → Imported** takes one or several `.json` files (a *pack*) with quizzes, theory practice exams, scripts and script practice exams. The
+**Prompt for an AI assistant** button downloads a complete description of the format; give it to an AI assistant, tell it the topic, and import the
+file it writes. An **Example pack** button downloads a small valid pack.
+
+- Each file is checked before anything is saved, with every problem listed with its exact place; you can import many files at once.
+- Imported items have **their own progress** and never count in the totals, the suggested path or the readiness.
+- Packs can be renamed and deleted, and a **history** lists what was added, replaced, renamed, removed or allowed.
+- Scripts and script exams contain **code** (a fixture and a checker, as the built-in ones). Because of that:
+  nothing runs when you import; a **scanner** refuses code that uses the network, `sudo`, `eval`/`source` of built text, other languages, or touches
+  anything outside its sandbox, and warns about anything unusual; before the first run you are shown the code and must **allow the pack**; the code then
+  runs in a sandbox (time limit, no network, throw-away folder); and a **snapshot** of your progress and answers is taken first, with a one-button
+  **roll back**. A **Self-test** button checks that every step's own solution passes its checker and an empty script does not.
+- Imported data lives in `.progress/imported/` (never in git).
 
 ## The lab environment
 
-Ubuntu 24.04 with man/info pages, `/usr/share/dict/words`, `tree`, `bc`, `pstree`, `cron`, `sudo`,
-the user `alumno` (password `lab`), other users/groups (`luke`, `sally`, `rod`, `jgarcia`,
-`devs`, `secops`...), logged-in sessions for `who`/`last`, and a realistic `/var/log/auth.log`
-(ssh brute-force attempts, sudo, cron...) for the log exercises. `~/scripts.tgz` contains some classic
-example scripts. Known limitation: `w` crashes inside the container (procps bug without systemd), and
-`systemctl` doesn't work (no systemd) — those parts are covered by quizzes.
+Ubuntu 24.04 with man/info pages, `/usr/share/dict/words`, `tree`, `bc`, `pstree`, `cron`, `sudo`, the user `alumno` (password `lab`), other
+users and groups (`luke`, `sally`, `rod`, `jgarcia`, `devs`, `secops`...), logged-in sessions for `who`/`last`, and a realistic `/var/log/auth.log`
+(ssh brute-force attempts, sudo, cron...) for the log exercises. `~/scripts.tgz` has some classic example scripts. Known limitations: `w` crashes inside
+the container (procps bug without systemd) and `systemctl` does not work (no systemd); those parts are covered by quizzes.
 
 ## How checking works
 
-Your `answer.sh` and the reference solution are run (always with `bash`) on **identical, randomly
-generated fixtures** at the same path, with an isolated `$HOME`, several times with different seeds
-and argument lists. Depending on the exercise the checker compares stdout, stderr (or just "there is an
-error message"), exit code, the resulting files (type, permissions, link count, content; archives by
-content), owners/mtimes, and custom state. Some exercises also require/forbid a command (e.g. "use
-`cut`") or limit the number of lines. Because fixtures are random, hard-coding the output doesn't pass.
+Your script and the reference solution are run (always with `bash`) on **identical, randomly generated fixtures** at the same path, with an isolated
+`$HOME`, several times with different seeds and argument lists. Depending on the exercise the checker compares stdout, stderr (or just "there is an
+error message"), the exit code, the resulting files (type, permissions, link count, content; archives by content), owners and mtimes, and custom state.
+Some exercises also require or forbid a command or limit the number of lines. Because the fixtures are random, hard-coding the output does not pass.
 
-Progress is stored in `.progress/` (delete it to start over).
+## The 741 exercises
 
-## Theory quizzes
+| # | topic | exercises |
+|---|-------|-----------|
+| 01 | echo, quoting & substitution | 28 |
+| 02 | directories & navigation | 32 |
+| 03 | files, copies & links | 45 |
+| 04 | tar, gzip & compression | 30 |
+| 05 | filters: wc head tail cut sort uniq tr sed tee... | 66 |
+| 06 | grep & regular expressions | 47 |
+| 07 | find | 56 |
+| 08 | permissions, chmod, umask, chown | 38 |
+| 09 | redirection | 31 |
+| 10 | pipes, xargs, command substitution | 36 |
+| 11 | variables, arithmetic, environment | 29 |
+| 12 | processes, jobs, signals | 26 |
+| 13 | script parameters & exit codes | 41 |
+| 14 | test, if, case | 44 |
+| 15 | loops, for, while, until, read | 51 |
+| 16 | functions | 32 |
+| 17 | users, groups, sessions, logs & cron | 40 |
+| 18 | **exam-style scripts** (`deploy_bins.sh`, the log analyser `ipLog.sh` and many more) | 43 |
+| 19 | theory quizzes as exercises | 10 |
+| 20 | exam tasks with the manual open | 16 |
 
-The home page has two big parts, **Coding exercises** (*Tracks*, *Introduction*, *Scripts* and *Practice exams*) and **Theory** (*Quizzes*), with
-a left-hand navigation to jump to a section or pick a track, an introduction category or a quiz collection directly.
-
-Besides the exercises, the web UI has a **Theory** part on the home page: 13 collections and more
-than 830 interactive questions on the concepts behind the commands. They are graded in the browser with
-instant feedback, in six styles: single choice, multiple choice, fill in the blank, put in order (drag
-or arrows), match the pairs, and sort into categories (drag or click). After each answer *every* option
-is explained: why the right ones are right and why each wrong one is not.
-
-| collection | topics |
-|-----------|--------|
-| 01 shell basics & getting help | what a shell is, builtin vs external, PATH, exit statuses, man / info / less, line editing |
-| 02 jobs, processes & signals | foreground/background, ps/top, PIDs, zombies, signals and kill |
-| 03 files, links & archives | paths, inodes, hard/symbolic links, cp/mv/rm, df/du, tar/gzip |
-| 04 permissions | rwx on files and directories, chmod, umask, chown, setuid/sticky |
-| 05 text filters | wc, cut, sort, uniq, tr, sed, tee, diff and friends |
-| 06 grep & regular expressions | options, BRE/ERE, anchors, groups, globs vs regex |
-| 07 find | tests, sizes and times, operators, exec/delete/xargs, traps |
-| 08 expansion, quoting & variables | quotes, environment, globs, braces, substitution, arithmetic, aliases |
-| 09 redirection, pipes & xargs | streams, redirection order, here-documents, pipes, tee, xargs |
-| 10 scripts: running & parameters | shebang, source vs bash, parameters, exit codes, read, cron |
-| 11 scripts: logic | test, if, case, loops, functions, debugging, typical bugs |
-| 12 users, groups, sessions & sudo | passwd/shadow/group, su and sudo, who/w/last, startup files |
-| 13 boot, GRUB, systemd & shutdown | firmware, UEFI/GPT, GRUB, kernel, systemd units and targets, shutdown |
-
-Clicking a collection replaces the sidebar with its questions grouped by subcategory; the main panel
-shows the question, a **Check answer** button (Enter) and then the explanations. Results are stored per
-question in `.progress/theory/` (a question is ✔ once answered correctly; "Reset progress" clears a
-collection) and do not count towards the exercise totals. They are a separate pipeline from the exercises:
-sources in `tools/theory/*.txt` (format in `tools/THEORY_AUTHORING.md`), compiled by
-`node tools/build_theory.js` into `theory/*.json`; nothing under `exercises/` or `solutions/` is involved.
-
-The quizzes are available in **English and Spanish**: Settings (⚙) → *Theory language*. The switch only
-affects the Theory section (its home-page cards, categories, questions and explanations); exercises and
-the rest of the app stay in English. Progress is shared between the two languages.
-
-## Reference manual
-
-The **Reference** page (top bar, and every command in an exercise's *Info* panel) is a manual written like a good `man` page, for the commands,
-syntax and concepts of the course: synopsis, a full description, **every option**, worked examples for each use case, exit status, common mistakes
-and *see also*, in 14 categories (files, archives, text, search, permissions, users, processes, redirection, variables and expansions, scripting,
-script patterns, system, utilities). The output shown under each example is **real**: `tools/build_manual.js` runs every example in the lab
-and stores what it printed in `web/public/manual-outputs.json`. The *Used in* box lists the exercises and scripts that use the entry. Entries live
-in `web/public/manual-<category>.js` (format in `tools/MANUAL_AUTHORING.md`).
-
-## Scripts
-
-Under **Coding exercises → Scripts**: whole scripts built up step by step. Each script is one exercise with a few steps; every step adds one
-requirement and has its own check, and your file keeps growing from step to step (`.progress/scripts/`). Info and Show solution work as in the
-other exercises, and *Load step N code* continues from the reference code (your file is archived first). They have their own counter, outside
-the tracks. Sources: `tools/src/scripts/*.txt` (see `tools/SCRIPTS_AUTHORING.md`).
-
-## Script practice exams
-
-Under **Coding exercises → Practice exams** there are exams with one bash script each (three levels, seven exams per level), written in
-VS Code and the terminal and graded out of 10 by objectives (pass at 5), with a history of attempts, the score of each objective and your
-script. Settings (⚙ → *Script practice exams*): the checker may be run **any time** (practice) or **only on submit** (exam-like: statement,
-VS Code and terminal only). An unfinished attempt is kept; resume or discard it from the exam's overview. Statements follow the Theory
-language toggle. Sources: `tools/src/script-exams/*.txt` (see `tools/EXAMS_AUTHORING.md`); history and your scripts: `.progress/script-exams/`.
-
-## Practice exams
-
-Under **Theory → Practice exams** on the home page there are mock exams of 10 single-choice questions (4 options, 1 point each, no
-penalty), in three tiers: easy, medium and hard. Two settings (⚙ → *Practice exams*) decide how an attempt behaves:
-
-| validation | meaning |
-|------------|---------|
-| after each question | practice: each answer is checked and explained at once, and an answered question is locked |
-| at the end | exam experience: nothing is revealed until you finish; answers can be changed while the exam is open |
-
-**Allow going back** is independent of the validation mode. Off means strictly sequential (a question is final once you move on, closest
-to the real exam); on lets you return to earlier questions (with validation after each question that means re-reading their explanations).
-An attempt in progress is saved as you go and keeps the settings it started with: leave whenever you like and resume it (or discard it) from the exam's overview. Each finished attempt is stored in
-the history of its set (date and time, score out of 10, duration, mode) and can be reviewed afterwards, with every option explained.
-The score is recomputed by the server; the pass line is 5/10. Exams are available in English and Spanish (same Theory language
-switch) and, like the quizzes, do not count towards the exercise totals. History is in `.progress/exams/<id>.json`.
-Sources: `tools/theory/exams/*.txt`, built by `node tools/build_theory.js exams` (see `tools/EXAMS_AUTHORING.md`).
+Difficulty goes ★☆☆☆☆ → ★★★★★. `exercises/INDEX.md` lists them all. Short of time? Do topics 07, 13, 14, 15 and then all of 18, or just follow
+the suggested path.
 
 ## For maintenance
 
-- `tools/src/*.txt` — source of every exercise (statement + checker spec + solution);
-  `tools/build.sh` regenerates `exercises/` and `solutions/` (never overwrites your answers).
-- `lib/engine.sh` — the checker (spec format documented at the top).
-- `tools/theory/*.txt` + `node tools/build_theory.js` — theory quiz sources and their compiler/validator (writes `theory/*.json`).
-- `tools/theory/exams/` + `node tools/build_theory.js exams` — practice exams; `node tools/exam_blueprint.js` (coverage matrix) and `node tools/exam_check.js` (near-duplicate check).
-- `tools/validate.sh [ids]` (inside the lab) — proves every reference passes and an empty answer fails.
-- `web/public/manual-*.js` + `node tools/build_manual.js` (inside the lab) — the Reference manual and its example runner; `node tools/manual_coverage.js` lists the exercise commands the manual cannot resolve.
-- `container/` — image definition (users, fake logs, sessions, code-server).
-- `web/` — web UI: `server.js` (Node: API, terminal over websocket, proxy to code-server) and `public/`.
+Sources are plain text and everything under `exercises/`, `solutions/`, `scripts/`, `script-exams/` and `theory/` is generated from them (never
+overwriting your answers). Each kind has its own authoring guide.
+
+| what | source | build / check | guide |
+|---|---|---|---|
+| exercises | `tools/src/*.txt` | `tools/build.sh`, `./lab tools/validate.sh [ids]` | `tools/AUTHORING.md` |
+| scripts | `tools/src/scripts/*.txt` | `node tools/build_scripts.js`, `./lab tools/validate_scripts.sh [ids]` | `tools/SCRIPTS_AUTHORING.md` |
+| script practice exams | `tools/src/script-exams/*.txt` | `node tools/build_script_exams.js`, `./lab tools/validate_script_exams.sh` | `tools/EXAMS_AUTHORING.md` |
+| theory quizzes and exams | `tools/theory/*.txt` | `node tools/build_theory.js [exams]`, `node tools/exam_blueprint.js`, `node tools/exam_check.js` | `tools/THEORY_AUTHORING.md`, `tools/EXAMS_AUTHORING.md` |
+| reference manual | `web/public/manual-*.js` | `./lab node tools/build_manual.js`, `node tools/manual_coverage.js` | `tools/MANUAL_AUTHORING.md` |
+| suggested path | `web/public/path-data.js` | `node tools/path_check.js` | |
+| import | `web/importer.js`, `web/scanner.js`, `web/import-prompt.md` | `node tools/test_scanner.js`, `node tools/gen_scanner_commands.js` | `web/import-prompt.md` |
+
+Other pieces: `lib/engine.sh` is the checker (spec format at the top); `container/` is the image (users, fake logs, sessions, code-server);
+`web/` is the web UI (`server.js`: the API, the terminal over a websocket and the proxy to code-server; `public/`: the pages); `lab` is the host
+wrapper. Run the tools that need the lab with `./lab <command>`; the builders for theory, scripts and script exams, the scanner and the path
+checks run on the host and need Node.js (any recent version).
 
 ## License
 
-[PolyForm Noncommercial 1.0.0](https://polyformproject.org/licenses/noncommercial/1.0.0) — see [LICENSE](LICENSE). Free for any noncommercial use (personal, educational, research); commercial use is not permitted.
+[PolyForm Noncommercial 1.0.0](https://polyformproject.org/licenses/noncommercial/1.0.0) — see [LICENSE](LICENSE). Free for any noncommercial use
+(personal, educational, research); commercial use is not permitted.
