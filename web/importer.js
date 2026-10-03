@@ -1,13 +1,19 @@
 // bash stash — importing content packs. A pack is ONE json file:
 //   { "format": "bash-stash-pack", "version": 1, "id": "my-pack", "title": "...", "description": "...", "items": [ ... ] }
-// Items (phase 1): { "kind": "quiz", ... } and { "kind": "exam", ... } (data only: nothing in them is ever executed).
+// Items: { "kind": "quiz" } and { "kind": "exam" } are data only. { "kind": "script" } carries code (a fixture, a checker and a reference
+// solution per step): it is read by web/scanner.js here (red findings refuse the import, the others are warnings) and it is never run until
+// the user has looked at it and allowed the pack (web/server.js).
 // validatePack() checks a parsed pack and returns the normalized copy (only known fields, trimmed strings) together with every
 // problem found, each with the place where it is, so the page can show "item 2 > group 1 > question 3: the right option is missing".
 // The format is described for humans (and for LLMs) in web/import-prompt.md; keep the two in step.
 'use strict';
 
 const SLUG = /^[a-z0-9][a-z0-9-]{0,39}$/;
-const KINDS = ['quiz', 'exam'];                       // phase 1; exercise / script / scriptexam come later
+const KINDS = ['quiz', 'exam', 'script'];             // (scriptexam comes later)
+const TAGS = ['arguments', 'exit codes', 'tests', 'loops', 'case', 'arithmetic', 'files', 'text', 'find', 'copy and move', 'permissions', 'archives', 'logs', 'pipes'];   // as tools/build_scripts.js
+const { scan } = require('./scanner');
+const { spawnSync } = require('child_process');
+const CODE_MAX = 20000;
 const TYPES = ['single', 'multi', 'fill', 'order', 'match', 'sort'];
 const LIMITS = { items: 100, groups: 30, questions: 200, text: 4000, short: 200, opt: 1200 };
 
@@ -155,10 +161,53 @@ function validatePack(raw) {
     return out;
   }
 
+  // ---------------------------------------------------------------- scripts (code!)
+  const syntax = (code, at, what) => {
+    const r = spawnSync('bash', ['-n'], { input: code, encoding: 'utf8', timeout: 5000 });
+    if (r.status !== 0 && r.stderr) err(at, `${what} is not valid bash: ${r.stderr.replace(/^bash: (line )?/, '').split('\n')[0].replace(/^\d+: /, m => 'line ' + m)}`);
+  };
+  const findings = (code, at, what) => {
+    for (const f of scan(code)) {
+      const msg = `${what}, line ${f.line}: ${f.msg}${f.snippet ? ` — ${JSON.stringify(f.snippet)}` : ''}`;
+      if (f.level === 'red') err(at, msg); else warn(at, msg);
+    }
+  };
+  function script(it, at) {
+    const out = { kind: 'script', id: slug(it.id, at, 'id'), title: str(it.title, at, 'title'), script: '', level: 0, tags: [], cmds: str(it.cmds, at, 'cmds', { max: 300, required: false }), fixture: '', steps: [] };
+    if (typeof it.script !== 'string' || !/^[a-z][a-z0-9_-]{0,30}\.sh$/.test(it.script)) err(at, `"script" must be the file name of the script, lowercase, ending in .sh (for example "backup.sh"), got ${JSON.stringify(it.script)}`); else out.script = it.script;
+    if (!Number.isInteger(it.level) || it.level < 1 || it.level > 5) err(at, `"level" must be a whole number from 1 to 5 (the stars), got ${JSON.stringify(it.level)}`); else out.level = it.level;
+    out.tags = arr(it.tags, at, 'tags', { min: 1, max: 3 }).map(t => { if (!TAGS.includes(t)) err(at, `tag ${JSON.stringify(t)} is not one of: ${TAGS.join(', ')}`); return t; }).filter(t => TAGS.includes(t));
+    if (it.fixture !== undefined && it.fixture !== '') {
+      if (typeof it.fixture !== 'string') err(at, '"fixture" must be text (bash code)');
+      else if (it.fixture.length > CODE_MAX) err(at, `"fixture" is too long (${it.fixture.length} characters, at most ${CODE_MAX})`);
+      else { out.fixture = it.fixture.replace(/\r\n?/g, '\n'); syntax(out.fixture, at, 'the fixture'); findings(out.fixture, at, 'fixture'); }
+    }
+    arr(it.steps, at, 'steps', { min: 1, max: 8 }).forEach((s, i) => {
+      const sa = `${at} › step ${i + 1}`;
+      if (!isObj(s)) { err(sa, 'a step must be an object {title, readme, check, solution}'); return; }
+      const st = { n: i + 1, title: str(s.title, sa, 'title'), readme: str(s.readme, sa, 'readme (the statement)', { max: 6000 }), check: '', solution: '' };
+      for (const k of ['check', 'solution']) {
+        const v = s[k];
+        if (typeof v !== 'string' || !v.trim()) { err(sa, `"${k}" is missing`); continue; }
+        if (v.length > CODE_MAX) { err(sa, `"${k}" is too long (${v.length} characters, at most ${CODE_MAX})`); continue; }
+        st[k] = v.replace(/\r\n?/g, '\n');
+      }
+      if (st.check) {
+        if (!/^\s*ARGS=\(/m.test(st.check)) err(sa, 'the checker must define the test cases: ARGS=( \'case one\' \'case two\' ... )');
+        syntax(`${out.fixture}\n${st.check}`, sa, 'the checker (with the fixture)');
+        findings(st.check, sa, 'checker');
+      }
+      if (st.solution) { syntax(st.solution, sa, 'the solution'); findings(st.solution, sa, 'solution'); }
+      out.steps.push(st);
+    });
+    return out;
+  }
+
   // ---------------------------------------------------------------- the pack
   if (!isObj(raw)) { err('file', 'the file must contain one JSON object'); return { ok: false, errors, warnings, pack: null }; }
   if (raw.format !== 'bash-stash-pack') err('file', `"format" must be "bash-stash-pack", got ${JSON.stringify(raw.format)}`);
   if (raw.version !== 1) err('file', `"version" must be 1, got ${JSON.stringify(raw.version)}`);
+  if (raw.id === 'history' || raw.id === 'validate') err('file', `the id ${JSON.stringify(raw.id)} is reserved, choose another`);
   const pack = { format: 'bash-stash-pack', version: 1, id: slug(raw.id, 'file', 'id'), title: str(raw.title, 'file', 'title'),
     description: str(raw.description, 'file', 'description', { max: LIMITS.text, required: false }), items: [] };
   const ids = new Set();
@@ -166,10 +215,10 @@ function validatePack(raw) {
     const at = `item ${i + 1}`;
     if (!isObj(it)) { err(at, 'an item must be an object with a "kind"'); return; }
     if (!KINDS.includes(it.kind)) {
-      err(at, ['exercise', 'script', 'scriptexam'].includes(it.kind) ? `kind ${JSON.stringify(it.kind)} cannot be imported yet (this version imports ${KINDS.join(' and ')})` : `kind must be one of ${KINDS.join(', ')}, got ${JSON.stringify(it.kind)}`);
+      err(at, ['exercise', 'scriptexam'].includes(it.kind) ? `kind ${JSON.stringify(it.kind)} cannot be imported (${it.kind === 'exercise' ? 'a plain exercise is a "script" with one step' : 'script practice exams cannot be imported yet'}); kinds: ${KINDS.join(', ')}` : `kind must be one of ${KINDS.join(', ')}, got ${JSON.stringify(it.kind)}`);
       return;
     }
-    const n = it.kind === 'quiz' ? quiz(it, at) : exam(it, at);
+    const n = it.kind === 'quiz' ? quiz(it, at) : it.kind === 'exam' ? exam(it, at) : script(it, at);
     if (n.id && ids.has(it.kind + ':' + n.id)) err(at, `${it.kind} id ${JSON.stringify(n.id)} is used twice in this pack`);
     ids.add(it.kind + ':' + n.id);
     pack.items.push(n);
@@ -181,7 +230,8 @@ function validatePack(raw) {
 function summarize(pack) {
   return { id: pack.id, title: pack.title, description: pack.description || '', addedAt: pack.addedAt || null,
     items: pack.items.map(it => ({ kind: it.kind, id: it.id, title: it.title,
-      count: it.kind === 'quiz' ? it.groups.reduce((n, g) => n + g.questions.length, 0) : it.questions.length })) };
+      count: it.kind === 'quiz' ? it.groups.reduce((n, g) => n + g.questions.length, 0) : it.kind === 'exam' ? it.questions.length : it.steps.length })),
+    code: pack.items.some(i => i.kind === 'script') };
 }
 
-module.exports = { validatePack, summarize, SLUG, LIMITS };
+module.exports = { validatePack, summarize, SLUG, LIMITS, TAGS };

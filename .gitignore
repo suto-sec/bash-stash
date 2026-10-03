@@ -4,3 +4,6 @@
 play/
 # local copy of the course source files used to write the theory quizzes (not part of the repository)
 course-material/source/
+# scripts of imported packs (written from .progress/imported by the web server)
+scripts/imp-*/
+solutions/scripts/imp-*/

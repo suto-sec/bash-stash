@@ -166,9 +166,11 @@ const itemsLine = pack => { const q = pack.items.filter(i => i.kind === 'quiz').
 function deletePack(id, withProgress) {
   fs.rmSync(path.join(IMPORT_DIR, id), { recursive: true, force: true });
   if (!withProgress) return;
-  for (const [dir, ext] of [[THEORY_PROGRESS, '.json'], [EXAM_PROGRESS, '.json'], [EXAM_PROGRESS, '.draft.json']]) {
+  for (const [dir, ext] of [[THEORY_PROGRESS, '.json'], [EXAM_PROGRESS, '.json'], [EXAM_PROGRESS, '.draft.json'], [SC_PROGRESS, '.steps']]) {
     try { for (const f of fs.readdirSync(dir)) if (f.startsWith(`imp-${id}-`) && f.endsWith(ext)) fs.unlinkSync(path.join(dir, f)); } catch { /* none */ }
   }
+  try { for (const f of fs.readdirSync(SC_PROGRESS)) if (f.startsWith(`imp-${id}-`)) fs.rmSync(path.join(SC_PROGRESS, f), { recursive: true, force: true }); } catch { /* none */ }
+  try { const play = path.join(process.env.HOME || '/home/alumno', 'play'); for (const f of fs.readdirSync(play)) if (f.startsWith(`imp-${id}-`)) fs.rmSync(path.join(play, f), { recursive: true, force: true }); } catch { /* none */ }
 }
 // the request body as text (a pack can be a few hundred KB), parsed here so a syntax error can be reported
 function readRaw(req, max = 3e6) {
@@ -178,6 +180,73 @@ function readRaw(req, max = 3e6) {
     req.on('end', () => resolve(over ? { error: 'The file is too big (at most 3 MB).' } : { text: b }));
     req.on('error', () => resolve({ error: 'The upload was interrupted.' }));
   });
+}
+
+// ---- imported scripts: code. They are written (never run) as the same folders the course scripts have, under scripts/imp-<pack>-<item>_script
+// and solutions/scripts/ (both git-ignored), so the whole scripts machinery works for them; the engine runs them only after the user allowed the
+// pack, inside the sandbox (sandboxArgs), and a snapshot of the progress was taken first.
+const crypto = require('crypto');
+const scriptItems = pack => pack.items.filter(i => i.kind === 'script');
+function packCode(pack) {          // every piece of code of a pack, as the user sees it and as the consent hash covers it
+  return scriptItems(pack).map(i => ({ id: i.id, title: i.title, script: i.script, fixture: i.fixture,
+    steps: i.steps.map(st => ({ n: st.n, title: st.title, check: st.check, solution: st.solution })) }));
+}
+const packCodeHash = pack => crypto.createHash('sha256').update(JSON.stringify(packCode(pack))).digest('hex');
+const consentFile = id => path.join(IMPORT_DIR, id, 'consent.json');
+function readConsent(id) { try { return JSON.parse(fs.readFileSync(consentFile(id), 'utf8')); } catch { return null; } }
+function packConsented(id) {
+  if (!importer.SLUG.test(id || '')) return false;
+  const pack = readPacks().find(p => p.id === id);
+  if (!pack) return false;
+  if (!scriptItems(pack).length) return true;
+  const c = readConsent(id);
+  return !!c && c.hash === packCodeHash(pack);
+}
+const SNAP = id => path.join(IMPORT_DIR, id, 'snapshot.tar.gz');
+function takeSnapshot(id) {
+  // what a pack's code could touch: the progress and the answers. (the imported packs themselves are not part of it)
+  const answers = [];
+  const walkAns = d => { try { for (const n of fs.readdirSync(d)) { const f = path.join(d, n); const st = fs.statSync(f); if (st.isDirectory()) walkAns(f); else if (/^answer/.test(n)) answers.push(path.relative(LAB, f)); } } catch { /* none */ } };
+  walkAns(path.join(LAB, 'exercises'));
+  const list = path.join(IMPORT_DIR, id, 'snapshot.list');
+  fs.mkdirSync(path.join(IMPORT_DIR, id), { recursive: true });
+  const members = [];
+  if (fs.existsSync(PROGRESS)) for (const n of fs.readdirSync(PROGRESS)) if (n !== 'imported') members.push(path.relative(LAB, path.join(PROGRESS, n)));
+  fs.writeFileSync(list, [...members, ...answers].join('\n') + '\n');
+  execFileSync('tar', ['-czf', SNAP(id), '-C', LAB, '-T', list], { stdio: 'ignore' });
+  fs.unlinkSync(list);
+}
+function restoreSnapshot(id) {
+  if (!fs.existsSync(SNAP(id))) return false;
+  if (fs.existsSync(PROGRESS)) for (const n of fs.readdirSync(PROGRESS)) if (n !== 'imported') fs.rmSync(path.join(PROGRESS, n), { recursive: true, force: true });
+  execFileSync('tar', ['-xzf', SNAP(id), '-C', LAB], { stdio: 'ignore' });
+  return true;
+}
+function materialize(pack) {
+  for (const it of scriptItems(pack)) {
+    const id = `imp-${pack.id}-${it.id}`, name = `${id}_script`;
+    const dir = path.join(LAB, 'scripts', name), sol = path.join(LAB, 'solutions/scripts', name);
+    fs.rmSync(dir, { recursive: true, force: true }); fs.rmSync(sol, { recursive: true, force: true });
+    fs.mkdirSync(dir, { recursive: true }); fs.mkdirSync(sol, { recursive: true });
+    fs.writeFileSync(path.join(dir, 'meta.json'), JSON.stringify({ id, slug: 'script', title: it.title, script: it.script, cmds: it.cmds || '', level: it.level, tags: it.tags,
+      steps: it.steps.map(st => ({ n: st.n, title: st.title })), imp: pack.id, packTitle: pack.title }, null, 1) + '\n');
+    for (const st of it.steps) {
+      fs.writeFileSync(path.join(dir, `README.${st.n}.md`), st.readme.trim() + '\n');
+      fs.writeFileSync(path.join(dir, `check.${st.n}.sh`), `# checker spec for ${id} step ${st.n} (imported; see lib/engine.sh)\nSCRIPT_NAME=${it.script}\n${(it.fixture || '').trim()}\n${st.check.trim()}\n`);
+      fs.writeFileSync(path.join(sol, `${st.n}.sh`), st.solution.trim() + '\n', { mode: 0o755 });
+    }
+  }
+}
+function syncMaterialized() {        // the folders of the imported scripts follow the packs: written for the existing ones, removed for the others
+  const want = new Set(readPacks().flatMap(p => scriptItems(p).map(i => `imp-${p.id}-${i.id}_script`)));
+  for (const base of [path.join(LAB, 'scripts'), path.join(LAB, 'solutions/scripts')]) {
+    try { for (const n of fs.readdirSync(base)) if (n.startsWith('imp-') && !want.has(n)) fs.rmSync(path.join(base, n), { recursive: true, force: true }); } catch { /* none */ }
+  }
+  for (const p of readPacks()) materialize(p);
+}
+function packStatus(p) {
+  const code = scriptItems(p).length > 0, c = code ? readConsent(p.id) : null;
+  return { code, consented: code ? packConsented(p.id) : null, consentAt: c && c.hash === packCodeHash(p) ? c.at : null, snapshotAt: code && fs.existsSync(SNAP(p.id)) ? fs.statSync(SNAP(p.id)).mtime.toISOString() : null };
 }
 
 // ------------------------------------------------------------------ theory quizzes
@@ -447,7 +516,7 @@ function sxGrade(m, file) {       // -> Promise of the parsed bin/sgrade report
 // done when every step has passed. These are not tracks exercises: they have their own section and counter.
 const SC = path.join(LAB, 'scripts');
 const SC_PROGRESS = path.join(PROGRESS, 'scripts');
-const SC_ID = /^s\d\d$/;
+const SC_ID = /^(s\d\d|imp-[a-z0-9]+(-[a-z0-9]+)*)$/;      // the course scripts, and the scripts of imported packs (imp-<pack>-<item>)
 function scDir(id) {
   if (!SC_ID.test(id)) return null;
   try { const d = fs.readdirSync(SC).find(n => n.startsWith(id + '_')); return d ? path.join(SC, d) : null; } catch { return null; }
@@ -470,6 +539,7 @@ function scEnsure(m) {          // the learner's file exists from the first visi
 }
 function scPlay(m) {            // ~/play/<id>/work: the checker's fixture files plus the script, for the terminal and VS Code
   scEnsure(m);
+  if (m.imp && !packConsented(m.imp)) return null;      // an imported fixture is code: not before the user has allowed the pack
   const dir = playDirFor(m.id);
   if (!fs.existsSync(dir)) { try { buildPlay(m.id); } catch { /* the terminal falls back to LAB */ } }
   return fs.existsSync(dir) ? dir : null;
@@ -477,18 +547,20 @@ function scPlay(m) {            // ~/play/<id>/work: the checker's fixture files
 function scStatus(m, passed) { return passed.length >= m.steps.length ? 'pass' : (passed.length || isAttempted(scAnswer(m))) ? 'attempted' : 'new'; }
 function scIndex() {
   let dirs = [];
-  try { dirs = fs.readdirSync(SC).filter(n => /^s\d\d_/.test(n)).sort(); } catch { /* none yet */ }
-  return dirs.map(n => scMeta(n.slice(0, 3))).filter(Boolean).map(m => {
+  try { dirs = fs.readdirSync(SC).filter(n => /^(s\d\d|imp-[a-z0-9-]+)_/.test(n)).sort(); } catch { /* none yet */ }
+  return dirs.map(n => scMeta(n.split('_')[0])).filter(Boolean).map(m => {
     const passed = scPassed(m.id);
-    return { id: m.id, slug: m.slug, title: m.title, script: m.script, cmds: m.cmds, level: m.level, tags: m.tags, steps: m.steps, passed, status: scStatus(m, passed) };
+    return { id: m.id, slug: m.slug, title: m.title, script: m.script, cmds: m.cmds, level: m.level, tags: m.tags, steps: m.steps, passed, status: scStatus(m, passed),
+      ...(m.imp ? { imp: m.imp, packTitle: m.packTitle, consent: packConsented(m.imp) } : {}) };
   });
 }
 function scDetail(m) {
   const passed = scPassed(m.id);
   const steps = m.steps.map(st => ({ ...st, readme: fs.readFileSync(path.join(m.dir, `README.${st.n}.md`), 'utf8') }));
   const current = (steps.find(st => !passed.includes(st.n)) || steps[steps.length - 1]).n;
+  const need = m.imp && !packConsented(m.imp);
   return { id: m.id, title: m.title, script: m.script, cmds: m.cmds, level: m.level, tags: m.tags, steps, passed, current, status: scStatus(m, passed),
-    answer: scEnsure(m), playDir: scPlay(m) };
+    answer: scEnsure(m), playDir: scPlay(m), ...(m.imp ? { imp: m.imp, packTitle: m.packTitle, needsConsent: !!need } : {}) };
 }
 function scSolution(m, n) {
   const f = path.join(LAB, 'solutions/scripts', path.basename(m.dir), `${n}.sh`);
@@ -504,8 +576,20 @@ function scSolution(m, n) {
 // terminal/editor there instead of the bare exercise folder. Never rebuilt on a plain open, only
 // on an explicit reset, so it doesn't clobber files the learner is experimenting with.
 function playDirFor(id) { return path.join(process.env.HOME || '/home/alumno', 'play', id, 'work'); }
+// Code of an imported pack runs only through here: with a time limit and, when the system allows it, without a network (a new network
+// namespace; the user and group ids stay the same, so permissions behave as usual). Course code is run as before.
+let NET_ISOLATION = null;
+function sandboxArgs(id, cmd, args) {
+  if (!String(id).startsWith('imp-')) return [cmd, args];
+  if (NET_ISOLATION === null) {
+    try { NET_ISOLATION = require('child_process').spawnSync('unshare', ['-Un', `--map-user=${process.getuid()}`, `--map-group=${process.getgid()}`, 'true']).status === 0; } catch { NET_ISOLATION = false; }
+  }
+  const iso = NET_ISOLATION ? ['unshare', '-Un', `--map-user=${process.getuid()}`, `--map-group=${process.getgid()}`, '--'] : [];
+  return ['timeout', ['-k', '5', '240', ...iso, cmd, ...args]];
+}
 function buildPlay(id) {
-  execFileSync(path.join(LAB, 'bin/play'), [id], { cwd: LAB, stdio: 'ignore' });
+  const [c, a] = sandboxArgs(id, path.join(LAB, 'bin/play'), [id]);
+  execFileSync(c, a, { cwd: LAB, stdio: 'ignore' });
 }
 function ensurePlay(ex) {
   if (ex.quiz) return null; // nothing to run for a quiz
@@ -547,7 +631,8 @@ function parseReport(file) {
 function streamCheck(res, args) {
   res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' });
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'lab-report-')), file = path.join(tmp, 'r');
-  const p = spawn(path.join(LAB, 'bin/check'), args, { cwd: LAB, env: { ...process.env, LAB_COLOR: '1', LAB_REPORT: file } });
+  const [sc, sa] = sandboxArgs(String(args[0]), path.join(LAB, 'bin/check'), args);
+  const p = spawn(sc, sa, { cwd: LAB, env: { ...process.env, LAB_COLOR: '1', LAB_REPORT: file } });
   p.stdout.on('data', d => res.write(d));
   p.stderr.on('data', d => res.write(d));
   p.on('close', code => {
@@ -565,7 +650,8 @@ function buildFailing(id, seed, step) {
   const base = path.join(process.env.HOME || '/home/alumno', 'play', id + '-failing');
   const env = { ...process.env, LAB_PLAY_DIR: base };
   if (step) env.STEP = String(step);
-  execFileSync(path.join(LAB, 'bin/play'), [id, String(seed)], { cwd: LAB, stdio: 'ignore', env });
+  const [c, a] = sandboxArgs(id, path.join(LAB, 'bin/play'), [id, String(seed)]);
+  execFileSync(c, a, { cwd: LAB, stdio: 'ignore', env });
   return { work: path.join(base, 'work'), home: path.join(base, 'home'), stdin: fs.existsSync(path.join(base, 'stdin.txt')) ? path.join(base, 'stdin.txt') : null };
 }
 const validSeed = v => /^\d{1,10}$/.test(v || '') ? Number(v) : null;
@@ -672,7 +758,7 @@ async function api(req, res, url) {
   }
 
   if (parts[1] === 'import') {
-    if (req.method === 'GET' && !parts[2]) return send(res, 200, readPacks().map(importer.summarize));
+    if (req.method === 'GET' && !parts[2]) return send(res, 200, readPacks().map(p => ({ ...importer.summarize(p), ...packStatus(p) })));
     if (req.method === 'GET' && parts[2] === 'history') return send(res, 200, readHistory().slice(-200).reverse());
     if (req.method === 'POST' && parts[2] === 'history' && parts[3] === 'clear') { try { fs.unlinkSync(HISTORY_FILE); } catch { /* none */ } return send(res, 200, { ok: true }); }
     if (req.method === 'GET' && (parts[2] === 'prompt.md' || parts[2] === 'example.json')) {
@@ -695,14 +781,65 @@ async function api(req, res, url) {
       const old = readPacks().find(p => p.id === v.pack.id);
       v.pack.addedAt = old ? old.addedAt : new Date().toISOString();
       writePack(v.pack);
+      syncMaterialized();
       const from = (url.searchParams.get('file') || '').slice(0, 120);
       logHistory(old ? 'replaced' : 'added', v.pack, `${itemsLine(v.pack)}${old ? ` (before: ${itemsLine(old)})` : ''}${from ? ` · file ${from}` : ''}`);
       return send(res, 200, { ok: true, warnings: v.warnings.slice(0, 30), summary: importer.summarize(v.pack) });
+    }
+    if (importer.SLUG.test(parts[2] || '') && ['code', 'consent', 'rollback', 'selftest'].includes(parts[3])) {
+      const pack = readPacks().find(p => p.id === parts[2]);
+      if (!pack) return send(res, 404, { error: 'no such pack' });
+      if (req.method === 'GET' && parts[3] === 'code') {
+        const scan = require('./scanner').scan;
+        return send(res, 200, { id: pack.id, title: pack.title, ...packStatus(pack), items: scriptItems(pack).map(i => ({ id: i.id, title: i.title, script: i.script,
+          fixture: { code: i.fixture, findings: i.fixture ? scan(i.fixture) : [] },
+          steps: i.steps.map(st => ({ n: st.n, title: st.title, check: { code: st.check, findings: scan(st.check) }, solution: { code: st.solution, findings: scan(st.solution) } })) })) });
+      }
+      if (req.method === 'POST' && parts[3] === 'consent') {          // "I have read the code": a snapshot of the progress first, then the pack may run
+        if (!scriptItems(pack).length) return send(res, 200, { ok: true });
+        try { takeSnapshot(pack.id); } catch (e) { return send(res, 500, { error: 'The snapshot of your progress could not be made, so the pack was not allowed: ' + e.message }); }
+        fs.writeFileSync(consentFile(pack.id), JSON.stringify({ hash: packCodeHash(pack), at: new Date().toISOString() }));
+        logHistory('allowed', pack, 'its code may run in the sandbox; a snapshot of your progress and answers was saved first');
+        return send(res, 200, { ok: true });
+      }
+      if (req.method === 'POST' && parts[3] === 'rollback') {
+        let ok = false;
+        try { ok = restoreSnapshot(pack.id); } catch (e) { return send(res, 500, { error: e.message }); }
+        if (!ok) return send(res, 404, { error: 'There is no snapshot of this pack.' });
+        logHistory('rolled back', pack, 'progress and answers restored to what they were before the pack first ran');
+        return send(res, 200, { ok: true });
+      }
+      if (req.method === 'POST' && parts[3] === 'selftest') {         // every step: its own solution passes the checker, an empty script does not
+        if (!packConsented(pack.id)) return send(res, 403, { error: 'consent', imp: pack.id });
+        const noop = path.join(os.tmpdir(), `bs-noop-${process.pid}.sh`);
+        fs.writeFileSync(noop, '#!/bin/bash\ntrue\n');
+        const results = [];
+        const run = (idstep, file) => new Promise(resolve => {
+          const [c, a] = sandboxArgs(idstep, path.join(LAB, 'bin/check'), [idstep, file]);
+          let out = '';
+          const ch = spawn(c, a, { cwd: LAB, env: { ...process.env, LAB_COLOR: '' } });
+          ch.stdout.on('data', d => { out += d; }); ch.stderr.on('data', d => { out += d; });
+          ch.on('close', code => resolve({ code, out: out.split('\n').slice(-14).join('\n') }));
+        });
+        for (const it of scriptItems(pack)) {
+          const id = `imp-${pack.id}-${it.id}`, sol = n => path.join(LAB, 'solutions/scripts', `${id}_script`, `${n}.sh`);
+          for (const st of it.steps) {
+            const a = await run(`${id}.${st.n}`, sol(st.n));
+            const b = await run(`${id}.${st.n}`, noop);
+            const c = st.n > 1 ? await run(`${id}.${st.n}`, sol(st.n - 1)) : null;
+            results.push({ item: it.id, title: it.title, n: st.n, stepTitle: st.title, refPasses: a.code === 0, emptyFails: b.code !== 0, previousFails: c ? c.code !== 0 : null, detail: a.code === 0 ? '' : a.out });
+          }
+        }
+        try { fs.unlinkSync(noop); } catch { /* gone */ }
+        logHistory('self-test', pack, `${results.filter(r => r.refPasses && r.emptyFails && r.previousFails !== false).length}/${results.length} steps fine`);
+        return send(res, 200, { results });
+      }
     }
     if (req.method === 'POST' && parts[3] === 'delete' && importer.SLUG.test(parts[2] || '')) {
       const pack = readPacks().find(p => p.id === parts[2]);
       const withProgress = (await readBody(req)).progress !== false;
       deletePack(parts[2], withProgress);
+      syncMaterialized();
       if (pack) logHistory('removed', pack, `${itemsLine(pack)}${withProgress ? ' · its progress was deleted too' : ' · its progress was kept'}`);
       return send(res, 200, { ok: true });
     }
@@ -787,6 +924,7 @@ async function api(req, res, url) {
     if (!m) return send(res, 404, { error: 'no such script' });
     const step = Number(url.searchParams.get('step'));
     if (req.method === 'GET' && !parts[3]) return send(res, 200, scDetail(m));
+    if (m.imp && ['check', 'play', 'reset'].includes(parts[3]) && !packConsented(m.imp)) return send(res, 403, { error: 'consent', imp: m.imp });
     if (parts[3] === 'check' && req.method === 'POST') {
       if (!m.steps.some(st => st.n === step)) return send(res, 400, { error: 'no such step' });
       scEnsure(m);
@@ -1076,4 +1214,5 @@ server.on('upgrade', (req, socket, head) => {
   } else socket.destroy();
 });
 
+try { syncMaterialized(); } catch (e) { console.error('imported scripts:', e.message); }     // the folders of the imported scripts follow the packs
 server.listen(PORT, '0.0.0.0', () => console.log(`bash stash web UI on :${PORT}`));
