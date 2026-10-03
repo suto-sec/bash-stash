@@ -1,6 +1,6 @@
 // bash stash — importing content packs. A pack is ONE json file:
 //   { "format": "bash-stash-pack", "version": 1, "id": "my-pack", "title": "...", "description": "...", "items": [ ... ] }
-// Items: { "kind": "quiz" } and { "kind": "exam" } are data only. { "kind": "script" } carries code (a fixture, a checker and a reference
+// Items: { "kind": "quiz" } and { "kind": "exam" } are data only. { "kind": "script" } and { "kind": "scriptexam" } carry code (a fixture, a checker and a reference
 // solution per step): it is read by web/scanner.js here (red findings refuse the import, the others are warnings) and it is never run until
 // the user has looked at it and allowed the pack (web/server.js).
 // validatePack() checks a parsed pack and returns the normalized copy (only known fields, trimmed strings) together with every
@@ -9,7 +9,7 @@
 'use strict';
 
 const SLUG = /^[a-z0-9][a-z0-9-]{0,39}$/;
-const KINDS = ['quiz', 'exam', 'script'];             // (scriptexam comes later)
+const KINDS = ['quiz', 'exam', 'script', 'scriptexam'];
 const TAGS = ['arguments', 'exit codes', 'tests', 'loops', 'case', 'arithmetic', 'files', 'text', 'find', 'copy and move', 'permissions', 'archives', 'logs', 'pipes'];   // as tools/build_scripts.js
 const { scan } = require('./scanner');
 const { spawnSync } = require('child_process');
@@ -203,6 +203,42 @@ function validatePack(raw) {
     return out;
   }
 
+  function scriptexam(it, at) {
+    const out = { kind: 'scriptexam', id: slug(it.id, at, 'id'), title: str(it.title, at, 'title'), script: '', cmds: str(it.cmds, at, 'cmds', { max: 300, required: false }),
+      statement: str(it.statement, at, 'statement (the text of the exam)', { max: 8000 }), objectives: [], fixture: '', check: '', solution: '' };
+    if (typeof it.script !== 'string' || !/^[a-z][a-z0-9_-]{0,30}\.sh$/.test(it.script)) err(at, `"script" must be the file name of the script, lowercase, ending in .sh, got ${JSON.stringify(it.script)}`); else out.script = it.script;
+    const seen = new Set();
+    arr(it.objectives, at, 'objectives', { min: 2, max: 6 }).forEach((o, i) => {
+      const oa = `${at} › objective ${i + 1}`;
+      if (!isObj(o)) { err(oa, 'an objective must be an object {id, label, points}'); return; }
+      const id = typeof o.id === 'string' && /^[a-z][a-z0-9]{0,14}$/.test(o.id) ? o.id : (err(oa, `"id" must be a short lowercase word (letters and digits, e.g. "args"), got ${JSON.stringify(o.id)}`), '');
+      if (id && seen.has(id)) err(oa, `objective id ${JSON.stringify(id)} is used twice`);
+      seen.add(id);
+      const points = Number.isInteger(o.points) && o.points >= 1 && o.points <= 10 ? o.points : (err(oa, `"points" must be a whole number from 1 to 10, got ${JSON.stringify(o.points)}`), 0);
+      out.objectives.push({ id, label: str(o.label, oa, 'label', { max: 120 }).replace(/\|/g, '/'), points });
+    });
+    const sum = out.objectives.reduce((n, o) => n + o.points, 0);
+    if (out.objectives.length && sum !== 10) err(at, `the objectives' points must add up to 10, they add up to ${sum}`);
+    for (const k of ['fixture', 'check', 'solution']) {
+      const v = it[k];
+      if (k === 'fixture' && (v === undefined || v === '')) continue;
+      if (typeof v !== 'string' || !v.trim()) { err(at, `"${k}" is missing`); continue; }
+      if (v.length > CODE_MAX) { err(at, `"${k}" is too long (${v.length} characters, at most ${CODE_MAX})`); continue; }
+      out[k] = v.replace(/\r\n?/g, '\n');
+    }
+    if (out.check) {
+      if (!/^\s*ARGS=\(/m.test(out.check)) err(at, 'the checker must define the test cases: ARGS=( ... )');
+      if (!/^\s*CASE_OBJ=\(/m.test(out.check)) err(at, 'the checker must say which objective each case belongs to: CASE_OBJ=( objective-id ... ) (same order and length as ARGS)');
+      else for (const o of out.objectives) if (o.id && !new RegExp(`\\b${o.id}\\b`).test(out.check.match(/^\s*CASE_OBJ=\([^)]*\)/m)?.[0] || '')) warn(at, `no test case belongs to the objective "${o.id}": it can never earn its points`);
+    }
+    for (const [k, v] of [['fixture', out.fixture], ['check', out.check]]) if (/^\s*(OBJECTIVES|SCRIPT_NAME)=/m.test(v)) err(at, `"${k}" must not define OBJECTIVES or SCRIPT_NAME: they are built from "objectives" and "script"`);
+    if (out.check || out.fixture) { syntax(`${out.fixture}\n${out.check}`, at, 'the checker (with the fixture)'); }
+    if (out.fixture) findings(out.fixture, at, 'fixture');
+    if (out.check) findings(out.check, at, 'checker');
+    if (out.solution) { syntax(out.solution, at, 'the solution'); findings(out.solution, at, 'solution'); }
+    return out;
+  }
+
   // ---------------------------------------------------------------- the pack
   if (!isObj(raw)) { err('file', 'the file must contain one JSON object'); return { ok: false, errors, warnings, pack: null }; }
   if (raw.format !== 'bash-stash-pack') err('file', `"format" must be "bash-stash-pack", got ${JSON.stringify(raw.format)}`);
@@ -215,12 +251,13 @@ function validatePack(raw) {
     const at = `item ${i + 1}`;
     if (!isObj(it)) { err(at, 'an item must be an object with a "kind"'); return; }
     if (!KINDS.includes(it.kind)) {
-      err(at, ['exercise', 'scriptexam'].includes(it.kind) ? `kind ${JSON.stringify(it.kind)} cannot be imported (${it.kind === 'exercise' ? 'a plain exercise is a "script" with one step' : 'script practice exams cannot be imported yet'}); kinds: ${KINDS.join(', ')}` : `kind must be one of ${KINDS.join(', ')}, got ${JSON.stringify(it.kind)}`);
+      err(at, it.kind === 'exercise' ? `kind "exercise" does not exist: a plain exercise is a "script" with one step; kinds: ${KINDS.join(', ')}` : `kind must be one of ${KINDS.join(', ')}, got ${JSON.stringify(it.kind)}`);
       return;
     }
-    const n = it.kind === 'quiz' ? quiz(it, at) : it.kind === 'exam' ? exam(it, at) : script(it, at);
-    if (n.id && ids.has(it.kind + ':' + n.id)) err(at, `${it.kind} id ${JSON.stringify(n.id)} is used twice in this pack`);
-    ids.add(it.kind + ':' + n.id);
+    const n = it.kind === 'quiz' ? quiz(it, at) : it.kind === 'exam' ? exam(it, at) : it.kind === 'script' ? script(it, at) : scriptexam(it, at);
+    const key = (it.kind === 'script' || it.kind === 'scriptexam' ? 'code' : it.kind) + ':' + n.id;       // (a script and a script exam share the folder names)
+    if (n.id && ids.has(key)) err(at, `${it.kind === 'script' || it.kind === 'scriptexam' ? 'script / script exam' : it.kind} id ${JSON.stringify(n.id)} is used twice in this pack`);
+    ids.add(key);
     pack.items.push(n);
   });
   return { ok: errors.length === 0, errors, warnings, pack: errors.length ? null : pack };
@@ -230,8 +267,8 @@ function validatePack(raw) {
 function summarize(pack) {
   return { id: pack.id, title: pack.title, description: pack.description || '', addedAt: pack.addedAt || null,
     items: pack.items.map(it => ({ kind: it.kind, id: it.id, title: it.title,
-      count: it.kind === 'quiz' ? it.groups.reduce((n, g) => n + g.questions.length, 0) : it.kind === 'exam' ? it.questions.length : it.steps.length })),
-    code: pack.items.some(i => i.kind === 'script') };
+      count: it.kind === 'quiz' ? it.groups.reduce((n, g) => n + g.questions.length, 0) : it.kind === 'exam' ? it.questions.length : it.kind === 'script' ? it.steps.length : it.objectives.length })),
+    code: pack.items.some(i => i.kind === 'script' || i.kind === 'scriptexam') };
 }
 
 module.exports = { validatePack, summarize, SLUG, LIMITS, TAGS };

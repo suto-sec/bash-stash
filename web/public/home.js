@@ -19,11 +19,12 @@ const Home = (() => {
     { key: 'impq',    id: 'imp-sec-quizzes',      part: 'imported' },
     { key: 'impe',    id: 'imp-sec-exams',        part: 'imported' },
     { key: 'impsc',   id: 'imp-sec-scripts',      part: 'imported' },
+    { key: 'impsx',   id: 'imp-sec-sexams',       part: 'imported' },
     { key: 'imphist', id: 'imp-sec-history',      part: 'imported' },
   ];
   const TABS = [['start', 'Start'], ['coding', 'Coding exercises'], ['theory', 'Theory'], ['man', 'Man drills'], ['imported', 'Imported']];
   const GROUP_TAB = { 'home-grp-exercises': 'coding', 'theory-home-title': 'theory', 'man-home-title': 'man', 'imp-home-title': 'imported' };   // the group headings (sidebar labels) -> their tab
-  const DEFAULT_OPEN = ['tracks', 'quizzes', 'man', 'impload', 'impq', 'impe', 'impsc'];   // (imphist starts folded)   // the first section of each tab (a tab with one folded row looks empty)
+  const DEFAULT_OPEN = ['tracks', 'quizzes', 'man', 'impload', 'impq', 'impe', 'impsc', 'impsx'];   // (imphist starts folded)   // the first section of each tab (a tab with one folded row looks empty)
   const el = id => document.getElementById(id);
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const store = {
@@ -140,6 +141,10 @@ const Home = (() => {
       const all = Scripts.imported(), next = all.find(e => e.status !== 'pass');
       return { done: all.filter(e => e.status === 'pass').length, total: all.length, text: all.length ? '' : 'No imported scripts', next: next && { label: next.title, run: () => Scripts.go(next.id, stepOf(next)) } };
     },
+    impsx() {
+      const all = SExams.imported(), next = all.find(e => SExams.statusOf(e) !== 'pass');
+      return { done: all.filter(e => SExams.statusOf(e) === 'pass').length, total: all.length, text: all.length ? '' : 'No imported script exams', next: next && { label: next.title, run: () => SExams.go(next.id) } };
+    },
     imphist() {
       const n = typeof Imp !== 'undefined' ? Imp.historyCount() : 0;
       return { done: 0, total: 0, text: n ? `${n} event${n === 1 ? '' : 's'}` : 'Nothing has happened yet' };
@@ -220,8 +225,8 @@ const Home = (() => {
       return q && e && { done: q.done + e.done, total: q.total + e.total, text: `${q.total} quiz questions · ${e.total} practice exams` };
     }
     if (k === 'imported') {
-      const q = c.impq, e = c.impe, sc = c.impsc, packs = typeof Imp !== 'undefined' ? Imp.packCount() : 0;
-      return q && e && sc && { done: q.done + e.done + sc.done, total: q.total + e.total + sc.total, text: packs ? `${packs} pack${packs === 1 ? '' : 's'} · ${q.total} questions · ${e.total} exams · ${sc.total} scripts` : 'Nothing imported yet' };
+      const q = c.impq, e = c.impe, sc = c.impsc, sx = c.impsx, packs = typeof Imp !== 'undefined' ? Imp.packCount() : 0;
+      return q && e && sc && sx && { done: q.done + e.done + sc.done + sx.done, total: q.total + e.total + sc.total + sx.total, text: packs ? `${packs} pack${packs === 1 ? '' : 's'} · ${q.total} questions · ${e.total} exams · ${sc.total} scripts · ${sx.total} script exams` : 'Nothing imported yet' };
     }
     if (k === 'man') return c.man && { done: c.man.done, total: c.man.total, text: `${c.man.total} questions and tasks` };
     return null;
@@ -328,7 +333,7 @@ const Home = (() => {
       ${tile('coding', 'Coding exercises', 'Write bash in a real terminal and press Check: tracks, warm-ups, whole scripts and script exams.')}
       ${tile('theory', 'Theory', 'Quizzes on the concepts behind the commands, and theory practice exams.')}
       ${tile('man', 'Man page drills', 'Train with the only help the exam allows: the manual.')}
-      ${tile('imported', 'Imported', 'Your own quizzes, practice exams and scripts from a JSON file, with their own progress.')}
+      ${tile('imported', 'Imported', 'Your own quizzes, practice exams, scripts and script exams from a JSON file, with their own progress.')}
       <a class="home-tile" href="#/reference"><span class="ht-title">Reference</span><span class="ht-desc">Every command and concept, grouped by topic and searchable.</span><span class="ht-stat">${n ? n + ' entries' : ''}</span></a></div>`;
   }
   // the order of the boxes on Start, whoever drew them
@@ -375,7 +380,7 @@ const Home = (() => {
     // the other modules redraw their grids when their data arrives: follow them
     let timer = 0;
     const later = () => { clearTimeout(timer); timer = setTimeout(refreshSummaries, 60); };
-    for (const id of ['track-grid', 'intro-grid', 'scripts-grid', 'sexams-grid', 'theory-grid', 'exams-grid', 'imp-quizzes-grid', 'imp-exams-grid', 'imp-scripts-grid', 'imp-load', 'imp-history']) {
+    for (const id of ['track-grid', 'intro-grid', 'scripts-grid', 'sexams-grid', 'theory-grid', 'exams-grid', 'imp-quizzes-grid', 'imp-exams-grid', 'imp-scripts-grid', 'imp-sexams-grid', 'imp-load', 'imp-history']) {
       const g = el(id);
       if (!g) continue;
       new MutationObserver(() => { applyGroups(g); later(); }).observe(g, { childList: true });

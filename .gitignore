@@ -7,3 +7,5 @@ course-material/source/
 # scripts of imported packs (written from .progress/imported by the web server)
 scripts/imp-*/
 solutions/scripts/imp-*/
+script-exams/imp-*/
+solutions/script-exams/imp-*
