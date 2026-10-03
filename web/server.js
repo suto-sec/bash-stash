@@ -791,7 +791,8 @@ async function api(req, res, url) {
       if (!pack) return send(res, 404, { error: 'no such pack' });
       if (req.method === 'GET' && parts[3] === 'code') {
         const scan = require('./scanner').scan;
-        return send(res, 200, { id: pack.id, title: pack.title, ...packStatus(pack), items: scriptItems(pack).map(i => ({ id: i.id, title: i.title, script: i.script,
+        sandboxArgs('imp-x', 'true', []);          // (probes once whether the network can be cut off)
+        return send(res, 200, { id: pack.id, title: pack.title, ...packStatus(pack), sandboxNoNet: !!NET_ISOLATION, items: scriptItems(pack).map(i => ({ id: i.id, title: i.title, script: i.script,
           fixture: { code: i.fixture, findings: i.fixture ? scan(i.fixture) : [] },
           steps: i.steps.map(st => ({ n: st.n, title: st.title, check: { code: st.check, findings: scan(st.check) }, solution: { code: st.solution, findings: scan(st.solution) } })) })) });
       }

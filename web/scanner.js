@@ -95,7 +95,6 @@ function commandsOf(code) {
     // [[ ... ]] and (( ... )) are tests and arithmetic, not commands (a $( ) inside them still is code: it is kept)
     const keep = span => (span.match(/\$\([^()]*\)|`[^`]*`/g) || []).map(x => ` ; ${x.replace(/^\$\(|\)$/g, '')} ; `).join('');
     ln = ln.replace(/\[\[.*?\]\]/g, m => ' [[ ]] ' + keep(m)).replace(/\$\(\([^]*?\)\)/g, ' _ ').replace(/\(\([^)]*\)\)/g, m => ' (( )) ' + keep(m));
-    const bg = /[^&]&\s*$/.test(ln);
     const stack = [];
     let cur = '', swallow = false;               // swallow: the rest of a word that continued after a closed $( )
     const flush = () => { const words = cur.trim().split(/\s+/).filter(Boolean); if (words.length) res.push({ words, line, bg: false }); cur = ''; };
@@ -115,12 +114,12 @@ function commandsOf(code) {
         flush(); stack.push('grp'); continue;
       }
       if (c === ')') { const k = stack.pop(); if (k === undefined) { cur = ''; } else { flush(); if (k === 'sub') swallow = true; } continue; }
-      if (c === ';' || c === '\n' || two === '&&' || two === '||' || c === '|' || (c === '&' && ln[i + 1] !== '>' && ln[i - 1] !== '>' && ln[i - 1] !== '&')) { flush(); if (two === '&&' || two === '||') i++; continue; }
+      if (c === '&' && ln[i + 1] !== '>' && ln[i + 1] !== '&' && ln[i - 1] !== '>' && ln[i - 1] !== '&') { flush(); res.push({ words: ['&'], line, bg: true }); continue; }       // (a single & starts a background job)
+      if (c === ';' || c === '\n' || two === '&&' || two === '||' || c === '|') { flush(); if (two === '&&' || two === '||') i++; continue; }
       if ((c === '{' || c === '}') && (i === 0 || /\s/.test(ln[i - 1])) && (i + 1 === ln.length || /\s/.test(ln[i + 1]))) { flush(); continue; }
       cur += c;
     }
     flush();
-    if (bg) res.push({ words: ['&'], line, bg: true });
   });
   return res;
 }
@@ -216,6 +215,7 @@ function scan(text, nest = 0) {
       if (/^(~\/|\$\{?(LAB|PROGRESS))/.test(tgt) && !/^~\/?$/.test(tgt)) add('warn', idx + 1, `writes to ${tgt}`);
     }
     if (/\|\s*(sudo\s+)?(ba|da|z|k)?sh\b(?!\w)/.test(ln)) add('red', idx + 1, 'pipes text into a shell');
+    if (/\d*<>/.test(ln)) add('warn', idx + 1, 'opens a file for reading and writing in one go (this is also how a network connection is opened from bash)');
   });
   return findings.sort((a, b) => a.line - b.line || (a.level === 'red' ? -1 : 1));
 }
