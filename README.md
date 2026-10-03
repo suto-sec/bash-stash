@@ -12,23 +12,49 @@ computer, in a container, and you use it in your browser.
 
 Everything you do is stored in the `.progress/` folder of the project (delete it to start over). Nothing leaves your computer.
 
+## Contents
+
+- [Install](#install) — [the installer scripts](#quickest-the-installer-scripts) · [Linux](#linux-by-hand) · [macOS](#macos-by-hand) · [Windows](#windows-by-hand) · [daily use](#daily-use) · [troubleshooting](#if-something-goes-wrong)
+- [Using it](#using-it) — [the exercise screen](#the-exercise-screen) · [workflow](#workflow) · [scripts](#scripts) · [script practice exams](#script-practice-exams) · [theory quizzes and practice exams](#theory-quizzes-and-practice-exams) · [reference manual](#reference-manual) · [suggested path and readiness](#suggested-path-and-readiness) · [importing your own content](#importing-your-own-content)
+- [The lab environment](#the-lab-environment) · [How checking works](#how-checking-works) · [The 741 exercises](#the-741-exercises)
+- [For maintenance](#for-maintenance) · [License](#license)
+
 ---
 
-## Install (step by step)
+## Install
 
 You need three things on your computer: **a container engine** (podman or Docker), **git**, and **a Linux-style terminal**.
-After that, two commands start everything. Pick your system:
+There are installer scripts that do it for you, and a step-by-step guide if you prefer to do it by hand. Pick your system:
 
 | your system | what to install | where you type the commands |
 |---|---|---|
 | **Linux** | podman (or Docker), git, curl | any terminal |
 | **macOS** | Docker Desktop, git | the Terminal app |
-| **Windows 10/11** | WSL 2 with Ubuntu, and Docker Desktop (or podman inside Ubuntu) | **the Ubuntu terminal** (not PowerShell, not Git Bash) |
+| **Windows 10/11** | WSL 2 with Ubuntu, and podman inside it (or Docker Desktop) | the installer script runs in **PowerShell**; by hand, everything runs in **the Ubuntu terminal** (not Git Bash) |
 
 Disk space: about **4 GB free** (the lab image is about 1.8 GB). The first start downloads and builds it and takes **5 to 15 minutes**;
 every start after that takes a few seconds.
 
-### Linux
+### Quickest: the installer scripts
+
+The `install/` folder has one script per system. Each one checks what you already have, **asks before installing anything**, installs what is
+missing, downloads the project (if you do not have it yet) and starts the lab. You can run it again at any time: it skips what is done.
+
+| system | run this | what it does |
+|---|---|---|
+| **Linux** (Debian/Ubuntu/Mint, Fedora/RHEL, Arch/Manjaro, openSUSE) | `curl -fsSL https://raw.githubusercontent.com/suto-sec/bash-stash/main/install/linux.sh \| bash` | installs podman (or Docker with `--docker`), git, curl and the rootless-podman settings with your package manager; downloads the project to `~/bash-stash`; starts the lab |
+| **macOS** | `curl -fsSL https://raw.githubusercontent.com/suto-sec/bash-stash/main/install/macos.sh \| bash` | installs git (command line tools) and Docker Desktop (with Homebrew, which it can install too), waits for Docker, downloads the project, starts the lab |
+| **Windows** (PowerShell) | `& ([scriptblock]::Create((irm https://raw.githubusercontent.com/suto-sec/bash-stash/main/install/windows.ps1)))` | installs WSL and Ubuntu 24.04 (one restart), then podman/git/curl **inside** Ubuntu, downloads the project there and starts the lab (`-Docker` uses Docker Desktop instead) |
+
+Already have the project? Run `./install/linux.sh`, `./install/macos.sh` or `powershell -ExecutionPolicy Bypass -File install\windows.ps1`.
+All of them accept `--help` (Linux/macOS) or `Get-Help .\install\windows.ps1` (Windows), and `--dry-run` / `-DryRun` shows what would happen without changing anything.
+Read a script before you run it if you like: they are short and in plain text.
+
+> Honest status: `install/linux.sh` was run here on Linux with podman and its choices for the other distributions were checked with dry runs;
+> `install/macos.sh` and `install/windows.ps1` follow the documented behaviour of Homebrew, Docker Desktop and WSL but could not be run on a Mac or a
+> Windows machine by the author. If one of them fails, the step-by-step guides below do the same by hand.
+
+### Linux (by hand)
 
 1. Open a terminal and install the tools (choose your distribution):
 
@@ -56,7 +82,7 @@ every start after that takes a few seconds.
 
 3. Wait until it prints `bash stash is running at http://localhost:8080`. Your browser opens by itself; if it does not, open that address.
 
-### macOS
+### macOS (by hand)
 
 1. Install **Docker Desktop** from <https://www.docker.com/products/docker-desktop/> (or `brew install --cask docker`), start it and wait until
    the whale icon in the menu bar stops moving. Git comes with the Xcode command line tools (`xcode-select --install`).
@@ -70,7 +96,7 @@ every start after that takes a few seconds.
 
 3. Wait for `bash stash is running at http://localhost:8080`. The browser opens by itself; otherwise open that address.
 
-### Windows
+### Windows (by hand)
 
 Windows cannot run the `./lab` script directly, so you use **WSL** (the Windows Subsystem for Linux, built into Windows 10/11).
 All the commands below are typed in the **Ubuntu** terminal, never in PowerShell or Git Bash.
@@ -274,6 +300,7 @@ overwriting your answers). Each kind has its own authoring guide.
 | reference manual | `web/public/manual-*.js` | `./lab node tools/build_manual.js`, `node tools/manual_coverage.js` | `tools/MANUAL_AUTHORING.md` |
 | suggested path | `web/public/path-data.js` | `node tools/path_check.js` | |
 | import | `web/importer.js`, `web/scanner.js`, `web/import-prompt.md` | `node tools/test_scanner.js`, `node tools/gen_scanner_commands.js` | `web/import-prompt.md` |
+| installers | `install/linux.sh`, `install/macos.sh`, `install/windows.ps1` | `bash -n install/*.sh`; `install/linux.sh --dry-run` | the header of each script |
 
 Other pieces: `lib/engine.sh` is the checker (spec format at the top); `container/` is the image (users, fake logs, sessions, code-server);
 `web/` is the web UI (`server.js`: the API, the terminal over a websocket and the proxy to code-server; `public/`: the pages); `lab` is the host
