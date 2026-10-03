@@ -27,7 +27,7 @@ Writing a step statement (the learner sees only this text and the step title)
 - The first time a step asks for "the correct usage", give an example message (`(e.g. `Usage: name args`)`): the checker accepts any message that
   contains `Usage`/`usage`/`Uso` or the script name.
 
-## The 30 scripts (plan; groups are set by number in tools/build_scripts.js)
+## The first 30 scripts (the original plan; groups are set by number in tools/build_scripts.js)
 
 First steps (s01–s08): 01 greet (args, default, usage) · 02 kind (-f/-d/-e, exit codes) · 03 sumargs (loop, arithmetic, validation) ·
 04 lines (wc, many files, option -w) · 05 ext (case on extensions, counters) · 06 countdown (while, validated integer) ·
@@ -49,4 +49,12 @@ Every script has `@@level 1-5` (the same ★ scale as the exercises) and `@@tags
 exit codes, tests, loops, case, arithmetic, files, text, find, copy and move, permissions, archives, logs, pipes). The Scripts section of the home
 page has a dropdown that groups them by Difficulty (default), Topic (a script appears under each of its tags), Number of steps or Progress; the
 choice (`localStorage` `scriptGroup`) drives the home grid, the home sidebar tree and the sidebar inside a script. The Scripts counter counts
-each script once. 67 scripts (s01-s67; s31-s67 were added in later batches to even out the stars and tags) are written and pass `tools/validate_scripts.sh`.
+each script once. 87 scripts (s01-s87) are written and pass `tools/validate_scripts.sh`; s31-s67 were added in later batches to even out the stars and
+tags, and s68-s87 are exam-style (the argument checks with exit codes 1/2/3, a default directory, a count at the end, one option such as `-c`, `-f` or `-n`,
+in the manner of the June exam's `deploy_bins.sh`) and are part of the suggested path (`web/public/path-data.js`).
+
+The home page also has **Order by** (number, title, difficulty, steps, progress, topic) and a direction (`localStorage` `scriptOrder`, `scriptDir`), with a
+reset, and the same three choices in a panel at the top of the sidebar of a script. The setting *Scripts → Instructions* (`localStorage` `scMode`)
+shows the steps one at a time or every part on one page, checked with the last step's checker (`POST /api/scripts/:id/markall` then counts every step as
+passed). Scripts can also come from an imported pack (`web/import-prompt.md`): they are written as `scripts/imp-<pack>-<item>_script/`, git-ignored, and
+never count in the course totals.

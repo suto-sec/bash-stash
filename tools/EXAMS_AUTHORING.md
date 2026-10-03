@@ -78,7 +78,7 @@ Topics: `shell-help`, `jobs-procs`, `files-fs`, `permissions`, `filters`, `grep-
 
 # Script practice exams
 
-Besides the theory sets there are **script practice exams**: one bash script each, graded out of 10 by objectives, shown under *Coding exercises → Practice exams* on the home page. 7 per tier (`easy-01 … easy-07`, `medium-…`, `hard-…`). They are a different thing from the
+Besides the theory sets there are **script practice exams**: one bash script each, graded out of 10 by objectives, shown under *Coding exercises → Practice exams* on the home page. The plan is 7 per tier (`easy-01 … easy-07`, `medium-…`, `hard-…`); today there is one per tier (`easy-01`, `medium-01`, `hard-01`). Imported packs can add more of their own (`web/import-prompt.md`, kind `scriptexam`). They are a different thing from the
 theory sets (own sources, API `/api/sexams`, routes `#/sexam/…` and storage `.progress/script-exams/`), even though the ids look alike.
 
 Calibration (an authoring choice: the real October duration is not known). The June exam's first exercise (`deploy_bins.sh`, 3 of 10 points in a
