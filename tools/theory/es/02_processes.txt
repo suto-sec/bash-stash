@@ -1,0 +1,481 @@
+@@collection 02_processes | Trabajos, procesos y señales
+@@about
+Trabajos en primer plano, en segundo plano y suspendidos; procesos, PID y sus padres; cómo leer ps y top; señales, kill y valores de retorno de los programas matados.
+
+@@group Primer plano, segundo plano, suspendido
+@@q sort | Estado de un trabajo
+@@buckets Primer plano | Segundo plano | Suspendido
+¿En qué situación queda cada trabajo en la shell justo después de la acción descrita?
+(Primer plano) Escribes `sleep 100` y pulsas Intro :: Un mandato normal se ejecuta en primer plano: la shell espera y no devuelve el prompt hasta que termina.
+(Primer plano) Ejecutas `fg` sobre un trabajo en segundo plano :: `fg` trae el trabajo a primer plano y la shell vuelve a esperarlo.
+(Segundo plano) Escribes `sleep 100 &` :: El `&` final lanza el trabajo y devuelve el prompt al momento.
+(Segundo plano) Suspendes un trabajo con `Ctrl+Z` y luego escribes `bg` :: `bg` reanuda el trabajo detenido, pero en segundo plano.
+(Suspendido) Pulsas `Ctrl+Z` mientras se ejecuta `sleep 100` :: El trabajo queda detenido (no terminado) y sigue en memoria hasta que lo reanudes o lo mates.
+(Suspendido) Ejecutas `kill -STOP %1` sobre un trabajo en ejecución :: `SIGSTOP` congela el proceso igual que `Ctrl+Z`.
+
+@@q single | Efecto del ampersand
+¿Qué hace poner `&` al final de una línea de mandatos?
+(+) Lanza el mandato en segundo plano y devuelve el prompt al momento. :: La shell no espera al trabajo; puedes seguir escribiendo mandatos.
+(-) Ejecuta el mandato con privilegios de administrador en lugar de los de tu usuario. :: Los privilegios no tienen nada que ver con `&`; eso lo hace `sudo`.
+(-) Ejecuta el mandato dos veces, una en primer plano y otra en segundo plano. :: `&` no duplica nada.
+(-) Oculta la salida del mandato enviándola al dispositivo nulo. :: La salida sigue yendo al terminal salvo que la redirijas.
+
+@@q single | Ctrl+Z no es matar
+Después de pulsar `Ctrl+Z` sobre un `sleep 100` en ejecución, ¿en qué estado queda ese proceso?
+(+) Detenido: sigue existiendo y se puede reanudar con `fg` o `bg`. :: Suspender lo congela; nada ha terminado.
+(-) Terminado, y se liberan toda su memoria y sus ficheros abiertos. :: Eso es lo que haría `Ctrl+C` (o `kill`).
+(-) En ejecución en segundo plano, exactamente como si se hubiera lanzado con `&`. :: No se ejecuta en absoluto hasta que usas `bg`.
+(-) Esperando una entrada del teclado, que leerá en cuanto escribas algo. :: Está congelado por una señal, no bloqueado esperando entrada.
+
+@@q match | Mandatos de control de trabajos
+Empareja cada mandato con su efecto.
+(=) `jobs` => Listar los trabajos de la shell actual :: Muestra los trabajos numerados con su estado.
+(=) `bg` => Reanudar un trabajo detenido en segundo plano :: El trabajo sigue ejecutándose mientras tú conservas el prompt.
+(=) `fg` => Traer un trabajo a primer plano :: La shell lo espera y el trabajo lee el teclado.
+(=) `kill %1` => Enviar SIGTERM al trabajo número 1 :: `%n` se refiere a un trabajo de esta shell, no a un PID.
+(-) Lanzar una shell nueva para cada trabajo :: Ninguno de los mandatos de arriba hace eso.
+
+@@q single | Números de trabajo frente a PID
+¿Qué diferencia hay entre `%1` y un PID como `4174`?
+(+) `%1` es un número de trabajo que solo vale dentro de la shell actual; un PID identifica un proceso en todo el sistema. :: Los trabajos son contabilidad propia de la shell; el núcleo solo conoce PID.
+(-) `%1` es el PID del primerísimo proceso que se lanzó en la máquina, que siempre se llama `init`. :: El primer proceso es el PID 1 (`init`/`systemd`) y no tiene relación con el trabajo 1.
+(-) Son dos nombres distintos para el mismo número, que se usan en mandatos diferentes según lo que quieras hacer. :: Son dos numeraciones independientes.
+(-) `%1` es el nombre de un fichero del directorio actual, que la shell expande. :: El signo de porcentaje introduce una especificación de trabajo para `kill`, `fg` y `bg`.
+
+@@q fill | Reanudar en primer plano
+Un trabajo detenido con Ctrl+Z puede continuar en primer plano con `{{fg}}` y en segundo plano con `{{bg}}`.
+(x) jobs :: `jobs` solo lista trabajos; no reanuda ninguno.
+(x) resume :: No existe ese mandato interno.
+@@note
+Los dos admiten una especificación de trabajo opcional (`fg %2`); sin ella actúan sobre el trabajo más reciente, marcado con `+` en `jobs`.
+
+@@q order | Suspender y reanudar
+Ordena estos pasos para ejecutar un mandato largo, pausarlo y terminarlo en segundo plano.
+(>) Lanzar `sleep 300` en primer plano :: Primero el mandato tiene que existir como trabajo en ejecución.
+(>) Pulsar `Ctrl+Z` :: Esto lo suspende y devuelve el prompt.
+(>) Ejecutar `bg` :: Esto reanuda el trabajo detenido en segundo plano.
+(>) Ejecutar `jobs` para confirmar que aparece como Running :: Comprobarlo solo tiene sentido después de que cambie el estado.
+
+@@q single | Leer la salida de jobs
+En la salida de `jobs`, una línea empieza por `[2]+`. ¿Qué significa el `+`?
+(+) Marca el trabajo actual, sobre el que actúan `fg` o `bg` cuando no se indica número de trabajo. :: El `-` marca el trabajo anterior.
+(-) Significa que el trabajo se ejecuta con los privilegios del usuario root. :: `jobs` no muestra usuarios.
+(-) Significa que el trabajo ya terminó con éxito y se quitará de la lista la próxima vez que se ejecute `jobs`. :: Los trabajos terminados aparecen como `Done`.
+(-) Significa que el trabajo está usando más del 100 % del tiempo de procesador. :: `jobs` no informa del uso de CPU.
+
+@@q multi | Datos sobre el listado de jobs
+Marca las afirmaciones ciertas sobre el mandato `jobs`.
+(+) Solo muestra los trabajos lanzados desde la sesión de shell actual. :: Los procesos de otros terminales no aparecen.
+(+) `jobs -l` también muestra el PID de cada trabajo :: `jobs` a secas solo muestra números y estados.
+(+) Informa de los estados Running, Stopped y Done. :: Ese es el ciclo de vida de un trabajo tal como lo ve la shell.
+(-) Lista todos los procesos de todo el sistema :: Eso es `ps -e`.
+(-) Es un programa externo en `/usr/bin`, como `ps` :: Es un mandato interno de la shell, porque los trabajos pertenecen a la shell.
+
+@@q single | Cerrar el terminal
+Lanzas `sleep 500 &` y luego cierras la ventana del terminal. ¿Qué le pasa normalmente al trabajo?
+(+) La shell le envía `SIGHUP` al terminar, así que acaba salvo que ignore esa señal o se haya lanzado con `nohup`. :: La señal de «colgar» se diseñó para «el terminal ha desaparecido».
+(-) Sigue ejecutándose para siempre, porque un trabajo lanzado en segundo plano es independiente del terminal que lo lanzó. :: Los trabajos en segundo plano siguen ligados a la sesión.
+(-) Pasa al primer plano del siguiente terminal que abras en la misma máquina. :: No existe esa migración.
+(-) Se convierte en un zombi que ya no se puede quitar de la tabla de procesos. :: Un zombi es un proceso terminado cuyo padre no lo ha recogido; no es este caso.
+
+@@q single | El trabajo en primer plano y el teclado
+¿Qué frase explica por qué solo el trabajo en primer plano puede leer lo que escribes?
+(+) El terminal entrega la entrada del teclado al trabajo en primer plano; un trabajo en segundo plano que intenta leerla queda detenido. :: Así es como la shell y el terminal comparten un único teclado.
+(-) Los trabajos en segundo plano son procesos de solo lectura y no pueden usar el teclado en absoluto, ni siquiera un momento. :: Solo se restringe la entrada del terminal, y solo cuando intentan leerla.
+(-) El teclado solo funciona para el primer trabajo que se lanzó en la sesión del terminal. :: Cualquier trabajo se puede traer a primer plano.
+(-) El operador `&` desconecta el trabajo de la máquina, de modo que no puede recibir ninguna entrada del usuario. :: Solo deja el terminal a la shell.
+
+@@group Procesos y PID
+@@q single | Qué es un proceso
+¿Cuál es la mejor definición de proceso?
+(+) Un programa en ejecución, con su propio PID, su memoria y sus ficheros abiertos. :: El mismo programa lanzado dos veces da lugar a dos procesos.
+(-) Un fichero en disco que contiene el código máquina de un programa y sus datos. :: Eso es un programa (un ejecutable), todavía no un proceso.
+(-) Un mandato escrito en la shell, junto con sus argumentos y opciones. :: Una línea de mandatos puede lanzar cero, uno o varios procesos.
+(-) Una cuenta de usuario, junto con su directorio personal y su shell de inicio. :: Los usuarios son propietarios de procesos; no son procesos.
+
+@@q fill | Identificar un proceso
+Cada proceso tiene un identificador numérico único llamado `{{PID}}`, y el PID de quien lo creó se llama `{{PPID}}`.
+(x) UID :: El UID identifica a un *usuario*, no a un proceso.
+@@note
+`$$` contiene el PID de la shell actual y `$PPID` el de su padre.
+
+@@q single | El primer proceso
+¿Qué proceso es el antecesor de todos los demás procesos de usuario en un sistema Linux y tiene el PID 1?
+(+) `init`, hoy en día normalmente `systemd` :: El núcleo lo lanza al final del arranque, y adopta a los procesos huérfanos.
+(-) `bash`, la shell del primer usuario que inicia sesión :: Tu shell de inicio desciende del PID 1; no es el antecesor de todo.
+(-) `kernel`, que aparece como PID 1 en `ps` :: El núcleo no aparece como un proceso normal con PID 1.
+(-) `login`, que pide el nombre de usuario y la contraseña :: `login` (o el gestor de pantalla) lo lanza el PID 1 más tarde.
+
+@@q single | Cómo arranca un mandato
+Cuando ejecutas `ls` desde bash, ¿qué hace la shell, a grandes rasgos?
+(+) Crea un proceso hijo que carga el programa `ls`, y la shell lo espera. :: El patrón fork y después exec es como Unix lanza programas.
+(-) Se sustituye a sí misma por `ls`, así que la shell desaparece cuando termina el listado. :: Eso es lo que hace `exec ls`; normalmente conservas tu shell.
+(-) Copia el código de `ls` en su propia memoria y lo llama como una función normal. :: Ese es el comportamiento de un mandato interno, no de un programa externo.
+(-) Pide al usuario que lance `ls` en otro terminal y espera la respuesta. :: No ocurre nada parecido.
+
+@@q single | Efecto de exec
+¿Qué hace `exec ls` en una sesión de bash?
+(+) Sustituye el proceso de la shell por `ls`; cuando `ls` termina se cierra la sesión, porque la shell ya no existe. :: No se crea ningún proceso nuevo; el mismo PID pasa a ejecutar `ls`.
+(-) Ejecuta `ls` en segundo plano y mantiene la shell disponible en el prompt. :: `exec` no crea ningún trabajo.
+(-) Ejecuta `ls` con permisos de administrador y luego vuelve al usuario normal. :: `exec` no cambia los privilegios.
+(-) Lista los procesos que ha ejecutado la shell hasta ahora en esta sesión, como el mandato `history`. :: Eso sería, aproximadamente, algo de `ps` o `history`.
+
+@@q multi | Los tres tipos de proceso
+¿Cuáles son las categorías habituales de procesos?
+(+) Procesos interactivos ligados a un terminal, en primer o en segundo plano. :: Lo que lanzas desde tu shell.
+(+) Procesos por lotes que ejecutan trabajo programado o en cola, como scripts lanzados por `cron`. :: No hace falta que haya ningún usuario presente.
+(+) Demonios que trabajan en segundo plano ofreciendo servicios del sistema. :: Servidores web, el propio `cron`, `sshd`.
+(-) Solo los procesos lanzados por root. :: Los usuarios normales también son propietarios de procesos.
+(-) Los zombis, como un cuarto tipo previsto que se crea a propósito. :: Un zombi es un estado transitorio parecido a un error, no una categoría diseñada.
+
+@@q match | Tipos de proceso
+Empareja cada ejemplo con su tipo.
+(=) Ejecutas `find / -name x` en tu terminal => Proceso interactivo :: Interactúas con él y puedes suspenderlo o matarlo desde la shell.
+(=) `sshd` esperando conexiones => Demonio :: Atiende peticiones en segundo plano desde el arranque hasta el apagado.
+(=) Un script de copia de seguridad nocturna lanzado por `cron` => Proceso por lotes :: Lo lanza un planificador, sin terminal.
+(-) Un servicio que sigue ejecutándose en segundo plano :: No describe ninguno de los ejemplos de arriba; un proceso terminado que nadie ha recogido es un zombi, que no es un tipo de demonio.
+
+@@q single | El padre muere
+¿Qué le pasa a un hijo en ejecución cuando su proceso padre muere?
+(+) Lo adopta el PID 1 (o un sub-reaper) y sigue ejecutándose. :: Los huérfanos no se matan automáticamente.
+(-) El núcleo lo mata en cuanto su padre ha muerto. :: Eso solo ocurre con señales concretas (como `SIGHUP` al colgar) o con ciertas opciones.
+(-) Se convierte al momento en un zombi, esperando a un padre que ya no existe. :: Un zombi es un hijo *muerto*, no un huérfano vivo.
+(-) Pasa al primer plano del terminal donde se lanzó su padre. :: No se mueve nada; la tabla de trabajos era de la shell padre.
+
+@@q single | Proceso zombi
+¿Qué es un proceso zombi?
+(+) Un proceso que ha terminado pero cuya entrada sigue en la tabla de procesos hasta que su padre lee su valor de retorno. :: No usa CPU ni memoria más allá de su entrada en la tabla; no se puede matar porque ya está muerto.
+(-) Un proceso atascado en un bucle infinito, que usa todo el tiempo de procesador que puede. :: Ese proceso está en ejecución, normalmente en estado `R`, y se puede matar.
+(-) Un proceso que no se puede parar ni con `kill -9` porque espera a que el disco termine una operación de entrada/salida. :: Eso describe la espera no interrumpible (estado `D`), no un zombi.
+(-) Un proceso en segundo plano sin terminal de control, como un servidor lanzado en el arranque. :: Eso es un demonio.
+
+@@q single | Matar a un zombi
+¿Por qué `kill -9` sobre un zombi no lo hace desaparecer?
+(+) Ya está muerto; solo desaparece la entrada cuando su padre lee el valor de retorno (o cuando el padre termina). :: No queda nada a lo que enviar una señal.
+(-) Por una regla del núcleo, `SIGKILL` está bloqueada para todo proceso cuyo estado en `ps` sea `Z`. :: El proceso ya no se ejecuta, así que las señales no tienen ningún efecto.
+(-) Los zombis son inmunes a las señales porque siempre se ejecutan con privilegios de root. :: Los privilegios son irrelevantes.
+(-) `kill -9` solo funciona con procesos en segundo plano, y la shell trata siempre a los zombis como procesos en primer plano. :: Funciona con cualquier proceso que pueda recibir señales.
+
+@@q single | Tamaño del PID
+Históricamente los PID se limitaban a 32767 por compatibilidad con sistemas de 16 bits. ¿Qué pasa cuando el contador de PID llega al límite?
+(+) La asignación vuelve a empezar y reutiliza números que no usa ningún proceso vivo. :: Los PID se reciclan, así que un PID solo es único entre los procesos que existen en ese momento.
+(-) El sistema se niega a lanzar procesos nuevos hasta que termine alguno de los existentes. :: Sería inutilizable en poco tiempo.
+(-) La máquina se reinicia para que el contador de PID pueda empezar de nuevo desde el principio. :: Nada tan drástico.
+(-) Los procesos nuevos reciben PID negativos, contando hacia abajo desde el límite. :: Los PID siempre son enteros positivos.
+
+@@q multi | Variables sobre procesos
+Marca las variables especiales de la shell que contienen información de procesos.
+(+) `$$` :: PID de la shell actual.
+(+) `$PPID` :: PID del padre de la shell actual.
+(+) `$!` :: PID del último trabajo lanzado en segundo plano.
+(-) `$?` :: Es un valor de retorno, no un PID.
+(-) `$#` :: Es el número de parámetros posicionales.
+
+@@q single | Subshell y cd
+¿Por qué `(cd /tmp; pwd); pwd` termina en el directorio original?
+(+) Los paréntesis ejecutan los mandatos en una shell hija, cuyo `cd` no afecta al padre. :: Cada proceso tiene su propio directorio de trabajo.
+(-) Porque `pwd` siempre imprime el directorio personal del usuario cuando se ejecuta dentro de unos paréntesis. :: Imprime el directorio actual del proceso que lo ejecuta.
+(-) Porque `cd` no funciona en absoluto cuando está dentro de paréntesis. :: Funciona, pero solo para el hijo.
+(-) Porque el punto y coma restaura el directorio anterior tras cada mandato. :: El punto y coma solo separa mandatos.
+
+@@group Observar procesos: ps, top, pstree
+@@q single | Salida por defecto de ps
+¿Qué muestra `ps` a secas (sin opciones) en un terminal?
+(+) Solo los procesos de tu terminal actual, con las columnas PID, TTY, TIME y CMD. :: Es un listado corto, por terminal.
+(-) Todos los procesos que se ejecutan en la máquina, de todos los usuarios, en formato largo. :: Para eso hace falta `-e` o `aux`.
+(-) Solo los procesos del usuario root, que es el propietario del sistema. :: `ps` no filtra por root.
+(-) Los trabajos de la shell actual, numerados desde `[1]` con su estado. :: Los trabajos los muestra `jobs`.
+
+@@q match | Opciones de ps
+Empareja cada mandato con el listado que produce.
+(=) `ps` => Procesos del terminal actual :: El listado más básico y corto.
+(=) `ps -e` => Todos los procesos del sistema :: `-e` es «todo» (everything).
+(=) `ps -l` => Formato largo con columnas adicionales :: Añade campos como UID, PPID o la prioridad.
+(=) `ps aux` => Todos los procesos con su usuario propietario :: Estilo BSD; incluye %CPU, %MEM y STAT.
+(-) Procesos ordenados por memoria y actualizados en directo :: Eso lo hace `top`, no `ps`.
+
+@@q multi | Columnas de ps aux
+Marca las columnas que aparecen en `ps aux`.
+(+) USER :: El propietario del proceso.
+(+) %CPU :: Porcentaje de tiempo de procesador usado.
+(+) STAT :: El código de estado del proceso.
+(+) COMMAND :: La línea de mandatos que lo lanzó.
+(-) Solo el UID, nunca el nombre de usuario :: `ps aux` muestra el nombre; `ps -l` muestra el UID numérico.
+(-) JOBNUM :: Los números de trabajo son cosa de la shell, no de `ps`.
+
+@@q match | Letras de estado de los procesos
+Empareja cada letra de STAT de `ps` con su significado.
+(=) `R` => En ejecución o listo para ejecutarse :: Usando la CPU o preparado para usarla.
+(=) `S` => Dormido, esperando un evento :: Espera interrumpible: entrada, un temporizador, etc.
+(=) `T` => Detenido por una señal (por ejemplo Ctrl+Z) :: No se ejecuta hasta que se reanude.
+(=) `D` => Espera no interrumpible, normalmente de E/S de disco :: Ignora las señales hasta que termina la E/S.
+(=) `Z` => Zombi (terminado, todavía sin recoger) :: Esperando a que el padre lea su valor de retorno.
+(-) Terminado y eliminado de la tabla :: Un proceso eliminado ya no aparece en `ps`.
+
+@@q single | T no es terminando
+En la salida de `ps`, un proceso tiene el estado `T`. ¿Qué significa?
+(+) Que está detenido, por ejemplo suspendido con `Ctrl+Z`. :: `T` significa detenido (o bajo un depurador).
+(-) Que está terminando y desaparecerá en un momento. :: Los procesos que terminan pasan brevemente por `Z` o desaparecen; `T` no significa eso.
+(-) Que es un hilo del sistema. :: Los hilos aparecen con otras marcas, como `l`.
+(-) Que está esperando un terminal. :: Eso normalmente es el estado `S`.
+
+@@q single | Un más detrás de STAT
+Un `+` detrás de la letra de estado, como en `S+`, te indica que...
+(+) el proceso está en el grupo de procesos en primer plano de su terminal :: Útil para ver qué trabajos tienen ahora mismo el teclado.
+(-) el proceso usa más tiempo de procesador que el proceso medio :: Las marcas de STAT no miden la CPU.
+(-) al proceso se le ha dado una prioridad de planificación mayor de lo normal :: Esa es la marca `<`.
+(-) el proceso es multihilo, con más de un hilo de ejecución :: Esa es la marca `l`.
+
+@@q fill | Encontrar un PID concreto
+Para listar todos los procesos con vista completa y filtrar los del programa `sshd`: `ps {{aux ;; -ef ;; -e}} | grep sshd`
+(x) jobs :: `jobs` es un mandato interno de la shell sobre trabajos; no se puede usar como argumento de `ps`.
+@@note
+`ps aux` o `ps -ef` produce la lista completa; después `grep` la filtra. (`pgrep sshd` es una forma más corta.)
+
+@@q single | Lo básico de top
+¿Qué frase describe correctamente a `top`?
+(+) Muestra una lista de procesos en directo, que se actualiza periódicamente, ordenada por defecto por uso de CPU. :: Actualizar la pantalla es su diferencia principal con `ps`.
+(-) Imprime la lista de procesos una vez y termina, exactamente igual que `ps`. :: `top` sigue ejecutándose hasta que pulsas `q`.
+(-) Solo lista los procesos lanzados desde tu sesión de shell actual. :: Muestra todo el sistema.
+(-) Mata automáticamente el proceso que más memoria usa del sistema, para que la máquina siga respondiendo. :: Solo muestra información; para matar hace falta una tecla (`k`) o un mandato.
+
+@@q multi | Teclas interactivas de top
+¿Qué teclas funcionan dentro del `top` estándar?
+(+) `q` para salir. :: Sale de `top` y vuelve a la shell.
+(+) `h` para mostrar la ayuda. :: Lista los mandatos interactivos disponibles.
+(+) `M` para ordenar por memoria. :: Cambia la columna de orden de CPU a memoria.
+(+) `k` para enviar una señal a un proceso. :: Pide un PID y una señal.
+(-) `Ctrl+Z` para volver a la pantalla anterior. :: Suspende `top` como a cualquier programa en primer plano.
+
+@@q single | pstree
+¿Qué muestra `pstree` que `ps aux` no deja ver de un vistazo?
+(+) Las relaciones padre-hijo entre procesos, dibujadas como un árbol. :: Viene bien para ver de dónde salió un proceso.
+(-) La memoria que usa cada proceso, en una columna junto a su nombre. :: No es su propósito.
+(-) Los usuarios conectados ahora mismo al sistema y sus terminales. :: Eso es `who` o `w`.
+(-) El historial de mandatos que ha ejecutado cada proceso desde que empezó. :: Eso es `history`.
+
+@@q single | pgrep
+¿Qué mandato imprime los PID de los procesos cuyo nombre coincide con `sshd`, sin usar una tubería?
+(+) `pgrep sshd` :: Busca por nombre en la tabla de procesos e imprime los PID que coinciden.
+(-) `grep sshd` :: Se quedaría esperando datos en la entrada estándar en lugar de buscar procesos.
+(-) `kill sshd` :: `kill` necesita un PID o una especificación de trabajo, no un nombre.
+(-) `jobs sshd` :: `jobs` solo conoce los trabajos de tu shell.
+
+@@q order | Localizar y parar un proceso desbocado
+Ves un programa que se come la CPU. Ordena la secuencia de pasos razonable.
+(>) Ejecutar `top` o `ps aux` para encontrar al culpable y su PID :: Necesitas el PID antes de poder enviarle ninguna señal.
+(>) Enviar un `kill PID` suave (SIGTERM) :: Dale al programa la oportunidad de limpiar y terminar.
+(>) Comprobar con `ps -p PID` que ha desaparecido :: Verifica el resultado del primer intento.
+(>) Solo si sigue ahí, enviar `kill -9 PID` :: SIGKILL es el último recurso porque no permite limpiar nada.
+
+@@group Señales y kill
+@@q single | Qué es una señal
+¿Qué es una señal en Unix?
+(+) Una notificación breve que se envía de forma asíncrona a un proceso para avisarle de que ha ocurrido un evento. :: En la mayoría de señales, el proceso puede reaccionar con la acción por defecto o con su propio manejador.
+(-) Un mensaje que un usuario envía al terminal de otro usuario, como el mandato `write`. :: Eso sería `write` o `mail`.
+(-) Un tipo especial de fichero en `/dev` a través del cual los programas pueden hablar entre sí. :: Las señales no son ficheros.
+(-) Una variable de la shell que contiene el código de salida del último mandato terminado. :: Eso es `$?`.
+
+@@q single | kill tiene un nombre engañoso
+¿Qué hace por defecto el mandato `kill PID`?
+(+) Envía `SIGTERM` (15), una petición educada de terminar que el programa puede manejar o ignorar. :: El nombre sugiere más violencia de la que merece el comportamiento por defecto.
+(-) Envía `SIGKILL` (9), que termina el proceso al instante y no se puede capturar. :: Eso requiere `-9` de forma explícita.
+(-) Borra del disco el fichero del programa, además de terminar el proceso que lo está ejecutando. :: Matar un proceso no toca ningún fichero.
+(-) Pausa el proceso hasta que recibe de la shell una señal para continuar. :: Pausar es `SIGSTOP`/`SIGTSTP`.
+
+@@q match | Números de señal
+Empareja cada señal con su número habitual en Linux.
+(=) `SIGHUP` => 1 :: La señal de «colgar».
+(=) `SIGINT` => 2 :: La que envía `Ctrl+C`.
+(=) `SIGKILL` => 9 :: La que no se puede capturar.
+(=) `SIGTERM` => 15 :: La que usa `kill` por defecto.
+(=) `SIGSTOP` => 19 :: La que no se puede capturar y congela el proceso.
+(-) 100 :: No hay ninguna señal normal con ese número; las estándar se quedan por debajo de 32.
+
+@@q match | Teclas y señales
+Empareja cada combinación de teclas con la señal que envía el terminal.
+(=) `Ctrl+C` => SIGINT :: Pide al trabajo en primer plano que se interrumpa.
+(=) `Ctrl+Z` => SIGTSTP :: Detención desde el terminal (se puede capturar).
+(=) `Ctrl+\` => SIGQUIT :: Salir y, normalmente, generar un volcado de memoria (core).
+(-) SIGKILL :: Por defecto no tiene ningún atajo de teclado asociado.
+
+@@q multi | Señales que no se pueden capturar
+¿Qué señales **no** puede capturar, bloquear ni ignorar un proceso?
+(+) `SIGKILL` :: El núcleo siempre termina el proceso.
+(+) `SIGSTOP` :: El núcleo siempre lo detiene.
+(-) `SIGTERM` :: Un manejador puede hacer limpieza antes de terminar.
+(-) `SIGINT` :: Los programas suelen capturarla para preguntar «¿seguro que quieres salir?».
+(-) `SIGHUP` :: Los demonios suelen capturarla para recargar su configuración.
+
+@@q single | Por qué no siempre -9
+¿Por qué se considera `kill -9` un último recurso?
+(+) El proceso no puede ejecutar su código de limpieza, así que pueden quedar ficheros temporales, cerrojos o datos a medio escribir. :: `SIGTERM` deja que el programa cierre ficheros y termine como es debido.
+(-) Porque exige escribir la contraseña de root, aunque el proceso que se quiere terminar sea del mismo usuario que lo envía. :: Funciona sobre tus propios procesos sin ninguna contraseña.
+(-) Porque solo pausa el proceso y no lo termina de ninguna forma. :: Lo termina.
+(-) Porque deja el PID del proceso inutilizable para el resto de la sesión. :: El PID se libera y se puede reutilizar.
+
+@@q fill | Matar el trabajo número uno
+Para enviar SIGTERM al primer trabajo de la shell, no a un PID: `kill {{%1}}`
+(x) 1 :: Eso sería el PID 1, el proceso init. Los usuarios normales no tienen permiso para matarlo, y root no debería.
+@@note
+El `%` marca una especificación de trabajo, que bash resuelve al grupo de procesos del trabajo.
+
+@@q fill | Listar las señales
+Para imprimir todos los nombres de señales y sus números: `kill {{-l}}`
+(x) -a :: En bash, `-a` no es la opción para eso.
+@@note
+`kill -l 9` imprime `KILL`, y `kill -l KILL` imprime `9`.
+
+@@q single | Nombres de señales
+¿Cuáles de estos mandatos envían exactamente la misma señal?
+(+) `kill -9 123`, `kill -KILL 123` y `kill -SIGKILL 123` :: Número, nombre corto y nombre largo son intercambiables en el `kill` de bash.
+(-) `kill -9 123` y `kill -15 123`, ya que los dos acaban terminando el proceso :: Son señales distintas con comportamientos distintos.
+(-) `kill 123` y `kill -9 123`, porque 9 es la señal por defecto :: La primera es SIGTERM y la segunda SIGKILL.
+(-) `kill -1 123` y `kill -2 123`, que solo se diferencian en el número :: `SIGHUP` y `SIGINT`, dos señales distintas.
+
+@@q single | Matar por nombre
+¿Qué mandato envía SIGTERM a todos los procesos cuyo nombre de mandato es exactamente `firefox`?
+(+) `killall firefox` :: Selecciona procesos por su nombre exacto.
+(-) `kill firefox` :: `kill` acepta PID o especificaciones de trabajo, no nombres de programa.
+(-) `jobs -k firefox` :: No existe esa opción.
+(-) `ps firefox` :: `ps` solo lista; no envía señales.
+
+@@q single | Permiso para matar
+¿A qué procesos puede enviar señales un usuario normal (no root)?
+(+) Solo a los procesos de su mismo usuario. :: Root puede enviar señales a cualquier proceso.
+(-) A cualquier proceso del sistema. :: Eso permitiría a cualquiera parar los servicios del sistema.
+(-) Solo a los procesos lanzados desde el terminal actual. :: Importa el propietario, no el terminal.
+(-) A ninguno: `kill` está reservado a root. :: Los usuarios gestionan normalmente sus propios procesos.
+
+@@q single | Valor de retorno de un proceso matado
+Un programa en primer plano muere por `SIGKILL`. ¿Qué suele mostrar `$?` después en bash?
+(+) `137`, que es 128 más 9, el número de `SIGKILL` :: Bash informa de la muerte por la señal N como 128 + N.
+(-) `9`, que es simplemente el número de la señal que mató al programa :: El número de la señal no se usa tal cual como valor de retorno.
+(-) `0`, porque un programa matado cuenta como terminado sin error :: Indicar éxito sería engañoso para un proceso matado.
+(-) `1`, el código de fallo general que todo programa matado devuelve a la shell :: Ese es un código de fallo genérico, no un aviso de señal.
+
+@@q match | Valores de retorno por muerte por señal
+Empareja cada causa de muerte con el valor que muestra bash.
+(=) Matado con `SIGTERM` => 143 :: 128 + 15.
+(=) Matado con `SIGKILL` => 137 :: 128 + 9.
+(=) Interrumpido con `Ctrl+C` => 130 :: 128 + 2.
+(-) 9 :: Sería el número de la señal; bash suma 128 cuando la muerte es por señal.
+
+@@q single | SIGHUP en los demonios
+Muchos demonios vuelven a leer su fichero de configuración cuando reciben `SIGHUP`. ¿Qué le permite eso al administrador?
+(+) Aplicar la configuración nueva sin reiniciar el servicio y sin quitarlo del sistema. :: Es un convenio habitual: `kill -HUP PID`.
+(-) Reiniciar toda la máquina para que todos los servicios vuelvan a leer su configuración. :: No se reinicia nada.
+(-) Borrar los registros del demonio para que empiece a escribir entradas nuevas desde cero, con un fichero vacío. :: Los registros no se tocan.
+(-) Cambiar el propietario del demonio para que después se ejecute como otro usuario. :: La propiedad es una cuestión del sistema de ficheros.
+
+@@q single | Reanudar un proceso detenido
+Un proceso se congeló con `kill -STOP PID`. ¿Qué mandato le deja continuar?
+(+) `kill -CONT PID` :: `SIGCONT` reanuda un proceso detenido.
+(-) `kill -TERM PID` :: Le pediría al proceso que terminara.
+(-) `kill -HUP PID` :: La señal de colgar no reanuda un proceso detenido.
+(-) Otra vez `kill -STOP PID` :: Seguiría detenido.
+
+@@q single | Estado tras una señal
+Tras `kill -STOP` sobre un proceso `sleep 50`, `ps -o stat= -p PID` imprime `T`. Tras `kill -CONT` imprime...
+(+) `S` :: Vuelve a estar dormido, esperando a que venza el temporizador.
+(-) `Z` :: No está muerto.
+(-) `T` :: Ese es el estado detenido que acaba de abandonar.
+(-) `D` :: Ese estado es para esperas de E/S no interrumpibles.
+
+@@q multi | Motivos por los que termina un proceso
+¿Qué sucesos pueden terminar un proceso?
+(+) Acaba su trabajo y devuelve un valor de retorno. :: La forma normal.
+(+) Recibe una señal que no maneja, como `SIGTERM`. :: La acción por defecto lo termina.
+(+) Llama a `exit()` tras un error. :: Un valor distinto de cero indica el fallo.
+(-) Pulsas `Ctrl+Z`. :: Eso solo lo suspende.
+(-) Ejecutas `bg` sobre él. :: Eso lo reanuda en segundo plano.
+
+@@group Traza: qué hacen estos mandatos
+@@q single | Traza 1
+¿Qué pasa con `sleep 100 & kill $!`?
+(+) Se lanza un `sleep` en segundo plano y después se le envía SIGTERM a través del PID de `$!`, así que termina. :: `$!` se expande al PID del trabajo que se acaba de lanzar.
+(-) `sleep` muere antes de empezar, porque `kill` se ejecuta antes que el trabajo en segundo plano. :: Ya se está ejecutando cuando se ejecuta `kill`.
+(-) Muere la propia shell, porque `$!` se expande al PID de la shell actual. :: `$!` es el PID del trabajo en segundo plano, no el de la shell (`$$`).
+(-) No pasa nada, porque `&` y `kill` no se pueden combinar en una misma línea de mandatos. :: Sí se puede; aquí el `&` hace también de separador, como `;` o un salto de línea.
+
+@@q single | Traza 2
+Tras `sleep 100`, `Ctrl+Z`, `bg`, ¿qué lista `jobs`?
+(+) `[1]+  Running  sleep 100 &` :: `bg` lo reanuda en segundo plano, así que aparece como Running.
+(-) `[1]+  Stopped  sleep 100` :: Ese era el estado *antes* de `bg`.
+(-) `[1]+  Done  sleep 100` :: Le quedan 100 segundos de ejecución.
+(-) Nada, porque `bg` mata los trabajos detenidos. :: `bg` reanuda; no mata.
+
+@@q single | Traza 3
+Escribes `sleep 60`, pulsas `Ctrl+C` y luego ejecutas `echo $?`. ¿Qué se imprime?
+(+) `130` :: Matado por SIGINT (señal 2): 128 + 2.
+(-) `0` :: Un proceso matado por una señal no terminó con éxito.
+(-) `60` :: El argumento de `sleep` no es su valor de retorno.
+(-) `2` :: Bash suma 128 al número de la señal.
+
+@@q single | Traza 4
+`sleep 100 & echo $!; echo $$` imprime dos números distintos. ¿Cuál es cuál?
+(+) El primero es el PID del `sleep` en segundo plano; el segundo es el PID de la propia shell. :: `$!` es el último PID en segundo plano; `$$` es la shell.
+(-) Son el mismo proceso visto dos veces, una como hijo y otra como padre. :: Un proceso y su hijo tienen PID distintos.
+(-) El primero es el PPID de la shell y el segundo es el valor de retorno del trabajo `sleep`, que todavía se está ejecutando. :: Ninguna de las dos variables contiene eso.
+(-) El primero es el número de trabajo de `sleep` y el segundo es su PID. :: Los números de trabajo se muestran como `[1]`, nunca con `$!`.
+
+@@q fill | Matar el último trabajo en segundo plano
+Lanza un proceso que duerme y termínalo al momento: `sleep 300 & kill {{$!}}`
+(x) $$ :: Es el PID de la propia shell; le enviarías SIGTERM a tu shell (que la ignora si es interactiva, pero en un script lo terminaría).
+(x) $? :: Es un valor de retorno, que casi seguro no es el PID que quieres.
+@@note
+`$!` es el PID del último mandato en segundo plano.
+
+@@q single | Quién ejecuta qué
+Tras `sleep 100 &`, `ps -o pid,ppid,comm` muestra dos líneas. ¿Qué relación esperas?
+(+) El PPID de `sleep` es igual al PID de `bash`. :: La shell creó el hijo `sleep`.
+(-) El PID de `sleep` es igual al PID de `bash`. :: Cada proceso tiene un PID distinto.
+(-) El PPID de `sleep` es 0. :: El PPID 0 es el planificador del núcleo, no un padre normal.
+(-) El PPID de `bash` es igual al PID de `sleep`. :: El padre es la shell, nunca al revés.
+
+@@group Práctica variada
+@@q fill | Teclas para suspender y reanudar
+Pulsa `{{Ctrl+Z ;; Ctrl-Z ;; ^Z}}` para suspender el trabajo en primer plano y escribe `{{bg}}` para que continúe en segundo plano.
+(x) Ctrl+C :: Eso interrumpe (normalmente termina) el trabajo en lugar de suspenderlo.
+(x) fg :: Eso trae el trabajo a primer plano, no a segundo plano.
+@@note
+`jobs` muestra el resultado; `fg` lo vuelve a traer delante.
+
+@@q fill | Enviar una señal por número
+Obliga al proceso con PID 4242 a terminar al instante, con la señal número 9: `kill {{-9 ;; -KILL ;; -SIGKILL ;; -s 9 ;; -s KILL}} 4242`
+(x) -15 :: Esa es `SIGTERM`, que el proceso puede manejar o ignorar.
+(x) -1 :: Esa es `SIGHUP`.
+@@note
+Prueba antes con `kill 4242` a secas; así el programa tiene ocasión de limpiar.
+
+@@q sort | ¿Quién la captura?
+@@buckets Se puede capturar o ignorar | No se puede capturar
+Clasifica cada señal.
+(Se puede capturar o ignorar) `SIGINT` :: Los programas pueden manejar `Ctrl+C`.
+(Se puede capturar o ignorar) `SIGTERM` :: La petición educada de terminar.
+(Se puede capturar o ignorar) `SIGHUP` :: Se usa a menudo para recargar la configuración.
+(No se puede capturar) `SIGKILL` :: El núcleo termina el proceso directamente.
+(No se puede capturar) `SIGSTOP` :: El núcleo congela el proceso directamente.
+
+@@q multi | Lo que muestra ps
+Marca las afirmaciones ciertas sobre la salida de `ps aux`.
+(+) Aparecen todos los procesos del sistema, no solo los de tu terminal. :: Las opciones `a` y `x` añaden los procesos de otros usuarios y los que no tienen terminal.
+(+) La segunda columna es el PID. :: La primera es el usuario.
+(+) Un `?` en la columna TTY significa que el proceso no tiene terminal de control. :: Típico de los demonios.
+(-) Cada línea empieza por el número de trabajo de la shell. :: Los números de trabajo son cosa de `jobs`.
+(-) Solo se muestran los procesos de root. :: Se muestran todos los usuarios.
+
+@@q order | Rastrear un programa colgado
+Un programa parece atascado. Ordena estos pasos de forma razonable.
+(>) Comprobar si sigue existiendo con `ps -p PID` :: Confirma que es el proceso que crees.
+(>) Mirar su estado en la columna `STAT` :: `D` o `T` te dicen cosas muy distintas.
+(>) Enviar `SIGTERM` con `kill PID` y esperar un poco :: Dale la oportunidad de limpiar.
+(>) Si sigue vivo, enviar `SIGKILL` con `kill -9 PID` :: El último recurso forzado.
+
+@@q match | Mandatos y lo que cambian
+Empareja cada mandato con su efecto sobre un trabajo en ejecución.
+(=) `kill -STOP %1` => Congela el trabajo 1, como `Ctrl+Z` :: El trabajo sigue en memoria.
+(=) `kill -CONT %1` => Deja continuar un trabajo detenido :: El trabajo vuelve a ejecutarse.
+(=) `kill -TERM %1` => Pide educadamente al trabajo 1 que termine :: Igual que `kill %1` a secas.
+(=) `kill -KILL %1` => Termina el trabajo 1 sin darle ocasión de limpiar :: Igual que `kill -9 %1`.
+(-) Pasa el trabajo 1 a primer plano :: Eso es `fg %1`.

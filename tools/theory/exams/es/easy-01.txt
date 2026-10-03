@@ -1,0 +1,73 @@
+@@exam easy-01 | Examen fácil 1
+@@about
+Diez preguntas de respuesta única sobre lo básico: un concepto en cada una, con las típicas opciones parecidas.
+
+@@q single | Secuencia de arranque
+Sobre la secuencia de arranque de un PC, ¿qué afirmación es FALSA?
+(+) El núcleo arranca primero y es quien inicializa el firmware y carga el gestor de arranque. :: Es al revés: primero se ejecuta el firmware (UEFI/BIOS), luego el gestor de arranque, y este carga el núcleo.
+(-) El firmware inicializa el hardware y localiza el dispositivo de arranque antes de que se ejecute cualquier código del gestor. :: Cierto: el firmware es el primer código que se ejecuta al encender.
+(-) El gestor de arranque carga el núcleo en memoria y después le cede el control. :: Cierto: es el trabajo del gestor de arranque (GRUB en la mayoría de sistemas Linux).
+(-) El primer proceso que lanza el núcleo recibe el PID 1 y se encarga de levantar los servicios. :: Cierto: hoy en día ese proceso suele ser systemd.
+
+@@q single | Trabajo en segundo plano
+Escribes `sort bigfile > sorted &`. ¿Qué ocurre?
+(+) El prompt vuelve enseguida y `sort` sigue ejecutándose en segundo plano, escribiendo en `sorted`. :: `&` solo decide si la shell espera; la redirección `>` se aplica igualmente.
+(-) El prompt solo vuelve cuando `sort` termina, porque `&` solo controla adónde va la salida. :: `&` no tiene nada que ver con la salida: le dice a la shell que no espere al mandato.
+(-) `sort` arranca suspendido y no hace nada hasta que se escribe `fg` o `bg`. :: Un trabajo lanzado con `&` se ejecuta enseguida; los suspendidos son los detenidos con `Ctrl+Z`.
+(-) `&` envía el resultado de `sort` a la pantalla en vez de a `sorted`. :: La salida va adonde dice `>`: el fichero `sorted`.
+
+@@q single | Contar líneas
+`names.txt` tiene 3 líneas. ¿Qué mandato muestra solo el número `3`, sin el nombre del fichero?
+(+) `wc -l < names.txt` :: Con la entrada redirigida, `wc` no conoce el nombre del fichero, así que solo imprime la cuenta.
+(-) `wc -l names.txt` :: Imprime la cuenta seguida del nombre del fichero: `3 names.txt`.
+(-) `wc -w names.txt` :: `-w` cuenta palabras, y el nombre del fichero también se muestra.
+(-) `wc -c names.txt` :: `-c` cuenta bytes, y el nombre del fichero también se muestra.
+
+@@q single | Rutas relativas
+Tu directorio actual es `/home/ana/docs`. ¿Qué afirmación es CIERTA?
+(+) `../notes` es el mismo sitio que `/home/ana/notes`. :: `..` es el directorio padre, así que `../notes` es `/home/ana/notes`.
+(-) `./notes` es el mismo sitio que `/home/ana/notes`. :: `.` es el directorio actual: `./notes` es `/home/ana/docs/notes`.
+(-) `~/notes` es el mismo sitio que `/home/ana/docs/notes`. :: `~` es el directorio home, así que `~/notes` es `/home/ana/notes` para ana, no una ruta dentro de `docs`.
+(-) `/notes` es el mismo sitio que `/home/ana/notes`. :: Una ruta que empieza por `/` es absoluta y parte de la raíz: `/notes`.
+
+@@q single | Comillas simples y dobles
+Tras `name=Ana`, ¿qué imprime `echo 'Hi $name' "Hi $name"`?
+(+) `Hi $name Hi Ana` :: Las comillas simples bloquean la expansión de `$name`; las dobles la permiten.
+(-) `Hi Ana Hi Ana` :: Las comillas simples dejan `$name` como texto literal.
+(-) `Hi $name Hi $name` :: Las comillas dobles sí expanden las variables.
+(-) `Hi Ana Hi $name` :: En esta opción las comillas están intercambiadas: las simples son las que impiden la expansión.
+
+@@q single | Ejecutar un script sin permiso de ejecución
+`hello.sh` está en el directorio actual con permisos `rw-r--r--`, y `.` no está en el `PATH`. ¿Qué mandato lo ejecuta sin cambiar sus permisos?
+(+) `bash hello.sh` :: `bash` lee el fichero como datos, así que solo necesita poder leerlo.
+(-) `./hello.sh` :: La shell intenta ejecutar el fichero en sí: «Permission denied», porque no tiene `x`.
+(-) `hello.sh` :: Sin ruta, la shell solo busca en el `PATH`, que no incluye el directorio actual: «command not found».
+(-) `/bin/hello.sh` :: Ese fichero no existe en `/bin`: «No such file or directory».
+
+@@q single | El superusuario
+¿Qué afirmación sobre `root` es CIERTA?
+(+) Es la cuenta de administrador, identificada por el UID 0. :: El núcleo mira el UID, que es 0 para root.
+(-) Es la primera cuenta que se crea al instalar y no tiene privilegios especiales. :: Es el administrador y sí tiene privilegios especiales.
+(-) Cualquier usuario que pertenezca al grupo `root` es superusuario. :: Los privilegios dependen del UID 0, no de pertenecer a un grupo llamado `root`.
+(-) Su directorio home es `/home/root`. :: Es `/root`, fuera de `/home`.
+
+@@q single | Ficheros ocultos
+¿Qué mandato lista el directorio actual en formato largo incluyendo los ficheros ocultos?
+(+) `ls -la` :: `-a` muestra las entradas cuyo nombre empieza por punto y `-l` da el formato largo.
+(-) `ls -l` :: Formato largo, pero sin `-a` no se muestran los ocultos.
+(-) `ls -lR` :: `-R` es recursivo, no «todos»; los ocultos siguen ocultos.
+(-) `ls -ld` :: `-d` lista la propia entrada del directorio en lugar de su contenido.
+
+@@q single | Leer una cadena de permisos
+`ls -l` muestra `-rwxr-x--- 1 ana dev 120 Mar 3 10:00 run.sh`. ¿Qué afirmación es FALSA?
+(+) Los usuarios que no son ana ni miembros de `dev` pueden leer el fichero. :: Falso: los últimos tres caracteres (resto) son `---`, así que no pueden leerlo, escribirlo ni ejecutarlo.
+(-) ana puede leerlo, escribirlo y ejecutarlo. :: Cierto: el dueño tiene `rwx`.
+(-) Los miembros de `dev` pueden leerlo y ejecutarlo pero no modificarlo. :: Cierto: el grupo tiene `r-x`.
+(-) Es un fichero regular. :: Cierto: el primer carácter es `-` (un directorio mostraría `d`).
+
+@@q single | Varios mandatos en una línea
+¿Qué imprime `echo A; echo; echo B`?
+(+) Tres líneas: `A`, una vacía y `B` :: `;` separa mandatos y `echo` sin argumentos imprime solo un salto de línea.
+(-) Dos líneas: `A` y `B` :: El segundo `echo` no se omite: imprime una línea vacía.
+(-) Una línea: `A B` :: Cada `echo` termina su salida con un salto de línea.
+(-) Un error, por el `echo` vacío :: `echo` sin argumentos es válido.

@@ -1,0 +1,105 @@
+@@script s82 | members | Members of a group | members.sh
+@@level 3
+@@tags text, exit codes, arguments
+@@cmds cut -d: -f, tr, grep, test -f, shift, exit codes
+@@fixture
+setup() {
+  mkdir -p adir
+  cat > group <<'GR'
+root:x:0:
+daemon:x:1:
+sudo:x:27:ana,luis
+adm:x:4:syslog,ana
+www-data:x:33:
+students:x:2000:ana,marta,diego,eva
+staff:x:50:luis
+solo:x:2001:eva
+sudoers:x:2002:root
+GR
+  head -n 4 group > short.group; : > empty.group; echo x > file.bin
+}
+usage_ok() { [[ $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* || $ERR == *members.sh* ]]; }
+@@step 1 | List the members
+@@readme
+A group file has one line per group: `name:x:gid:member1,member2,...` (the 4th field may be empty). Write `members.sh GROUP FILE`. It prints the members of the group called exactly `GROUP`, **one per line in the order they appear**. A group with no members prints nothing. Careful: `sudo` is not `sudoers`.
+
+You may assume the group exists in this step.
+@@check
+ARGS=('sudo group' 'students group' 'solo group' 'www-data group' 'adm short.group' 'sudoers group')
+COMPARE="stdout exit"
+@@solution
+#!/bin/bash
+grep "^$1:" "$2" | cut -d: -f4 | tr ',' '\n' | grep .
+exit 0
+@@step 2 | Group not found, usual checks
+@@readme
+Checks, in this order: not exactly two arguments → an error message **and the correct usage** (e.g. `Usage: members.sh group file`), exit **1**; the file does not exist → an error with its name, exit **2**; it exists but is not a regular file → an error with its name, exit **3**; no group called `GROUP` in the file → an error with the group name, exit **4**.
+@@check
+ARGS=('sudo group' 'students group' 'www-data group' 'solo short.group' 'adm short.group' '' 'sudo' 'sudo group extra' 'sudo nothing' 'sudo adir' 'staff short.group' 'sud group' 'sudo empty.group' 'nothing nothing')
+COMPARE="stdout exit errmsg"
+extra_check() {
+  [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }
+  [[ $REF_CODE == [23] ]] && mentions "$(eval "set -- $CASE"; echo "$2")"
+  [[ $REF_CODE == 4 ]] && mentions "$(eval "set -- $CASE"; echo "$1")"
+}
+@@solution
+#!/bin/bash
+if (( $# != 2 )); then echo "Error: two arguments needed" >&2; echo "Usage: $0 group file" >&2; exit 1; fi
+[[ -e $2 ]] || { echo "Error: $2 does not exist" >&2; exit 2; }
+[[ -f $2 ]] || { echo "Error: $2 is not a regular file" >&2; exit 3; }
+grep -q "^$1:" "$2" || { echo "Error: group $1 not found in $2" >&2; exit 4; }
+grep "^$1:" "$2" | cut -d: -f4 | tr ',' '\n' | grep .
+exit 0
+@@step 3 | A header and a count
+@@readme
+Before the members print the header `Group GROUP (gid N)` with the numeric id (3rd field) and after them `N members` (`1 members` too; the word is always `members`). A group with no members prints `No members` instead of the count line. The checks stay.
+@@check
+ARGS=('sudo group' 'students group' 'solo group' 'www-data group' 'root group' 'adm short.group' 'sudoers group' 'staff group' '' 'sudo' 'sudo nothing' 'sudo adir' 'sud group' 'sudo empty.group')
+COMPARE="stdout exit errmsg"
+extra_check() {
+  [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }
+  [[ $REF_CODE == [23] ]] && mentions "$(eval "set -- $CASE"; echo "$2")"
+  [[ $REF_CODE == 4 ]] && mentions "$(eval "set -- $CASE"; echo "$1")"
+}
+@@solution
+#!/bin/bash
+if (( $# != 2 )); then echo "Error: two arguments needed" >&2; echo "Usage: $0 group file" >&2; exit 1; fi
+[[ -e $2 ]] || { echo "Error: $2 does not exist" >&2; exit 2; }
+[[ -f $2 ]] || { echo "Error: $2 is not a regular file" >&2; exit 3; }
+line=$(grep "^$1:" "$2") || { echo "Error: group $1 not found in $2" >&2; exit 4; }
+echo "Group $1 (gid $(echo "$line" | cut -d: -f3))"
+n=0
+while IFS= read -r m; do echo "$m"; n=$((n + 1)); done < <(echo "$line" | cut -d: -f4 | tr ',' '\n' | grep .)
+if (( n == 0 )); then echo "No members"; else echo "$n members"; fi
+@@step 4 | Is this user a member? (-u)
+@@readme
+`-u USER` (as the **first two arguments**) turns the script into a yes/no question: print `USER is a member of GROUP` and exit **0**, or `USER is not a member of GROUP` and exit **5**. The match is on the whole name (`ana` is not in a list that only has `anabel`). Nothing else is printed in this mode. The checks 1 to 4 apply to the group and the file as before; `-u` without a user is the usage error (exit 1).
+@@check
+ARGS=('sudo group' '-u ana sudo group' '-u luis sudo group' '-u diego sudo group' '-u eva solo group' '-u ana www-data group' '-u ana students group' '-u an students group' '-u root sudoers group' '-u' '-u ana' '-u ana sudo' '-u ana sudo nothing' '-u ana sudo adir' '-u ana sud group' '' '-u ana sudo group extra')
+COMPARE="stdout exit errmsg"
+extra_check() {
+  [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }
+  if [[ $REF_CODE == [234] ]]; then
+    local a; a=$(eval "set -- $CASE"; [[ $1 == -u ]] && shift 2; echo "$1|$2")
+    [[ $REF_CODE == 4 ]] && mentions "${a%|*}" || mentions "${a#*|}"
+  fi
+}
+@@solution
+#!/bin/bash
+who=
+if [[ $1 == -u ]]; then
+  (( $# >= 2 )) || { echo "Error: -u needs a user" >&2; echo "Usage: $0 [-u user] group file" >&2; exit 1; }
+  who=$2; shift 2
+fi
+if (( $# != 2 )); then echo "Error: two arguments needed" >&2; echo "Usage: $0 [-u user] group file" >&2; exit 1; fi
+[[ -e $2 ]] || { echo "Error: $2 does not exist" >&2; exit 2; }
+[[ -f $2 ]] || { echo "Error: $2 is not a regular file" >&2; exit 3; }
+line=$(grep "^$1:" "$2") || { echo "Error: group $1 not found in $2" >&2; exit 4; }
+if [[ -n $who ]]; then
+  if echo "$line" | cut -d: -f4 | tr ',' '\n' | grep -qx -- "$who"; then echo "$who is a member of $1"; exit 0; fi
+  echo "$who is not a member of $1"; exit 5
+fi
+echo "Group $1 (gid $(echo "$line" | cut -d: -f3))"
+n=0
+while IFS= read -r m; do echo "$m"; n=$((n + 1)); done < <(echo "$line" | cut -d: -f4 | tr ',' '\n' | grep .)
+if (( n == 0 )); then echo "No members"; else echo "$n members"; fi

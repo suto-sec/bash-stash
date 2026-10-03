@@ -1,0 +1,446 @@
+@@collection 09_redirection | Redirecciones, tuberías y xargs
+@@about
+Entrada, salida y salida de error estándar; redirigir hacia y desde ficheros; el orden de las redirecciones; documentos en línea (here-documents); las tuberías y su valor de retorno; tee, xargs y la sustitución de mandato como formas de conectar programas.
+
+@@group Flujos estándar
+@@q match | Los tres flujos estándar
+Empareja cada flujo con su descriptor de fichero y su conexión habitual.
+(=) stdin => Descriptor 0, normalmente el teclado :: Donde un programa lee su entrada.
+(=) stdout => Descriptor 1, normalmente la pantalla :: Adonde van los resultados normales.
+(=) stderr => Descriptor 2, normalmente la pantalla :: Adonde van los mensajes de error.
+(-) Descriptor 3, siempre la impresora :: Los descriptores por encima de 2 quedan libres para tu propio uso.
+
+@@q single | Por qué dos flujos de salida
+¿Por qué los programas tienen flujos de salida separados para los resultados normales y para los errores?
+(+) Para que los errores sigan viéndose (o se registren aparte) aunque la salida normal vaya a un fichero o a otro programa. :: Los dos se pueden redirigir por separado.
+(-) Porque la pantalla solo puede mostrar un tipo de salida a la vez, así que se mantienen separados. :: Los dos aparecen en el terminal.
+(-) Porque los errores se envían por la red a otro ordenador que se encarga de ellos. :: Se quedan en la máquina.
+(-) Porque el núcleo cuenta por separado los dos tipos de salida, para contabilizar los recursos que usa cada usuario. :: No es una razón.
+
+@@q single | Solo se redirige stdout
+¿Qué ves en pantalla tras `ls f noexiste > out.txt` si `f` existe y `noexiste` no?
+(+) El mensaje de error sobre `noexiste`; la línea `f` fue a `out.txt`. :: `>` solo redirige stdout; stderr sigue yendo al terminal.
+(-) Nada en absoluto, porque los dos flujos fueron al fichero `out.txt`. :: Para eso hace falta `2>&1` o `&>`.
+(-) Solo la línea `f`, ya que el mensaje de error se escribe en el fichero. :: El listado fue al fichero.
+(-) Las dos líneas, porque la redirección solo se aplica a ficheros que existen. :: La salida normal sí se redirigió.
+
+@@q sort | ¿Qué flujo?
+@@buckets stdout (1) | stderr (2)
+¿Por qué flujo aparece normalmente cada mensaje?
+(stdout (1)) La lista de ficheros que imprime `ls` :: El resultado normal del mandato.
+(stdout (1)) El texto que imprime `echo hola` :: Su propósito es escribir salida.
+(stdout (1)) Las líneas que encuentra `grep` :: Resultados del programa.
+(stderr (2)) `ls: cannot access 'x': No such file or directory` :: Un mensaje de diagnóstico.
+(stderr (2)) `bash: foo: command not found` :: Un error que informa la shell.
+(stderr (2)) `cp: missing file operand` :: Un error de uso.
+
+@@group Redirigir la salida
+@@q match | Operadores de redirección de salida
+Empareja cada operador con su efecto.
+(=) `cmd > fichero` => Enviar stdout a `fichero`, sustituyendo su contenido :: Crea el fichero si hace falta.
+(=) `cmd >> fichero` => Añadir stdout al final de `fichero` :: Se conserva el contenido existente.
+(=) `cmd 2> fichero` => Enviar stderr a `fichero` :: Solo los errores.
+(=) `cmd &> fichero` => Enviar stdout y stderr a `fichero` :: Una abreviatura de bash.
+(=) `cmd > /dev/null` => Descartar stdout :: El fichero especial que se lo traga todo.
+(-) Enviar stdin a `fichero` :: La entrada usa `<`.
+
+@@q single | Sobrescribir o añadir
+¿Qué líneas imprime `echo uno > t; echo dos > t; echo tres >> t; cat t`?
+(+) `dos` y `tres` :: El segundo `>` sustituyó a `uno`; `>>` añadió `tres`.
+(-) `uno`, `dos`, `tres` :: `>` vacía el fichero cada vez.
+(-) Solo `tres` :: `>>` no vacía el fichero.
+(-) `uno` y `tres` :: `uno` quedó sobrescrito.
+
+@@q single | El vaciado ocurre primero
+¿Qué queda en el fichero tras `cat datos > datos`?
+(+) Un fichero vacío: la shell vacía `datos` al preparar la redirección, antes de que `cat` lo lea. :: Nunca redirijas la salida de un mandato a su propia entrada.
+(-) El fichero sin cambios, con el mismo contenido de antes, ya que `cat` simplemente copia el fichero sobre sí mismo sin cambiarlo. :: El vaciado lo destruye.
+(-) El contenido del fichero dos veces, porque `cat` lo lee mientras la shell lo escribe. :: No se escribe nada.
+(-) El mandato no se ejecuta, porque la shell detecta el error de antemano. :: El `cat` de GNU se niega en algunos casos, pero la shell ya habría vaciado el fichero.
+
+@@q single | Ordenar en el sitio
+¿Por qué `sort nombres > nombres` no ordena el fichero `nombres`?
+(+) La redirección vacía `nombres` antes de que `sort` lo lea, así que `sort` no tiene nada que ordenar. :: Usa `sort nombres -o nombres`, o escribe en un fichero temporal y muévelo después.
+(-) Porque `sort` no puede leer ficheros por su nombre, solo el texto que le llega por su entrada. :: Sí puede.
+(-) Porque `>` añade al fichero en lugar de sustituirlo, así que las líneas se duplican. :: Eso es `>>`.
+(-) Porque `sort` necesita la opción `-r` para poder escribir su resultado en un fichero. :: No tiene relación.
+
+@@q fill | Ordenar en el mismo fichero
+Ordena el fichero `nombres` y vuelve a escribir el resultado en él, de forma segura: `sort nombres {{-o}} nombres`
+(x) > :: Vacía primero la entrada, como se ha visto antes.
+(x) | :: Una tubería necesita un mandato a la derecha.
+@@note
+`-o` deja que `sort` termine de leer antes de escribir el fichero de salida.
+
+@@q single | La redirección antes de la ejecución
+¿Qué pasa al ejecutar `mandato_inexistente > out.txt 2>/dev/null` si el mandato no existe?
+(+) `out.txt` se crea igualmente (vacío): la shell abre las redirecciones antes de intentar lanzar el mandato. :: El mensaje de error va a `/dev/null`.
+(-) No se crea nada, ya que el mandato nunca llegó a ejecutarse y por tanto no se pudo escribir nada. :: Las redirecciones se prepararon antes.
+(-) `out.txt` contiene el mensaje de error, porque la shell informa del mandato desconocido por su salida estándar. :: stderr fue a `/dev/null`.
+(-) La shell se detiene con un error de sintaxis, porque no conoce el mandato. :: La sintaxis es correcta.
+
+@@q single | Varias redirecciones del mismo flujo
+¿Qué hace `echo hola > o > p`?
+(+) Se crean (o vacían) los dos ficheros, pero el texto solo se escribe en `p`, el último. :: Cada redirección sustituye a la anterior para ese descriptor.
+(-) El texto se escribe en los dos ficheros, `o` y `p`, uno detrás de otro. :: Para eso usa `tee o p`.
+(-) El texto solo se escribe en `o`, y `p` se crea pero queda vacío e ignorado, porque gana la primera redirección. :: Gana la última.
+(-) Un error de sintaxis, porque un mandato no puede tener dos redirecciones de su salida. :: Es válido.
+
+@@q single | Protegerse de sobrescribir
+¿Qué opción de la shell hace que `>` se niegue a sobrescribir un fichero existente, y qué operador lo fuerza igualmente?
+(+) `set -o noclobber` (o `set -C`), y `>|` lo fuerza. :: Una protección contra sobrescrituras accidentales.
+(-) `set -o append`, y `>>` lo fuerza, porque el segundo operador añade. :: No existe esa opción.
+(-) `umask 077`, y `>!` lo fuerza, como hace la C shell con el mismo signo. :: La máscara tiene que ver con los permisos.
+(-) `set -e`, y `>>` lo fuerza, ya que la primera termina la shell cuando falla un mandato. :: `-e` hace que la shell termine ante errores.
+
+@@q fill | Descartar los errores
+Ejecuta `ls /root` pero oculta los mensajes de error: `ls /root {{2>/dev/null ;; 2> /dev/null}}`
+(x) > /dev/null :: Descarta la salida normal, no los errores.
+(x) 1>/dev/null :: Lo mismo: el flujo 1 es la salida normal.
+@@note
+`&>/dev/null` descarta los dos flujos.
+
+@@q single | El dispositivo nulo
+¿Qué pasa con los datos que se escriben en `/dev/null`?
+(+) Se descartan, y la escritura siempre tiene éxito. :: Leer de él devuelve fin de fichero inmediatamente.
+(-) Se guardan en un fichero oculto que solo puede leer el administrador. :: No se guarda nada.
+(-) Se envían a la impresora por defecto, donde se imprimen como texto plano. :: No tiene relación.
+(-) Provocan un error, porque el dispositivo no tiene dónde meter los datos. :: Las escrituras tienen éxito.
+
+@@group El orden de las redirecciones
+@@q single | Las dos cosas a un fichero
+¿Qué mandato envía tanto la salida normal como los errores de `ls f noexiste` a `out.txt`?
+(+) `ls f noexiste > out.txt 2>&1` :: Primero stdout va al fichero; después stderr apunta a donde va stdout en ese momento.
+(-) `ls f noexiste 2>&1 > out.txt` :: stderr apunta al terminal (el sitio anterior de stdout) antes de que stdout se mueva al fichero.
+(-) `ls f noexiste 2> out.txt` :: Solo los errores van al fichero.
+(-) `ls f noexiste > out.txt 1>&2` :: Envía stdout al destino de stderr, que es el terminal.
+
+@@q single | El orden equivocado
+¿Qué hace `ls f noexiste 2>&1 > out.txt`?
+(+) El mensaje de error se queda en el terminal y solo la salida normal va a `out.txt`. :: Las redirecciones se procesan de izquierda a derecha; `2>&1` copió el destino antiguo de stdout, el terminal.
+(-) Los dos flujos van al fichero, ya que stderr sigue a stdout adondequiera que se envíe. :: Eso es `> out.txt 2>&1`.
+(-) Los dos flujos se quedan en pantalla, ya que la shell ignora la redirección de la salida normal al fichero. :: stdout va al fichero.
+(-) El mandato falla, porque `2>&1` siempre tiene que ser la última redirección. :: La sintaxis es válida.
+
+@@q single | Una copia, no un enlace
+¿Qué significa exactamente `2>&1`?
+(+) Hacer que el descriptor 2 sea un duplicado del descriptor 1, apuntando adonde apunte stdout **en ese momento**. :: Copia el destino actual; no crea un enlace permanente.
+(-) Enviar el texto «2» a un fichero llamado «1», que se crea en el directorio actual de la shell. :: El `&` lo convierte en un descriptor.
+(-) Ejecutar el mandato dos veces: una para el flujo 1 y otra para el flujo 2. :: Solo se duplica el descriptor.
+(-) Esperar a que termine el proceso con PID 1 antes de ejecutar el mandato. :: No tiene relación.
+
+@@q single | Errores a través de una tubería
+¿Qué cuenta `ls f noexiste 2>&1 | wc -l`?
+(+) Tanto la línea normal como la de error, porque ahora stderr se une a la tubería: 2 líneas. :: Sin `2>&1` solo entraría stdout en la tubería.
+(-) Solo la salida normal, ya que las tuberías nunca llevan nada que no sea stdout. :: stderr se unió.
+(-) Solo la línea de error, porque stderr se envía primero a la tubería y el siguiente mandato ignora stdout. :: Se cuentan las dos.
+(-) Nada, ya que las tuberías no pueden llevar mensajes de error, ni siquiera tras `2>&1`. :: Tras `2>&1` sí los llevan.
+
+@@q single | Solo los errores por la tubería
+¿Qué imprime `ls f noexiste 2>&1 >/dev/null | wc -l`?
+(+) `1` :: stderr va a la tubería (el stdout antiguo) y después se descarta stdout: solo se cuenta la línea de error.
+(-) `2` :: La línea normal se descarta.
+(-) `0` :: La línea de error sí entra en la tubería.
+(-) `3` :: Solo hay dos líneas de salida.
+
+@@q order | Construir la redirección
+Ordena las piezas para ejecutar `make`, guardando toda su salida (normal y de error) en `build.log` y sin mostrar nada en pantalla.
+(>) `make` :: El mandato va primero.
+(>) `> build.log` :: Primero se apunta stdout al fichero.
+(>) `2>&1` :: Después stderr sigue a stdout hasta el fichero; el terminal queda en silencio.
+
+@@q match | Resultados según el orden
+Empareja cada mandato con dónde acaba la salida de `ls f noexiste` (`f` existe y `noexiste` no).
+(=) `> o 2>&1` => Las dos líneas en el fichero `o` :: Primero stdout y después se copia stderr.
+(=) `2>&1 > o` => El error en pantalla y la línea `f` en el fichero :: stderr copió el terminal y stdout se movió.
+(=) `&> o` => El mismo resultado que la primera forma, escrito con la abreviatura de bash :: Los dos flujos acaban en `o`.
+(=) `2> o` => `f` en pantalla y el error en el fichero :: Solo se movió stderr.
+(-) Las dos líneas en pantalla y un fichero vacío :: Ninguna de las formas hace eso.
+
+@@group Redirigir la entrada
+@@q match | Operadores de entrada
+Empareja cada forma con su significado.
+(=) `cmd < fichero` => Leer la entrada estándar de `cmd` de `fichero` :: El fichero sustituye al teclado.
+(=) `cmd << EOF` => Tomar como entrada las líneas siguientes hasta `EOF` (documento en línea, here-document) :: Texto de varias líneas escrito en el propio mandato.
+(=) `cmd <<< "texto"` => Usar la cadena más un salto de línea como entrada (here-string) :: Un atajo de una línea.
+(=) `cmd <<'EOF'` => Un documento en línea sin ninguna expansión dentro :: Delimitador entre comillas: el texto es literal.
+(-) Escribir la salida de `cmd` en `fichero` :: Eso es `>`.
+
+@@q single | Redirección frente a argumento
+¿Qué diferencia hay entre `wc -l datos.txt` y `wc -l < datos.txt`?
+(+) La primera le da a `wc` el nombre del fichero, que imprime junto a la cuenta; en la segunda la shell abre el fichero, así que `wc` lee stdin y no muestra ningún nombre. :: Útil cuando solo necesitas el número.
+(-) La segunda cuenta palabras en vez de líneas, porque `<` cambia el significado de `-l`. :: Eso lo decide la opción.
+(-) La primera lee del teclado hasta el fin de la entrada, mientras que la segunda lee del fichero `datos.txt` y termina en su última línea. :: Abre el propio fichero.
+(-) Las dos fallan si el fichero tiene más de una línea, porque `wc` necesita una sola línea. :: Las dos funcionan con cualquier tamaño.
+
+@@q single | Documento en línea sin comillas
+¿Qué imprime `cat <<EOF` para una línea del cuerpo `home: $HOME`?
+(+) Se expande el valor de `$HOME`: `home: /home/alumno`. :: Con el delimitador sin comillas, la shell expande variables y sustituciones en el cuerpo.
+(-) El texto literal `home: $HOME`, exactamente como se escribió en el script. :: Para eso hace falta `<<'EOF'`.
+(-) Un mensaje de error, porque en un documento en línea no puede aparecer una variable. :: No hay nada mal.
+(-) Nada en absoluto, porque `cat` ignora por completo los documentos en línea. :: `cat` imprime su stdin.
+
+@@q single | Delimitador entre comillas
+¿En qué se diferencia `cat <<'EOF'` de `cat <<EOF`?
+(+) Con el delimitador entre comillas no se expande nada del cuerpo: `$HOME` y `$(cmd)` quedan tal como se escribieron. :: Muy útil para generar scripts.
+(-) Se detiene en la primera línea en blanco del texto, en lugar de en la línea que contiene la palabra delimitadora. :: Lo que lo termina es el delimitador.
+(-) Añade el texto a un fichero llamado `EOF`, en lugar de pasárselo a `cat`. :: Imprime en stdout.
+(-) No hay ninguna diferencia, porque `cat` ignora las comillas del delimitador. :: Cambia el comportamiento de la expansión.
+
+@@q single | Tabuladores en los documentos en línea
+¿Qué hace el `-` de `<<-EOF`?
+(+) Quita los tabuladores iniciales de las líneas del cuerpo y de la línea del delimitador, para que el documento en línea pueda ir sangrado. :: Solo quita tabuladores, no espacios.
+(-) Quita todos los blancos iniciales, espacios y tabuladores, de cada línea del cuerpo. :: Solo los tabuladores.
+(-) Hace que el delimitador no distinga mayúsculas, de modo que `eof` también termina un documento que empezó con `EOF` en mayúsculas. :: No.
+(-) Desactiva la expansión de variables dentro del cuerpo, como entrecomillar el delimitador. :: Eso lo hace entrecomillar el delimitador.
+
+@@q single | Here-string
+¿Qué imprime `wc -w <<< "uno dos tres"`?
+(+) `3` :: La cadena se convierte en la entrada de `wc`.
+(-) `12` :: Ese es el número de caracteres.
+(-) `1` :: Esa sería la cuenta de líneas.
+(-) Nada: `<<<` no es válido. :: Es válido en bash.
+
+@@q fill | Poner una cadena en mayúsculas
+Convierte una cadena literal a mayúsculas sin usar una tubería: `tr a-z A-Z {{<<<}} "hola"`
+(x) < :: Leería de un fichero llamado `hola`.
+(x) | :: Una tubería necesita un mandato a su izquierda.
+@@note
+`echo hola | tr a-z A-Z` es la alternativa con tubería.
+
+@@q single | Dos redirecciones
+¿Qué mandato hace que `sort` tome su entrada del fichero `u` y escriba el resultado en `v`?
+(+) `sort < u > v` :: Las dos redirecciones se pueden combinar en cualquier orden.
+(-) `sort u > v <` :: Al último operador le falta el fichero.
+(-) `sort > u < v` :: Lee de `v` y sobrescribe `u`, justo lo contrario de lo que se quiere.
+(-) `sort u | v` :: Una tubería necesita un mandato a la derecha.
+
+@@group Tuberías
+@@q single | Qué hace una tubería
+¿Qué hace `cmd1 | cmd2`?
+(+) Conecta el stdout de `cmd1` con el stdin de `cmd2`, y ejecuta los dos a la vez. :: No hace falta ningún fichero temporal.
+(-) Ejecuta `cmd1` hasta el final, lo espera y después ejecuta `cmd2` sobre la salida guardada. :: Se ejecutan a la vez.
+(-) Escribe la salida de `cmd1` en un fichero llamado `cmd2`, en el directorio actual. :: Eso es `cmd1 > cmd2`.
+(-) Pasa el valor de retorno de `cmd1` a `cmd2` como argumento en su línea de mandatos. :: Por la tubería solo pasan datos.
+
+@@q single | Tubería frente a redirección
+¿Qué diferencia hay entre `cmd > fichero` y `cmd | otro`?
+(+) `>` conecta un programa con un **fichero**, mientras que `|` conecta dos **programas**. :: Un error habitual es escribir `cmd > otro`, que crea un fichero llamado `otro`.
+(-) No hay diferencia: los dos envían la salida de un mandato a otra cosa. :: El destino es distinto.
+(-) `|` solo funciona cuando el destino es un fichero, y `>` solo cuando es un programa. :: Es para programas.
+(-) `>` solo funciona dentro de scripts, mientras que `|` está pensado para el prompt interactivo. :: También funciona en el prompt.
+
+@@q single | Tubería y errores
+En `ls noexiste | wc -l`, ¿qué se cuenta y qué aparece en pantalla?
+(+) `wc` cuenta 0 líneas; el mensaje de error sigue apareciendo en el terminal, ya que una tubería solo lleva stdout. :: Usa `2>&1` para incluir los errores.
+(-) `wc` cuenta 1 línea, el mensaje de error, porque ese mensaje pasa por la tubería junto con la salida normal. :: Está en stderr.
+(-) No se muestra nada en absoluto, porque la tubería se traga el mensaje de error de `ls`. :: El error sí se imprime.
+(-) `wc` imprime un error propio, porque su entrada no contiene ningún dato. :: Cuenta una entrada vacía.
+
+@@q single | Valor de retorno de una tubería
+¿Cuánto vale `$?` tras `false | true` en bash (opciones por defecto)?
+(+) `0`, el valor de retorno del último mandato de la tubería. :: Usa `${PIPESTATUS[@]}` o `set -o pipefail` para detectar el fallo.
+(-) `1`, el valor del primer mandato. :: Cuenta el último.
+(-) `2`, la suma de los dos. :: Los valores no se suman.
+(-) `1`, porque cualquier fallo marca la tubería como fallida. :: Eso es lo que cambia `pipefail`.
+
+@@q single | pipefail
+¿Qué cambia `set -o pipefail`?
+(+) Una tubería devuelve el valor del último mandato que falló, en lugar de solo el del último mandato. :: Útil en scripts para darse cuenta de que falló una etapa anterior.
+(-) Hace que las tuberías se ejecuten más rápido, ya que una etapa que falla detiene a todas las demás de inmediato. :: No es su propósito.
+(-) Impide que las tuberías fallen nunca, forzando a 0 el valor de retorno de toda la tubería en cualquier caso. :: Justo lo contrario.
+(-) Envía por la tubería los mensajes de error de cada etapa, como haría `2>&1`. :: Eso es `2>&1` (o `|&`).
+
+@@q single | El cat inútil
+¿Cuál es la forma preferida de escribir `cat fichero | grep root`?
+(+) `grep root fichero` :: `grep` puede leer el fichero por sí mismo: un proceso menos.
+(-) `grep fichero | cat root` :: Los argumentos están mezclados.
+(-) `cat grep root fichero` :: `cat` intentaría abrir ficheros llamados `grep` y `root`.
+(-) `cat fichero > grep root` :: Es una redirección, no una tubería.
+
+@@q order | Una tubería clásica
+Ordena las etapas de «¿cuántas shells distintas se usan en `/etc/passwd`?».
+(>) `cut -d: -f7 /etc/passwd` :: Extraer el campo de la shell de cada línea.
+(>) `sort` :: Juntar las shells iguales.
+(>) `uniq` :: Reducir cada grupo a una línea.
+(>) `wc -l` :: Contar las líneas distintas que quedan.
+
+@@q single | De izquierda a derecha
+¿Por qué `sort | head fichero` no hace lo mismo que `sort fichero | head`?
+(+) En el primero, `sort` no tiene fichero y lee del teclado, mientras que `head` lee `fichero` e ignora la tubería. :: El fichero tiene que dársele al mandato que debe leerlo.
+(-) Porque `head` se niega a leer un fichero cuando su entrada está conectada a una tubería. :: Sí puede.
+(-) Porque `sort` no se puede usar en una tubería, solo al final o por sí solo. :: Sí se puede.
+(-) No hay diferencia: los dos mandatos tienen el mismo efecto en cualquier orden, ya que `sort` siempre encuentra el fichero por sí mismo. :: El flujo de datos es distinto.
+
+@@q single | Tubería hacia dos sitios
+¿Cómo puedes guardar la salida de un mandato en un fichero y a la vez pasársela al siguiente mandato?
+(+) `cmd | tee salida.txt | siguiente` :: `tee` copia su entrada a un fichero y a su salida.
+(-) `cmd > salida.txt | siguiente` :: Redirigir stdout no deja nada para la tubería.
+(-) `cmd | salida.txt | siguiente` :: `salida.txt` no es un mandato.
+(-) `cmd > siguiente` :: Escribe en un fichero llamado `siguiente`.
+
+@@group xargs y la sustitución
+@@q single | La idea de xargs
+¿Por qué `find . -name '*.tmp' | xargs rm` necesita `xargs`, en lugar de poner simplemente `find ... | rm`?
+(+) `rm` toma los nombres de fichero como **argumentos** e ignora su stdin; `xargs` convierte las líneas de entrada en argumentos. :: No todos los programas leen stdin.
+(-) Porque `rm` no admite tuberías en absoluto y falla con un mensaje de error cuando su entrada estándar es una tubería. :: Es cuestión de argumentos, no de tuberías.
+(-) Porque `xargs` hace que `rm` vaya más rápido, lanzando los procesos en paralelo. :: No es su finalidad.
+(-) Porque `xargs` ordena antes los nombres de fichero, para que `rm` los borre en orden. :: No los ordena.
+
+@@q match | Opciones de xargs
+Empareja cada opción con su efecto.
+(=) `-n1` => Pasar un argumento por cada ejecución del mandato :: Ejecuta el mandato una vez por elemento.
+(=) `-I{}` => Insertar cada elemento de la entrada donde aparece `{}` en el mandato :: Además implica una ejecución por línea.
+(=) `-0` => Los elementos de la entrada van separados por caracteres NUL :: Hace pareja con `find -print0`.
+(=) `-r` => No ejecutar el mandato si la entrada está vacía :: Evita una llamada inútil.
+(=) `-P4` => Ejecutar hasta cuatro mandatos en paralelo :: Para ir más rápido.
+(-) Ordenar la entrada antes de ejecutar :: `xargs` nunca ordena.
+
+@@q single | Nombres con espacios
+¿Por qué `find . -print0 | xargs -0 rm` es más seguro que `find . | xargs rm`?
+(+) Los nombres pueden llevar espacios o saltos de línea, pero nunca un NUL, así que nada se parte mal. :: Si no, `a b` se trataría como dos ficheros.
+(-) Porque `-0` hace que `rm` pida confirmación antes de borrar cada uno de los ficheros. :: No lo hace.
+(-) Porque `-0` limita el borrado a los ficheros vacíos, que son los de tamaño cero. :: No tiene nada que ver.
+(-) Porque `-print0` solo imprime los ficheros de cero bytes, que son los que `xargs` puede borrar con seguridad. :: Imprime nombres separados por NUL.
+
+@@q single | xargs sin nada
+¿Qué imprime `printf '' | xargs echo vacio` con el `xargs` de GNU?
+(+) `vacio` :: El `xargs` de GNU ejecuta el mandato una vez aunque no haya entrada, salvo que se use `-r`.
+(-) Nada, ya que no hay entrada. :: Ese es el comportamiento con `-r`.
+(-) Un mensaje de error. :: No hay error.
+(-) `echo`. :: El mandato se ejecuta con el texto dado.
+
+@@q single | Por lotes
+¿Qué imprime `printf 'a\nb\nc\n' | xargs -n2 echo`?
+(+) Dos líneas: `a b` y `c` :: Los elementos se agrupan de dos en dos.
+(-) `a b c` en una línea. :: `-n2` limita cada llamada a dos argumentos.
+(-) Tres líneas. :: Eso sería `-n1`.
+(-) `a` y `b c` :: El agrupamiento empieza por los primeros elementos.
+
+@@q single | Sustitución en vez de xargs
+¿Qué riesgo tiene `rm $(find . -name '*.tmp')` frente a `find ... -delete`?
+(+) La shell divide la salida por espacios y saltos de línea, así que los nombres con espacios se rompen, y una lista larga puede superar el límite. :: `find -delete` o `-print0 | xargs -0` evitan las dos cosas.
+(-) Borra ficheros que no coinciden con el patrón, además de los que sí coinciden. :: Borra exactamente los nombres impresos, quizá destrozados.
+(-) Ejecuta `find` dos veces, una para contar los ficheros y otra para listarlos. :: Una vez.
+(-) Solo funciona si el usuario es root, ya que `rm` necesita privilegios especiales para borrar los ficheros que ha encontrado `find`. :: Cualquiera puede usarlo.
+
+@@q single | Copiar con find
+¿Qué mandato copia todos los ficheros `.sh` que cuelgan de `~` en `temporal` usando `xargs`?
+(+) `find ~ -name '*.sh' | xargs -I{} cp {} temporal/` :: `-I{}` coloca cada nombre donde está `{}`.
+(-) `find ~ -name '*.sh' | xargs cp temporal/`, donde los nombres se añaden en la línea detrás de `temporal/` :: Los nombres se añadirían detrás de `temporal/`, copiando en sitios equivocados.
+(-) `find ~ -name '*.sh' > cp temporal/` :: Escribe la lista en un fichero llamado `cp`.
+(-) `xargs find ~ -name '*.sh' | cp temporal/` :: El orden de la tubería está invertido.
+
+@@q single | Tuberías, sustitución o xargs
+¿Qué herramienta usas para meter la salida de un mandato **dentro** de la lista de argumentos de otro mandato, como en `echo Hola $(whoami)`?
+(+) La sustitución de mandato, que se escribe `$(...)` :: Su salida sustituye a la expresión.
+(-) Una tubería, que se escribe con la barra vertical `|` :: Una tubería alimenta la entrada estándar, no los argumentos.
+(-) Una redirección, que se escribe con el signo `>` :: Eso va a un fichero.
+(-) El mandato `tee`, que copia su entrada :: Copia un flujo.
+
+@@group Descriptores y scripts
+@@q single | Redirección con exec
+¿Qué hace `exec 2> err.log` en un script?
+(+) A partir de ahí, el stderr del script y de todos los mandatos que ejecuta va a `err.log`. :: `exec` solo con redirecciones cambia los descriptores de la propia shell.
+(-) Ejecuta un programa llamado `err.log`, que sustituye al script. :: No se da ningún mandato.
+(-) Solo redirige el stderr del siguiente mandato que se ejecute, y después restaura el destino anterior del flujo. :: Es permanente hasta que se cambie.
+(-) Cierra el script al momento y escribe sus mensajes de error en `err.log`. :: El script continúa.
+
+@@q match | Descriptores propios
+Empareja cada forma de `exec` con su efecto.
+(=) `exec 3< fichero` => Abrir `fichero` para lectura como descriptor 3 :: Después se lee con `read -u 3`.
+(=) `exec 3> fichero` => Abrir `fichero` para escritura como descriptor 3 :: Después se escribe con `>&3`.
+(=) `exec 4>&3` => Hacer que el descriptor 4 sea una copia del 3 :: Duplicado.
+(=) `exec 3>&-` => Cerrar el descriptor 3 :: Liberarlo.
+(-) Matar el proceso con PID 3 :: Los descriptores no son PID.
+
+@@q single | Escribir en stderr desde un script
+¿Qué línea hace que un script imprima un mensaje de error por la salida de error estándar?
+(+) `echo "error: entrada no válida" >&2` :: Redirige el stdout de `echo` al descriptor 2.
+(-) `echo "error: entrada no válida" 2>` :: Redirección incompleta.
+(-) `echo "error: entrada no válida" > error` :: Crea un fichero llamado `error`.
+(-) `echo "error: entrada no válida" | 2` :: No es un destino de tubería.
+
+@@q single | Registro en cron
+`cron` ejecuta un script y quieres que todo lo que imprime (los dos flujos) se añada a `/var/log/job.log`. ¿Qué redirección añades?
+(+) `>> /var/log/job.log 2>&1` :: Añadir stdout y después enviar stderr al mismo sitio.
+(-) `2>&1 >> /var/log/job.log` :: El orden equivocado: stderr no seguiría al fichero.
+(-) `> /var/log/job.log` :: Sobrescribe el registro en cada ejecución y pierde los errores.
+(-) `| /var/log/job.log` :: La parte derecha de una tubería tiene que ser un mandato.
+
+@@q single | Separar los flujos
+¿Qué muestra en el terminal `{ echo out; echo err >&2; } >/dev/null`?
+(+) `err` :: Solo se descartó stdout; el mensaje enviado a stderr sigue viéndose.
+(-) `out` :: Fue a `/dev/null`.
+(-) `out` y `err` :: `out` se descarta.
+(-) Nada :: El mensaje de stderr sí se muestra.
+
+@@q single | Leer la entrada en un bucle
+¿Qué falla en `cat nombres | while read n; do ...; done` si el bucle tiene que cambiar una variable para usarla después?
+(+) Por la tubería, el bucle se ejecuta en una subshell, así que sus asignaciones se pierden; usa `while read n; do ...; done < nombres`. :: La redirección mantiene el bucle en la shell actual.
+(-) `read` no puede leer de una tubería, así que el bucle nunca recibiría ninguna línea. :: Sí puede.
+(-) `while` no acepta ficheros como entrada, así que hay que cambiar el bucle por un `for` que recorra las líneas del fichero. :: Sí los acepta, mediante una redirección.
+(-) El bucle no termina nunca, ya que la tubería no llega nunca al final del fichero. :: Termina al acabarse la entrada.
+
+@@q single | ¿Qué redirección?
+Quieres los resultados de `ls` en `lista.txt`, **añadiéndolos** a lo que ya hay. ¿Qué mandato?
+(+) `ls >> lista.txt` :: Añade al final.
+(-) `ls > lista.txt` :: Sustituye el contenido.
+(-) `ls | lista.txt` :: Una tubería necesita un mandato.
+(-) `ls < lista.txt` :: Es entrada, no salida.
+
+@@group Práctica variada
+@@q fill | Añadir los dos flujos
+Añade tanto la salida estándar como la salida de error de `job.sh` a `out.log`: `./job.sh {{>> out.log 2>&1 ;; >>out.log 2>&1 ;; &>> out.log ;; &>>out.log}}`
+(x) > out.log 2>&1 :: Vacía el registro en lugar de añadir.
+(x) 2>&1 >> out.log :: Orden equivocado: stderr seguiría yendo al terminal.
+@@note
+`&>>` es la abreviatura de bash para añadir los dos flujos.
+
+@@q fill | Descartarlo todo
+Ejecuta `ruidoso` sin ver ninguna salida, ni normal ni de error: `ruidoso {{&>/dev/null ;; > /dev/null 2>&1 ;; >/dev/null 2>&1 ;; &> /dev/null}}`
+(x) 2>/dev/null :: Solo oculta los errores.
+(x) > /dev/null :: Solo oculta la salida normal.
+@@note
+En la forma larga importa el orden: `> /dev/null 2>&1`.
+
+@@q fill | Darle un fichero a un mandato
+Cuenta las líneas de `datos.txt` sin que el mandato imprima el nombre del fichero: `wc -l {{< datos.txt ;; <datos.txt}}`
+(x) datos.txt :: Con el nombre como argumento, `wc` lo imprime tras la cuenta.
+(x) | datos.txt :: Una tubería tiene que terminar en un mandato, no en un nombre de fichero.
+@@note
+Con `<`, `wc` lee la entrada estándar y no conoce el nombre.
+
+@@q sort | ¿Redirección o tubería?
+@@buckets Redirección (hacia o desde un fichero) | Tubería (entre programas)
+Clasifica cada construcción.
+(Redirección (hacia o desde un fichero)) `ls > lista.txt` :: La salida va a un fichero.
+(Redirección (hacia o desde un fichero)) `sort < nombres` :: La entrada viene de un fichero.
+(Redirección (hacia o desde un fichero)) `make 2>> errores.log` :: Los errores se añaden a un fichero.
+(Tubería (entre programas)) `ls | wc -l` :: La salida de un programa es la entrada de otro.
+(Tubería (entre programas)) `ps aux | grep sshd` :: Se conectan dos programas.
+(Tubería (entre programas)) `cat f | sort | uniq` :: Una cadena de programas.
+
+@@q multi | Lo que lleva la tubería
+Marca las afirmaciones ciertas sobre `cmd1 | cmd2`.
+(+) Solo entra en la tubería la salida estándar de `cmd1`. :: stderr se queda en el terminal salvo que se redirija.
+(+) `cmd2` lee los datos como su entrada estándar. :: Por eso son útiles los filtros.
+(+) Los dos mandatos se ejecutan a la vez. :: Los datos fluyen según se producen.
+(-) La salida de `cmd1` se guarda primero en un fichero temporal. :: No hace falta ningún fichero.
+(-) El valor de retorno de `cmd1` pasa a ser un argumento de `cmd2`. :: Solo fluyen datos.
+
+@@q order | Registrar la ejecución de un script
+Ordena los pasos para ejecutar un script y guardar su salida sin dejar de verla.
+(>) `./backup.sh 2>&1` :: Unir el flujo de error al normal.
+(>) `| tee backup.log` :: Copiarlo todo a un fichero y a la pantalla.
+(>) Ver pasar la salida :: La pantalla sigue mostrándola.
+(>) Leer después `backup.log` con `less backup.log` :: El registro completo queda guardado.
+
+@@q match | Descriptores
+Empareja cada construcción con su efecto.
+(=) `3< fichero` (con `exec`) => Abre el fichero para lectura como descriptor 3 :: Un descriptor propio.
+(=) `>&2` => Envía la salida del mandato a la salida de error estándar :: Se usa para los mensajes.
+(=) `2>&1` => Hace que stderr vaya adonde va stdout en ese momento :: Duplica un descriptor.
+(=) `<<< "texto"` => Usa la cadena como entrada estándar :: Una here-string.
+(=) `> /dev/null` => Tira la salida normal :: El dispositivo nulo.
+(-) Escribe la entrada estándar en un fichero llamado 1 :: Ninguna de las construcciones de arriba hace eso.

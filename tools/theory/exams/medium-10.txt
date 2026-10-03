@@ -1,0 +1,84 @@
+@@exam medium-10 | Medium exam 10
+@@tier medium
+@@about
+Ten single-choice questions that combine two facts or ask you to trace a few steps: cut fields and characters, type and whereis, standard streams, absolute and relative paths, group permissions, suspending a job, root's environment, assignments, xargs with spaces and exit inside functions.
+
+@@q single | Fields and characters
+@@topic filters
+The line is `root:x:0`. What do `cut -d: -f2` and `cut -c2` print for it, in that order?
+(+) `x` and `o` :: `-f2` takes the second field using `:` as the separator; `-c2` takes the second character of the line.
+(-) `x` and `x` :: The second character of `root:x:0` is `o`; the `x` is the sixth.
+(-) `o` and `x` :: The options are swapped: `-f` selects fields and `-c` selects characters.
+(-) `root:x` and `ro` :: `-f2` and `-c2` select a single field and a single character, not a range.
+
+@@q single | Finding commands
+@@topic shell-help
+Which statement about `type`, `which` and `whereis` is FALSE?
+(-) `type cd` reports that `cd` is a shell builtin. :: True: it prints `cd is a shell builtin`.
+(-) `which ls` prints the path of the program that would run when you type `ls`. :: True: for example `/usr/bin/ls`.
+(-) `type` also reports aliases and functions, which the others do not know about. :: True: it asks the shell itself how it would interpret the word.
+(+) `whereis ls` only looks in the `PATH` and prints just the executable. :: False: `whereis` also looks for the manual pages and the sources, and prints them with the binary.
+
+@@q single | What > captures
+@@topic redirection-pipes
+Which statement about `ls /nonexistent /etc/hostname > out.txt` is FALSE?
+(-) `/etc/hostname` is written into `out.txt`. :: True: the standard output goes to the file.
+(-) The error message about `/nonexistent` appears on the screen. :: True: `>` redirects only the stream 1.
+(-) `out.txt` is created even if the command prints nothing on stdout. :: True: the shell creates (or truncates) the file before running the command.
+(+) The error message about `/nonexistent` is also written into `out.txt`. :: False: the standard error is a different stream; it would need `2>&1` or `2> file`.
+
+@@q single | cd with a leading slash
+@@topic files-fs
+You are in `/home/ana` and both `/home/ana/docs` and `/docs` exist. Compare `cd docs` and `cd /docs`.
+(+) `cd docs` goes to `/home/ana/docs`; `cd /docs` goes to `/docs`. :: A path without a leading `/` starts at the current directory; one with it starts at the root.
+(-) Both go to `/home/ana/docs`, because `cd` always starts in the home directory. :: Only `cd` with no argument goes to the home directory.
+(-) `cd docs` goes to `/docs` and `cd /docs` goes to `/home/ana/docs`. :: It is the other way round.
+(-) Both go to `/docs`, because the leading slash is optional. :: Without the slash the path is relative to the current directory.
+
+@@q single | What the group can do
+@@topic permissions
+`prog` belongs to the user `ana` and the group `devs`, with mode `-rwxr-x---`. `bob` is a member of `devs`. What can `bob` do with `prog`?
+(+) Read it and run it, but not modify it. :: `bob` is not the owner, so the group bits `r-x` apply to him.
+(-) Read, modify and run it, because he belongs to the group. :: The group has no write permission: its bits are `r-x`.
+(-) Nothing, because only the owner can use the file. :: The group bits give read and execute permission to the members of `devs`.
+(-) Only run it, because reading is a permission of the owner. :: The group has `r` as well.
+
+@@q single | Pausing a long job
+@@topic jobs-procs
+A long `sort` is running in the foreground. You need the prompt for a moment, but you must not lose the work of the `sort`. Which sequence does it?
+(+) `Ctrl+Z`, type your commands, then `fg` :: `Ctrl+Z` suspends the job without ending it, and `fg` brings it back.
+(-) `Ctrl+C`, type your commands, then `fg` :: `Ctrl+C` terminates the `sort`, so there is nothing left to bring back.
+(-) `Ctrl+D`, type your commands, then `fg` :: `Ctrl+D` sends end-of-file to the input; it does not give the prompt back.
+(-) `Ctrl+Z`, then `kill %1` to free the terminal. :: `kill %1` ends the job, and its work is lost.
+
+@@q single | The environment of root
+@@topic users-sessions
+Logged in as `root` with a normal login, you run `whoami; id -u; echo $HOME`. What is printed?
+(+) `root`, `0` and `/root` :: root is the administrator account: UID 0, and its home directory is `/root`, outside `/home`.
+(-) `root`, `0` and `/home/root` :: root's home directory is not under `/home`.
+(-) `root`, `1` and `/root` :: UID 1 belongs to `daemon`; root has UID 0.
+(-) `admin`, `0` and `/root` :: The account is called `root`, not `admin`.
+
+@@q single | Assigning a variable
+@@topic expansion-vars
+Which command makes `echo "${file}_old"` print `report.txt_old`?
+(+) `file=report.txt` :: An assignment has no spaces around `=`, and `${file}` is followed by the text `_old`.
+(-) `file = report.txt` :: With spaces it is the command `file` with two arguments (`=` and `report.txt`).
+(-) `$file=report.txt` :: A `$` on the left expands the variable: the shell tries to run a command called `=report.txt`.
+(-) `file report.txt` :: It runs the command `file`, which describes the type of `report.txt`; no variable is set.
+
+@@q single | xargs and file names with spaces
+@@topic find
+`my notes.txt` (two lines) and `c.txt` (empty) exist. What does `find . -name '*.txt' | xargs wc -l` do?
+(+) It reports errors for `./my` and `notes.txt`, because `xargs` splits the name at the space. :: By default `xargs` splits its input on whitespace; `-print0` with `xargs -0` avoids the problem.
+(-) It prints the line counts of both files correctly. :: The name with a space is split into two words.
+(-) It prints only the counts of the files without spaces and silently skips the other. :: `wc` receives the two pieces and complains about each.
+(-) It fails before running anything, because `find` cannot output names with spaces. :: `find` prints them normally; the problem appears in `xargs`.
+
+@@q single | exit inside a function
+@@topic scripts
+A script runs `f() { exit 3; }`, then `f`, then `echo after`. What happens?
+(+) The script ends with status 3 when `f` is called, and `after` is never printed. :: `exit` ends the shell that executes it, even inside a function; `return` is what leaves only the function.
+(-) `after` is printed and the status of the script is 3. :: `echo` is never reached.
+(-) `after` is printed and the status of the script is 0. :: The script has already ended.
+(-) The script prints an error, because `exit` cannot be used inside a function. :: It can be used; it just ends the whole script.

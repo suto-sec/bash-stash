@@ -1,0 +1,73 @@
+@@exam easy-08 | Examen fácil 8
+@@about
+Diez preguntas de respuesta única sobre lo básico: ficheros de contraseñas, GRUB, tuberías, tests, sustitución de mandatos, estados de procesos, paginadores, enlaces e inodos.
+
+@@q single | El fichero shadow
+¿Qué afirmación sobre `/etc/shadow` es CIERTA?
+(+) Guarda las contraseñas cifradas (hash) y los usuarios normales no pueden leerlo. :: Su modo es `-rw-r----- root shadow`: solo root y el grupo `shadow` pueden leerlo.
+(-) Guarda las contraseñas en texto plano, así que root puede decírselas a quien las olvide. :: Solo se guarda un hash de una vía; nadie puede recuperar la contraseña a partir de él.
+(-) Lo puede leer todo el mundo, porque cada inicio de sesión tiene que consultarlo. :: El programa de login se ejecuta como root. El fichero legible por todos es `/etc/passwd`, que no contiene hashes.
+(-) Lista el directorio personal y la shell de cada usuario. :: Esos campos están en `/etc/passwd`.
+
+@@q single | Cambiar el menú de GRUB
+En un sistema tipo Debian quieres alargar el tiempo de espera del menú de GRUB. ¿Qué procedimiento es correcto?
+(+) Editar `/etc/default/grub` y ejecutar después `update-grub`, que regenera `/boot/grub/grub.cfg`. :: `grub.cfg` se genera a partir de los ajustes de `/etc/default/grub` y de los scripts de `/etc/grub.d/`.
+(-) Editar a mano `/boot/grub/grub.cfg`: `update-grub` solo lo lee. :: `update-grub` escribe ese fichero, así que una edición manual se pierde la próxima vez que se ejecute.
+(-) Editar `/etc/default/grub` y reiniciar: GRUB lee ese fichero directamente al arrancar. :: GRUB lee `grub.cfg`, que solo cambia cuando se ejecuta `update-grub`.
+(-) Ejecutar `update-grub` tras editar `/etc/default/grub`: ese mandato además instala GRUB en el primer sector del disco. :: Escribir el gestor de arranque en el disco es trabajo de `grub-install`; `update-grub` solo reescribe la configuración.
+
+@@q single | Mensaje de error en una tubería
+`/nonexistent` no existe. ¿Qué ocurre al escribir `ls /nonexistent | wc -l`?
+(+) El mensaje de error de `ls` aparece en la pantalla y `wc` imprime `0`. :: La tubería solo conecta la salida estándar; el mensaje va por stderr, que sigue siendo el terminal, así que `wc` no recibe nada.
+(-) `wc` imprime `1`, porque el mensaje de error es una línea. :: El mensaje nunca llega a `wc`: viaja por stderr, no por la tubería.
+(-) No aparece nada: el mensaje se pasa a `wc`, que solo imprime cuentas. :: Entonces `wc` imprimiría `1`; en realidad el mensaje va directamente al terminal.
+(-) `wc` espera entrada para siempre, porque `ls` no produjo salida. :: `ls` termina, se cierra su stdout y `wc` ve el fin de la entrada e imprime `0`.
+
+@@q single | Tests con cadenas y ficheros
+¿Qué afirmación sobre `test` / `[ ]` es FALSA?
+(-) `[ -z "$x" ]` es cierto cuando la variable `x` está vacía. :: Cierto: `-z` es verdadero para una cadena de longitud cero.
+(-) `[ -d /tmp ]` es cierto cuando `/tmp` es un directorio. :: Cierto: `-d` comprueba si es un directorio.
+(-) `[ -s notes ]` es cierto cuando `notes` existe y no está vacío. :: Cierto: `-s` significa «existe y su tamaño es mayor que cero».
+(+) `[ -e nombre ]` es cierto solo cuando `nombre` es un fichero regular. :: Falso: `-e` es cierto para cualquier cosa que exista (fichero, directorio, enlace...). El test para un fichero regular es `-f`.
+
+@@q single | Guardar una cuenta en una variable
+`data.txt` tiene 3 líneas. ¿Qué mandato hace que `echo "$n"` imprima `3`?
+(+) `n=$(wc -l < data.txt)` :: La sustitución de mandatos reemplaza `$(...)` por lo que imprime el mandato; con `<` la salida es solo el número.
+(-) `n=wc -l < data.txt` :: La shell ve la asignación `n=wc` antes del mandato `-l`: falla con «-l: command not found».
+(-) `n='wc -l < data.txt'` :: Las comillas simples mantienen el texto tal cual: `n` contendría las palabras `wc -l < data.txt`.
+(-) `n=${wc -l < data.txt}` :: `${...}` es una expansión de parámetros, no una sustitución de mandatos: bash responde «bad substitution».
+
+@@q single | El estado T
+Ejecutas `ps -o stat= -p 4321` y muestra `T`. ¿Qué está haciendo ese proceso?
+(+) Está detenido (suspendido), por ejemplo tras `Ctrl+Z` o una señal `SIGSTOP`. :: `T` es el estado detenido; `fg`, `bg` o `kill -CONT` lo vuelven a poner en marcha.
+(-) Se está ejecutando en una CPU o está listo para ejecutarse. :: Eso es `R`.
+(-) Está dormido, esperando un evento como que termine una lectura. :: Eso es `S` (dormido interrumpible).
+(-) Ha terminado, pero su padre aún no ha recogido su estado de salida. :: Eso es un zombi, que se muestra como `Z`.
+
+@@q single | Paginar un fichero
+¿Qué afirmación sobre ver ficheros es FALSA?
+(-) `cat file` escribe todo el fichero de golpe, sin pausas. :: Cierto: en un fichero largo solo quedan en pantalla las últimas líneas.
+(-) `less file` permite retroceder con `b` o las flechas y buscar con `/`. :: Cierto: eso es lo que hace a `less` más cómodo que `more`.
+(-) `more file` muestra el fichero pantalla a pantalla. :: Cierto: es el paginador más antiguo.
+(+) `less` tiene que leer el fichero entero antes de mostrar la primera pantalla. :: Falso: `less` muestra la primera pantalla enseguida y carga el resto según hace falta, por eso abre al instante ficheros enormes.
+
+@@q single | Orden de los argumentos de ln -s
+¿Qué mandato crea un enlace simbólico llamado `latest` que apunta a `/var/log/syslog`?
+(+) `ln -s /var/log/syslog latest` :: El orden es primero el destino y después el nombre del enlace nuevo.
+(-) `ln -s latest /var/log/syslog` :: Intenta crear un enlace llamado `/var/log/syslog` que apunta a `latest`: falla porque ese fichero ya existe.
+(-) `ln /var/log/syslog latest` :: Sin `-s` crea un enlace físico, no uno simbólico.
+(-) `ln -s -t latest /var/log/syslog` :: `-t` espera el directorio en el que se crean los enlaces; `latest` no existe, así que falla.
+
+@@q single | El inodo tras mv
+En un directorio ejecutas `ls -i a.txt`, después `mv a.txt b.txt` y después `ls -i b.txt`. ¿Qué imprimen los dos `ls -i`?
+(+) El mismo número de inodo las dos veces. :: `mv` dentro de un mismo sistema de ficheros solo cambia el nombre guardado en la entrada de directorio; el inodo (el fichero en sí) no se toca.
+(-) Dos números de inodo distintos, porque `b.txt` es un fichero nuevo. :: No se crea ningún fichero nuevo: el mismo inodo simplemente tiene otro nombre.
+(-) El segundo mandato falla: tras el `mv` ya no queda ningún inodo. :: El inodo sigue existiendo, ahora accesible con el nombre `b.txt`.
+(-) El mismo número, pero solo porque `mv` deja un enlace físico llamado `a.txt`. :: `mv` elimina el nombre antiguo; no queda nada con el nombre `a.txt`.
+
+@@q single | Saltar en un paginador
+Estás leyendo una página de manual larga con `man`. ¿Qué tecla te lleva al final de la página?
+(+) `G` :: En `less` (el paginador que usa `man`) `G` va a la última línea y `g` a la primera.
+(-) `g` :: Va al principio de la página.
+(-) `q` :: Sale del paginador.
+(-) `h` :: Muestra la pantalla de ayuda del paginador.

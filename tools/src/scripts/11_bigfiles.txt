@@ -1,0 +1,106 @@
+@@script s11 | bigfiles | Files above a size | bigfiles.sh
+@@level 2
+@@tags files, arguments, exit codes
+@@cmds stat -c %s, for, test, arithmetic, exit codes
+@@fixture
+setup() {
+  mkdir -p data/sub empty; local i
+  for i in 1 2 3 4 5 6; do bigfile "data/$(word)$i.dat" "$(randr 10 400)"; done
+  bigfile "data/two words.dat" 250; bigfile "data/small.dat" 5; bigfile data/sub/inner.dat 900
+  echo x > notadir.txt
+}
+usage_ok() { [[ $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* || $ERR == *bigfiles.sh* ]]; }
+@@step 1 | Bigger than 100 bytes
+@@readme
+Write `bigfiles.sh DIR`. It prints every **regular file directly inside** `DIR` (no subdirectories) that is **larger than 100 bytes**, as `name: SIZE` (the name without the directory, the size in bytes). The order does not matter.
+
+`stat -c %s file` prints the size of a file in bytes. File names may contain spaces.
+@@check
+SORT_OUTPUT=1
+ARGS=('data' '"$W/data"' 'empty' 'data/sub')
+COMPARE="stdout exit"
+@@solution
+#!/bin/bash
+for f in "$1"/*; do
+  [[ -f $f ]] || continue
+  size=$(stat -c %s "$f")
+  (( size > 100 )) && echo "$(basename "$f"): $size"
+done
+exit 0
+@@step 2 | Check the directory
+@@readme
+Checks, in this order (errors on standard error, nothing on standard output):
+
+1. Not exactly one argument: error message **and the correct usage** (e.g. `Usage: bigfiles.sh dir`), exit code **1**.
+2. `DIR` does not exist: error message with its name, exit code **2**.
+3. `DIR` exists but is not a directory: error message with its name, exit code **3**.
+@@check
+SORT_OUTPUT=1
+ARGS=('data' 'empty' '' 'data empty' 'nothing' 'notadir.txt')
+COMPARE="stdout exit errmsg"
+extra_check() {
+  [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }
+  [[ $REF_CODE == [23] ]] && mentions "$(eval "set -- $CASE"; echo "$1")"
+}
+@@solution
+#!/bin/bash
+if (( $# != 1 )); then echo "Error: one directory is needed" >&2; echo "Usage: $0 dir" >&2; exit 1; fi
+[[ -e $1 ]] || { echo "Error: $1 does not exist" >&2; exit 2; }
+[[ -d $1 ]] || { echo "Error: $1 is not a directory" >&2; exit 3; }
+for f in "$1"/*; do
+  [[ -f $f ]] || continue
+  size=$(stat -c %s "$f")
+  (( size > 100 )) && echo "$(basename "$f"): $size"
+done
+exit 0
+@@step 3 | Your own limit
+@@readme
+An optional second argument `BYTES` replaces the 100-byte limit (`bigfiles.sh data 300`). It must be a non-negative integer (digits only): otherwise an error message that includes it and exit code **4**. One or two arguments are valid; anything else is the usage error (code 1). The directory checks come before the limit check.
+@@check
+SORT_OUTPUT=1
+ARGS=('data' 'data 300' 'data 0' '"$W/data" 50' '' 'data 1 2' 'nothing 5' 'notadir.txt 5' 'data abc' 'data -3' 'nothing abc')
+COMPARE="stdout exit errmsg"
+extra_check() {
+  [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }
+  [[ $REF_CODE == [23] ]] && mentions "$(eval "set -- $CASE"; echo "$1")"
+  [[ $REF_CODE == 4 ]] && mentions "$(eval "set -- $CASE"; echo "$2")"
+}
+@@solution
+#!/bin/bash
+if (( $# < 1 || $# > 2 )); then echo "Error: wrong number of arguments" >&2; echo "Usage: $0 dir [bytes]" >&2; exit 1; fi
+[[ -e $1 ]] || { echo "Error: $1 does not exist" >&2; exit 2; }
+[[ -d $1 ]] || { echo "Error: $1 is not a directory" >&2; exit 3; }
+limit=${2:-100}
+[[ $limit =~ ^[0-9]+$ ]] || { echo "Error: '$limit' is not a number" >&2; exit 4; }
+for f in "$1"/*; do
+  [[ -f $f ]] || continue
+  size=$(stat -c %s "$f")
+  (( size > limit )) && echo "$(basename "$f"): $size"
+done
+exit 0
+@@step 4 | Count them
+@@readme
+After the list, print the summary `Found N files` (always `files`, also for 0 or 1).
+@@check
+SORT_OUTPUT=1
+ARGS=('data' 'data 300' 'empty' 'data 5000' '' 'nothing' 'data abc')
+COMPARE="stdout exit errmsg"
+extra_check() {
+  [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }
+  [[ $REF_CODE == [23] ]] && mentions "$(eval "set -- $CASE"; echo "$1")"
+  [[ $REF_CODE == 4 ]] && mentions "$(eval "set -- $CASE"; echo "$2")"
+}
+@@solution
+#!/bin/bash
+if (( $# < 1 || $# > 2 )); then echo "Error: wrong number of arguments" >&2; echo "Usage: $0 dir [bytes]" >&2; exit 1; fi
+[[ -e $1 ]] || { echo "Error: $1 does not exist" >&2; exit 2; }
+[[ -d $1 ]] || { echo "Error: $1 is not a directory" >&2; exit 3; }
+limit=${2:-100}
+[[ $limit =~ ^[0-9]+$ ]] || { echo "Error: '$limit' is not a number" >&2; exit 4; }
+n=0
+for f in "$1"/*; do
+  [[ -f $f ]] || continue
+  size=$(stat -c %s "$f")
+  if (( size > limit )); then echo "$(basename "$f"): $size"; n=$((n + 1)); fi
+done
+echo "Found $n files"

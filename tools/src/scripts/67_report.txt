@@ -1,0 +1,169 @@
+@@script s67 | report | A directory report | report.sh
+@@level 5
+@@tags files, text, find
+@@cmds find -type f -printf, associative arrays, sort, mkdir -p, shift, exit codes
+@@fixture
+setup() {
+  mkdir -p proj/src/deep proj/docs "my proj" empty reports
+  bigfile proj/a.txt 100; bigfile proj/b.txt 250; bigfile proj/src/main.c 1000; bigfile proj/src/deep/util.c 40; bigfile proj/docs/guide.md 600
+  bigfile proj/Makefile 30; bigfile "proj/two words.txt" 5; bigfile "my proj/x.sh" 10; echo x > notadir.txt
+}
+usage_ok() { [[ $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* || $ERR == *report.sh* ]]; }
+pre_rep() { mkdir -p "$H/reports"; }
+@@step 1 | Print the report
+@@readme
+Write `report.sh DIR`. It looks at every **regular file below `DIR`** (any depth) and prints:
+
+```
+Files: 8
+Total bytes: 2035
+c: 2
+md: 1
+(none): 1
+txt: 3
+...
+```
+
+`Files` and `Total bytes` first, then one line `EXT: N` for each extension (what follows the **last** dot of the name; a name without a dot has the extension `(none)`), sorted by extension name. Hidden names count like any other.
+
+`find "$1" -type f -printf '%s %f\n'` gives each size and name; `read -r size name` keeps the spaces of the name.
+@@check
+ARGS=('proj' '"my proj"' 'empty')
+COMPARE="stdout exit"
+@@solution
+#!/bin/bash
+declare -A n
+files=0 bytes=0
+while read -r size name; do
+  files=$((files + 1)); bytes=$((bytes + size))
+  if [[ $name == *.* ]]; then ext=${name##*.}; else ext="(none)"; fi
+  n[$ext]=$(( ${n[$ext]:-0} + 1 ))
+done < <(find "$1" -type f -printf '%s %f\n')
+echo "Files: $files"
+echo "Total bytes: $bytes"
+for e in $(printf '%s\n' "${!n[@]}" | sort); do echo "$e: ${n[$e]}"; done
+@@step 2 | Save it
+@@readme
+Instead of printing the report, **write** it to `$HOME/reports/report.txt` (the directory `$HOME/reports` already exists in this step; the file is replaced) and print `Report written to <full path>`.
+@@check
+ARGS=('proj $(pre_rep)' '"my proj" $(pre_rep)' 'empty $(pre_rep)')
+COMPARE="stdout exit files"
+@@solution
+#!/bin/bash
+out=$HOME/reports/report.txt
+declare -A n
+files=0 bytes=0
+while read -r size name; do
+  files=$((files + 1)); bytes=$((bytes + size))
+  if [[ $name == *.* ]]; then ext=${name##*.}; else ext="(none)"; fi
+  n[$ext]=$(( ${n[$ext]:-0} + 1 ))
+done < <(find "$1" -type f -printf '%s %f\n')
+{
+  echo "Files: $files"
+  echo "Total bytes: $bytes"
+  for e in $(printf '%s\n' "${!n[@]}" | sort); do echo "$e: ${n[$e]}"; done
+} > "$out"
+echo "Report written to $out"
+@@step 3 | Create the reports directory
+@@readme
+If `$HOME/reports` does not exist, create it and print exactly `Directory <full path> created` before the `Report written` line.
+@@check
+ARGS=('proj $(pre_rep)' 'proj' '"my proj"' 'empty')
+COMPARE="stdout exit files"
+@@solution
+#!/bin/bash
+dir=$HOME/reports
+if [[ ! -d $dir ]]; then mkdir -p "$dir"; echo "Directory $dir created"; fi
+out=$dir/report.txt
+declare -A n
+files=0 bytes=0
+while read -r size name; do
+  files=$((files + 1)); bytes=$((bytes + size))
+  if [[ $name == *.* ]]; then ext=${name##*.}; else ext="(none)"; fi
+  n[$ext]=$(( ${n[$ext]:-0} + 1 ))
+done < <(find "$1" -type f -printf '%s %f\n')
+{
+  echo "Files: $files"
+  echo "Total bytes: $bytes"
+  for e in $(printf '%s\n' "${!n[@]}" | sort); do echo "$e: ${n[$e]}"; done
+} > "$out"
+echo "Report written to $out"
+@@step 4 | Another output file
+@@readme
+`report.sh -o FILE DIR` writes the report to `FILE` instead (the message names that file, as given). The directory that must contain `FILE` has to exist, otherwise: error message that includes `FILE` on standard error and exit code **5** (nothing is created). Without `-o` everything is as in step 3. `-o` needs `FILE` and `DIR` after it, otherwise it is the usage error (message **and the correct usage**, e.g. `Usage: report.sh [-o file] dir`, exit **1**).
+@@check
+ARGS=('proj' '-o out.txt proj' '-o reports/r.txt proj' '-o nodir/r.txt proj' '-o out.txt empty' '-o' '-o out.txt' '')
+COMPARE="stdout exit errmsg files"
+extra_check() {
+  [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }
+  [[ $REF_CODE == 5 ]] && mentions "nodir/r.txt"
+}
+@@solution
+#!/bin/bash
+out=
+if [[ $1 == -o ]]; then
+  if (( $# != 3 )); then echo "Error: -o needs a file and a directory" >&2; echo "Usage: $0 [-o file] dir" >&2; exit 1; fi
+  out=$2; shift 2
+fi
+if (( $# != 1 )); then echo "Error: one directory is needed" >&2; echo "Usage: $0 [-o file] dir" >&2; exit 1; fi
+if [[ -n $out ]]; then
+  [[ -d $(dirname "$out") ]] || { echo "Error: cannot write $out" >&2; exit 5; }
+else
+  dir=$HOME/reports
+  if [[ ! -d $dir ]]; then mkdir -p "$dir"; echo "Directory $dir created"; fi
+  out=$dir/report.txt
+fi
+declare -A n
+files=0 bytes=0
+while read -r size name; do
+  files=$((files + 1)); bytes=$((bytes + size))
+  if [[ $name == *.* ]]; then ext=${name##*.}; else ext="(none)"; fi
+  n[$ext]=$(( ${n[$ext]:-0} + 1 ))
+done < <(find "$1" -type f -printf '%s %f\n')
+{
+  echo "Files: $files"
+  echo "Total bytes: $bytes"
+  for e in $(printf '%s\n' "${!n[@]}" | sort); do echo "$e: ${n[$e]}"; done
+} > "$out"
+echo "Report written to $out"
+@@step 5 | Check the directory
+@@readme
+After the option handling: not exactly one remaining argument → usage error (exit 1 as before); `DIR` does not exist → error with its name, exit **2**; not a directory → error with its name, exit **3**. These checks come **before** the `-o` directory check and before anything is created.
+@@check
+ARGS=('proj' '-o out.txt proj' '-o nodir/r.txt proj' '' '-o' '-o out.txt' 'proj empty' 'nothing' 'notadir.txt' '-o nodir/r.txt nothing' '-o out.txt notadir.txt')
+COMPARE="stdout exit errmsg files"
+extra_check() {
+  [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }
+  [[ $REF_CODE == [23] ]] && mentions "$(eval "set -- $CASE"; echo "${@: -1}")"
+  [[ $REF_CODE == 5 ]] && mentions "nodir/r.txt"
+}
+@@solution
+#!/bin/bash
+out=
+if [[ $1 == -o ]]; then
+  if (( $# != 3 )); then echo "Error: -o needs a file and a directory" >&2; echo "Usage: $0 [-o file] dir" >&2; exit 1; fi
+  out=$2; shift 2
+fi
+if (( $# != 1 )); then echo "Error: one directory is needed" >&2; echo "Usage: $0 [-o file] dir" >&2; exit 1; fi
+[[ -e $1 ]] || { echo "Error: $1 does not exist" >&2; exit 2; }
+[[ -d $1 ]] || { echo "Error: $1 is not a directory" >&2; exit 3; }
+if [[ -n $out ]]; then
+  [[ -d $(dirname "$out") ]] || { echo "Error: cannot write $out" >&2; exit 5; }
+else
+  dir=$HOME/reports
+  if [[ ! -d $dir ]]; then mkdir -p "$dir"; echo "Directory $dir created"; fi
+  out=$dir/report.txt
+fi
+declare -A n
+files=0 bytes=0
+while read -r size name; do
+  files=$((files + 1)); bytes=$((bytes + size))
+  if [[ $name == *.* ]]; then ext=${name##*.}; else ext="(none)"; fi
+  n[$ext]=$(( ${n[$ext]:-0} + 1 ))
+done < <(find "$1" -type f -printf '%s %f\n')
+{
+  echo "Files: $files"
+  echo "Total bytes: $bytes"
+  for e in $(printf '%s\n' "${!n[@]}" | sort); do echo "$e: ${n[$e]}"; done
+} > "$out"
+echo "Report written to $out"

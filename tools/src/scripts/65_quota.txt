@@ -1,0 +1,90 @@
+@@script s65 | quota | Staying under a quota | quota.sh
+@@level 4
+@@tags files, arithmetic, exit codes
+@@cmds find -printf %s, while read, arithmetic, test, exit codes
+@@fixture
+setup() {
+  mkdir -p proj/sub empty; bigfile proj/a.dat 1000; bigfile proj/sub/b.dat 2500; bigfile "proj/two words.dat" 500; bigfile proj/sub/c.dat 0
+  echo x > notadir.txt
+}
+usage_ok() { [[ $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* || $ERR == *quota.sh* ]]; }
+@@step 1 | How much is used
+@@readme
+Write `quota.sh DIR`. It prints `Used: N bytes`, where `N` is the sum of the sizes of all the **regular files** below `DIR` (any depth; `find "$1" -type f -printf '%s\n'` prints the sizes, one per line). Always `bytes`.
+@@check
+ARGS=('proj' 'proj/sub' 'empty')
+COMPARE="stdout exit"
+@@solution
+#!/bin/bash
+total=0
+while read -r s; do
+  total=$((total + s))
+done < <(find "$1" -type f -printf '%s\n')
+echo "Used: $total bytes"
+@@step 2 | Against a limit
+@@readme
+`quota.sh DIR LIMIT` takes the limit in bytes as a second argument and prints three lines: `Used: N bytes`, `Limit: L bytes` and `OK` when `N <= L` or `OVER` when it is bigger.
+@@check
+ARGS=('proj 5000' 'proj 4000' 'proj 3999' 'proj 100' 'empty 0' 'empty 10')
+COMPARE="stdout exit"
+@@solution
+#!/bin/bash
+total=0
+while read -r s; do
+  total=$((total + s))
+done < <(find "$1" -type f -printf '%s\n')
+echo "Used: $total bytes"
+echo "Limit: $2 bytes"
+if (( total <= $2 )); then echo OK; else echo OVER; fi
+@@step 3 | Check the arguments
+@@readme
+Checks, in this order: not exactly two arguments → error message **and the correct usage** (e.g. `Usage: quota.sh dir limit`), exit **1**; `DIR` does not exist → error with its name, exit **2**; not a directory → error with its name, exit **3**; `LIMIT` is not a non-negative integer → error that includes it, exit **4**.
+@@check
+ARGS=('proj 5000' 'empty 0' '' 'proj' 'proj 1 2' 'nothing 5' 'notadir.txt 5' 'proj x' 'proj -1' 'nothing x')
+COMPARE="stdout exit errmsg"
+extra_check() {
+  [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }
+  [[ $REF_CODE == [23] ]] && mentions "$(eval "set -- $CASE"; echo "$1")"
+  [[ $REF_CODE == 4 ]] && mentions "$(eval "set -- $CASE"; echo "$2")"
+}
+@@solution
+#!/bin/bash
+if (( $# != 2 )); then echo "Error: a directory and a limit are needed" >&2; echo "Usage: $0 dir limit" >&2; exit 1; fi
+[[ -e $1 ]] || { echo "Error: $1 does not exist" >&2; exit 2; }
+[[ -d $1 ]] || { echo "Error: $1 is not a directory" >&2; exit 3; }
+[[ $2 =~ ^[0-9]+$ ]] || { echo "Error: '$2' is not a non-negative integer" >&2; exit 4; }
+total=0
+while read -r s; do
+  total=$((total + s))
+done < <(find "$1" -type f -printf '%s\n')
+echo "Used: $total bytes"
+echo "Limit: $2 bytes"
+if (( total <= $2 )); then echo OK; else echo OVER; fi
+@@step 4 | Percentage and exit code
+@@readme
+Add a line `Usage: P%` between `Limit` and the verdict, with `P = 100 * used / limit` (integer division). With a limit of 0 there is no division: print `Usage: 0%` if nothing is used and `Usage: 100%` otherwise. Finish with exit code **5** when the verdict is `OVER`, and 0 otherwise.
+@@check
+ARGS=('proj 5000' 'proj 4000' 'proj 3999' 'proj 100' 'empty 0' 'empty 10' 'proj 0' '' 'nothing 5' 'proj x')
+COMPARE="stdout exit errmsg"
+extra_check() {
+  [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }
+  [[ $REF_CODE == [23] ]] && mentions "$(eval "set -- $CASE"; echo "$1")"
+  [[ $REF_CODE == 4 ]] && mentions "$(eval "set -- $CASE"; echo "$2")"
+}
+@@solution
+#!/bin/bash
+if (( $# != 2 )); then echo "Error: a directory and a limit are needed" >&2; echo "Usage: $0 dir limit" >&2; exit 1; fi
+[[ -e $1 ]] || { echo "Error: $1 does not exist" >&2; exit 2; }
+[[ -d $1 ]] || { echo "Error: $1 is not a directory" >&2; exit 3; }
+[[ $2 =~ ^[0-9]+$ ]] || { echo "Error: '$2' is not a non-negative integer" >&2; exit 4; }
+total=0
+while read -r s; do
+  total=$((total + s))
+done < <(find "$1" -type f -printf '%s\n')
+if (( $2 > 0 )); then pct=$((100 * total / $2)); elif (( total > 0 )); then pct=100; else pct=0; fi
+echo "Used: $total bytes"
+echo "Limit: $2 bytes"
+echo "Usage: $pct%"
+if (( total <= $2 )); then echo OK; exit 0; fi
+echo OVER
+exit 5

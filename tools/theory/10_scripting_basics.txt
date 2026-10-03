@@ -1,0 +1,475 @@
+@@collection 10_scripting_basics | Scripts: running, parameters & exit codes
+@@about
+Writing and running shell scripts: the shebang, execute permission, the ways to launch a script and what each one does to your shell, positional parameters, exit statuses, reading input, messages and scheduling with cron.
+
+@@group The shape of a script
+@@q order | From idea to running script
+Put the steps of creating and running your first script in order.
+(>) Write the commands into a file, starting with `#!/bin/bash` :: The file must exist first, and the first line selects the interpreter.
+(>) Give it execute permission with `chmod u+x script.sh` :: Without `x` the kernel refuses to run it directly.
+(>) Run it with `./script.sh` :: The `./` is needed when the current directory is not in `PATH`.
+(>) Check `echo $?` to see whether it succeeded :: The exit status of the script is available right afterwards.
+
+@@q single | The shebang line
+What does the first line `#!/bin/bash` of a script do?
+(+) It tells the kernel which interpreter to start to run the file when the script is executed directly. :: The kernel reads the two characters `#!` and runs the named program with the script as its argument.
+(-) It is an ordinary comment with no effect at all, because the line begins with a `#` character. :: Only when the script is run as `bash script` does the line act as a comment.
+(-) It makes the script executable, so that no other permission has to be set on the file. :: Execute permission comes from `chmod`.
+(-) It imports the `bash` library into the script, so that its functions can be used. :: Shell scripts have no imports.
+
+@@q single | Missing shebang
+A script has no shebang line and execute permission. You run `./script.sh` from bash. What usually happens?
+(+) Bash runs it with itself (in a new shell), treating the file as a shell script. :: The kernel cannot identify an interpreter, so the calling shell falls back to running it as a script.
+(-) It fails with "command not found", because the kernel does not know what to run. :: The file was found; the failure would be about permissions.
+(-) It is run by the Python interpreter, which is the default for unknown scripts. :: No language is guessed.
+(-) It prints the contents of the file, as `cat` would do, and does nothing else. :: Nothing is printed unless the script does it.
+
+@@q single | Comments
+Which line of a script is a comment?
+(+) `# this is ignored` :: From a `#` at the start of a word to the end of the line.
+(-) `// this is ignored` :: Not a comment in bash.
+(-) `-- this is ignored` :: Not a comment in bash.
+(-) `/* this is ignored */` :: That is C syntax.
+
+@@q fill | Making it executable
+Allow the owner to run `run.sh` directly: `chmod {{u+x ;; +x ;; 755 ;; 700 ;; a+x}} run.sh`
+(x) 644 :: That gives read and write but no execute permission.
+(x) u+r :: Read is not what is missing.
+@@note
+Without an `x` bit, `./run.sh` fails with "Permission denied".
+
+@@q single | Permission denied
+`./run.sh` prints "Permission denied" although the file exists and you own it. What is the most likely cause and fix?
+(+) The file has no execute permission; run `chmod u+x run.sh` and try again. :: Or start it with `bash run.sh`, which needs only read permission.
+(-) The file needs a `.exe` extension, which tells the system that it can be run. :: Unix does not use extensions for that.
+(-) The script must first be copied into `/bin`, the only directory that may hold programs. :: Not required.
+(-) You must be root, because ordinary users are not allowed to start scripts. :: Owners can run their own scripts.
+
+@@q single | Name lookup
+A script `tool.sh` is in your current directory (not in `PATH`). Typing `tool.sh` gives "command not found". Why does `./tool.sh` work?
+(+) A name with a slash is a path, so no `PATH` search is made; a bare name is searched only in `PATH`. :: The current directory is deliberately not in `PATH` by default.
+(-) The `./` prefix turns on the execute permission of the file for the current user. :: Permissions are unchanged.
+(-) The `./` prefix tells bash to run the file with `sudo`, which finds it anywhere. :: No privilege change.
+(-) `./tool.sh` only works for files that are owned by root, so it cannot be used by ordinary users on their own scripts. :: Ownership is irrelevant.
+
+@@q sort | How a script is launched
+@@buckets Runs in a new child shell | Runs in the current shell
+Classify each way of starting `script.sh`.
+(Runs in a new child shell) `./script.sh` :: The kernel starts the interpreter as a new process.
+(Runs in a new child shell) `bash script.sh` :: Explicitly starts another bash.
+(Runs in a new child shell) `script.sh` (found in `PATH`) :: Same as executing the file.
+(Runs in the current shell) `source script.sh` :: The commands run as if typed at the prompt.
+(Runs in the current shell) `. script.sh` :: The dot is a synonym for `source`.
+(Runs in the current shell) `source ~/.bashrc` :: A typical use: reload the configuration.
+
+@@q single | cd inside a script
+A script contains `cd /tmp`. You run `./script.sh` and afterwards type `pwd`. Where are you?
+(+) Still in the directory you started from: the script's `cd` changed the directory of its own child process. :: Use `source script.sh` to change the directory of your shell.
+(-) In `/tmp`, because the `cd` of the script changes the working directory of the shell that ran the script as well. :: That happens only with `source`.
+(-) In your home directory, since a script that ends always returns to the home directory. :: Not related.
+(-) Nowhere: the shell closes, because a script that changes directory ends the session. :: No reason for that.
+
+@@q single | source and cd
+The same script run with `source script.sh` (containing `cd /tmp`). Where are you afterwards?
+(+) In `/tmp` :: The commands ran in your own shell, so its working directory changed.
+(-) In the original directory. :: That is the behaviour of `./script.sh`.
+(-) In a new subshell in `/tmp`. :: `source` does not start a subshell.
+(-) Nowhere: `source` only prints the script. :: It executes it.
+
+@@q single | PIDs tell the story
+A script prints `$$`. Run with `bash script.sh` several times, the number changes each time; run with `source script.sh`, it equals the PID of your shell. What does this show?
+(+) `bash script.sh` creates a new process each time, while `source` runs the commands in the existing shell. :: `$$` is the PID of the shell executing the commands.
+(-) `source` creates a new process that happens to reuse the PID of the shell that started it. :: It creates none.
+(-) `$$` is a random number that changes whenever the script asks for it, and is never a PID. :: It is the real process ID.
+(-) `bash` and `source` are the same thing, and the difference in the numbers is only a coincidence of the PID allocation. :: The PIDs prove they differ.
+
+@@q multi | Things that only `source` can do
+Select what works only if the script is sourced (run with `source` or `.`).
+(+) Changing the current directory of your interactive shell. :: The child of `./script` cannot do that.
+(+) Setting a variable that stays available afterwards in your shell. :: Variables of a child die with it.
+(+) Defining a function or alias that you can use from the prompt afterwards. :: Definitions live in the shell that ran them.
+(-) Reading arguments given on the command line. :: Both ways can use arguments (with `source`, they become the script's parameters).
+(-) Printing output on the screen. :: Both ways can.
+
+@@q single | Running without exec bit
+Which command runs `script.sh` even though it has no execute permission (only read)?
+(+) `bash script.sh` :: Bash opens the file as data and interprets it.
+(-) `./script.sh` :: The kernel insists on an `x` bit.
+(-) `exec script.sh` :: Also needs execute permission.
+(-) `script.sh` :: Same problem, plus `PATH`.
+
+@@q single | Exit from source
+A script contains `exit 1` on its first line. What happens when you run it with `source script.sh` in your terminal?
+(+) Your interactive shell exits (the terminal may close), because `exit` ends the shell that ran the commands. :: Use `return` in sourced scripts, or run them normally.
+(-) Only the script stops and you get the prompt back, as it happens with `./script.sh`. :: That is what happens with `./script.sh`.
+(-) Nothing happens, because `exit` is ignored in scripts unless it is the last command. :: It is honoured.
+(-) An error message about the exit code is printed, and the session continues as before with the prompt of the shell. :: No error; the shell simply exits.
+
+@@group Positional parameters
+@@q match | Special parameters
+Match each special parameter with its content.
+(=) `$0` => The name the script was invoked with :: For example `./args.sh`.
+(=) `$1` => The first argument :: `$2` is the second, and so on.
+(=) `$#` => The number of arguments :: Does not include `$0`.
+(=) `$@` => All the arguments, as separate words (when quoted) :: Preserves argument boundaries.
+(=) `$?` => The exit status of the last command :: A number.
+(=) `$$` => The PID of the shell running the script :: Unique per run.
+(-) The user who runs the script :: That is `$USER` or `whoami`.
+
+@@q single | Count of arguments
+For `./s.sh "one two" three`, what is `$#`?
+(+) 2 :: The quoted string is one argument and `three` is the other.
+(-) 3 :: Quotes keep `one two` together.
+(-) 1 :: There are two arguments.
+(-) 0 :: `$#` counts the arguments, not `$0`.
+
+@@q single | Star versus at
+For `./s.sh "a b" c`, what is the difference between `for x in "$@"` and `for x in $*`?
+(+) `"$@"` iterates twice (`a b` and `c`); unquoted `$*` splits on blanks and iterates three times. :: Quote `"$@"` to keep arguments intact.
+(-) Both iterate twice, because the shell keeps each argument as a single word in both of the forms, quoted or not. :: The unquoted version re-splits.
+(-) Both iterate three times, because the shell always splits the arguments on blanks. :: `"$@"` preserves the boundaries.
+(-) `"$@"` iterates only once, over all the arguments joined into a single word. :: It produces one word per argument.
+
+@@q match | The four forms
+For `./s.sh "a b" c`, match each expression with the words it produces.
+(=) `"$@"` => Two words: `a b` and `c` :: Argument boundaries kept.
+(=) `"$*"` => One word: `a b c` :: Joined with the first character of `IFS`.
+(=) `$@` or `$*` without quotes => Three words: `a`, `b`, `c` :: Both are subject to word splitting, so the quotes of the original arguments are lost.
+(-) No words at all :: Not produced by any of them.
+
+@@q single | The loop without in
+What does `for i; do echo "$i"; done` iterate over inside a script?
+(+) The positional parameters, like `for i in "$@"`. :: When `in` is omitted, the list is the arguments.
+(-) The files of the current directory, like `for i in *` would do. :: That needs `for i in *`.
+(-) The lines that the user types at the keyboard, until end of input. :: That needs `read`.
+(-) Nothing: a `for` without `in` is a syntax error in bash scripts. :: It is valid.
+
+@@q single | shift
+What does `shift` do to the positional parameters?
+(+) It discards `$1` and renumbers: `$2` becomes `$1`, `$3` becomes `$2`, and `$#` goes down by one. :: `shift 2` does it twice.
+(-) It rotates them, moving `$1` to the end of the list so that nothing is lost. :: The first is discarded.
+(-) It shifts the digits of the numbers of the parameters, so that `$1` becomes `$2`, `$2` becomes `$3` and so on. :: No numeric change.
+(-) It reverses the order of the list, making the last argument the first one. :: No.
+
+@@q single | Processing every argument
+Which loop processes all the arguments of a script one by one, even if there are more than nine?
+(+) `while [ $# -gt 0 ]; do ...; shift; done` :: Uses `$1` each time and then moves on.
+(-) `for i in 1..$#; do ...; done`, where the range is expanded by the shell :: `1..$#` is not expanded that way.
+(-) `while true; do echo $10; done`, where `$10` is taken as the tenth argument :: `$10` is `$1` followed by `0`.
+(-) `until [ $# -gt 0 ]; do shift; done`, which runs only when there are none :: Runs only when there are no arguments.
+
+@@q single | Tenth argument
+Why is the tenth argument written `${10}` and not `$10`?
+(+) `$10` is read as `$1` followed by the character `0`; the braces mark where the number ends. :: Same idea as `${NAME}_x`.
+(-) Because parameter numbers above 9 are read-only and cannot be used without braces. :: Not true.
+(-) Because bash supports at most nine arguments, and any argument after the ninth needs a special syntax that uses braces. :: There is no such limit.
+(-) Because `$10` is the exit status of the last command, which has a two-digit code. :: That is `$?`.
+
+@@q fill | Count and name
+Inside a script, the number of arguments it received is in `{{$#}}`, and the name it was called with is in `{{$0}}`.
+(x) $* :: That is the list of all the arguments, not their number.
+(x) $? :: That is the exit status of the last command.
+@@note
+`$#` never includes the script name, which is `$0`.
+
+@@q single | Missing argument
+The script uses `$1`, but the user runs it with no arguments. What is `$1`?
+(+) Empty, unless `set -u` is active; bash does not complain about missing positional parameters. :: That is why scripts should check `$#` before using them.
+(-) The name of the script, which bash uses when an argument has not been given. :: That is `$0`.
+(-) The word `null`, which is what bash stores in the positional parameters that were not passed to the script. :: An unset parameter is just empty.
+(-) Undefined: bash aborts with an error message as soon as the script uses it. :: Only with `set -u`.
+
+@@q single | Default values
+Which expression gives `$1` when it was provided and the text `default` otherwise?
+(+) `${1:-default}` :: The `:-` form substitutes a default for unset or empty values.
+(-) `${1:+default}` :: The opposite: use `default` only if `$1` is set.
+(-) `${1=default}` :: Assignment to a positional parameter is not allowed.
+(-) `$1 or default` :: Not shell syntax.
+
+@@q order | Usage check at the top
+Put the steps of a well-behaved script start in order.
+(>) Check the number of arguments with `[ $# -ne 1 ]` :: Nothing else makes sense without the right input.
+(>) Print a usage message to standard error :: Tell the user what is expected.
+(>) Exit with a non-zero status :: Signal failure to the caller.
+(>) Only then continue with the real work :: The main part runs after validation has passed.
+
+@@group Exit status in scripts
+@@q single | Exit values
+What is the exit status of a script that ends without an explicit `exit`?
+(+) The status of the last command it executed. :: So a trailing `echo` makes a failing script look successful.
+(-) Always 0, because a script that finishes is always counted as successful. :: Only if the last command succeeded.
+(-) Always 1, because the shell reports a generic failure for scripts that end on their own. :: Not a rule.
+(-) Undefined: the shell refuses to finish until the script ends with an `exit`. :: It is well-defined.
+
+@@q single | Choose the code
+Which use of exit codes is conventional?
+(+) 0 for success and small non-zero numbers (1, 2, 3...) for the different kinds of failure. :: Callers can branch on the number.
+(-) 0 for failure and 1 for success, which is why `if` runs its branch on a status of 1. :: Reversed.
+(-) Negative numbers for errors and positive numbers for success, as in many languages. :: Statuses are 0 to 255.
+(-) Any number means success; only a missing status is treated as a failure. :: Only 0 does.
+
+@@q single | Range of exit codes
+What does `exit 256` produce as the script's exit status?
+(+) 0, because exit statuses are taken modulo 256 (the low 8 bits). :: The same wrap-around explains `return 300` giving 44.
+(-) 256, because the shell accepts any number as an exit status. :: Statuses are 8-bit.
+(-) 255, which is the largest value that an exit status can have. :: It wraps to 0.
+(-) An error message, because the number is out of the allowed range. :: No message.
+
+@@q single | exit versus return
+What is the difference between `exit` and `return` inside a function of a script?
+(+) `return` leaves only the function (giving a status to the caller), while `exit` ends the whole script. :: `return` outside a function or sourced script is an error.
+(-) They are identical and can be used in any place of a script, with exactly the same effect in every situation. :: The scope differs.
+(-) `return` ends the whole script and `exit` ends only the function that calls it. :: Reversed.
+(-) `exit` works only inside functions, and `return` only in the body of the script. :: It works anywhere.
+
+@@q single | Status of the last command
+After `grep -q root /etc/passwd`, what does `echo $?` print if `root` is present?
+(+) `0` :: Grep succeeds when it finds a match.
+(-) `1` :: That means no match.
+(-) `2` :: That means an error.
+(-) `root` :: `$?` holds a number.
+
+@@q single | Saving the status
+Why save the status with `rc=$?` before running other commands?
+(+) `$?` is overwritten by every command, including `echo`, so it must be copied if it is needed later. :: Otherwise you would test the status of the `echo`.
+(-) Because `$?` becomes read-only after its first use and cannot be read again. :: It is overwritten, not protected.
+(-) Because bash deletes `$?` at the end of the line, before the next line of the script starts to run. :: It stays until the next command.
+(-) Because `$?` is only valid inside an `if` and is empty everywhere else. :: It is valid everywhere.
+
+@@q single | The if and the status
+What does `if cp a b; then echo copied; fi` test?
+(+) The exit status of `cp`: the `echo` runs when it is 0. :: Any command can be the condition of an `if`.
+(-) Whether the file `b` exists in the current directory after the command has run. :: The status reflects success of `cp`.
+(-) Whether the file `a` is newer than the file `b`, which `cp` compares first. :: `cp` does not check that.
+(-) Whether the text `cp a b` is a non-empty string, which it always is. :: The command is executed.
+
+@@q single | Error messages
+Why should error messages be written to standard error (`>&2`)?
+(+) So they are not mixed with the normal output when a caller redirects or pipes stdout. :: A caller can capture results separately from diagnostics.
+(-) Because stdout cannot print text that contains words such as "error" or "failed". :: It can.
+(-) Because stderr is faster than stdout, which matters when a script fails quickly. :: Not the reason.
+(-) Because `echo` refuses to write to stdout in a script that has already failed once. :: It does not.
+
+@@q single | After an error, stop
+Why does a script normally exit right after printing an error such as "file not found"?
+(+) Continuing would run later commands on missing or invalid input, possibly causing damage or hiding the problem. :: Fail early, with a non-zero status.
+(-) Because bash forbids any further command after an `echo` that prints an error message on the terminal. :: No such rule.
+(-) Because writing to stderr closes the script, whatever the commands that come next. :: Writing to stderr does not stop anything.
+(-) Because the exit status has to be reset before the script can go on with its work. :: No.
+
+@@q multi | Good exit handling
+Select the statements that describe good practice in a script.
+(+) Validate the arguments first and exit with a non-zero status on bad input. :: So callers can detect the problem.
+(+) Use different exit codes for different kinds of errors when a caller may care. :: For example 1 for usage, 2 for a missing directory.
+(+) Check the status of commands whose failure would make later steps meaningless. :: `cd dir || exit 1`.
+(-) Always end with `exit 0`, whatever happened. :: That hides failures.
+(-) Ignore the status of `rm -rf "$DIR"/*` because it is obviously fine. :: Dangerous when `DIR` is empty or wrong.
+
+@@q fill | Stop if cd fails
+Do not continue when the directory cannot be entered: `cd "$DIR" {{||}} exit 1`
+(x) && :: That would exit when `cd` *succeeds*.
+(x) ; :: The script would exit unconditionally.
+@@note
+`cd "$DIR" || { echo "no such dir" >&2; exit 1; }` adds a message.
+
+@@q single | Exit on any error
+What does `set -e` do in a script?
+(+) The script exits as soon as a simple command fails (with exceptions, such as commands used in conditions). :: A crude safety net; explicit checks remain clearer.
+(-) It enables the shell's error messages, which are switched off in scripts by default unless that option is given. :: Messages are on by default.
+(-) It exports all the variables that are defined afterwards to the child processes. :: That is `set -a`.
+(-) It prints every command before it is run, together with the values that it uses. :: That is `set -x`.
+
+@@group Variables and input in scripts
+@@q single | Reading input
+Which command asks the user for a line and stores it in `ANS`?
+(+) `read ANS` :: Reads one line from standard input into the variable.
+(-) `ANS=read` :: Assigns the text `read`.
+(-) `input ANS` :: No such command.
+(-) `echo $ANS` :: Prints the variable.
+
+@@q fill | Prompt in read
+Ask the question and read the answer on one line: `read {{-p}} "Overwrite? (s/n) " ANSWER`
+(x) -s :: That hides the typing (for passwords) but shows no prompt.
+(x) -n :: That limits the number of characters to read.
+@@note
+`-r` is also advisable: it prevents backslashes from being interpreted.
+
+@@q single | read splitting
+After `read a b c <<< "one two three four"`, what is in `c`?
+(+) `three four` :: Extra words go to the last variable.
+(-) `three` :: The last variable takes the remainder.
+(-) `four` :: The last variable receives everything left.
+(-) Nothing, `read` accepts only one variable. :: It accepts several.
+
+@@q single | Reading a file line by line
+Which loop reads a file line by line and keeps the variables set inside it after the loop?
+(+) `while read line; do ...; done < file` :: The redirection feeds the loop without a subshell.
+(-) `cat file | while read line; do ...; done` :: The pipe makes the loop a subshell whose changes are lost.
+(-) `for line in file; do ...; done` :: That iterates over the single word `file`.
+(-) `read file | while line; do ...; done` :: Not valid.
+
+@@q single | for over lines
+Why is `for line in $(cat file)` a poor way to read lines?
+(+) It splits the content on any blank, not only newlines, so lines with spaces break into several words. :: Use `while read` to preserve lines.
+(-) It cannot read more than ten lines, because the list of words that the substitution produces has a limited size. :: No such limit.
+(-) It modifies the file, since the substitution writes the words back into it. :: It only reads.
+(-) It is faster than `while read`, and that speed is the reason why people avoid it. :: Speed is not the reason.
+
+@@q single | Quote variables
+Why should you write `rm "$file"` instead of `rm $file`?
+(+) Without quotes, a value with spaces or wildcards is split and expanded, possibly deleting the wrong files. :: Quote every expansion unless you want splitting.
+(-) Quotes make `rm` faster, since the shell does not have to split the value of the variable into separate words first. :: No effect.
+(-) Quotes make `rm` ask for a confirmation before it removes the file that the name denotes. :: That is `-i`.
+(-) Quotes are required in every command that uses a variable, without any exception. :: Only where splitting would harm.
+
+@@q single | Arithmetic on variables
+Which line stores `DATOA*DATOB+5` in `R` using shell arithmetic?
+(+) `R=$((DATOA*DATOB+5))` :: Arithmetic expansion returns the value.
+(-) `R=$(DATOA*DATOB+5)` :: Command substitution would try to run a command.
+(-) `R=DATOA*DATOB+5` :: Stores the text.
+(-) `R="DATOA*DATOB+5" | bc` :: Assigns text; the pipe does nothing for `R`.
+
+@@q single | Numbers are strings
+What is the value of `X` after `X=5; X=$X+1`?
+(+) The text `5+1` :: Without arithmetic expansion the shell just concatenates.
+(-) `6`, because the shell evaluates the sum :: That needs `X=$((X+1))`.
+(-) `51`, because the plus sign is dropped :: The plus sign remains.
+(-) An error, since `X+1` is not valid :: Assignments of text are fine.
+
+@@q match | Information commands
+Match each command with the information it gives, as a script might show at start.
+(=) `whoami` => The name of the user running the script :: Also `$USER`.
+(=) `date` => The current date and time :: Format it with `+%F %T`.
+(=) `echo $BASH_VERSION` => The version of the running bash :: A shell variable.
+(=) `hostname` => The name of the machine :: Also `$HOSTNAME`.
+(=) `pwd` => The current working directory :: Where relative paths resolve from.
+(-) The PID of the shell :: That is `$$`.
+
+@@q single | Relative paths
+A script uses the relative path `data/in.txt`. From which directory is it resolved?
+(+) The current working directory of the process running the script, which is where the user was when launching it. :: Not the directory where the script is stored.
+(-) The directory that contains the script file, wherever the user launched it from. :: That needs `$(dirname "$0")`.
+(-) The home directory of the user who runs the script, which is always the starting point of every relative path. :: Only if the user was there.
+(-) The root directory `/`, since scripts have no working directory of their own. :: No.
+
+@@q single | Script directory
+Which expression gives the directory that contains the running script (for a script called by path)?
+(+) `$(dirname "$0")` :: `dirname` strips the last component of `$0`.
+(-) `$(basename "$0")` :: That gives the file name only.
+(-) `$PWD` :: The current directory of the caller.
+(-) `$HOME` :: The home directory.
+
+@@q match | Path helpers
+Match each command with its result for `/home/alumno/docs/a.txt`.
+(=) `basename /home/alumno/docs/a.txt` => a.txt :: Last component.
+(=) `dirname /home/alumno/docs/a.txt` => /home/alumno/docs :: Everything before it.
+(=) `basename /home/alumno/docs/a.txt .txt` => a :: With a suffix removed.
+(=) `realpath ../x` => The absolute form of the path :: Relative resolved to full.
+(-) docs :: None of the commands above returns only the parent's name.
+
+@@group Scheduling and logging
+@@q match | The cron fields
+Match each field of a `crontab` line (`m h dom mon dow command`) with its position and meaning.
+(=) First field => Minute (0-59) :: `0` means on the hour.
+(=) Second field => Hour (0-23) :: Twenty-four-hour clock.
+(=) Third field => Day of the month (1-31) :: `*` for every day.
+(=) Fourth field => Month (1-12) :: `*` for every month.
+(=) Fifth field => Day of the week (0-7, where 0 and 7 are Sunday) :: `1-5` for weekdays.
+(-) Year :: Cron has no year field.
+
+@@q single | Every four hours
+Which crontab schedule runs a command every four hours, on the hour?
+(+) `0 */4 * * *` :: Minute 0, every fourth hour, every day.
+(-) `*/4 * * * *` :: Every four minutes.
+(-) `4 * * * *` :: At minute 4 of every hour.
+(-) `0 4 * * *` :: Once a day at 04:00.
+
+@@q single | Edit your crontab
+Which command opens your personal crontab for editing?
+(+) `crontab -e` :: The entries run with your user's privileges.
+(-) `cron -e` :: `cron` is the daemon, not the editor.
+(-) `nano /etc/cron` :: No such file.
+(-) `at -e` :: `at` schedules one-time jobs.
+
+@@q single | Log the result
+A line in a crontab should append both normal output and errors of `/home/alumno/ipLog.sh` to a log. Which command field is correct?
+(+) `/home/alumno/ipLog.sh >> /home/alumno/ipLog.log 2>&1` :: Use absolute paths; cron runs with a minimal environment.
+(-) `ipLog.sh > ipLog.log` :: Relative names and overwriting; the errors are lost.
+(-) `2>&1 >> /home/alumno/ipLog.log /home/alumno/ipLog.sh` :: The redirections cannot precede the command this way.
+(-) `ipLog.sh | ipLog.log` :: A pipe needs a command on the right.
+
+@@q single | Cron environment
+Why does a script that works in your terminal sometimes fail when run by cron?
+(+) Cron runs it with a minimal environment (short `PATH`, no interactive startup files), so commands or relative paths may fail. :: Use absolute paths and set variables inside the script.
+(-) Cron uses a different file system from the one that is seen in an interactive session, so your files are not there. :: Same files.
+(-) Cron refuses scripts that are longer than ten lines and silently skips them. :: No limit.
+(-) Cron removes the execute permission of the scripts it runs, so they fail at once. :: Not its behaviour.
+
+@@q single | Who sees the output
+Where does the normal output of a cron job go if you do not redirect it?
+(+) It is typically sent by mail to the job's owner, if a mail system is configured. :: That is why most cron lines redirect output to a file.
+(-) It appears on the terminal of the user who owns the job, if that user is logged in. :: Cron jobs have no terminal.
+(-) It is silently thrown away, as if it had been redirected to `/dev/null`. :: Only if redirected.
+(-) It is written to the system log automatically, and nothing is mailed to anybody. :: Mail is the default.
+
+@@q single | Logs
+Which file usually records authentication events (logins, `sudo`, failed SSH attempts) on a Debian-based system?
+(+) `/var/log/auth.log` :: Text lines with date, host, service and message.
+(-) `/etc/passwd` :: Account data, not events.
+(-) `/var/log/boot.log` :: Boot messages.
+(-) `/etc/sudoers` :: Sudo configuration.
+
+@@group Mixed practice
+@@q fill | Usage check
+Print a usage message and stop with status 1 if the script did not get exactly one argument: `[ {{$# ;; "$#"}} -ne 1 ] && { echo "usage: $0 dir" >&2; exit 1; }`
+(x) $1 :: That is the first argument itself, not their number.
+(x) $* :: That is the list of arguments, not their number.
+@@note
+`$#` is the count of the positional parameters.
+
+@@q fill | Read with a prompt
+Ask for a name and store it in `NAME`, showing a prompt: `read {{-p}} "Name: " NAME`
+(x) -s :: That hides what is typed and shows no prompt.
+(x) -n :: That limits the number of characters to read.
+@@note
+Add `-r` so that backslashes are kept as typed.
+
+@@q fill | Make it runnable
+Give the owner permission to execute `backup.sh` and run it from the current directory: `chmod u+x backup.sh && {{./backup.sh}}`
+(x) backup.sh :: Without a slash, bash searches only `PATH`, and `.` is normally not in it.
+(x) source backup.sh :: That runs it in your own shell, not as a separate program.
+@@note
+A name with a slash is used as a path, without any `PATH` search.
+
+@@q sort | Changes my shell or not
+@@buckets Affects the current shell | Does not affect it
+After running, does the command change the current shell (its directory, variables)?
+(Affects the current shell) `source env.sh` :: Runs inside the current shell.
+(Affects the current shell) `. ./env.sh` :: The dot is a synonym for `source`.
+(Affects the current shell) `cd /tmp` typed at the prompt :: A builtin of your shell.
+(Does not affect it) `./env.sh` :: Runs in a child process.
+(Does not affect it) `bash env.sh` :: A new bash is started.
+(Does not affect it) `(cd /tmp; ls)` :: The parentheses create a subshell.
+
+@@q multi | Stop on a missing directory
+Select the lines that correctly stop the script on a missing directory `$1` with exit status 2.
+(+) `[ -d "$1" ] || { echo "no such dir: $1" >&2; exit 2; }` :: Test, then message on stderr, then exit.
+(+) `if [ ! -d "$1" ]; then echo "no such dir" >&2; exit 2; fi` :: The same with `if`.
+(-) `[ -d "$1" ] && exit 2` :: That exits when the directory EXISTS.
+(-) `[ -d "$1" ] || echo "no such dir"` :: It prints a message but the script goes on.
+
+@@q order | Process every argument
+Put the parts of a loop that handles each argument, then reports the count, in order.
+(>) `n=0` :: Initialise the counter.
+(>) `for f in "$@"; do` :: Start the loop over the arguments.
+(>) `n=$((n+1))` :: Count inside the loop.
+(>) `done; echo "$n files"` :: Close the loop and report the total.
+
+@@q match | Crontab lines
+Match each schedule with when it runs.
+(=) `0 2 * * *` => Every day at 02:00 :: Minute 0, hour 2.
+(=) `*/15 * * * *` => Every fifteen minutes :: A step in the minute field.
+(=) `30 6 * * 1` => Mondays at 06:30 :: Day of the week 1.
+(=) `0 0 1 * *` => At midnight on the first day of each month :: Day of the month 1.
+(=) `0 */4 * * *` => Every four hours, on the hour :: A step in the hour field.
+(-) Once per year on the first of January :: That would need the month field set to 1 too.

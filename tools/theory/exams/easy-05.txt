@@ -1,0 +1,84 @@
+@@exam easy-05 | Easy exam 5
+@@tier easy
+@@about
+Ten single-choice questions on the basics: one concept each, with the classic look-alike options.
+
+@@q single | Find by size
+@@topic find
+Which command finds the files under `/var` that are larger than 10 megabytes?
+(-) `find /var -size 10M` :: Without a sign the size must be exactly 10 M (rounded up), not larger.
+(-) `find /var -size -10M` :: `-` means smaller than 10 M.
+(+) `find /var -size +10M` :: `+` means larger than, and the letter `M` gives the unit in megabytes.
+(-) `find /var -size +10` :: Without a letter the unit is a 512-byte block, so this finds files above about 5 KB.
+
+@@q single | Octal modes
+@@topic permissions
+Which statement about `chmod 640 notes.txt` is TRUE?
+(-) The owner can only read; the group can read and write; the others can do nothing. :: Digit by digit: 6 is `rw-` (owner), 4 is `r--` (group), 0 is `---` (others).
+(-) The owner and the group can read and write; the others can read. :: That would be `chmod 664`.
+(+) The owner can read and write; the group can only read; the others have no permissions. :: 6 = 4+2 = `rw-`, 4 = `r--`, 0 = `---`.
+(-) The owner can read, write and execute; the group can read; the others can do nothing. :: The `x` bit has value 1; a 7 would be needed for the owner.
+
+@@q single | Redirecting only the errors
+@@topic redirection-pipes
+Which statement about `command 2> err.txt` is FALSE?
+(-) The error messages of `command` go to `err.txt` instead of the screen. :: True: `2` is the file descriptor of stderr.
+(-) The normal output of `command` still appears on the screen. :: True: only stderr was redirected.
+(+) If `command` prints no error, `err.txt` is left untouched. :: False: `2>` creates or empties the file before the command runs, even if nothing is written to it.
+(-) `command 2>> err.txt` adds the errors at the end of the file instead of replacing it. :: True: `>>` appends.
+
+@@q single | Manual sections
+@@topic shell-help
+Which command shows the manual page of `printf` from section 3, the C library, instead of the shell command in section 1?
+(-) `man printf` :: It shows the first page found, normally the one in section 1.
+(-) `man printf 3` :: The section goes before the name; here `man` would also look for a page called `3`.
+(+) `man 3 printf` :: `man section name` selects the section.
+(-) `man -3 printf` :: `-3` is not an option of `man`; the section is given as a plain number.
+
+@@q single | All the processes
+@@topic jobs-procs
+Which command lists the processes of all the users, including the user name of each one?
+(-) `ps` :: By default it shows only the processes of the current terminal and user.
+(-) `ps -l` :: `-l` gives a long format, but still for the processes of the current terminal.
+(+) `ps aux` :: `a` shows the processes of other users, `x` also those without a terminal and `u` the user.
+(-) `ps -a` :: `-a` shows the processes associated with a terminal, without the user column.
+
+@@q single | HOME after cd
+@@topic expansion-vars
+The user `ana` runs `cd /tmp` and then `echo $HOME`. What is printed?
+(-) `/tmp` :: `HOME` does not follow the current directory.
+(-) `/` :: `HOME` is not the root directory.
+(+) `/home/ana` :: `HOME` is the starting directory of the user and it stays the same when you change directory.
+(-) An empty line, because `HOME` is only defined in the directory where the session started. :: It is a variable of the environment, defined wherever you are.
+
+@@q single | touch and mktemp
+@@topic files-fs
+Which statement about `touch` and `mktemp` is FALSE?
+(-) `touch new.txt` creates an empty file if `new.txt` does not exist. :: True.
+(-) `touch old.txt` on an existing file changes its modification time. :: True: that is what the name suggests.
+(+) `touch old.txt` empties an existing file before updating its time. :: False: `touch` never changes the content of a file.
+(-) `mktemp` creates an empty temporary file with a random name in `/tmp` and prints its name. :: True: for example `/tmp/tmp.XXXXXXXXXX` with random characters.
+
+@@q single | egrep
+@@topic grep-regex
+What is the difference between `egrep` and `grep`?
+(+) `egrep` is `grep -E`: it reads extended regular expressions, where `+`, `?`, `|` and `( )` are special. :: It is a shortcut for the option.
+(-) `egrep` also searches inside the subdirectories, which `grep` never does by itself. :: That is `grep -r` (or `rgrep`).
+(-) `egrep` ignores the difference between upper and lower case, which `grep` cannot do. :: That is `grep -i`.
+(-) `egrep` reads only what arrives through a pipe, while `grep` reads only from named files. :: Both read the files given or, without files, the standard input.
+
+@@q single | One word or many
+@@topic scripts
+`a.sh` contains `for a in "$*"; do echo "[$a]"; done`. What does `bash a.sh "x y" z` print?
+(-) `[x y]` and `[z]` on two lines :: That is what `"$@"` would give, keeping each argument.
+(-) `[x]`, `[y]` and `[z]` on three lines :: That is the result of the unquoted `$*`.
+(+) `[x y z]` on one line :: `"$*"` joins all the arguments in one single string, so the loop runs once.
+(-) Nothing, because `$*` only works outside a loop. :: `$*` can be used anywhere in a script.
+
+@@q single | Fields of passwd
+@@topic users-sessions
+A line of `/etc/passwd` is `ana:x:1001:100:Ana Ruiz:/home/ana:/bin/bash`. Which statement is TRUE?
+(-) The UID is 100 and the primary GID is 1001. :: The fields are in the order UID then GID.
+(-) The `x` is the password of ana in plain text. :: The `x` only says that the password is stored elsewhere, in `/etc/shadow`.
+(-) Her home directory is `/bin/bash` and her shell is `/home/ana`. :: The home is the sixth field and the shell the seventh.
+(+) The UID is 1001, the primary GID is 100 and the login shell is `/bin/bash`. :: Third, fourth and last field.

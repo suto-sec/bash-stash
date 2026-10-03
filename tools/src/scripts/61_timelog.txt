@@ -1,0 +1,72 @@
+@@script s61 | timelog | Activity per hour | timelog.sh
+@@level 3
+@@tags logs, text, arithmetic
+@@cmds cut -c, associative arrays, sort, printf, arithmetic, exit codes
+@@fixture
+setup() {
+  local i
+  for ((i = 0; i < 30; i++)); do printf '%02d:%02d:%02d %s\n' "$(pick 8 8 9 10 10 10 14 23)" "$(rand 60)" "$(rand 60)" "$(words 2)"; done > events.log
+  mkfl one.log "07:15:00 started"; : > empty.log; echo x > locked.log; chmod 000 locked.log; mkdir adir
+}
+usage_ok() { [[ $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* || $ERR == *timelog.sh* ]]; }
+@@step 1 | Events per hour
+@@readme
+Every line of the log starts with the time `HH:MM:SS`. Write `timelog.sh LOG`. For each hour that has events print `HH: N` (the two-digit hour and how many lines), sorted by hour. An empty log prints nothing.
+
+`${line:0:2}` is the hour; an associative array counts them.
+@@check
+ARGS=('events.log' 'one.log' 'empty.log')
+COMPARE="stdout exit"
+@@solution
+#!/bin/bash
+declare -A n
+while IFS= read -r line; do
+  h=${line:0:2}
+  [[ -n $h ]] && n[$h]=$(( ${n[$h]:-0} + 1 ))
+done < "$1"
+for h in $(printf '%s\n' "${!n[@]}" | sort); do echo "$h: ${n[$h]}"; done
+exit 0
+@@step 2 | The busiest hour
+@@readme
+After the hours print `Busiest: HH` (the hour with the most events; with a tie the **earliest** hour). An empty log prints `Busiest: none`.
+@@check
+ARGS=('events.log' 'one.log' 'empty.log')
+COMPARE="stdout exit"
+@@solution
+#!/bin/bash
+declare -A n
+while IFS= read -r line; do
+  h=${line:0:2}
+  [[ -n $h ]] && n[$h]=$(( ${n[$h]:-0} + 1 ))
+done < "$1"
+best= max=0
+for h in $(printf '%s\n' "${!n[@]}" | sort); do
+  echo "$h: ${n[$h]}"
+  if (( ${n[$h]} > max )); then max=${n[$h]}; best=$h; fi
+done
+echo "Busiest: ${best:-none}"
+@@step 3 | Check the file
+@@readme
+Not exactly one argument → error message **and the correct usage** (e.g. `Usage: timelog.sh log`), exit **1**; the argument is not a readable regular file → error with its name, exit **2**.
+@@check
+ARGS=('events.log' 'empty.log' '' 'events.log one.log' 'nothing.log' 'adir' 'locked.log')
+COMPARE="stdout exit errmsg"
+extra_check() {
+  [[ $REF_CODE == 1 ]] && { usage_ok || fail "the message should show the correct usage"; }
+  [[ $REF_CODE == 2 ]] && mentions "$(eval "set -- $CASE"; echo "$1")"
+}
+@@solution
+#!/bin/bash
+if (( $# != 1 )); then echo "Error: one log is needed" >&2; echo "Usage: $0 log" >&2; exit 1; fi
+[[ -f $1 && -r $1 ]] || { echo "Error: cannot read $1" >&2; exit 2; }
+declare -A n
+while IFS= read -r line; do
+  h=${line:0:2}
+  [[ -n $h ]] && n[$h]=$(( ${n[$h]:-0} + 1 ))
+done < "$1"
+best= max=0
+for h in $(printf '%s\n' "${!n[@]}" | sort); do
+  echo "$h: ${n[$h]}"
+  if (( ${n[$h]} > max )); then max=${n[$h]}; best=$h; fi
+done
+echo "Busiest: ${best:-none}"

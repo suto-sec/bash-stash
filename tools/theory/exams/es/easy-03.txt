@@ -1,0 +1,79 @@
+@@exam easy-03 | Examen fácil 3
+@@about
+Diez preguntas de respuesta única sobre lo básico: un concepto en cada una, con las típicas opciones parecidas.
+
+@@q single | Convertirse en otro usuario
+¿Qué mandato abre una sesión interactiva como el usuario `ana`, cargando su entorno como en un login nuevo?
+(-) `su ana` :: Abre una sesión como ana, pero sin el `-` no carga su entorno de login (se mantienen el directorio actual y la mayoría de tus variables).
+(-) `su -c ls ana` :: `-c` ejecuta un solo mandato y vuelve; no es una sesión interactiva.
+(+) `su - ana` :: El `-` hace que `su` cargue el entorno del usuario al que cambia.
+(-) `sudo ana` :: `sudo` ejecuta como otro usuario el mandato que se le da como argumento; `ana` no es un mandato.
+
+@@q single | Script fuera del PATH
+Estás en `/home/ana`. El script `backup.sh` tiene permiso de ejecución y está en `/home/ana/scripts`, un directorio que no está en el `PATH`. ¿Qué mandato lo ejecuta?
+(-) `backup.sh` :: Sin barra la shell busca solo en el `PATH`: "command not found".
+(-) `./backup.sh` :: `./` es el directorio actual, `/home/ana`, donde el script no está: "No such file or directory".
+(+) `scripts/backup.sh` :: Una ruta relativa con barra se usa tal cual, sin buscar en el `PATH`.
+(-) `/scripts/backup.sh` :: Empieza en la raíz del árbol: `/scripts` no existe.
+
+@@q single | Desde la línea 3
+El fichero `f` tiene seis líneas, de `a` a `f`, una por línea. ¿Qué imprime `tail -n+3 f`?
+(-) `d`, `e`, `f` :: Eso es `tail -n 3 f`, las tres últimas líneas.
+(-) `a`, `b` :: `tail` nunca imprime el principio de un fichero; eso sería `head -n 2 f`.
+(+) `c`, `d`, `e`, `f` :: `-n+3` significa "desde la línea 3 hasta el final".
+(-) `c` :: Solo se imprimiría una línea con `sed -n 3p f`; `tail -n+3` sigue hasta el final del fichero.
+
+@@q single | Permisos de un directorio
+¿Qué afirmación sobre los permisos de un directorio es VERDADERA?
+(-) Con `r` en un directorio puedes entrar en él con `cd`. :: Entrar necesita `x`; `r` sirve para listar los nombres.
+(-) Con `x` en un directorio puedes listar sus nombres con `ls`. :: Listar los nombres necesita `r`; `x` sirve para atravesarlo.
+(+) Para crear un fichero nuevo dentro de un directorio necesitas `w` en ese directorio. :: Crear o borrar entradas modifica el propio directorio, que es lo que controla `w`.
+(-) Con `w` en un directorio puedes leer el contenido de los ficheros que hay dentro. :: Leer un fichero depende de los permisos del fichero; `w` en el directorio trata de sus entradas.
+
+@@q single | Variable con un dígito
+Tras `n=3`, ¿qué imprime `echo $n0 ${n}0`?
+(-) `30 30` :: Sin llaves la shell lee el nombre `n0`, no `n` seguido de `0`.
+(+) `30` :: `$n0` es la variable `n0`, que está vacía y desaparece; `${n}0` es `3` seguido de `0`.
+(-) `$n0 30` :: `$n0` se expande, a nada; solo las comillas simples lo imprimirían literalmente.
+(-) `3 30` :: `$n0` no es `$n` seguido de un `0`; no da `3`.
+
+@@q single | Sobrescribir y añadir
+¿Qué imprime esto?
+```
+echo a > g
+echo b >> g
+echo c > g
+cat g
+```
+(-) `a`, `b`, `c` en tres líneas :: El último `>` trunca el fichero antes de escribir.
+(-) `a` y `c` en dos líneas :: Solo `>>` conserva lo que había, y el último mandato usa `>`.
+(+) `c` :: `>` vacía `g` cada vez; el último mandato deja solo `c`.
+(-) `b` y `c` en dos líneas :: `echo c > g` elimina las líneas anteriores, incluida `b`.
+
+@@q single | Límites de las tablas de particiones
+¿Qué afirmación sobre las tablas de particiones MBR y GPT es VERDADERA?
+(-) MBR permite hasta 128 particiones primarias, mientras que GPT permite solo 4. :: Al revés.
+(+) GPT permite hasta 128 particiones primarias, mientras que MBR permite solo 4. :: Una de las razones por las que se creó GPT.
+(-) GPT funciona solo con la BIOS antigua, y MBR solo con UEFI. :: GPT va con UEFI y MBR con la BIOS antigua.
+(-) MBR admite particiones mayores que GPT, de hasta 256 TB. :: Los límites son al revés: unos 2 TB en MBR y 256 TB en GPT.
+
+@@q single | Ctrl+Z
+`sleep 300` se está ejecutando en primer plano y pulsas Ctrl+Z. ¿Qué ocurre?
+(+) Se suspende, no termina: `jobs` lo lista como parado y `bg` o `fg` lo reanuda. :: Ctrl+Z solo pausa el proceso y devuelve el prompt.
+(-) El proceso termina y desaparece del sistema, exactamente igual que con Ctrl+C. :: Ctrl+C aborta el mandato; Ctrl+Z solo lo suspende.
+(-) El proceso sigue ejecutándose, pero ahora en segundo plano para que el prompt quede libre. :: Está pausado, no ejecutándose; necesita `bg` para continuar en segundo plano.
+(-) El proceso pasa a primer plano de una shell nueva abierta para él. :: No se crea nada: recuperas el prompt de la misma shell.
+
+@@q single | Encontrar mandatos
+¿Qué afirmación sobre cómo encuentra la shell un mandato es FALSA?
+(-) Un mandato escrito con una barra, como `bin/tool`, no se busca en el `PATH`. :: Verdadero: se usa como ruta.
+(-) `echo $PATH` imprime los directorios donde busca la shell, separados por `:`. :: Verdadero.
+(-) La shell recorre los directorios del `PATH` en orden y ejecuta la primera coincidencia. :: Verdadero.
+(+) Un ejecutable del directorio actual siempre se puede ejecutar escribiendo solo su nombre. :: Falso: el directorio actual solo se busca si está en el `PATH`; si no, hace falta `./nombre`.
+
+@@q single | mv hacia un directorio
+`notes` es un fichero y `docs` es un directorio que ya existe. ¿Qué afirmación sobre `mv notes docs` es FALSA?
+(-) El fichero `notes` acaba dentro del directorio como `docs/notes`. :: Verdadero: un directorio existente como destino recibe el fichero.
+(-) `notes` ya no existe en el directorio actual. :: Verdadero: `mv` mueve, no copia.
+(+) El directorio `docs` se sustituye por un fichero llamado `docs`. :: Falso: `mv` nunca sustituye un directorio por un fichero; mueve el fichero dentro.
+(-) Si `docs/notes` ya existía, se sobrescribiría. :: Verdadero: `mv` reemplaza un fichero del mismo nombre sin preguntar (salvo que se use `-i`).

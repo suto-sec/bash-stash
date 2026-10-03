@@ -1,0 +1,73 @@
+@@exam medium-08 | Examen medio 8
+@@about
+Diez preguntas de respuesta única que combinan dos datos o piden seguir unos pasos: scripts y directorio actual, listas de grupos, systemd, archivos, continuación de línea, uniq, tuberías, bucles, puntos de montaje y orden de expansión.
+
+@@q single | cd dentro de un script
+`s.sh` es ejecutable y su única línea es `cd /tmp`. Desde `/home/ana` ejecutas `./s.sh` y después `pwd`. ¿Qué imprime `pwd`?
+(+) `/home/ana` :: El script se ejecuta en una shell hija; `cd` cambia el directorio de esa shell, que termina con el script.
+(-) `/tmp` :: El directorio de un proceso no se comparte con su padre: el cambio se pierde cuando acaba el script.
+(-) `/tmp`, porque `cd` es un programa externo que cambia el directorio del sistema. :: `cd` es un mandato interno de la shell y solo afecta a la shell que lo ejecuta.
+(-) Un error, porque `cd` no se puede usar dentro de un script. :: Se puede usar; simplemente no tiene efecto sobre la shell padre.
+
+@@q single | Contar los grupos
+Para el usuario `alumno` el mandato `id -Gn` imprime `alumno adm cdrom sudo audio video secops`. ¿Qué imprime `id -Gn | wc -w`?
+(+) `7` :: `-G` lista todos los grupos, el primario incluido, y `wc -w` cuenta las 7 palabras de la línea.
+(-) `6` :: El grupo primario `alumno` también está en la lista, así que no son 6.
+(-) `1` :: `wc -w` cuenta palabras, no líneas: la salida es una línea pero siete palabras.
+(-) `8` :: Hay siete nombres en la lista, no ocho.
+
+@@q single | Cambiar de target
+¿Qué afirmación sobre `systemd` es FALSA?
+(-) Un fichero de unidad describe un servicio, un punto de montaje, un temporizador u otro recurso que gestiona systemd. :: Cierto: son los ficheros `.service`, `.mount`, `.timer`...
+(-) Un target agrupa unidades y hace el papel que tenían los niveles de ejecución en SysV init. :: Cierto: `multi-user.target` es parecido al antiguo nivel 3.
+(-) `systemd` usa grupos de control (cgroups) para seguir la pista a todos los procesos de un servicio. :: Cierto: así puede detener todos los procesos de un servicio.
+(+) `systemctl isolate multi-user.target` apaga la máquina. :: Falso: cambia a ese target, deteniendo las unidades que no pertenecen a él. Apagar es `systemctl poweroff`.
+
+@@q single | Archivos y compresión
+¿Qué afirmación sobre `tar` y la compresión es FALSA?
+(-) `tar -cf docs.tar docs` crea un archivo sin comprimirlo. :: Cierto: sin `z` no hay compresión.
+(-) `tar -czf docs.tgz docs` crea un archivo comprimido con gzip. :: Cierto.
+(-) `tar -tf docs.tar` lista el contenido del archivo sin extraerlo. :: Cierto.
+(+) `gzip docs` comprime el directorio `docs` en `docs.gz`. :: Falso: `gzip` comprime ficheros, no directorios; responde «docs is a directory -- ignored». Un directorio hay que empaquetarlo antes con `tar`.
+
+@@q single | Un mandato largo en dos líneas
+Estás escribiendo un mandato largo y quieres continuarlo en la siguiente línea física. ¿Qué haces al final de la primera línea?
+(+) Escribir una barra invertida `\` y pulsar Enter. :: La barra invertida elimina el salto de línea, así que la shell lee las dos líneas como un solo mandato.
+(-) Escribir un punto y coma `;` y pulsar Enter. :: El punto y coma termina el mandato: la segunda línea se ejecutaría como un mandato aparte.
+(-) Escribir una barra `/` y pulsar Enter. :: Una barra es solo parte de la última palabra.
+(-) Escribir un ampersand `&` y pulsar Enter. :: `&` ejecuta la primera parte en segundo plano y después lee un mandato nuevo.
+
+@@q single | uniq con datos sin ordenar
+`names` tiene las líneas `b`, `a`, `b`, `c`, `a` (en ese orden). ¿Qué ocurre con `uniq names | wc -l`?
+(+) Imprime `5`: `uniq` solo agrupa líneas iguales adyacentes. :: Aquí no hay dos líneas iguales adyacentes, así que no se elimina nada.
+(-) Imprime `3`, el número de nombres distintos. :: Eso es lo que imprime `sort names | uniq | wc -l`.
+(-) Imprime `2`, el número de nombres repetidos. :: `uniq` no cuenta repeticiones si no se usa `-c`.
+(-) Falla, porque `uniq` necesita entrada ordenada. :: Acepta cualquier entrada; solo que puede no eliminar todos los duplicados.
+
+@@q single | Un cat inútil
+Compara `cat f | sort | uniq -c` con `sort f | uniq -c`. ¿Qué afirmación es correcta?
+(+) Imprimen lo mismo, pero la primera arranca un proceso extra (`cat`) que no aporta nada. :: `sort` puede leer el fichero por sí mismo, así que `cat` solo copia los datos en la tubería.
+(-) La primera cuenta las líneas repetidas y la segunda no. :: Las dos terminan en `uniq -c`, así que las dos cuentan.
+(-) La segunda falla, porque `sort` no puede leer un fichero dado como argumento. :: `sort` lee los ficheros dados como argumentos, y su entrada estándar cuando no hay ninguno.
+(-) La salida de la primera está ordenada y la de la segunda no. :: Las dos tuberías ordenan antes de `uniq`.
+
+@@q single | Cuenta atrás
+¿Qué línea imprime `3`, `2` y `1`, un número por línea?
+(+) `i=3; while [ $i -ge 1 ]; do echo $i; i=$((i-1)); done` :: El bucle se ejecuta mientras `i` sea al menos 1 y la decrementa cada vez.
+(-) `i=3; until [ $i -ge 1 ]; do echo $i; i=$((i-1)); done` :: `until` se detiene en cuanto la condición es cierta, y `3 -ge 1` lo es al instante: no se imprime nada.
+(-) `i=3; while [ $i -le 1 ]; do echo $i; i=$((i-1)); done` :: `3 -le 1` es falso al principio, así que el cuerpo nunca se ejecuta.
+(-) `i=3; while [ $i -ge 1 ]; do echo $i; done` :: `i` nunca cambia, así que imprime `3` para siempre.
+
+@@q single | La raíz del árbol y el home de root
+¿Qué afirmación compara correctamente los directorios `/` y `/root`?
+(+) `/` es la cima del árbol único de directorios y `/root` es el directorio personal del usuario `root`. :: Todos los ficheros del sistema están bajo `/`; `/root` es solo un directorio dentro de él.
+(-) Son dos nombres del mismo directorio. :: `/` contiene `/root`, `/home`, `/etc` y todo lo demás.
+(-) `/root` es la cima del árbol y `/` es el directorio personal de root. :: Es al revés.
+(-) `/root` es la cima del árbol de cada usuario, como `/home` lo es para los demás. :: `/root` es el home de un solo usuario; el árbol de todo el sistema tiene una única cima, `/`.
+
+@@q single | Variables y comodines
+El directorio actual tiene solo los ficheros `a` y `b`. ¿Qué imprime `name='*'; echo "$name" $name`?
+(+) `* a b` :: El `"$name"` entrecomillado se queda como el texto `*`; el `$name` sin comillas se expande a `*` y después el comodín se expande a los nombres de fichero.
+(-) `* *` :: El comodín de la variable sin comillas se expande después que la variable: se convierte en `a b`.
+(-) `a b a b` :: Las comillas impiden la expansión del comodín en la primera palabra.
+(-) `a b *` :: El orden de las dos palabras es `"$name"` primero y `$name` después.

@@ -1,0 +1,59 @@
+@@script s01 | greet | A friendly greeting | greet.sh
+@@level 1
+@@tags arguments, exit codes
+@@cmds echo, test, exit codes
+@@fixture
+setup() { :; }
+@@step 1 | Say hello
+@@readme
+Your very first script. Create `greet.sh` (the file is already open for you) that prints exactly:
+
+```
+Hello, world!
+```
+
+A script is a text file whose first line says which program runs it: `#!/bin/bash`. Run it with `bash greet.sh`, or give it execute permission with `chmod +x greet.sh` and run `./greet.sh`.
+@@check
+ARGS=('')
+COMPARE="stdout exit"
+@@solution
+#!/bin/bash
+echo "Hello, world!"
+@@step 2 | Greet by name
+@@readme
+Now `greet.sh` may receive one argument, the name: `greet.sh Ana` prints `Hello, Ana!`. Without an argument it still prints `Hello, world!`.
+
+The first argument is `$1`. A name with spaces arrives as one argument when it is quoted: `greet.sh "Mary Ann"` prints `Hello, Mary Ann!`.
+@@check
+ARGS=('' 'Ana' '"Mary Ann"' 'x')
+COMPARE="stdout exit"
+@@solution
+#!/bin/bash
+if [[ -n $1 ]]; then
+  echo "Hello, $1!"
+else
+  echo "Hello, world!"
+fi
+@@step 3 | Refuse too many arguments
+@@readme
+If more than one argument is given (`greet.sh Ana Bob`), the script must print an error message **and the correct usage** (e.g. `Usage: greet.sh [name]`) on standard error (`>&2`) and exit with code **1**. Nothing goes to standard output in that case.
+
+`$#` is the number of arguments; `exit 1` ends the script with that code.
+@@check
+ARGS=('' 'Ana' '"Mary Ann"' 'Ana Bob' '1 2 3')
+COMPARE="stdout exit errmsg"
+extra_check() {
+  [[ $REF_CODE == 1 ]] && { [[ $ERR == *greet.sh* || $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* ]] || fail "the message should show the correct usage"; }
+}
+@@solution
+#!/bin/bash
+if (( $# > 1 )); then
+  echo "Error: too many arguments" >&2
+  echo "Usage: $0 [name]" >&2
+  exit 1
+fi
+if [[ -n $1 ]]; then
+  echo "Hello, $1!"
+else
+  echo "Hello, world!"
+fi

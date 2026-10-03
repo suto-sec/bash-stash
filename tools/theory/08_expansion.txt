@@ -1,0 +1,479 @@
+@@collection 08_expansion | Expansion, quoting & variables
+@@about
+How bash turns a typed line into the words a command receives: quoting, escaping, variables and the environment, wildcards, brace and tilde expansion, command substitution, arithmetic and aliases.
+
+@@group How a line is evaluated
+@@q order | Stages of evaluating a command line
+Put the stages the shell applies to a command line in order.
+(>) Split the line into words (tokens) :: Everything else works on words.
+(>) Expand aliases :: The first word may be replaced by an alias.
+(>) Substitute variables and commands (`$VAR`, `$(...)`) :: Values are filled in before the file-name patterns are looked at.
+(>) Expand wildcards such as `*.txt` into file names :: Done on the result of the previous stage.
+(>) Set up redirections, then run the command :: The program finally starts with the final list of words.
+
+@@q single | Who expands the star
+In `ls *.txt`, who replaces `*.txt` by a list of file names?
+(+) The shell, before `ls` starts; `ls` only sees the resulting names. :: Programs do not do their own globbing.
+(-) `ls` itself, which understands the star and looks for the matching files. :: It receives already-expanded arguments.
+(-) The kernel, when `ls` asks it to open a file with a star in its name. :: The kernel knows nothing about patterns.
+(-) The terminal emulator, before the line is handed over to the shell. :: It only shows text.
+
+@@q single | Seeing the final words
+Which command shows exactly what arguments a command receives after all expansions, one per line?
+(+) `printf '%s\n' words...` (for example `printf '%s\n' *.txt`) :: It prints each expanded word on its own line.
+(-) `echo -n words...`, which prints the words without a final newline :: That only suppresses the final newline.
+(-) `type words...`, which describes how each of the words would be executed :: It describes commands, not arguments.
+(-) `alias words...`, which lists the shorthands that have been defined :: It lists shortcuts.
+
+@@q single | Variable before glob
+`Y='*.c'; echo $Y` prints the names of the `.c` files of the directory, while `echo "$Y"` prints `*.c`. Why?
+(+) An unquoted `$Y` is expanded first, and then split into words and globbed; in double quotes neither happens. :: That is why variables are normally quoted.
+(-) Because `Y` has not been exported, so `echo` cannot see that it holds a pattern. :: Exporting is about child processes.
+(-) Because double quotes delete the star from the value of the variable before the variable is used in the command. :: They keep it as a literal character.
+(-) Because `echo` expands the stars it receives only when they are in single quotes. :: `echo` does not expand anything.
+
+@@group Quoting and escaping
+@@q match | Quoting mechanisms
+Match each form with its behaviour.
+(=) `'text'` (single quotes) => Everything is literal, no expansions at all :: Even `$` and backslash are plain characters.
+(=) `"text"` (double quotes) => Variables, `$(...)` and arithmetic are expanded; wildcards and word splitting are not :: A middle way.
+(=) `\c` (backslash) => The next character is taken literally :: Useful for a single special character.
+(=) `$'a\tb'` => A string where escapes like `\t` are interpreted :: An ANSI-C style string of bash.
+(-) Everything is expanded twice :: No quoting form does this.
+
+@@q single | Single versus double
+Given `X=world`, what does `echo 'hi $X'` print?
+(+) `hi $X` :: Single quotes prevent every expansion.
+(-) `hi world` :: That is the double-quoted result.
+(-) `hi` :: The text is kept.
+(-) An error because `$X` is not defined. :: No expansion, so no error.
+
+@@q single | Double quotes
+Given `X=world`, what does `echo "hi $X"` print?
+(+) `hi world` :: Double quotes still allow variable expansion.
+(-) `hi $X` :: That is for single quotes.
+(-) `"hi world"` :: The shell removes the quotes before `echo` sees the word.
+(-) `hi X` :: The dollar sign is used by the expansion.
+
+@@q single | Quotes join text
+What does `echo '$X'"$X"` print when `X=world`?
+(+) `$Xworld` :: Two adjacent quoted pieces form a single word: the first literal, the second expanded.
+(-) `$X world` :: There is no space between the pieces.
+(-) `worldworld` :: The first piece is not expanded.
+(-) `$X$X` :: The second piece is expanded.
+
+@@q single | Whitespace and quotes
+How many arguments does `echo a   b` pass to `echo`, compared with `echo "a   b"`?
+(+) Two, and then one. :: Unquoted blanks separate words; a quoted string is one word and keeps its spaces.
+(-) One and one. :: The unquoted version splits.
+(-) Three and one. :: Blanks are not arguments.
+(-) Two and two. :: Quoting prevents the split.
+
+@@q single | Apostrophe in text
+Which command prints `it's` correctly?
+(+) `echo "it's"` :: A single quote inside double quotes is an ordinary character.
+(-) `echo 'it's'` :: The quote after `it` closes the string; the rest is left open.
+(-) `echo it's` :: Leaves an unterminated quote.
+(-) `echo 'it\'s'` :: A backslash does not escape inside single quotes.
+
+@@q single | Backslash in quotes
+What do `echo 'a\nb'` and `echo "a\nb"` print in bash (with the default `echo`)?
+(+) Both print `a\nb` literally on one line. :: Bash's `echo` does not interpret `\n` unless `-e` is used.
+(-) Both print `a` and `b` on two lines. :: Only with `echo -e` or `$'...'`.
+(-) The first prints two lines, the second one. :: Neither quoting form turns `\n` into a newline.
+(-) Both print nothing. :: There is text to print.
+
+@@q fill | Interpret escapes
+Make `echo` print the two words on separate lines: `echo {{-e}} 'one\ntwo'`
+(x) -n :: That removes the trailing newline only.
+(x) -E :: That *disables* escape interpretation, which is already the default.
+@@note
+`printf 'one\ntwo\n'` is the portable alternative.
+
+@@q single | Dollar sign as text
+Which command prints the text `$HOME` literally?
+(+) `echo '$HOME'` or `echo \$HOME` :: Single quotes or a backslash prevent the expansion.
+(-) `echo "$HOME"`, because the double quotes keep the text as it is :: Expands to your home directory.
+(-) `echo $HOME`, since `echo` prints whatever text it receives :: Also expanded.
+(-) `echo ${HOME}`, because the braces stop the expansion :: Still expanded.
+
+@@q single | Backslash and newline
+What is the effect of a backslash at the end of a line in a script?
+(+) It removes the newline, so the command continues on the next line. :: Useful for long command lines.
+(-) It ends the command at that point and runs whatever has been typed so far. :: The opposite.
+(-) It comments out the next line, so that the shell ignores its contents. :: Comments start with `#`.
+(-) It prints a literal backslash and then starts a new command on the next line. :: Inside quotes or not, the pair backslash-newline is removed (except within single quotes).
+
+@@q multi | Characters the shell treats specially
+Select the characters that have a special meaning to the shell when unquoted.
+(+) `*` :: Wildcard.
+(+) `$` :: Introduces an expansion.
+(+) `;` :: Command separator.
+(+) `|` :: Pipe.
+(-) `a` :: An ordinary letter.
+(-) `_` :: An ordinary character.
+
+@@group Variables and the environment
+@@q fill | Assigning a variable
+Set the variable `NAME` to `Ana`: `NAME{{=}}Ana`
+(x) := :: Pascal-style assignment does not exist in bash.
+(x) " = " :: Spaces around the equals sign make bash think `NAME` is a command.
+@@note
+No spaces around `=` in a shell assignment.
+
+@@q single | Spaces in an assignment
+What does `C = 3` do in bash?
+(+) It tries to run a command called `C` with the arguments `=` and `3`, and fails with "command not found". :: Assignments must have no spaces around `=`.
+(-) It sets the variable `C` to the value 3, since the shell simply ignores the spaces that are written around the `=` sign. :: Only `C=3` does.
+(-) It compares `C` with 3 and sets the exit status to 0 when they are equal. :: Comparisons use `[ ]` or `[[ ]]`.
+(-) It prints the number 3 on the screen and leaves `C` undefined. :: Nothing is printed.
+
+@@q single | Using a variable
+Which command prints the value of `NAME`?
+(+) `echo $NAME` or `echo ${NAME}` :: The dollar sign asks for the value.
+(-) `echo NAME`, since `echo` looks up a variable when its name is given :: Prints the word NAME.
+(-) `echo &NAME`, where the ampersand asks for the value of the variable :: An ampersand would start a background job.
+(-) `echo %NAME%`, where the percent signs surround the name of the variable :: That is Windows `cmd.exe`.
+
+@@q single | Braces
+Why would you write `${NAME}_backup` instead of `$NAME_backup`?
+(+) Without braces the shell reads the name as `NAME_backup` (letters, digits and underscores), probably undefined. :: Braces mark where the name ends.
+(-) Braces make the variable exported, so that its value is passed on to all the commands and programs that you start afterwards. :: Exporting is separate.
+(-) Braces make the expansion happen earlier, before the other expansions of the line. :: The timing is the same.
+(-) There is no difference at all: the two forms always give exactly the same result. :: The difference is exactly the name boundary.
+
+@@q match | Variables you always have
+Match each predefined variable with its content.
+(=) `HOME` => Your home directory :: Where `cd` goes with no argument.
+(=) `PATH` => Colon-separated directories searched for commands :: Used for external commands.
+(=) `PWD` => The current directory :: Updated by `cd`.
+(=) `USER` => Your login name :: Usually set by the login process.
+(=) `HOSTNAME` => The machine's name :: As reported in prompts.
+(-) The list of your jobs :: Jobs are shown by `jobs`.
+
+@@q single | Exporting
+What is the difference between `FOO=1` and `export FOO=1`?
+(+) With `export`, the variable is passed to the child processes started afterwards; otherwise it stays in the current shell. :: The environment is inherited, shell variables are not.
+(-) `export` makes the variable read-only, so it cannot be changed by later assignments. :: That is `readonly`.
+(-) `export` saves the variable in a file in your home directory, so that it is available again at the next login. :: Startup files do that.
+(-) There is no difference: every variable is automatically passed to the child processes. :: A child only sees exported variables.
+
+@@q single | Child sees nothing
+After `FOO=local` (no export), what does `bash -c 'echo "[$FOO]"'` print?
+(+) `[]` :: The child shell does not inherit a variable that was not exported.
+(-) `[local]` :: That needs `export`.
+(-) `[FOO]` :: The value is empty, not the name.
+(-) An error about `FOO`. :: An unset variable expands to an empty string.
+
+@@q single | Temporary variable
+What does `BAR=tmp bash -c 'echo "[$BAR]"'` print, and what is `$BAR` afterwards in the current shell?
+(+) `[tmp]`; afterwards `$BAR` is unchanged (empty if it was unset). :: A prefix assignment lives only for that command's environment.
+(-) `[]`, and afterwards `BAR` stays set to `tmp` in the current shell. :: Reversed.
+(-) `[tmp]`, and afterwards `BAR` remains set to `tmp` in the current shell. :: The setting is temporary.
+(-) An error, because assignments cannot be written in front of a command. :: They can.
+
+@@q single | Changes in a subshell
+After `X=outer; (X=inner; echo $X); echo $X`, what is printed?
+(+) `inner`, then `outer` :: The parentheses create a subshell; its changes are lost when it ends.
+(-) `inner` then `inner` :: The parent is not affected.
+(-) `outer` then `outer` :: Inside the subshell the new value is used.
+(-) An error, since variables cannot be redefined. :: They can.
+
+@@q match | Environment commands
+Match each command with what it does.
+(=) `env` => Prints the exported variables :: The environment passed to children.
+(=) `printenv PATH` => Prints the value of one exported variable :: Exit status 1 if it is not set.
+(=) `set` => Prints all shell variables and functions :: Including non-exported ones.
+(=) `unset VAR` => Removes the variable :: It no longer exists.
+(=) `export -p` => Lists exported variables in a re-usable form :: As `declare -x` lines.
+(-) Deletes the file with the same name :: Variables and files are unrelated.
+
+@@q single | printenv versus echo
+You ran `FOO=x` (no export). What do `echo $FOO` and `printenv FOO` show?
+(+) `x` for the first; nothing for the second, because `printenv` shows only exported variables. :: A quick test for whether a variable is exported.
+(-) `x` for both commands, since `printenv` also reads the variables of the shell. :: `printenv` reads the environment, not shell variables.
+(-) Nothing for both commands, because a variable that has not been exported is not visible to either of them. :: The shell variable has a value.
+(-) An error for the first command, because the variable is not in the environment. :: The variable is defined.
+
+@@q single | Modifying PATH
+Which line adds `~/bin` to the end of the command search path for this session and its children?
+(+) `export PATH="$PATH:$HOME/bin"` :: Keeps the old value and appends the new directory.
+(-) `PATH=$HOME/bin` :: Replaces the whole search path, so `ls` is no longer found.
+(-) `export PATH=$PATH:~/bin &`, which puts the assignment in the background where it has no effect :: The `&` runs the assignment in a background subshell, which has no effect on your shell.
+(-) `cd ~/bin` :: Changes directory only.
+
+@@q multi | Breaking PATH
+After `PATH=/nonexistent`, which commands still work?
+(+) `/bin/ls` :: A word with a slash is used as a path; no `PATH` search is needed.
+(+) `cd /tmp` :: Builtins are part of the shell and never consult `PATH`.
+(-) `ls` :: It is searched in `PATH`, which no longer lists its directory.
+(-) `cat` :: Also an external program searched in `PATH`.
+(-) `grep root /etc/passwd` :: An external program again.
+
+@@q single | Order of search in PATH
+`PATH=/usr/local/bin:/usr/bin` and both directories contain `tool`. Which one runs?
+(+) The one in `/usr/local/bin`: directories are searched from left to right and the first match wins. :: That is how you can override a system program.
+(-) The one in `/usr/bin`, because bash searches the directories of `PATH` from right to left and stops at the first match. :: It comes later.
+(-) Both of them, one after the other, and the output of each is printed. :: Only the first match runs.
+(-) Neither, until bash asks which of the two programs you really want to run. :: It never asks.
+
+@@q fill | Delete a variable
+Remove the variable `FOO` from the shell: `{{unset}} FOO`
+(x) delete :: Not a command of bash.
+(x) rm :: That removes files, not variables.
+@@note
+After `unset FOO`, `printenv FOO` fails with status 1.
+
+@@group Wildcards, brace and tilde expansion
+@@q match | Wildcards
+Match each wildcard with what it matches in a file name.
+(=) `*` => Any string of characters, including none :: For example `*.dat`.
+(=) `?` => Exactly one character :: `a?.dat` matches `a1.dat` but not `a.dat`.
+(=) `[abc]` => One character from the set :: `[ab]*.dat`.
+(=) `[!a]` => One character that is not `a` :: `!` (or `^`) negates in globs.
+(=) `[0-3]` => One character in the range 0 to 3 :: `practica[0-3].c`.
+(-) One or more repetitions of the previous item :: That is a regex `+`, not a glob.
+
+@@q single | practica glob
+Which files does `practica[0-3].c` match, given `practica0.c`, `practica3.c`, `practica4.c`, `practica10.c`?
+(+) `practica0.c` and `practica3.c` :: One digit from 0 to 3 between `practica` and `.c`.
+(-) All four :: `4` is outside the range and `10` has two digits.
+(-) `practica0.c`, `practica3.c` and `practica10.c` :: `10` is two characters.
+(-) Only `practica0.c` :: `3` is inside the range.
+
+@@q single | Hidden files and star
+Does `ls *.dat` list a file named `.hid.dat`?
+(+) No: a leading dot must be matched explicitly, so `*` does not match hidden files. :: Use `.*.dat` or `ls -a`.
+(-) Yes, because `*` matches every possible name, hidden ones included. :: Not a leading dot.
+(-) Yes, but it prints a warning that the file is hidden, together with its name. :: It is not listed at all.
+(-) Only when the command is run by root, who is allowed to see hidden files. :: No user or privilege dependence.
+
+@@q single | No match
+In a directory with no `.nomatch` files, what does `echo *.nomatch` print by default?
+(+) `*.nomatch` :: A pattern with no match is left as it is (unless the `nullglob` option is set).
+(-) An empty line. :: That would need `shopt -s nullglob`.
+(-) An error message. :: `echo` prints whatever it gets.
+(-) All files of the directory. :: Nothing matches the pattern.
+
+@@q single | Quoted star
+What does `echo "*.dat"` print?
+(+) `*.dat` :: Quotes prevent wildcard expansion.
+(-) The list of `.dat` files. :: That is the unquoted form.
+(-) Nothing. :: The text is printed.
+(-) An error. :: Nothing is wrong.
+
+@@q single | Names with spaces
+A directory has `sp ace.dat`. Why might `rm *.dat` still work correctly even though the name has a space?
+(+) A glob yields one word per matching file, so the space does not split the name; the problem is with *unquoted variables*. :: The safe habit is `rm -- *.dat` and always quoting variables.
+(-) Because `rm` itself knows how to handle spaces in the names it is given. :: `rm` receives a separate argument for each name.
+(-) Because the shell adds quotes around every name in the output of the expansion, which keeps the spaces inside each name. :: Not the mechanism.
+(-) It does not work; the command fails on the file with a space in its name. :: Globs handle such names correctly.
+
+@@q match | Brace expansion
+Match each brace expression with its expansion.
+(=) `{a,b}.dat` => a.dat b.dat :: A comma list.
+(=) `{1..3}` => 1 2 3 :: A sequence.
+(=) `file{1,2}.txt` => file1.txt file2.txt :: Prefix and suffix are kept.
+(=) `{a..e}` => a b c d e :: Letters work too.
+(=) `x{,y}` => x xy :: An empty alternative is allowed.
+(-) every file that matches a or b :: Braces do not look at the file system.
+
+@@q single | Brace versus glob
+What is the difference between `echo {a,b}.dat` and `echo [ab].dat`?
+(+) The brace version always prints `a.dat b.dat`, whether the files exist or not; the glob prints only existing matches. :: Braces are plain text generation.
+(-) They are equivalent, and both print only the files that exist in the directory. :: They differ for missing files.
+(-) The glob always prints both names, even if one of the files does not exist. :: It prints only existing files.
+(-) The brace version needs the files to exist, since it looks them up in the directory before it prints their names. :: It does not look at the file system.
+
+@@q single | Handy brace use
+Which command creates a backup copy of `config.ini` as `config.ini.bak` with the least typing?
+(+) `cp config.ini{,.bak}` :: The braces expand to `config.ini config.ini.bak`.
+(-) `cp config.ini[.bak]` :: A bracket would match one character.
+(-) `cp config.ini*.bak` :: A glob for existing names.
+(-) `cp {config.ini}.bak` :: A single item in braces does not expand.
+
+@@q single | Tilde
+What does `echo ~root` print, and what does `echo "~root"` print?
+(+) `/root` and then `~root` :: The tilde is expanded only when unquoted.
+(-) `/root` both times. :: Quotes prevent tilde expansion.
+(-) `~root` both times. :: Unquoted it is expanded.
+(-) The current user's home in both cases. :: `~root` names root's home.
+
+@@group Command substitution and arithmetic
+@@q single | Command substitution
+What does `echo "Today: $(date +%F)"` do?
+(+) It runs `date +%F` first and puts its output into the string. :: The command inside `$(...)` is replaced by what it prints.
+(-) It prints the text `$(date +%F)` literally, since it is inside double quotes. :: That would be the result with single quotes.
+(-) It runs `echo` twice, once for the text and once for the date command. :: Once.
+(-) It stores the date in a variable called `Today` and prints nothing. :: No assignment.
+
+@@q single | Backticks
+How do `` `cmd` `` and `$(cmd)` differ?
+(+) They do the same, but `$(...)` nests more easily and is more readable. :: The backtick form is the older syntax.
+(-) Backticks run the command in the background, while `$(...)` waits for it to end. :: Not at all.
+(-) `$(...)` only works inside scripts, while backticks also work at the prompt. :: It works anywhere.
+(-) Backticks print the command instead of running it, which is how you debug. :: They run it.
+
+@@q single | Trailing newlines
+What happens to the newlines at the end of a command's output in `$(cmd)`?
+(+) They are removed from the end; newlines inside the output remain (when it is quoted). :: So `X=$(date)` does not keep a final newline.
+(-) All the newlines are preserved, including those at the very end of the output, so that the value always ends with a line break. :: Trailing ones are stripped.
+(-) All the newlines are removed, even those in the middle of the output. :: Only trailing ones, unless the expansion is unquoted and word splitting joins lines with spaces.
+(-) They are replaced by the two characters `\n`, so the text stays on one line. :: Literal backslash sequences are not created.
+
+@@q single | Lines in substitution
+`echo "$(echo a; echo b)" | wc -l` prints 2, while `echo $(echo a; echo b) | wc -l` prints 1. Why?
+(+) Unquoted, the result is split into words that `echo` joins with spaces; quoted, the newline is kept. :: Another reason to quote substitutions.
+(-) Because `wc` counts the quotes as if they were line separators in the text. :: It counts lines.
+(-) Because the second form does not run the first `echo`, so a line is missing. :: Both commands run.
+(-) Because quoting changes what the inner `echo` prints to the pipe, and not the way the outer command receives it. :: It changes how the outer command receives it.
+
+@@q single | Counting with substitution
+Which command stores the number of entries of the current directory in `N`?
+(+) `N=$(ls | wc -l)` :: The output of the pipeline is captured.
+(-) `N=ls | wc -l` :: That is a pipeline: the assignment runs in its own subshell and is lost, and `wc -l` just waits for keyboard input.
+(-) `ls | wc -l > N` :: Writes the number into a file called `N`.
+(-) `N="ls | wc -l"` :: Stores the text of the command.
+
+@@q match | Arithmetic tools
+Match each command with its result.
+(=) `echo $((7*3))` => 21 :: Arithmetic expansion.
+(=) `expr 5 + 3` => 8 :: Needs spaces between the words.
+(=) `echo "2 * 8" | bc` => 16 :: `bc` reads an expression from input.
+(=) `echo $((10/3))` => 3 :: Integer division truncates.
+(=) `echo "scale=2; 10/3" | bc` => 3.33 :: `bc` with decimals.
+(-) 5+3 :: Without a tool, `echo 5+3` prints the text.
+
+@@q single | Text, not numbers
+What does `A=25; B=4; echo $A*$B+5` print?
+(+) `25*4+5` :: Variables hold text, and `echo` just prints it: no arithmetic happens.
+(-) `105` :: That needs `$((A*B+5))`.
+(-) `100` :: No evaluation at all.
+(-) An error about `*`. :: The star stays literal when no file matches; nothing fails.
+
+@@q fill | Arithmetic expansion
+Compute `DATOA*DATOB+5` with the shell itself: `echo {{$((DATOA*DATOB+5)) ;; $(( DATOA * DATOB + 5 ))}}`
+(x) $(DATOA*DATOB+5) :: Single parentheses mean command substitution, which would try to run a command called `DATOA*DATOB+5`.
+(x) `DATOA*DATOB+5` :: Backticks also run a command.
+@@note
+Inside `$(( ))` variable names need no dollar sign.
+
+@@q fill | expr and the star
+Multiply in `expr`: `expr 25 {{\*}} 4`
+(x) * :: The shell expands the unquoted star into file names before `expr` runs.
+@@note
+`'*'` also works; `expr` needs the star escaped or quoted.
+
+@@q single | Octal trap
+What does `echo $((010))` print?
+(+) `8` :: A leading zero makes the number octal in arithmetic expansion.
+(-) `10` :: That would be decimal.
+(-) `2` :: Not binary.
+(-) `010` :: Arithmetic prints the value.
+
+@@q single | Integer division
+What does `echo $((-7/2))` print in bash?
+(+) `-3` :: Division truncates toward zero.
+(-) `-4` :: That would be rounding down (floor).
+(-) `-3.5` :: The shell has no floating point.
+(-) `3` :: The sign is kept.
+
+@@q single | Increment
+After `i=1`, what does `echo $((i++)) $i` print?
+(+) `1 2` :: Post-increment returns the old value, then increases `i`.
+(-) `2 2` :: That is pre-increment (`++i`).
+(-) `1 1` :: The variable is increased.
+(-) `2 1` :: Reversed.
+
+@@group Aliases
+@@q single | What an alias is
+What is an alias?
+(+) A shorthand that the shell substitutes for the first word of a command, such as `alias ll='ls -l'`. :: It is text replacement done early in the evaluation.
+(-) A second name for a file on the disk, which points to the same data as the first name, as a hard link does. :: That is a link.
+(-) A variable that can be exported to the child processes of the shell. :: Aliases are separate from variables.
+(-) A stored script that the shell runs automatically each time you log in. :: That is a startup file.
+
+@@q match | Alias commands
+Match each command with what it does.
+(=) `alias ll='ls -l'` => Defines the alias `ll` :: For this shell session.
+(=) `alias` => Lists the aliases defined :: No arguments.
+(=) `unalias ll` => Removes the alias `ll` :: It is forgotten.
+(=) `type ll` => Reports that `ll` is an alias for `ls -l` :: A way to check what a name means.
+(-) Makes the alias permanent :: That needs a line in `~/.bashrc`.
+
+@@q single | Keeping an alias
+You defined `alias rm='rm -i'` in a terminal. When will it be available again after you close the terminal?
+(+) Only if the definition is written to `~/.bashrc` (or another startup file). :: Aliases live in the shell's memory.
+(-) Always, because aliases are stored on the disk as soon as they are defined. :: They are not.
+(-) Only in the terminals that were already open when the alias was defined. :: New ones will not have it either.
+(-) Only for the root user, since aliases are stored in the system configuration. :: Not dependent on the user.
+
+@@q single | Bypassing an alias
+`rm` is aliased to `rm -i`. Which way runs the real `rm` without the alias for one command?
+(+) `\rm file` (or `command rm file`) :: A quoted or escaped first word is not alias-expanded.
+(-) `rm --no-alias file`, which tells `rm` to ignore any alias :: `rm` has no such option: aliases are expanded by the shell before `rm` even starts.
+(-) `unalias`, which runs the real command for a single line :: Needs a name, and removes the alias for the session.
+(-) `rm! file`, where the exclamation mark bypasses aliases :: Not valid.
+
+@@q single | Alias and scripts
+Why might an alias defined in your `~/.bashrc` not work inside a script?
+(+) Non-interactive shells running scripts do not expand aliases by default (and do not read `~/.bashrc`). :: Use functions or full commands in scripts.
+(-) Because aliases only work for the root user and scripts run as an ordinary user. :: No.
+(-) Because scripts cannot use commands such as `ls`, which are reserved for the interactive shell and not allowed in files. :: They can.
+(-) Because aliases are deleted as soon as `chmod +x` is run on the script file. :: Unrelated.
+
+@@group Mixed practice
+@@q fill | Print without expanding
+Print the text `$HOME` literally, with the dollar sign: `echo {{'$HOME' ;; \$HOME ;; "\$HOME"}}`
+(x) "$HOME" :: Double quotes still expand the variable.
+(x) $HOME :: It expands to your home directory.
+@@note
+Single quotes stop every expansion; a backslash stops one character.
+
+@@q fill | Arithmetic result
+Store the value of `A * B + 5` in `R` using arithmetic expansion: `R={{$((A*B+5)) ;; $(( A * B + 5 )) ;; $((A * B + 5))}}`
+(x) $(A*B+5) :: Single parentheses are command substitution.
+(x) A*B+5 :: That stores the text, no arithmetic.
+@@note
+Inside `$(( ))` variable names do not need a dollar sign.
+
+@@q fill | Default value
+Print the value of `NAME`, or the word `guest` when it is unset or empty: `echo {{"${NAME:-guest}" ;; ${NAME:-guest}}}`
+(x) ${NAME:+guest} :: That substitutes `guest` only when `NAME` is set, the opposite.
+(x) ${NAME=guest} :: Without the colon it tests only for unset, and it also assigns the default, which is not asked.
+@@note
+`${NAME:=guest}` also assigns the default to `NAME`.
+
+@@q sort | Which expansion applies
+@@buckets File-name expansion (glob) | Brace expansion
+Classify each expression.
+(File-name expansion (glob)) `*.txt` :: Matches existing files by pattern.
+(File-name expansion (glob)) `[ab]?.c` :: A bracket and a question mark look at real names.
+(File-name expansion (glob)) `data[0-9].csv` :: A range is matched against existing files.
+(Brace expansion) `{1..5}` :: Generates five words whether or not files exist.
+(Brace expansion) `file{A,B,C}.txt` :: Generates three names.
+(Brace expansion) `{a..e}` :: Generates letters.
+
+@@q multi | Quoting that stops word splitting
+Select the forms that pass `a  b` (two spaces) to `echo` as a single argument with the spaces kept.
+(+) `echo "a  b"` :: Double quotes keep it as one word.
+(+) `echo 'a  b'` :: Single quotes keep it as one word.
+(+) `echo a\ \ b` :: Escaped spaces are literal.
+(-) `echo a  b` :: Unquoted spaces split into two words and one space is printed.
+(-) `echo $(echo a  b)` :: Word splitting applies to the substitution result.
+
+@@q order | Evaluation of `echo $HOME/*.c`
+Put the steps the shell performs in order.
+(>) Split the line into the words `echo` and `$HOME/*.c` :: Words first.
+(>) Replace `$HOME` by its value :: Variables are substituted.
+(>) Expand `/home/alumno/*.c` into the matching file names :: Wildcards are expanded on the result.
+(>) Start `echo` with the final list of words :: The program only sees the result.
+
+@@q match | Variable commands
+Match each command with its effect.
+(=) `X=5` => Sets a shell variable, not passed to child processes :: Local to the shell.
+(=) `export X=5` => Sets `X` and passes it to child processes :: Environment variable.
+(=) `unset X` => Removes the variable :: It no longer exists.
+(=) `printenv X` => Prints `X` only if it is exported :: Environment only.
+(=) `echo "${#X}"` => Prints the number of characters in the value of `X` :: Length expansion.
+(-) Lists all files starting with X :: That is a glob like `ls X*`.

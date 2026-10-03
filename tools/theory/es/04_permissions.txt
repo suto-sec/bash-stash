@@ -1,0 +1,492 @@
+@@collection 04_permissions | Permisos, chmod, umask y propietarios
+@@about
+Leer y cambiar los bits de permiso de ficheros y directorios, modos octales y simbólicos, la máscara (umask), chown y chgrp, y los bits especiales.
+
+@@group Leer permisos
+@@q single | Tres clases de usuarios
+Todo fichero tiene permisos para tres clases de usuarios. ¿Cuáles son?
+(+) El propietario (usuario), el grupo del fichero y todos los demás (otros). :: El núcleo las comprueba en ese orden y usa la primera clase en la que encajas.
+(-) Root, los administradores y los invitados, cada uno con su propio juego de permisos. :: Los permisos de Unix no se organizan por esos roles.
+(-) Usuarios de lectura, usuarios de escritura y usuarios de ejecución, según lo que se les permita hacer. :: Lectura/escritura/ejecución son los *permisos*, no las clases de personas.
+(-) El creador del fichero, el último usuario que lo editó y el último usuario que lo leyó. :: No se registra nada parecido.
+
+@@q match | Leer una cadena de modo
+Empareja cada cadena de modo de `ls -l` con lo que te dice.
+(=) `-rwxr-xr--` => Un fichero regular: propietario rwx, grupo r-x, otros r-- :: El primer carácter es el tipo de fichero, y después van tres tríos.
+(=) `drwx------` => Un directorio que solo puede usar su propietario :: Grupo y otros no tienen ningún permiso.
+(=) `lrwxrwxrwx` => Un enlace simbólico :: El tipo `l`; los permisos que se muestran no se usan.
+(=) `-r--------` => Un fichero regular que solo puede leer su propietario :: Ni siquiera el propietario puede escribir en él.
+(-) Un fichero de dispositivo :: Los dispositivos empiezan por `b` o `c`.
+
+@@q single | A quién se comprueba
+Tu usuario es propietario de un fichero con modo `---rw-rw-` (el propietario no tiene nada; grupo y otros pueden leer y escribir), y perteneces a su grupo. ¿Puedes leerlo?
+(+) No: eres el propietario, así que solo cuentan los permisos (vacíos) del propietario, aunque los otros lo permitirían. :: El núcleo elige la primera clase que coincide; no las suma.
+(-) Sí, porque los permisos de grupo permiten leer, y la lectura por la clase de grupo se te aplica al ser miembro de él. :: Gana la clase de propietario, y esa deniega.
+(-) Sí, porque la clase `otros` permite leer y todo el mundo pertenece a esa clase. :: Otros solo se aplica si no eres ni el propietario ni miembro del grupo.
+(-) Sí, porque el propietario de un fichero siempre puede leerlo, diga lo que diga el modo. :: Ser el propietario no se salta el modo (solo root lo ignora).
+
+@@q single | Root y los permisos
+¿Cómo afectan los bits de permiso al usuario `root`?
+(+) Root puede leer y escribir cualquier cosa, y solo puede ejecutar un fichero si tiene activado algún bit de ejecución. :: Para ejecutar sigue haciendo falta una `x` en algún sitio.
+(-) Root está sujeto exactamente a las mismas comprobaciones de permisos que cualquier otro usuario. :: Root se salta las comprobaciones de lectura y escritura.
+(-) Root nunca puede leer un fichero con modo 000, porque no tiene ningún bit activado. :: Sí puede.
+(-) Root puede ejecutar cualquier fichero sea cual sea su modo, aunque nadie tenga el bit de ejecución en ese fichero. :: Un fichero sin ninguna `x` no se puede ejecutar, ni siquiera siendo root.
+
+@@q single | Significado de r, w, x en un fichero
+¿Qué permiten los tres permisos en un fichero normal?
+(+) `r` leer el contenido, `w` cambiar el contenido, `x` ejecutarlo como programa. :: Para un script, además hace falta lectura cuando se ejecuta a través de un intérprete.
+(-) `r` renombrar el fichero, `w` borrar el fichero, `x` copiar el fichero a otro sitio. :: Renombrar y borrar dependen del directorio, no de los bits del fichero.
+(-) `r` listar el fichero, `w` crear el fichero, `x` entrar en el fichero como en una carpeta. :: Eso describe los directorios.
+(-) `r` ejecutar el fichero, `w` leer el fichero, `x` escribir en el fichero. :: Las letras están mezcladas.
+
+@@q sort | Lo que permite cada permiso en un directorio
+@@buckets Lectura (r) | Escritura (w) | Ejecución (x)
+En un **directorio**, ¿qué permiso hace falta para cada acción?
+(Lectura (r)) Listar los nombres de sus entradas con `ls dir` :: Leer el directorio significa leer su lista de nombres.
+(Escritura (w)) Crear un fichero nuevo dentro :: Hay que escribir una entrada nueva en el directorio.
+(Escritura (w)) Borrar un fichero de dentro (junto con x) :: Quitar un nombre modifica el directorio.
+(Ejecución (x)) Hacer `cd` para entrar :: `x` significa «atravesar» o «buscar».
+(Ejecución (x)) Acceder a `dir/fichero` por su ruta :: Sin `x` no puedes atravesar el directorio hasta la entrada.
+(Lectura (r)) Ver los nombres, pero no los detalles, con `ls` cuando falta `x` :: La lectura solo da los nombres; los detalles necesitan `x`.
+
+@@q single | x en un directorio
+Un directorio tiene modo `r--` para ti (lectura, pero no ejecución). ¿Qué pasa con `ls dir` y `cat dir/fichero`?
+(+) `ls dir` muestra los nombres, pero `cat dir/fichero` falla con «Permission denied». :: Sin `x` puedes leer los nombres pero no llegar a ninguna entrada.
+(-) Los dos funcionan, porque el permiso de lectura de un directorio basta para todo. :: Sin `x` no puedes atravesarlo.
+(-) Los dos fallan, porque sin `x` el directorio no se puede usar en absoluto. :: Para listar los nombres solo hace falta `r`.
+(-) `cat dir/fichero` funciona porque conoces el nombre, mientras que `ls dir` falla. :: Es al revés.
+
+@@q single | Borrar depende del directorio
+Un fichero tuyo tiene modo `r--r--r--` y está en un directorio donde tienes `rwx`. ¿Puedes borrarlo con `rm`?
+(+) Sí: borrar quita un nombre del directorio, y para eso hace falta `w` en el directorio, no en el fichero. :: `rm` puede pedir confirmación con un fichero de solo lectura; `rm -f` no.
+(-) No, porque el propio fichero no se puede escribir, y borrar un fichero exige el mismo permiso de escritura sobre él que editarlo. :: Eso solo impide cambiar su contenido.
+(-) Sí, pero solo si usas `sudo`, porque `rm` rechaza los ficheros sin permiso de escritura. :: No hace falta.
+(-) No, porque un usuario normal nunca puede borrar ficheros de solo lectura. :: Es un mito muy extendido.
+
+@@q single | Crear necesita w y x
+Tienes `r-x` en un directorio. ¿Qué pasa con `touch dir/nuevo`?
+(+) Falla: crear una entrada necesita permiso de escritura en el directorio. :: `x` te deja llegar a él, pero no modificarlo.
+(-) Funciona, porque puedes entrar en el directorio y eso es todo lo que necesita `touch`. :: Entrar no basta.
+(-) Funciona, porque `touch` siempre se ejecuta con los privilegios del usuario root. :: Se ejecuta como tú.
+(-) Falla solo por el nombre del fichero, que `touch` no acepta. :: El nombre es irrelevante.
+
+@@q single | w sin x
+Un directorio tiene modo `-w-` para ti (escritura, pero no ejecución). ¿Puedes crear ficheros en él?
+(+) No: sin `x` no puedes operar con ninguna de sus entradas, así que tanto crear como borrar fallan. :: Para cambiar el contenido de un directorio, escritura y ejecución van juntas.
+(-) Sí: el permiso de escritura en el directorio es lo único que hace falta para crear entradas nuevas dentro; la ejecución es opcional. :: La ejecución hace falta para llegar al directorio.
+(-) Sí, pero solo ficheros vacíos, porque escribir su contenido necesitaría ejecución. :: El tamaño es irrelevante.
+(-) Solo puede root, ya que los usuarios normales no pueden escribir en un directorio así. :: Un usuario con `wx` sí puede.
+
+@@q multi | Lo necesario para ejecutar un script directamente
+Para ejecutar un script de shell con `./script.sh` (sin nombrar ningún intérprete), ¿qué necesitas?
+(+) Permiso de ejecución sobre el script. :: El núcleo se niega a ejecutar un fichero sin ningún bit `x`.
+(+) Permiso de lectura sobre el script. :: La shell tiene que poder leer el script para interpretarlo.
+(+) Una primera línea válida como `#!/bin/bash`. :: Le dice al núcleo qué intérprete lanzar.
+(-) Permiso de escritura sobre el script. :: No hace falta para ejecutarlo.
+(-) Que el propietario sea root. :: Vale cualquier propietario.
+
+@@q single | bash script.sh
+`script.sh` tiene modo `rw-r--r--` (sin bit de ejecución). ¿Qué mandato consigue ejecutarlo igualmente?
+(+) `bash script.sh` :: Bash abre el fichero como datos y lo interpreta; solo hace falta permiso de lectura.
+(-) `./script.sh` :: El núcleo se niega a ejecutarlo sin un bit `x`.
+(-) `script.sh` :: El mismo problema, y además no está en el `PATH`.
+(-) `exec script.sh` :: `exec` también necesita ejecutar el fichero.
+
+@@group Cambiar permisos con chmod
+@@q match | Dígitos octales
+Empareja cada dígito octal con los permisos que representa.
+(=) `7` => rwx :: 4 + 2 + 1.
+(=) `6` => rw- :: 4 + 2.
+(=) `5` => r-x :: 4 + 1.
+(=) `4` => r-- :: Solo lectura.
+(=) `0` => --- :: Ningún permiso.
+(-) 8 :: No existe un octavo valor; los dígitos octales van del 0 al 7.
+
+@@q match | De simbólico a octal
+Empareja cada cadena de modo con su número octal.
+(=) `rwxr-xr-x` => 755 :: Típico de programas y directorios.
+(=) `rw-r--r--` => 644 :: Típico de ficheros normales.
+(=) `rwx------` => 700 :: Privado para el propietario.
+(=) `rw-rw----` => 660 :: Propietario y grupo pueden leer y escribir.
+(=) `r--r--r--` => 444 :: Solo lectura para todos.
+(-) 888 :: No es válido en octal.
+
+@@q fill | De números a símbolos
+El modo `640` significa: propietario `{{rw-}}`, grupo `{{r--}}`, otros `{{---}}`.
+(x) rwx :: Eso sería 7 para el propietario, no 6.
+@@note
+6 = 4+2 (rw-), 4 = r--, 0 = nada.
+
+@@q fill | De símbolos a números
+¿Qué modo octal corresponde a `rwxr-x---`? `chmod {{750}} fichero`
+(x) 755 :: 755 daría también r-x a los otros.
+(x) 570 :: Los dígitos están en el orden equivocado: primero el propietario, luego el grupo y luego los otros.
+@@note
+rwx = 7, r-x = 5, --- = 0, siempre en el orden usuario, grupo, otros.
+
+@@q fill | Añadir ejecución al propietario
+Da permiso de ejecución solo al propietario de `run.sh`: `chmod {{u+x}} run.sh`
+(x) +x :: Sin clase, `+x` da ejecución a todos (menos los bits de la máscara), no solo al propietario.
+(x) o+x :: Eso da ejecución a los otros, no al propietario.
+@@note
+`u` = usuario (propietario), `g` = grupo, `o` = otros, `a` = todos.
+
+@@q fill | Quitar escritura a los otros
+Haz que los otros no puedan escribir en `informe.txt`, sin tocar el resto: `chmod {{o-w}} informe.txt`
+(x) o=w :: `=` asigna exactamente, así que los otros acabarían *solo* con escritura.
+(x) w-o :: La clase va primero: quién, luego el operador y luego el permiso.
+@@note
+`+` añade, `-` quita, `=` asigna exactamente.
+
+@@q single | Los tres operadores
+¿Qué diferencia hay entre `chmod g+w f`, `chmod g-w f` y `chmod g=w f`?
+(+) Añadir escritura al grupo, quitar escritura al grupo, y dejar al grupo exactamente con escritura y nada más. :: `=` sustituye el trío entero.
+(-) Los tres dan permiso de escritura al grupo, y solo se diferencian en qué hacen con los otros permisos que ya tiene el grupo. :: Solo el primero lo hace sumando.
+(-) `=` deja en paz los demás bits del grupo y solo añade los que nombras. :: Eso es lo que hacen `+` y `-`.
+(-) `+` cambia al propietario, `-` cambia al grupo e `=` cambia a los otros. :: La letra de clase elige a quién; el operador no.
+
+@@q single | chmod a-wx
+¿Qué hace `chmod a-wx fichero`?
+(+) Quita escritura y ejecución al propietario, al grupo y a los otros. :: `a` significa las tres clases.
+(-) Quita todos los permisos, incluida la lectura, al propietario, al grupo y a los otros. :: La lectura no se toca.
+(-) Deja exactamente escritura y ejecución para todos y quita la lectura a todos. :: Eso sería `a=wx`.
+(-) Añade escritura y ejecución a todos, sin cambiar el permiso de lectura. :: El menos quita.
+
+@@q single | Cambios combinados
+¿Cuál es el resultado de `chmod u-x,go+w n` sobre un fichero con modo `rwxr-----`?
+(+) `rw-rw--w-` :: El propietario pierde la `x`; grupo y otros ganan la `w`.
+(-) `rwxrw--w-` :: La `x` del propietario se quitó.
+(-) `rw-r-----` :: La parte `go+w` añade escritura al grupo y a los otros.
+(-) `rwxrwxrwx` :: Aquí nada concede ejecución.
+
+@@q single | X mayúscula
+¿Qué tiene de especial `chmod -R a+X dir`?
+(+) Solo añade ejecución a los directorios y a los ficheros que ya tienen un bit de ejecución para alguien. :: Viene bien para abrir un árbol a la lectura sin volver ejecutables los ficheros normales.
+(-) Añade ejecución a todos los ficheros y directorios que cuelgan de `dir`, sin excepción. :: Eso es `a+x`.
+(-) Quita el bit de ejecución de todos los directorios que cuelgan de `dir`, pero lo mantiene en los ficheros normales que ya lo tenían. :: Con los directorios hace lo contrario.
+(-) Es lo mismo que `chmod 777`: da todos los permisos a todo el mundo. :: Nada parecido.
+
+@@q single | Cambios recursivos
+¿Qué hace `chmod -R 755 dir`?
+(+) Pone el modo 755 a `dir` y a todo lo que contiene, ficheros incluidos. :: Suele ser excesivo: los ficheros normales reciben un bit de ejecución.
+(-) Pone el modo 755 solo al directorio `dir` y deja en paz los ficheros de dentro. :: `-R` baja por el árbol.
+(-) Pone el modo 755 solo a los directorios que cuelgan de `dir` y deja los ficheros sin cambiar. :: Los ficheros también cambian.
+(-) Pone también a 755 los permisos del directorio padre de `dir`. :: Solo `dir` y su contenido.
+
+@@q multi | Numérico frente a simbólico
+Marca las parejas que dan el mismo resultado sobre un fichero que ahora mismo no tiene ningún permiso (`---------`).
+(+) `chmod 644 f` y `chmod u=rw,go=r f` :: Los dos producen `rw-r--r--`.
+(+) `chmod 700 f` y `chmod u=rwx f` :: Los dos dan todo al propietario y nada a nadie más.
+(+) `chmod 000 f` y `chmod a= f` :: Los dos dejan el fichero sin ningún permiso.
+(-) `chmod 755 f` y `chmod u+rwx f` :: El primero además concede r-x al grupo y a los otros.
+(-) `chmod 600 f` y `chmod 6 f` :: Un solo dígito fija únicamente la clase *otros* (modo 006).
+
+@@q order | Dar al equipo acceso de escritura
+Quieres que tu grupo pueda editar `plan.txt`, que ahora es `rw-r-----`, tuyo y con otro grupo. Ordena los pasos.
+(>) Mirar el propietario y el grupo actuales con `ls -l plan.txt` :: Comprueba siempre primero el estado actual.
+(>) Cambiar el grupo con `chgrp equipo plan.txt` :: El grupo tiene que ser el correcto antes de que importen sus permisos.
+(>) Añadir escritura al grupo con `chmod g+w plan.txt` :: Ahora el grupo correcto recibe el permiso correcto.
+(>) Comprobarlo con `ls -l plan.txt` :: Confirma que el modo final es `rw-rw----`.
+
+@@q single | Solo el propietario puede hacer chmod
+¿Quién puede cambiar los permisos de un fichero?
+(+) Su propietario y root. :: Un usuario con permiso de escritura sobre el fichero que no sea su propietario no puede hacerle `chmod`.
+(-) Cualquiera que tenga permiso de escritura sobre el fichero. :: La escritura cambia el contenido, no el modo.
+(-) Cualquiera del grupo del fichero. :: El grupo da acceso, no control.
+(-) Solo root. :: El propietario también puede cambiarlo.
+
+@@group La máscara (umask)
+@@q single | Qué hace umask
+¿Qué hace la `umask`?
+(+) Define qué bits de permiso se quitan a los ficheros y directorios recién creados. :: La aplica el proceso que los crea, antes de que llegues a ver el fichero nuevo.
+(-) Cambia los permisos de todos los ficheros que ya existen en el directorio actual. :: No toca los ficheros existentes.
+(-) Fija el propietario y el grupo de los ficheros que crees a partir de ahora. :: La propiedad viene del usuario que los crea.
+(-) Oculta ficheros a `ls` salvo que se use la opción de ficheros ocultos. :: No tiene nada que ver con los permisos.
+
+@@q fill | Permisos por defecto
+Con `umask 022`, un directorio nuevo recibe el modo `{{755}}` y un fichero regular nuevo recibe `{{644}}`.
+(x) 777 :: Los directorios parten de 777; la máscara les quita 022.
+(x) 666 :: Ese es el punto de partida de los ficheros, antes de aplicar la máscara.
+@@note
+Los directorios parten de 777 y los ficheros de 666 (los ficheros nunca reciben ejecución automáticamente); después se quitan los bits de la máscara.
+
+@@q fill | Ficheros privados
+Para que los ficheros nuevos solo puedas leerlos y escribirlos tú (y los directorios nuevos solo sean accesibles para ti), pon `umask {{077}}`
+(x) 700 :: Eso *quitaría* todos los permisos al propietario y no daría nada al resto, porque la máscara indica lo que se quita.
+(x) 022 :: Eso sigue dejando leer al grupo y a los otros.
+@@note
+077 quita todos los bits al grupo y a los otros.
+
+@@q match | Resultados de máscaras habituales
+Empareja cada máscara con el modo que recibe un **fichero** nuevo.
+(=) `022` => 644 :: El valor por defecto habitual.
+(=) `002` => 664 :: El grupo también puede escribir: habitual con grupos privados.
+(=) `077` => 600 :: Privado para el propietario.
+(=) `027` => 640 :: El grupo lee y los otros no tienen nada.
+(-) 755 :: Es el resultado de un directorio con `022`; los ficheros normales no reciben el bit de ejecución.
+
+@@q single | Cálculo con una máscara rara
+Tras `umask 0174`, ¿qué modo recibe un **directorio** nuevo?
+(+) `603` (`rw-----wx`) :: 777 quitando, clase a clase, los bits 1, 7 y 4: queda 6, 0, 3.
+(-) `174` :: La máscara dice qué se quita, no qué se pone.
+(-) `777` :: La máscara lo cambia.
+(-) `602` :: Ese sería el resultado para un fichero regular (666 menos 174).
+
+@@q single | Misma máscara, fichero nuevo
+Tras `umask 0174`, ¿qué modo recibe un **fichero regular** nuevo?
+(+) `602` (`rw-----w-`) :: 666 quitando, clase a clase, los bits de la máscara: queda 6, 0, 2.
+(-) `603` :: Ese es el resultado del directorio; los ficheros nunca parten con ejecución.
+(-) `777` :: No es el valor por defecto de los ficheros.
+(-) `174` :: Esa es la propia máscara.
+
+@@q single | La máscara no es una resta
+`umask 033` con un fichero nuevo: 666 menos 033 da 633 restando. ¿Por qué el resultado real es 644 (`rw-r--r--`)?
+(+) La máscara apaga bits en vez de restar: 033 apaga `w` y `x` para grupo y otros, así que `rw-` solo pierde la `w` y queda en `r--`. :: Es una operación de bits, no aritmética. Para ficheros queda 6, 4, 4, y restar haría pensar, erróneamente, en 633.
+(-) Porque en realidad restar es el método correcto, pero la shell imprime un valor distinto del que guarda de verdad. :: La regla real es la lógica de bits.
+(-) Porque los ficheros regulares siempre reciben el modo 644, sea cual sea la máscara. :: Depende de la máscara.
+(-) Porque la máscara solo se aplica a los directorios y nunca a los ficheros regulares. :: También se aplica a los ficheros.
+
+@@q single | La máscara es de cada proceso
+Ejecutas `umask 077` en un terminal. ¿Qué afirmación es cierta?
+(+) Solo afecta a esa shell y a los programas que lance a partir de ahora; los demás terminales conservan la suya. :: Para que dure, pon la línea en `~/.bashrc` o en `~/.profile`.
+(-) Cambia la máscara de todo el sistema para cada usuario que inicie sesión a partir de ahora. :: Es un ajuste de cada proceso que heredan los hijos.
+(-) Se guarda en disco, así que sobrevive a un reinicio y se vuelve a aplicar en todas las sesiones futuras de todos los usuarios. :: No, salvo que la pongas en un fichero de arranque.
+(-) Cambia de golpe el modo de todos los ficheros que ya existen en tu directorio personal. :: Solo afecta a los ficheros nuevos.
+
+@@q single | Mostrar la forma simbólica
+¿Qué mandato imprime la máscara actual en forma simbólica (mostrando los permisos que se *conservan*)?
+(+) `umask -S` :: Muestra algo como `u=rwx,g=rx,o=rx`.
+(-) `umask -l` :: No es una opción válida para eso.
+(-) `umask` a secas :: Imprime la forma octal.
+(-) `chmod -S` :: `chmod` no informa de la máscara.
+
+@@group Propiedad: chown y chgrp
+@@q single | Cambiar el propietario
+¿Qué mandato le da el fichero `informe.txt` al usuario `luke`?
+(+) `chown luke informe.txt` :: Normalmente solo root puede cambiar el propietario de un fichero.
+(-) `chmod luke informe.txt` :: `chmod` cambia bits de permiso, no la propiedad.
+(-) `chgrp luke informe.txt` :: Eso cambiaría el *grupo* a un grupo llamado luke.
+(-) `passwd luke informe.txt` :: `passwd` cambia contraseñas.
+
+@@q fill | Propietario y grupo a la vez
+Cambia el propietario a `luke` y el grupo a `devs` con un solo mandato: `chown luke{{:}}devs informe.txt`
+(x) ; :: Un punto y coma terminaría el mandato en la shell.
+(x) , :: No es un separador de `chown`.
+@@note
+La forma histórica `luke.devs` también funciona en la mayoría de sistemas, pero `:` es la portable.
+
+@@q single | Permiso para chgrp
+¿Quién puede cambiar el grupo de un fichero con `chgrp`?
+(+) Root, o el propietario del fichero si también es miembro del grupo nuevo. :: Los demás usuarios no pueden asignar un fichero a grupos a los que no pertenecen.
+(-) Cualquier usuario, ya que el grupo de un fichero no se considera un atributo delicado. :: Eso permitiría colar ficheros en otros equipos.
+(-) Solo los miembros del grupo antiguo del fichero, en quienes confía el propietario. :: Lo que importa es el propietario.
+(-) Nadie: el grupo de un fichero queda fijado al crearlo. :: Se puede cambiar.
+
+@@q multi | Propiedad recursiva
+Marca los mandatos que cambian el propietario de `proyecto` y de todo lo que cuelga de él.
+(+) `chown -R luke proyecto` :: Recorre todo el árbol.
+(+) `chown -R luke:devs proyecto` :: Cambia propietario y grupo de forma recursiva.
+(-) `chown luke proyecto` :: Solo cambia el directorio de arriba.
+(-) `chmod -R luke proyecto` :: `chmod` no acepta un nombre de usuario.
+
+@@q single | De quién es un fichero nuevo
+¿Quién es el propietario de un fichero creado con `touch f` por el usuario `alumno`?
+(+) `alumno` :: Un fichero nuevo pertenece al usuario (y al grupo principal) del proceso que lo crea.
+(-) `root` :: Solo si lo creó root.
+(-) El propietario del directorio. :: El propietario del directorio es irrelevante, salvo que un bit setgid le dé el grupo.
+(-) `nobody` :: Es una cuenta especial para servicios sin privilegios.
+
+@@q single | Averiguar el propietario
+¿Qué mandato muestra en una línea el propietario y el grupo de un fichero, junto con sus permisos, su contador de enlaces y su tamaño?
+(+) `ls -l fichero` :: La tercera y la cuarta columna son el propietario y el grupo.
+(-) `ls -a fichero` :: Solo oculta o muestra los ficheros que empiezan por punto.
+(-) `cat fichero` :: Imprime el contenido.
+(-) `umask` :: Indica la máscara por defecto.
+
+@@group Bits especiales
+@@q sort | Bits de permiso especiales
+@@buckets setuid | setgid | sticky
+Asigna cada descripción al bit especial que le corresponde.
+(setuid) Un programa se ejecuta con los privilegios del propietario del fichero, no del usuario que lo lanza :: Lo usa `passwd` para que los usuarios normales puedan actualizar el fichero de contraseñas.
+(setuid) Aparece como una `s` en la posición de ejecución del propietario :: `-rwsr-xr-x`.
+(setgid) Los ficheros nuevos creados en un directorio heredan el grupo del directorio :: Muy útil para carpetas de proyecto compartidas.
+(setgid) Un programa se ejecuta con el grupo del fichero en lugar del grupo del usuario que lo lanza :: La versión de grupo del setuid.
+(sticky) En un directorio compartido, cada usuario solo puede borrar sus propios ficheros :: Por eso `/tmp` se puede compartir sin peligro.
+(sticky) Aparece como una `t` en la posición de ejecución de los otros :: `drwxrwxrwt`.
+
+@@q single | El directorio /tmp
+¿Por qué `/tmp` tiene modo `drwxrwxrwt` y no simplemente `drwxrwxrwx`?
+(+) El bit sticky (`t`) impide que los usuarios borren o renombren ficheros de otros usuarios, aunque todos puedan escribir ahí. :: Sin él, cualquiera podría borrar los ficheros temporales de cualquier otro.
+(-) La `t` significa que el directorio es temporal y que se borra entero, con todo su contenido, en cada apagado. :: La limpieza de `/tmp` la hacen otros mecanismos.
+(-) La `t` significa que el contenido del directorio se guarda cifrado en el disco. :: No tiene relación.
+(-) La `t` significa que solo el propietario del directorio puede listar los ficheros de dentro. :: Para listar sigue haciendo falta `r`.
+
+@@q single | El riesgo del setuid de root
+¿Por qué los programas setuid de root son un objetivo favorito de los atacantes?
+(+) Un fallo en uno de ellos puede hacer que ejecute acciones del atacante con privilegios de root. :: Por eso deben ser pocos y estar bien auditados.
+(-) Siempre los puede leer todo el mundo, lo que filtra los secretos del administrador. :: Que se puedan leer no es el problema.
+(-) Ocupan mucho espacio en disco en comparación con los programas normales. :: El tamaño es irrelevante.
+(-) Ralentizan todo el sistema, porque el núcleo tiene que comprobar cada una de sus llamadas. :: El rendimiento no es el problema.
+
+@@q fill | Buscar ficheros setuid
+Busca en el sistema los ficheros que tienen activado el bit setuid: `find / -type f -perm {{-4000 ;; /4000 ;; -u+s ;; /u+s}} 2>/dev/null`
+(x) 4000 :: Sin signo encuentra los ficheros cuyo modo es *exactamente* 4000, cosa que casi nunca ocurre.
+@@note
+`-perm -MODO` significa «están activados todos estos bits»; `-perm /MODO` significa «al menos uno».
+
+@@group Predice el resultado
+@@q single | ¿Permiso denegado o no?
+`ls -ld secreto` muestra `d--x------ 2 alumno alumno`, y tú eres `alumno`. ¿Qué mandato funciona?
+(+) `cat secreto/nota.txt` (si el propio `nota.txt` se puede leer) :: La `x` del directorio te deja llegar a un fichero cuyo nombre conoces.
+(-) `ls secreto`, que solo necesita leer los nombres de las entradas :: Para listar hace falta `r`.
+(-) `touch secreto/nuevo`, que añade una entrada nueva al directorio :: Para crear hace falta `w`.
+(-) `rm secreto/nota.txt`, que quita un nombre del directorio :: Para borrar hace falta `w` en el directorio.
+
+@@q single | Efecto sobre otros usuarios
+Se ejecuta `chmod 600 diario.txt` sobre un fichero tuyo con grupo `users`. ¿Qué puede hacer con él un usuario del grupo `users`?
+(+) Nada: grupo y otros no tienen ningún permiso. :: Solo el propietario puede leer y escribir.
+(-) Leerlo, porque los miembros del mismo grupo que el propietario pueden leerlo a través de la clase de grupo. :: El dígito del grupo es 0.
+(-) Escribir en él. :: El grupo no tiene escritura.
+(-) Ver su contenido pero no cambiarlo. :: Tampoco tiene lectura.
+
+@@q single | Lo que hace chmod +x
+Sobre un fichero recién creado con modo `rw-r--r--`, ¿qué da `chmod +x fichero` con `umask 022`?
+(+) `rwxr-xr-x` :: Sin letra de clase, `+x` se aplica a toda clase que la máscara no prohíba; `022` solo prohíbe la escritura, así que las tres reciben `x`.
+(-) `rwxr--r--` :: Eso sería `u+x`.
+(-) `rw-r--r-x` :: Eso sería `o+x`.
+(-) `rw-r--r--` :: `+x` sí hizo algo.
+
+@@q single | Protegerse de accidentes
+Quieres proteger `final.txt` contra cambios accidentales hechos por ti mismo. ¿Qué modo lo consigue?
+(+) `chmod 444 final.txt` (o `u-w`): sin permiso de escritura no se puede editar ni sobrescribir con una redirección. :: Root todavía puede escribir.
+(-) `chmod 000 final.txt`, y seguir leyéndolo cada vez que necesites ver el contenido. :: Con 000 tampoco puedes leerlo.
+(-) `chown root final.txt`, para que el fichero sea del administrador y ya no puedas sobrescribirlo por accidente. :: Un usuario normal no puede regalar ficheros, y de todos modos te quedarías sin acceso.
+(-) `umask 000`, que hace inmunes a los cambios todos los ficheros que crees a partir de ahora. :: Afecta a los ficheros nuevos, no a este.
+
+@@group Casos prácticos
+@@q match | Elige el modo
+Empareja cada situación con el modo más sensato.
+(=) Una clave SSH privada que solo puedes leer tú => 600 :: SSH rechaza las claves que pueden leer otros usuarios.
+(=) Un script que todos pueden ejecutar pero solo tú puedes editar => 755 :: Propietario rwx, los demás r-x.
+(=) Un documento que compartes con tu grupo en solo lectura => 640 :: Propietario rw, grupo r, otros nada.
+(=) Un directorio donde tu equipo crea ficheros en común (dejando aparte setgid) => 770 :: Propietario y grupo tienen acceso total; los otros ninguno.
+(-) 777 para todo :: Los ficheros que todo el mundo puede escribir casi nunca son la respuesta correcta.
+
+@@q single | 777 es tentador
+Un script «no funciona» y una respuesta de un foro dice que `chmod 777` lo arregla. ¿Por qué es un mal hábito?
+(+) Deja que cualquier usuario modifique el fichero, lo que es un riesgo de seguridad; normalmente solo faltaba el bit de ejecución del propietario. :: Da lo mínimo: `chmod u+x` o 755.
+(-) Porque 777 no es un modo válido para ficheros normales, solo para directorios. :: Es válido, solo que imprudente.
+(-) Porque quita el bit de ejecución del fichero en lugar de añadirlo. :: Lo añade.
+(-) Porque cambia el propietario del fichero al último usuario que lo modificó, lo que deja confusa la propiedad del script. :: La propiedad no se toca.
+
+@@q single | Directorio privado
+Quieres un directorio `notas` que nadie más pueda ni siquiera listar. ¿Qué mandato lo consigue?
+(+) `chmod 700 notas` :: Solo el propietario conserva `r`, `w` y `x`.
+(-) `chmod 644 notas` :: Sin `x` ni siquiera tú puedes entrar, y los otros pueden listar sus nombres.
+(-) `chmod a+r notas` :: Eso deja que todo el mundo lo lea.
+(-) `umask 700` :: Cambiaría los valores por defecto de los ficheros nuevos, de una forma rara, pero dejaría `notas` como está.
+
+@@q single | Carpeta compartida de grupo
+Varias personas del grupo `equipo` tienen que editar ficheros en `/srv/compartido`. ¿Qué combinación es la configuración habitual?
+(+) El directorio es del grupo `equipo`, con modo `2770` (setgid más rwx para propietario y grupo). :: Los ficheros nuevos heredan el grupo `equipo` y todos los miembros pueden editarlos.
+(-) Modo `1777` sin ningún grupo en particular, para que pueda escribir ahí cualquiera que tenga cuenta en la máquina. :: Ese es el estilo de `/tmp`: todos pueden escribir y cada propietario solo borra lo suyo.
+(-) Modo `444` para todos, para que nadie pueda cambiar los ficheros por error. :: Entonces nadie podría crear ficheros.
+(-) Modo `000` para el directorio, y usar `sudo` en cada acceso. :: Impide trabajar al equipo.
+
+@@q single | Leer la salida de stat
+`stat -c '%a %U:%G' informe` imprime `640 luke:devs`. ¿Quién puede modificar `informe`?
+(+) Solo `luke` :: El propietario tiene `6` (rw-); el grupo tiene `4` (r--); los otros no tienen nada.
+(-) Todos los de `devs` :: Solo pueden leerlo.
+(-) Todo el mundo :: Los otros no tienen ningún permiso.
+(-) Nadie :: El propietario puede escribir.
+
+@@q single | Permiso del fichero de destino
+Eres la usuaria `sally` y ejecutas `cat /home/luke/notas.txt`. El fichero es `-rw-r--r--` y es de luke, pero el directorio `/home/luke` es `drwx------`. ¿Qué pasa?
+(+) «Permission denied»: no puedes atravesar `/home/luke`, porque no tienes `x` en él. :: Todos los directorios de la ruta necesitan `x` para ti.
+(-) Se imprime el fichero, porque el propio fichero lo puede leer todo el mundo en la máquina. :: El directorio te bloquea antes.
+(-) Se imprime el fichero, pero sin formato, ya que no puedes leer el directorio. :: No se imprime nada a medias.
+(-) Te pide la contraseña de luke antes de mostrar el contenido del fichero. :: Unix no pide eso.
+
+@@q order | Abrir un árbol a la lectura
+Tienes que dejar que el grupo lea todo el árbol `site/` (ficheros y directorios), sin volver ejecutables los ficheros normales. Ordena los pasos.
+(>) Comprobar el estado actual con `ls -lR site | head` :: Conoce lo que vas a cambiar.
+(>) Ejecutar `chmod -R g+rX site` :: La `X` mayúscula solo añade ejecución a los directorios (y a los ficheros que ya eran ejecutables).
+(>) Comprobar con `ls -l site` que los ficheros quedan `rw-r-----` o similar y los directorios `rwxr-x---` :: Revisa el resultado.
+(>) Probar como miembro del grupo leyendo un fichero profundo :: Demuestra que se pueden atravesar todos los directorios de la ruta.
+
+@@q multi | Lo que necesita escritura en el directorio
+Marca las operaciones que requieren permiso de escritura en el **directorio** que contiene el fichero.
+(+) Crear un fichero nuevo en él :: Añade una entrada.
+(+) Borrar un fichero existente :: Quita una entrada.
+(+) Renombrar un fichero dentro de él :: Cambia una entrada.
+(-) Editar el contenido de un fichero existente que se puede escribir :: Necesita escritura en el propio fichero.
+(-) Leer el contenido de un fichero :: Necesita lectura en el fichero (y `x` en el directorio).
+
+@@q single | chmod sobre un enlace simbólico
+¿Qué pasa al ejecutar `chmod 600 simb`, donde `simb` es un enlace simbólico a `f`?
+(+) Cambia el modo del destino `f`; el modo del propio enlace nunca se usa. :: `chmod` sigue los enlaces simbólicos por defecto.
+(-) El propio enlace pasa a ser `rw-------`, y el destino `f` conserva su modo anterior. :: Los bits del enlace son fijos y se ignoran.
+(-) Falla, porque los permisos de un enlace simbólico no se pueden cambiar en absoluto. :: Funciona sobre el destino.
+(-) Cambian tanto el enlace como el destino, al mismo modo nuevo. :: Solo el destino.
+
+@@q single | Qué usuario soy para el fichero
+`ls -l` muestra `-rw-rw-r-- 1 luke devs`. Eres `sally` y no perteneces a `devs`. ¿Qué acceso tienes?
+(+) Solo lectura, por la clase `otros`. :: `r--` para los otros.
+(-) Lectura y escritura, por la clase de grupo. :: No estás en el grupo.
+(-) Ninguno; solo el propietario puede tocar el fichero. :: Los otros pueden leer.
+(-) Acceso total, porque el nombre del fichero parece público. :: Los nombres no significan nada.
+
+@@group Práctica variada
+@@q fill | Símbolos para 640
+Escribe el modo 640 en forma simbólica para `chmod`: `chmod {{u=rw,g=r,o=}} fichero`
+(x) u=rwx,g=r,o=r :: Eso es 744: el propietario recibe ejecución y los otros pueden leer.
+(x) a=r :: Eso es 444: nadie puede escribir.
+@@note
+`u=rw,g=r,o=` fija cada clase exactamente; dejar `o=` vacío quita todos los permisos a los otros.
+
+@@q fill | Octal de un directorio privado
+Un directorio que solo su propietario puede listar, atravesar y modificar tiene el modo octal `{{700}}`.
+(x) 600 :: Sin `x`, el propietario ni siquiera podría entrar en el directorio.
+(x) 755 :: Eso deja que el grupo y los otros lo listen y entren.
+@@note
+Los directorios necesitan `x` para entrar, así que 700 es el directorio privado y 600 el fichero privado.
+
+@@q fill | Modo de fichero por defecto
+Con `umask 027`, un fichero regular nuevo recibe el modo `{{640}}` y un directorio nuevo recibe `{{750}}`.
+(x) 750 :: Ese es el modo del directorio; los ficheros no reciben bits de ejecución.
+(x) 600 :: Eso sería con `umask 077`.
+@@note
+Ficheros: 666 menos los bits de la máscara; directorios: 777 menos los bits de la máscara.
+
+@@q sort | ¿Ficheros o directorios?
+@@buckets Necesario en un fichero | Necesario en un directorio
+¿Qué permiso se está usando en cada caso?
+(Necesario en un fichero) `r` para imprimir su contenido con `cat` :: Leer los datos.
+(Necesario en un fichero) `w` para añadir una línea con `>>` :: Cambiar los datos.
+(Necesario en un fichero) `x` para lanzarlo como programa :: Ejecutar el propio fichero.
+(Necesario en un directorio) `x` para entrar con `cd` :: Atravesarlo.
+(Necesario en un directorio) `w` para crear un fichero dentro :: Cambiar la lista de nombres.
+(Necesario en un directorio) `r` para ver los nombres con `ls` :: Leer la lista de nombres.
+
+@@q multi | Mandatos que cambian permisos o propietarios
+Marca los mandatos que pueden cambiar quién puede acceder a `informe.txt`.
+(+) `chmod 600 informe.txt` :: Cambia los bits de permiso.
+(+) `chown luke informe.txt` :: Cambia el propietario (como root).
+(+) `chgrp devs informe.txt` :: Cambia el grupo.
+(-) `touch informe.txt` :: Solo actualiza las fechas (o crea el fichero).
+(-) `umask 077` :: Afecta a los ficheros que se creen después, no a este.
+
+@@q order | Preparar un script para ejecutarlo
+Ordena los pasos para dejar listo para ejecutar, con seguridad, un script descargado.
+(>) Leerlo con `less script.sh` :: Nunca ejecutes código que no hayas mirado.
+(>) Comprobar los permisos con `ls -l script.sh` :: Mira si ya tiene un bit de ejecución y de quién es.
+(>) Añadir permiso de ejecución solo para ti con `chmod u+x script.sh` :: Lo mínimo necesario.
+(>) Ejecutarlo con `./script.sh` :: Solo ahora se ejecuta.
+
+@@q match | Leer el modo
+Empareja cada cadena de modo de `ls -l` con la descripción más precisa.
+(=) `-rw-r-----` => Un fichero: el propietario lee y escribe, el grupo lee y los otros no tienen nada :: 640.
+(=) `drwxr-xr-x` => Un directorio en el que todos pueden entrar y listar, y solo el propietario puede modificar :: 755.
+(=) `-rwsr-xr-x` => Un ejecutable con el bit setuid activado :: La `s` sustituye a la `x` del propietario.
+(=) `drwxrwxrwt` => Un directorio que todos pueden escribir, con el bit sticky :: Como `/tmp`.
+(-) Un enlace simbólico a un fichero :: Los enlaces empiezan por `l`.

@@ -1,0 +1,479 @@
+@@collection 08_expansion | Expansión, entrecomillado y variables
+@@about
+Cómo convierte bash la línea escrita en las palabras que recibe un mandato: entrecomillado, escapes, variables y el entorno, comodines, expansión de llaves y de la tilde, sustitución de mandato, aritmética y alias.
+
+@@group Cómo se evalúa una línea
+@@q order | Etapas de la evaluación de una línea de mandatos
+Ordena las etapas que aplica la shell a una línea de mandatos.
+(>) Dividir la línea en palabras (tokens) :: Todo lo demás trabaja sobre palabras.
+(>) Expandir los alias :: La primera palabra puede sustituirse por un alias.
+(>) Sustituir variables y mandatos (`$VAR`, `$(...)`) :: Los valores se colocan antes de mirar los patrones de nombres de fichero.
+(>) Expandir comodines como `*.txt` a nombres de fichero :: Se hace sobre el resultado de la etapa anterior.
+(>) Preparar las redirecciones y ejecutar el mandato :: Por fin arranca el programa con la lista final de palabras.
+
+@@q single | Quién expande el asterisco
+En `ls *.txt`, ¿quién sustituye `*.txt` por una lista de nombres de fichero?
+(+) La shell, antes de que arranque `ls`; `ls` solo ve los nombres resultantes. :: Los programas no expanden sus propios comodines.
+(-) El propio `ls`, que entiende el asterisco y busca los ficheros que coinciden. :: Recibe los argumentos ya expandidos.
+(-) El núcleo, cuando `ls` le pide abrir un fichero con un asterisco en el nombre. :: El núcleo no sabe nada de patrones.
+(-) El emulador de terminal, antes de pasarle la línea a la shell. :: Solo muestra texto.
+
+@@q single | Ver las palabras finales
+¿Qué mandato muestra exactamente los argumentos que recibe un mandato tras todas las expansiones, uno por línea?
+(+) `printf '%s\n' palabras...` (por ejemplo `printf '%s\n' *.txt`) :: Imprime cada palabra expandida en su propia línea.
+(-) `echo -n palabras...`, que imprime las palabras sin el salto de línea final :: Solo suprime el salto de línea final.
+(-) `type palabras...`, que describe cómo se ejecutaría cada una de las palabras :: Describe mandatos, no argumentos.
+(-) `alias palabras...`, que lista las abreviaturas definidas :: Lista atajos.
+
+@@q single | La variable antes que el comodín
+`Y='*.c'; echo $Y` imprime los nombres de los ficheros `.c` del directorio, mientras que `echo "$Y"` imprime `*.c`. ¿Por qué?
+(+) Sin comillas, `$Y` se expande y luego pasa por la división en palabras y los comodines; entre comillas dobles, no. :: Por eso las variables se suelen entrecomillar.
+(-) Porque `Y` no se ha exportado, así que `echo` no puede ver que contiene un patrón. :: Exportar tiene que ver con los procesos hijos.
+(-) Porque las comillas dobles borran el asterisco del valor de la variable antes de que se use en el mandato. :: Lo conservan como carácter literal.
+(-) Porque `echo` solo expande los asteriscos que recibe cuando van entre comillas simples. :: `echo` no expande nada.
+
+@@group Entrecomillado y escapes
+@@q match | Mecanismos de entrecomillado
+Empareja cada forma con su comportamiento.
+(=) `'texto'` (comillas simples) => Todo es literal, sin ninguna expansión :: Incluso `$` y la barra invertida son caracteres normales.
+(=) `"texto"` (comillas dobles) => Se expanden variables, `$(...)` y aritmética; no los comodines ni la división en palabras :: Un término medio.
+(=) `\c` (barra invertida) => El carácter siguiente se toma literalmente :: Útil para un único carácter especial.
+(=) `$'a\tb'` => Una cadena donde se interpretan escapes como `\t` :: Una cadena de bash al estilo ANSI-C.
+(-) Todo se expande dos veces :: Ninguna forma de entrecomillado lo hace.
+
+@@q single | Simples frente a dobles
+Con `X=mundo`, ¿qué imprime `echo 'hola $X'`?
+(+) `hola $X` :: Las comillas simples impiden toda expansión.
+(-) `hola mundo` :: Ese es el resultado con comillas dobles.
+(-) `hola` :: El texto se conserva.
+(-) Un error porque `$X` no está definida. :: No hay expansión, así que no hay error.
+
+@@q single | Comillas dobles
+Con `X=mundo`, ¿qué imprime `echo "hola $X"`?
+(+) `hola mundo` :: Las comillas dobles siguen permitiendo la expansión de variables.
+(-) `hola $X` :: Eso es con comillas simples.
+(-) `"hola mundo"` :: La shell quita las comillas antes de que `echo` vea la palabra.
+(-) `hola X` :: El signo de dólar lo consume la expansión.
+
+@@q single | Las comillas unen texto
+¿Qué imprime `echo '$X'"$X"` cuando `X=mundo`?
+(+) `$Xmundo` :: Dos trozos entrecomillados seguidos forman una sola palabra: el primero literal y el segundo expandido.
+(-) `$X mundo` :: No hay ningún espacio entre los trozos.
+(-) `mundomundo` :: El primer trozo no se expande.
+(-) `$X$X` :: El segundo trozo sí se expande.
+
+@@q single | Espacios y comillas
+¿Cuántos argumentos pasa `echo a   b` a `echo`, comparado con `echo "a   b"`?
+(+) Dos, y después uno. :: Los blancos sin comillas separan palabras; una cadena entrecomillada es una sola palabra y conserva sus espacios.
+(-) Uno y uno. :: La versión sin comillas se divide.
+(-) Tres y uno. :: Los blancos no son argumentos.
+(-) Dos y dos. :: Las comillas impiden la división.
+
+@@q single | Un apóstrofo en el texto
+¿Qué mandato imprime correctamente `it's`?
+(+) `echo "it's"` :: Una comilla simple dentro de comillas dobles es un carácter normal.
+(-) `echo 'it's'` :: La comilla que va tras `it` cierra la cadena; el resto queda abierto.
+(-) `echo it's` :: Deja una comilla sin cerrar.
+(-) `echo 'it\'s'` :: Dentro de comillas simples la barra invertida no escapa nada.
+
+@@q single | Barra invertida entre comillas
+¿Qué imprimen `echo 'a\nb'` y `echo "a\nb"` en bash (con el `echo` por defecto)?
+(+) Los dos imprimen `a\nb` literalmente en una línea. :: El `echo` de bash no interpreta `\n` salvo que se use `-e`.
+(-) Los dos imprimen `a` y `b` en dos líneas. :: Solo con `echo -e` o `$'...'`.
+(-) El primero imprime dos líneas y el segundo una. :: Ninguna forma de entrecomillado convierte `\n` en un salto de línea.
+(-) Los dos no imprimen nada. :: Hay texto que imprimir.
+
+@@q fill | Interpretar los escapes
+Haz que `echo` imprima las dos palabras en líneas distintas: `echo {{-e}} 'uno\ndos'`
+(x) -n :: Solo quita el salto de línea final.
+(x) -E :: *Desactiva* la interpretación de escapes, que ya es el comportamiento por defecto.
+@@note
+`printf 'uno\ndos\n'` es la alternativa portable.
+
+@@q single | El signo de dólar como texto
+¿Qué mandato imprime literalmente el texto `$HOME`?
+(+) `echo '$HOME'` o `echo \$HOME` :: Las comillas simples o una barra invertida impiden la expansión.
+(-) `echo "$HOME"`, porque las comillas dobles dejan el texto tal cual :: Se expande a tu directorio personal.
+(-) `echo $HOME`, ya que `echo` imprime el texto que recibe :: También se expande.
+(-) `echo ${HOME}`, porque las llaves detienen la expansión :: Se sigue expandiendo.
+
+@@q single | Barra invertida y salto de línea
+¿Qué efecto tiene una barra invertida al final de una línea en un script?
+(+) Elimina el salto de línea, así que el mandato continúa en la línea siguiente. :: Útil para líneas de mandatos largas.
+(-) Termina el mandato en ese punto y ejecuta lo que se haya escrito hasta ahí. :: Justo lo contrario.
+(-) Comenta la línea siguiente, de modo que la shell ignora su contenido. :: Los comentarios empiezan por `#`.
+(-) Imprime una barra invertida literal y luego empieza un mandato nuevo en la línea siguiente. :: Entre comillas o no, la pareja barra invertida + salto de línea se elimina (salvo dentro de comillas simples).
+
+@@q multi | Caracteres especiales para la shell
+Marca los caracteres que tienen un significado especial para la shell cuando no van entrecomillados.
+(+) `*` :: Comodín.
+(+) `$` :: Inicia una expansión.
+(+) `;` :: Separador de mandatos.
+(+) `|` :: Tubería.
+(-) `a` :: Una letra normal.
+(-) `_` :: Un carácter normal.
+
+@@group Variables y el entorno
+@@q fill | Asignar una variable
+Da a la variable `NOMBRE` el valor `Ana`: `NOMBRE{{=}}Ana`
+(x) := :: La asignación al estilo Pascal no existe en bash.
+(x) " = " :: Con espacios alrededor del igual, bash cree que `NOMBRE` es un mandato.
+@@note
+En una asignación de la shell no hay espacios alrededor del `=`.
+
+@@q single | Espacios en una asignación
+¿Qué hace `C = 3` en bash?
+(+) Intenta ejecutar un mandato llamado `C` con los argumentos `=` y `3`, y falla con «command not found». :: Las asignaciones no pueden llevar espacios alrededor del `=`.
+(-) Da a la variable `C` el valor 3, ya que la shell simplemente ignora los espacios escritos alrededor del signo `=`. :: Solo `C=3` lo hace.
+(-) Compara `C` con 3 y pone el valor de retorno a 0 cuando son iguales. :: Las comparaciones usan `[ ]` o `[[ ]]`.
+(-) Imprime el número 3 en pantalla y deja `C` sin definir. :: No se imprime nada.
+
+@@q single | Usar una variable
+¿Qué mandato imprime el valor de `NOMBRE`?
+(+) `echo $NOMBRE` o `echo ${NOMBRE}` :: El signo de dólar pide el valor.
+(-) `echo NOMBRE`, ya que `echo` busca una variable cuando se le da su nombre :: Imprime la palabra NOMBRE.
+(-) `echo &NOMBRE`, donde el ampersand pide el valor de la variable :: Un ampersand lanzaría un trabajo en segundo plano.
+(-) `echo %NOMBRE%`, donde los signos de porcentaje rodean el nombre de la variable :: Eso es el `cmd.exe` de Windows.
+
+@@q single | Llaves
+¿Por qué escribirías `${NOMBRE}_backup` en lugar de `$NOMBRE_backup`?
+(+) Sin llaves, la shell lee el nombre como `NOMBRE_backup` (letras, dígitos y guiones bajos), que probablemente no está definida. :: Las llaves marcan dónde termina el nombre.
+(-) Las llaves exportan la variable, de modo que su valor pasa a todos los mandatos y programas que lances después. :: Exportar es otra cosa.
+(-) Las llaves hacen que la expansión ocurra antes, por delante de las demás expansiones de la línea. :: El momento es el mismo.
+(-) No hay ninguna diferencia: las dos formas siempre dan exactamente el mismo resultado. :: La diferencia es justo el límite del nombre.
+
+@@q match | Variables que siempre tienes
+Empareja cada variable predefinida con su contenido.
+(=) `HOME` => Tu directorio personal :: Adonde va `cd` sin argumentos.
+(=) `PATH` => Directorios separados por dos puntos donde se buscan los mandatos :: Se usa con los mandatos externos.
+(=) `PWD` => El directorio actual :: Lo actualiza `cd`.
+(=) `USER` => Tu nombre de usuario :: Normalmente lo fija el proceso de inicio de sesión.
+(=) `HOSTNAME` => El nombre de la máquina :: Tal como aparece en los prompts.
+(-) La lista de tus trabajos :: Los trabajos los muestra `jobs`.
+
+@@q single | Exportar
+¿Qué diferencia hay entre `FOO=1` y `export FOO=1`?
+(+) Con `export`, la variable pasa a los procesos hijos que se lancen después; si no, se queda en la shell actual. :: El entorno se hereda; las variables de la shell no.
+(-) `export` hace la variable de solo lectura, así que no se puede cambiar con asignaciones posteriores. :: Eso es `readonly`.
+(-) `export` guarda la variable en un fichero de tu directorio personal, para que vuelva a estar disponible en el siguiente inicio de sesión. :: Eso lo hacen los ficheros de arranque.
+(-) No hay diferencia: todas las variables pasan automáticamente a los procesos hijos. :: Un hijo solo ve las variables exportadas.
+
+@@q single | El hijo no ve nada
+Tras `FOO=local` (sin export), ¿qué imprime `bash -c 'echo "[$FOO]"'`?
+(+) `[]` :: La shell hija no hereda una variable que no se ha exportado.
+(-) `[local]` :: Para eso hace falta `export`.
+(-) `[FOO]` :: El valor está vacío; no sale el nombre.
+(-) Un error sobre `FOO`. :: Una variable sin definir se expande a una cadena vacía.
+
+@@q single | Variable temporal
+¿Qué imprime `BAR=tmp bash -c 'echo "[$BAR]"'`, y cuánto vale después `$BAR` en la shell actual?
+(+) `[tmp]`; después `$BAR` no ha cambiado (vacía si no estaba definida). :: Una asignación delante de un mandato solo vive en el entorno de ese mandato.
+(-) `[]`, y después `BAR` queda con el valor `tmp` en la shell actual. :: Es al revés.
+(-) `[tmp]`, y después `BAR` sigue valiendo `tmp` en la shell actual. :: La asignación es temporal.
+(-) Un error, porque no se pueden escribir asignaciones delante de un mandato. :: Sí se puede.
+
+@@q single | Cambios en una subshell
+Tras `X=fuera; (X=dentro; echo $X); echo $X`, ¿qué se imprime?
+(+) `dentro` y después `fuera` :: Los paréntesis crean una subshell; sus cambios se pierden cuando termina.
+(-) `dentro` y después `dentro` :: El padre no se ve afectado.
+(-) `fuera` y después `fuera` :: Dentro de la subshell se usa el valor nuevo.
+(-) Un error, ya que las variables no se pueden redefinir. :: Sí se pueden.
+
+@@q match | Mandatos del entorno
+Empareja cada mandato con lo que hace.
+(=) `env` => Imprime las variables exportadas :: El entorno que se pasa a los hijos.
+(=) `printenv PATH` => Imprime el valor de una variable exportada :: Valor de retorno 1 si no está definida.
+(=) `set` => Imprime todas las variables y funciones de la shell :: Incluidas las no exportadas.
+(=) `unset VAR` => Elimina la variable :: Deja de existir.
+(=) `export -p` => Lista las variables exportadas en una forma reutilizable :: Como líneas `declare -x`.
+(-) Borra el fichero con el mismo nombre :: Las variables y los ficheros no tienen relación.
+
+@@q single | printenv frente a echo
+Has ejecutado `FOO=x` (sin export). ¿Qué muestran `echo $FOO` y `printenv FOO`?
+(+) `x` el primero; nada el segundo, porque `printenv` solo muestra variables exportadas. :: Una prueba rápida para saber si una variable está exportada.
+(-) `x` los dos, ya que `printenv` también lee las variables de la shell. :: `printenv` lee el entorno, no las variables de la shell.
+(-) Nada ninguno de los dos, porque una variable que no se ha exportado no la ve ninguno. :: La variable de la shell tiene valor.
+(-) Un error el primero, porque la variable no está en el entorno. :: La variable está definida.
+
+@@q single | Modificar PATH
+¿Qué línea añade `~/bin` al final de la ruta de búsqueda de mandatos para esta sesión y sus hijos?
+(+) `export PATH="$PATH:$HOME/bin"` :: Conserva el valor anterior y añade el directorio nuevo al final.
+(-) `PATH=$HOME/bin` :: Sustituye toda la ruta de búsqueda, así que `ls` deja de encontrarse.
+(-) `export PATH=$PATH:~/bin &`, que pone la asignación en segundo plano, donde no tiene efecto :: El `&` ejecuta la asignación en una subshell en segundo plano, que no afecta a tu shell.
+(-) `cd ~/bin` :: Solo cambia de directorio.
+
+@@q multi | Romper el PATH
+Tras `PATH=/noexiste`, ¿qué mandatos siguen funcionando?
+(+) `/bin/ls` :: Una palabra con barra se usa como ruta; no hace falta buscar en `PATH`.
+(+) `cd /tmp` :: Los mandatos internos forman parte de la shell y nunca consultan `PATH`.
+(-) `ls` :: Se busca en `PATH`, que ya no incluye su directorio.
+(-) `cat` :: También es un programa externo que se busca en `PATH`.
+(-) `grep root /etc/passwd` :: Otra vez un programa externo.
+
+@@q single | Orden de búsqueda en PATH
+`PATH=/usr/local/bin:/usr/bin` y los dos directorios contienen `tool`. ¿Cuál se ejecuta?
+(+) El de `/usr/local/bin`: los directorios se recorren de izquierda a derecha y gana la primera coincidencia. :: Así puedes sustituir un programa del sistema.
+(-) El de `/usr/bin`, porque bash recorre los directorios de `PATH` de derecha a izquierda y para en la primera coincidencia. :: Va después.
+(-) Los dos, uno detrás de otro, y se imprime la salida de cada uno. :: Solo se ejecuta la primera coincidencia.
+(-) Ninguno, hasta que bash pregunte cuál de los dos quieres ejecutar de verdad. :: Nunca pregunta.
+
+@@q fill | Borrar una variable
+Elimina la variable `FOO` de la shell: `{{unset}} FOO`
+(x) delete :: No es un mandato de bash.
+(x) rm :: Borra ficheros, no variables.
+@@note
+Tras `unset FOO`, `printenv FOO` falla con valor de retorno 1.
+
+@@group Comodines, expansión de llaves y de la tilde
+@@q match | Comodines
+Empareja cada comodín con aquello con lo que coincide en un nombre de fichero.
+(=) `*` => Cualquier secuencia de caracteres, incluida la vacía :: Por ejemplo `*.dat`.
+(=) `?` => Exactamente un carácter :: `a?.dat` coincide con `a1.dat` pero no con `a.dat`.
+(=) `[abc]` => Un carácter del conjunto :: `[ab]*.dat`.
+(=) `[!a]` => Un carácter que no es `a` :: `!` (o `^`) niega en los comodines.
+(=) `[0-3]` => Un carácter del rango 0 a 3 :: `practica[0-3].c`.
+(-) Una o más repeticiones del elemento anterior :: Eso es el `+` de las expresiones regulares, no un comodín.
+
+@@q single | El comodín de practica
+¿Con qué ficheros coincide `practica[0-3].c`, si existen `practica0.c`, `practica3.c`, `practica4.c` y `practica10.c`?
+(+) Con `practica0.c` y `practica3.c` :: Un dígito del 0 al 3 entre `practica` y `.c`.
+(-) Con los cuatro :: `4` está fuera del rango y `10` tiene dos dígitos.
+(-) Con `practica0.c`, `practica3.c` y `practica10.c` :: `10` son dos caracteres.
+(-) Solo con `practica0.c` :: `3` está dentro del rango.
+
+@@q single | Ficheros ocultos y el asterisco
+¿Lista `ls *.dat` un fichero llamado `.oculto.dat`?
+(+) No: un punto inicial tiene que ponerse explícitamente, así que `*` no coincide con los ficheros ocultos. :: Usa `.*.dat` o `ls -a`.
+(-) Sí, porque `*` coincide con cualquier nombre posible, ocultos incluidos. :: No con un punto inicial.
+(-) Sí, pero imprime un aviso de que el fichero está oculto, junto con su nombre. :: No aparece en absoluto.
+(-) Solo cuando el mandato lo ejecuta root, que tiene permiso para ver los ficheros ocultos. :: No depende del usuario ni de privilegios.
+
+@@q single | Sin coincidencias
+En un directorio sin ficheros `.nomatch`, ¿qué imprime por defecto `echo *.nomatch`?
+(+) `*.nomatch` :: Un patrón sin coincidencias se deja tal cual (salvo que esté activada la opción `nullglob`).
+(-) Una línea vacía. :: Para eso haría falta `shopt -s nullglob`.
+(-) Un mensaje de error. :: `echo` imprime lo que recibe.
+(-) Todos los ficheros del directorio. :: Nada coincide con el patrón.
+
+@@q single | Un asterisco entre comillas
+¿Qué imprime `echo "*.dat"`?
+(+) `*.dat` :: Las comillas impiden la expansión de comodines.
+(-) La lista de ficheros `.dat`. :: Esa es la forma sin comillas.
+(-) Nada. :: Se imprime el texto.
+(-) Un error. :: No hay nada mal.
+
+@@q single | Nombres con espacios
+Un directorio tiene el fichero `con espacio.dat`. ¿Por qué `rm *.dat` puede funcionar bien aunque el nombre tenga un espacio?
+(+) Un comodín produce una palabra por cada fichero que coincide, así que el espacio no parte el nombre; el problema está en las *variables sin comillas*. :: El hábito seguro es `rm -- *.dat` y entrecomillar siempre las variables.
+(-) Porque el propio `rm` sabe manejar los espacios de los nombres que recibe. :: `rm` recibe un argumento distinto por cada nombre.
+(-) Porque la shell añade comillas alrededor de cada nombre en la salida de la expansión, lo que conserva los espacios dentro de cada nombre. :: No es ese el mecanismo.
+(-) No funciona; el mandato falla con el fichero que tiene un espacio en el nombre. :: Los comodines manejan bien esos nombres.
+
+@@q match | Expansión de llaves
+Empareja cada expresión con llaves con su expansión.
+(=) `{a,b}.dat` => a.dat b.dat :: Una lista separada por comas.
+(=) `{1..3}` => 1 2 3 :: Una secuencia.
+(=) `fichero{1,2}.txt` => fichero1.txt fichero2.txt :: Se conservan el prefijo y el sufijo.
+(=) `{a..e}` => a b c d e :: También funciona con letras.
+(=) `x{,y}` => x xy :: Se permite una alternativa vacía.
+(-) cada fichero que coincide con a o con b :: Las llaves no miran el sistema de ficheros.
+
+@@q single | Llaves frente a comodín
+¿Qué diferencia hay entre `echo {a,b}.dat` y `echo [ab].dat`?
+(+) La versión con llaves siempre imprime `a.dat b.dat`, existan o no los ficheros; el comodín solo imprime las coincidencias que existen. :: Las llaves solo generan texto.
+(-) Son equivalentes, y los dos solo imprimen los ficheros que existen en el directorio. :: Se diferencian cuando faltan ficheros.
+(-) El comodín siempre imprime los dos nombres, aunque uno de los ficheros no exista. :: Solo imprime los ficheros que existen.
+(-) La versión con llaves necesita que existan los ficheros, ya que los busca en el directorio antes de imprimir sus nombres. :: No mira el sistema de ficheros.
+
+@@q single | Un uso práctico de las llaves
+¿Qué mandato hace una copia de seguridad de `config.ini` llamada `config.ini.bak` escribiendo lo mínimo?
+(+) `cp config.ini{,.bak}` :: Las llaves se expanden a `config.ini config.ini.bak`.
+(-) `cp config.ini[.bak]` :: Un corchete coincidiría con un solo carácter.
+(-) `cp config.ini*.bak` :: Un comodín para nombres que ya existen.
+(-) `cp {config.ini}.bak` :: Un único elemento entre llaves no se expande.
+
+@@q single | La tilde
+¿Qué imprime `echo ~root`, y qué imprime `echo "~root"`?
+(+) `/root` y después `~root` :: La tilde solo se expande cuando no va entre comillas.
+(-) `/root` las dos veces. :: Las comillas impiden la expansión de la tilde.
+(-) `~root` las dos veces. :: Sin comillas sí se expande.
+(-) El directorio personal del usuario actual en los dos casos. :: `~root` nombra el directorio personal de root.
+
+@@group Sustitución de mandato y aritmética
+@@q single | Sustitución de mandato
+¿Qué hace `echo "Hoy: $(date +%F)"`?
+(+) Ejecuta primero `date +%F` y mete su salida en la cadena. :: El mandato de dentro de `$(...)` se sustituye por lo que imprime.
+(-) Imprime literalmente el texto `$(date +%F)`, ya que está dentro de comillas dobles. :: Ese sería el resultado con comillas simples.
+(-) Ejecuta `echo` dos veces, una para el texto y otra para el mandato date. :: Una vez.
+(-) Guarda la fecha en una variable llamada `Hoy` y no imprime nada. :: No hay ninguna asignación.
+
+@@q single | Comillas invertidas
+¿En qué se diferencian `` `cmd` `` y `$(cmd)`?
+(+) Hacen lo mismo, pero `$(...)` se anida más fácilmente y se lee mejor. :: La forma con comillas invertidas es la sintaxis antigua.
+(-) Las comillas invertidas ejecutan el mandato en segundo plano, mientras que `$(...)` espera a que termine. :: En absoluto.
+(-) `$(...)` solo funciona dentro de scripts, mientras que las comillas invertidas también funcionan en el prompt. :: Funciona en cualquier sitio.
+(-) Las comillas invertidas imprimen el mandato en vez de ejecutarlo, que es como se depura. :: Lo ejecutan.
+
+@@q single | Saltos de línea finales
+¿Qué pasa con los saltos de línea del final de la salida de un mandato en `$(cmd)`?
+(+) Se eliminan los del final; los saltos de línea de dentro de la salida se mantienen (si va entre comillas). :: Así `X=$(date)` no conserva un salto de línea final.
+(-) Se conservan todos los saltos de línea, también los del final de la salida, de modo que el valor siempre termina con un salto de línea. :: Los del final se quitan.
+(-) Se eliminan todos los saltos de línea, incluso los del medio de la salida. :: Solo los del final, salvo que la expansión vaya sin comillas y la división en palabras una las líneas con espacios.
+(-) Se sustituyen por los dos caracteres `\n`, así que el texto queda en una sola línea. :: No se crean secuencias literales con barra invertida.
+
+@@q single | Líneas en una sustitución
+`echo "$(echo a; echo b)" | wc -l` imprime 2, mientras que `echo $(echo a; echo b) | wc -l` imprime 1. ¿Por qué?
+(+) Sin comillas, el resultado se divide en palabras que `echo` une con espacios; con comillas, el salto de línea se conserva. :: Otra razón para entrecomillar las sustituciones.
+(-) Porque `wc` cuenta las comillas como si fueran separadores de línea del texto. :: Cuenta líneas.
+(-) Porque la segunda forma no ejecuta el primer `echo`, así que falta una línea. :: Se ejecutan los dos mandatos.
+(-) Porque las comillas cambian lo que el `echo` de dentro imprime en la tubería, y no la forma en que lo recibe el mandato de fuera. :: Cambian cómo lo recibe el mandato de fuera.
+
+@@q single | Contar con una sustitución
+¿Qué mandato guarda en `N` el número de entradas del directorio actual?
+(+) `N=$(ls | wc -l)` :: Se captura la salida de la tubería.
+(-) `N=ls | wc -l` :: Es una tubería: la asignación se ejecuta en su propia subshell y se pierde, y `wc -l` se queda esperando datos del teclado.
+(-) `ls | wc -l > N` :: Escribe el número en un fichero llamado `N`.
+(-) `N="ls | wc -l"` :: Guarda el texto del mandato.
+
+@@q match | Herramientas aritméticas
+Empareja cada mandato con su resultado.
+(=) `echo $((7*3))` => 21 :: Expansión aritmética.
+(=) `expr 5 + 3` => 8 :: Necesita espacios entre las palabras.
+(=) `echo "2 * 8" | bc` => 16 :: `bc` lee una expresión de su entrada.
+(=) `echo $((10/3))` => 3 :: La división entera trunca.
+(=) `echo "scale=2; 10/3" | bc` => 3.33 :: `bc` con decimales.
+(-) 5+3 :: Sin ninguna herramienta, `echo 5+3` imprime el texto.
+
+@@q single | Texto, no números
+¿Qué imprime `A=25; B=4; echo $A*$B+5`?
+(+) `25*4+5` :: Las variables contienen texto, y `echo` lo imprime tal cual: no se hace ninguna operación.
+(-) `105` :: Para eso hace falta `$((A*B+5))`.
+(-) `100` :: No se evalúa nada.
+(-) Un error por el `*`. :: El asterisco queda literal si no coincide ningún fichero; nada falla.
+
+@@q fill | Expansión aritmética
+Calcula `DATOA*DATOB+5` con la propia shell: `echo {{$((DATOA*DATOB+5)) ;; $(( DATOA * DATOB + 5 ))}}`
+(x) $(DATOA*DATOB+5) :: Los paréntesis simples son sustitución de mandato, que intentaría ejecutar un mandato llamado `DATOA*DATOB+5`.
+(x) `DATOA*DATOB+5` :: Las comillas invertidas también ejecutan un mandato.
+@@note
+Dentro de `$(( ))` los nombres de variable no necesitan el signo de dólar.
+
+@@q fill | expr y el asterisco
+Multiplica con `expr`: `expr 25 {{\*}} 4`
+(x) * :: La shell expande el asterisco sin comillas a nombres de fichero antes de que se ejecute `expr`.
+@@note
+`'*'` también funciona; `expr` necesita el asterisco escapado o entre comillas.
+
+@@q single | La trampa del octal
+¿Qué imprime `echo $((010))`?
+(+) `8` :: En la expansión aritmética, un cero inicial hace que el número sea octal.
+(-) `10` :: Eso sería decimal.
+(-) `2` :: No es binario.
+(-) `010` :: La aritmética imprime el valor.
+
+@@q single | División entera
+¿Qué imprime `echo $((-7/2))` en bash?
+(+) `-3` :: La división trunca hacia cero.
+(-) `-4` :: Eso sería redondear hacia abajo (suelo).
+(-) `-3.5` :: La shell no tiene coma flotante.
+(-) `3` :: El signo se conserva.
+
+@@q single | Incremento
+Tras `i=1`, ¿qué imprime `echo $((i++)) $i`?
+(+) `1 2` :: El postincremento devuelve el valor antiguo y después incrementa `i`.
+(-) `2 2` :: Eso es el preincremento (`++i`).
+(-) `1 1` :: La variable sí se incrementa.
+(-) `2 1` :: Es al revés.
+
+@@group Alias
+@@q single | Qué es un alias
+¿Qué es un alias?
+(+) Una abreviatura que la shell pone en lugar de la primera palabra de un mandato, como `alias ll='ls -l'`. :: Es una sustitución de texto que se hace al principio de la evaluación.
+(-) Un segundo nombre para un fichero del disco, que apunta a los mismos datos que el primero, como hace un enlace físico. :: Eso es un enlace.
+(-) Una variable que se puede exportar a los procesos hijos de la shell. :: Los alias son algo distinto de las variables.
+(-) Un script guardado que la shell ejecuta automáticamente cada vez que inicias sesión. :: Eso es un fichero de arranque.
+
+@@q match | Mandatos de alias
+Empareja cada mandato con lo que hace.
+(=) `alias ll='ls -l'` => Define el alias `ll` :: Para esta sesión de shell.
+(=) `alias` => Lista los alias definidos :: Sin argumentos.
+(=) `unalias ll` => Elimina el alias `ll` :: Se olvida.
+(=) `type ll` => Indica que `ll` es un alias de `ls -l` :: Una forma de comprobar qué significa un nombre.
+(-) Hace permanente el alias :: Para eso hace falta una línea en `~/.bashrc`.
+
+@@q single | Conservar un alias
+Has definido `alias rm='rm -i'` en un terminal. ¿Cuándo volverá a estar disponible después de cerrar el terminal?
+(+) Solo si la definición se escribe en `~/.bashrc` (o en otro fichero de arranque). :: Los alias viven en la memoria de la shell.
+(-) Siempre, porque los alias se guardan en el disco en cuanto se definen. :: No se guardan.
+(-) Solo en los terminales que ya estaban abiertos cuando se definió el alias. :: Los nuevos tampoco lo tendrán.
+(-) Solo para el usuario root, ya que los alias se guardan en la configuración del sistema. :: No depende del usuario.
+
+@@q single | Saltarse un alias
+`rm` tiene el alias `rm -i`. ¿Qué forma ejecuta el `rm` real sin el alias para un solo mandato?
+(+) `\rm fichero` (o `command rm fichero`) :: Una primera palabra entrecomillada o escapada no se expande como alias.
+(-) `rm --no-alias fichero`, que le dice a `rm` que ignore cualquier alias :: `rm` no tiene esa opción: los alias los expande la shell antes incluso de que arranque `rm`.
+(-) `unalias`, que ejecuta el mandato real para una sola línea :: Necesita un nombre, y elimina el alias para toda la sesión.
+(-) `rm! fichero`, donde el signo de exclamación se salta los alias :: No es válido.
+
+@@q single | Alias y scripts
+¿Por qué un alias definido en tu `~/.bashrc` puede no funcionar dentro de un script?
+(+) Las shells no interactivas que ejecutan scripts no expanden los alias por defecto (y no leen `~/.bashrc`). :: En los scripts usa funciones o mandatos completos.
+(-) Porque los alias solo funcionan para el usuario root y los scripts se ejecutan como usuario normal. :: No.
+(-) Porque los scripts no pueden usar mandatos como `ls`, que están reservados a la shell interactiva y no se permiten en ficheros. :: Sí pueden.
+(-) Porque los alias se borran en cuanto se ejecuta `chmod +x` sobre el fichero del script. :: No tiene relación.
+
+@@group Práctica variada
+@@q fill | Imprimir sin expandir
+Imprime literalmente el texto `$HOME`, con el signo de dólar: `echo {{'$HOME' ;; \$HOME ;; "\$HOME"}}`
+(x) "$HOME" :: Las comillas dobles siguen expandiendo la variable.
+(x) $HOME :: Se expande a tu directorio personal.
+@@note
+Las comillas simples detienen toda expansión; una barra invertida detiene un carácter.
+
+@@q fill | Resultado aritmético
+Guarda en `R` el valor de `A * B + 5` usando la expansión aritmética: `R={{$((A*B+5)) ;; $(( A * B + 5 )) ;; $((A * B + 5))}}`
+(x) $(A*B+5) :: Los paréntesis simples son sustitución de mandato.
+(x) A*B+5 :: Guarda el texto, sin aritmética.
+@@note
+Dentro de `$(( ))` los nombres de variable no necesitan el signo de dólar.
+
+@@q fill | Valor por defecto
+Imprime el valor de `NOMBRE`, o la palabra `invitado` cuando no está definida o está vacía: `echo {{"${NOMBRE:-invitado}" ;; ${NOMBRE:-invitado}}}`
+(x) ${NOMBRE:+invitado} :: Pone `invitado` solo cuando `NOMBRE` sí tiene valor: lo contrario.
+(x) ${NOMBRE=invitado} :: Sin los dos puntos solo comprueba si no está definida, y además asigna el valor por defecto, que no se pide.
+@@note
+`${NOMBRE:=invitado}` además asigna el valor por defecto a `NOMBRE`.
+
+@@q sort | ¿Qué expansión se aplica?
+@@buckets Expansión de nombres de fichero (comodín) | Expansión de llaves
+Clasifica cada expresión.
+(Expansión de nombres de fichero (comodín)) `*.txt` :: Busca por patrón entre los ficheros existentes.
+(Expansión de nombres de fichero (comodín)) `[ab]?.c` :: Un corchete y una interrogación miran nombres reales.
+(Expansión de nombres de fichero (comodín)) `datos[0-9].csv` :: Un rango que se compara con los ficheros existentes.
+(Expansión de llaves) `{1..5}` :: Genera cinco palabras, existan o no ficheros.
+(Expansión de llaves) `fichero{A,B,C}.txt` :: Genera tres nombres.
+(Expansión de llaves) `{a..e}` :: Genera letras.
+
+@@q multi | Entrecomillados que evitan la división en palabras
+Marca las formas que pasan `a  b` (dos espacios) a `echo` como un único argumento, conservando los espacios.
+(+) `echo "a  b"` :: Las comillas dobles lo mantienen como una palabra.
+(+) `echo 'a  b'` :: Las comillas simples lo mantienen como una palabra.
+(+) `echo a\ \ b` :: Los espacios escapados son literales.
+(-) `echo a  b` :: Los espacios sin comillas lo dividen en dos palabras y se imprime un solo espacio.
+(-) `echo $(echo a  b)` :: La división en palabras se aplica al resultado de la sustitución.
+
+@@q order | Evaluación de `echo $HOME/*.c`
+Ordena los pasos que realiza la shell.
+(>) Dividir la línea en las palabras `echo` y `$HOME/*.c` :: Primero las palabras.
+(>) Sustituir `$HOME` por su valor :: Se sustituyen las variables.
+(>) Expandir `/home/alumno/*.c` a los nombres de fichero que coinciden :: Los comodines se expanden sobre el resultado.
+(>) Lanzar `echo` con la lista final de palabras :: El programa solo ve el resultado.
+
+@@q match | Mandatos sobre variables
+Empareja cada mandato con su efecto.
+(=) `X=5` => Define una variable de la shell que no pasa a los procesos hijos :: Local a la shell.
+(=) `export X=5` => Define `X` y la pasa a los procesos hijos :: Variable de entorno.
+(=) `unset X` => Elimina la variable :: Deja de existir.
+(=) `printenv X` => Imprime `X` solo si está exportada :: Solo el entorno.
+(=) `echo "${#X}"` => Imprime el número de caracteres del valor de `X` :: Expansión de longitud.
+(-) Lista todos los ficheros que empiezan por X :: Eso es un comodín como `ls X*`.
