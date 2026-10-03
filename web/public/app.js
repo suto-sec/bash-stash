@@ -961,7 +961,7 @@ $('#man-grid').addEventListener('click', ev => {
 // Every entry that has contents shows an arrow (click it to open/close) and its name (click it to go there).
 const HOME_SECTIONS = [['tracks', 'home-sec-tracks', 'home-grp-exercises'], ['intro', 'home-sec-intro', 'home-grp-exercises'], ['quizzes', 'theory-quizzes-title', 'theory-home-title'], ['exams', 'theory-exams-title', 'theory-home-title']];
 HOME_SECTIONS.push(['man', 'home-sec-man', 'man-home-title']);
-HOME_SECTIONS.push(['impq', 'imp-sec-quizzes', 'imp-home-title'], ['impe', 'imp-sec-exams', 'imp-home-title']);
+HOME_SECTIONS.push(['impq', 'imp-sec-quizzes', 'imp-home-title'], ['impe', 'imp-sec-exams', 'imp-home-title'], ['impsc', 'imp-sec-scripts', 'imp-home-title']);
 HOME_SECTIONS.splice(2, 0, ['scripts', 'home-sec-scripts', 'home-grp-exercises'], ['sexams', 'home-sec-sexams', 'home-grp-exercises']);   // last section of the Scripting group, after Introduction
 const lsGet = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) || d; } catch { return d; } };
 const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* private mode */ } };
@@ -1023,7 +1023,8 @@ function homeTree() {
   const sameTitle = (list, x) => list.filter(y => y.title === x.title).length > 1;     // two packs may hold items with the same title: name the pack then
   const impq = Theory.imported().map(c => { const n = quizTree(c); if (sameTitle(Theory.imported(), c)) n.label = `${c.title} (${c.packTitle})`; return n; });
   const impe = Exams.imported().map(e => leaf(sameTitle(Exams.imported(), e) ? `${e.title} (${e.packTitle})` : e.title, `${e.title} ${e.packTitle || ''}`, `exam:${e.id}`, state.exam === e.id, Exams.statusOf(e)));
-  return { tracks, intro: [introAll, ...introCats], scripts: scriptGroups, sexams: sexamTiers, quizzes, exams: examTiers, man: manTree, impq, impe };
+  const impsc = Scripts.imported().map(e => leaf(e.title, `${e.title} ${e.packTitle || ''} ${e.cmds} ${e.tags.join(' ')}`, `script:${e.id}`, state.script === e.id, e.status));
+  return { tracks, intro: [introAll, ...introCats], scripts: scriptGroups, sexams: sexamTiers, quizzes, exams: examTiers, man: manTree, impq, impe, impsc };
 }
 function renderHomeNav() {
   const nav = $('#home-topics');
@@ -1265,7 +1266,7 @@ function route() {
   showReferencePage(false);
   if (location.hash === '#/home') { showHomePage(true); return; }
   showHomePage(false);
-  const scm = location.hash.match(/^#\/script\/(s\d\d)(?:\/(\d+))?$/);
+  const scm = location.hash.match(/^#\/script\/(s\d\d|imp-[a-z0-9]+(?:-[a-z0-9]+)*)(?:\/(\d+))?$/);
   if (scm) {
     if (state.exam || Exams.visible()) { state.exam = null; Exams.hide(); }
     if (state.sexam || SExams.visible()) { state.sexam = null; SExams.hide(); }

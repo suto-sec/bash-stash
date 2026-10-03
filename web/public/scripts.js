@@ -8,7 +8,8 @@ const Scripts = (() => {
   let cur = null;   // { id, d (detail), step }
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const api = (p, opt) => fetch(`/api/scripts${p}`, opt);
-  const num = id => id.slice(1);
+  const num = id => id.startsWith('imp-') ? '' : id.slice(1);
+  const label = (id, title) => id.startsWith('imp-') ? title : `${num(id)} · ${title}`;       // (imported scripts have no number)
 
   async function load() {
     try { index = await (await api('')).json(); } catch { index = []; }
@@ -22,7 +23,8 @@ const Scripts = (() => {
     if (cur && state.script) { cur.step = isFull() ? cur.d.steps.length : cur.d.current; fillStatement(); renderSidebar(); }
   });
   Seg.set('scmode', isFull() ? 'full' : 'steps');
-  const list = () => index;
+  const list = () => index.filter(e => !e.imp);                // the course scripts: imported packs have their own tab, counters and lists
+  const imported = () => index.filter(e => e.imp);
   const entry = id => index.find(e => e.id === id);
   const statusOf = e => e.status;
   async function refresh() { await load(); renderHomeGrid(); }
@@ -43,18 +45,19 @@ const Scripts = (() => {
   const stars = n => '★'.repeat(n) + '☆'.repeat(5 - n);
   function groups() {       // [{ key, label, items }], items are index entries; "topic" lists a script under each of its tags
     const mode = getMode();
-    const by = (keys, labelOf, pick) => keys.map(k => ({ key: String(k), label: labelOf(k), items: sorted(index.filter(e => pick(e, k))) })).filter(g => g.items.length);
+    const course = list();
+    const by = (keys, labelOf, pick) => keys.map(k => ({ key: String(k), label: labelOf(k), items: sorted(course.filter(e => pick(e, k))) })).filter(g => g.items.length);
     const same = mode === getOrder() && getDir() === 'desc';                // the same property, descending: the sections turn around too
     const sections = list => same ? list.reverse() : list;
     if (mode === 'stars') return sections(by([1, 2, 3, 4, 5], stars, (e, k) => e.level === k));
-    if (mode === 'topic') return sections(by([...new Set(index.flatMap(e => e.tags))].sort(), t => t[0].toUpperCase() + t.slice(1), (e, k) => e.tags.includes(k)));
+    if (mode === 'topic') return sections(by([...new Set(course.flatMap(e => e.tags))].sort(), t => t[0].toUpperCase() + t.slice(1), (e, k) => e.tags.includes(k)));
     if (mode === 'steps') return sections(by(['short', 'medium', 'long'], k => ({ short: 'Short (2-3 steps)', medium: 'Medium (4-5 steps)', long: 'Long (6+ steps)' })[k],
       (e, k) => (e.steps.length <= 3 ? 'short' : e.steps.length <= 5 ? 'medium' : 'long') === k));
     return sections(by(['inprogress', 'new', 'pass'], k => ({ inprogress: 'In progress', new: 'Not started', pass: 'Done' })[k],
       (e, k) => (e.status === 'attempted' ? 'inprogress' : e.status) === k));
   }
-  const displayOrder = () => [...new Map(groups().flatMap(g => g.items).map(e => [e.id, e])).values()];     // every script once, as the lists show them
-  const doneCount = () => index.filter(e => e.status === 'pass').length;
+  const displayOrder = () => cur && cur.d.imp ? imported().filter(e => e.imp === cur.d.imp) : [...new Map(groups().flatMap(g => g.items).map(e => [e.id, e])).values()];     // every script once, as the lists show them
+  const doneCount = () => list().filter(e => e.status === 'pass').length;
   function applyMode() {    // after the dropdown changed: every view that lists the scripts
     renderHomeGrid();
     if (typeof renderHomeNav === 'function') renderHomeNav();
@@ -105,7 +108,7 @@ const Scripts = (() => {
     grid.innerHTML = groups().map(g => {
       const es = g.items;
       const card = e => `<button class="track-card exam-card${state.script === e.id ? ' current' : ''}" data-script="${esc(e.id)}">
-        <div class="track-card-title">${num(e.id)} · ${esc(e.title)}</div>
+        <div class="track-card-title">${esc(label(e.id, e.title))}</div>
         <div class="track-card-desc"><span class="stars">${stars(e.level)}</span> · <code>${esc(e.script)}</code> · ${e.steps.length} steps</div>
         <div class="track-card-desc">${e.tags.map(esc).join(' · ')}</div>
         <div class="track-card-count"><span class="${e.status === 'pass' ? 'exam-best good' : ''}">${e.passed.length}/${e.steps.length} steps passed</span></div></button>`;
@@ -123,13 +126,20 @@ const Scripts = (() => {
     if (!entry(id)) await load();
     const r = await api(`/${id}`);
     if (!r.ok) { location.replace('#/home'); return; }
-    const d = await r.json();
+    let d = await r.json();
     if (!location.hash.startsWith(`#/script/${id}`)) return;           // navigated away while loading
+    if (d.needsConsent) {                                              // the code of an imported pack: shown first, then allowed (or not)
+      const ok = typeof Imp !== 'undefined' && await Imp.askConsent(d.imp);
+      if (!ok) { location.hash = '#/home'; return; }
+      await load();
+      d = await (await api(`/${id}`)).json();
+      if (!location.hash.startsWith(`#/script/${id}`)) return;
+    }
     const step = isFull() ? d.steps.length : d.steps.some(s => s.n === Number(stepArg)) ? Number(stepArg) : d.current;
     const sameScript = cur && cur.id === id && state.script === id;
     cur = { id, d, step };
     state.script = id; state.theory = null; state.exam = null; state.sexam = null;
-    state.current = { id, sc: true, title: `${num(id)} · ${d.title}`, level: 0, cmds: d.cmds, status: d.status, topic: d.tags.join(', '),
+    state.current = { id, sc: true, title: label(id, d.title), level: 0, cmds: d.cmds, status: d.status, topic: d.tags.join(', '),
       dir: d.playDir || d.answer.replace(/\/[^/]*$/, ''), playDir: d.playDir, answer: d.answer, readme: '' };
     document.body.classList.add('script-run');
     $('#exam-main').classList.add('hidden');
@@ -148,8 +158,8 @@ const Scripts = (() => {
   }
   function fillStatement() {
     const { d, step } = cur, st = d.steps.find(s => s.n === step);
-    $('#ex-topic').textContent = `Scripts · ${d.tags.join(', ')}`;
-    $('#ex-title').textContent = `${num(d.id)} · ${d.title}`;
+    $('#ex-topic').textContent = d.imp ? `Imported · ${d.packTitle} · ${d.tags.join(', ')}` : `Scripts · ${d.tags.join(', ')}`;
+    $('#ex-title').textContent = label(d.id, d.title);
     $('#ex-level').textContent = stars(d.level);
     $('#ex-cmds').textContent = d.cmds;
     const b = $('#ex-status');
@@ -168,7 +178,7 @@ const Scripts = (() => {
     $('#result').classList.add('hidden');
     $('#statement-pane').scrollTop = 0;
     state.current.status = d.status;
-    document.title = `${num(d.id)} · ${d.title}${full ? '' : ` — step ${step}`} — bash stash`;
+    document.title = `${label(d.id, d.title)}${full ? '' : ` — step ${step}`} — bash stash`;
   }
   $('#sc-steps').addEventListener('click', ev => {
     const b = ev.target.closest('[data-step]');
@@ -214,7 +224,7 @@ const Scripts = (() => {
     const r = await fetch(`/api/scripts/${cur.id}/solution?step=${step}`, { method: 'POST' });
     if (!r.ok) return;
     const sol = await r.json();
-    $('#sol-title').textContent = `Solution · ${num(cur.id)} ${cur.d.title}${isFull() ? '' : ` · step ${step}`}`;
+    $('#sol-title').textContent = `Solution · ${label(cur.id, cur.d.title)}${isFull() ? '' : ` · step ${step}`}`;
     $('#sol-file').textContent = sol.file;
     $('#sol-body').textContent = sol.content;
     $('#solution-dialog').showModal();
@@ -247,6 +257,14 @@ const Scripts = (() => {
     const nav = $('#topics');
     if (!cur) return;
     document.querySelector('.overall').title = 'exercises passed (scripts have their own counter)';
+    $('#sidebar').classList.toggle('script-imp', !!cur.d.imp);              // (the group / order panel is for the course scripts)
+    if (cur.d.imp) {
+      const es = imported().filter(e => e.imp === cur.d.imp), done = es.filter(e => e.status === 'pass').length;
+      nav.innerHTML = `<details class="topic" open><summary><span class="t-name">${esc(cur.d.packTitle)}</span><span class="t-count">${done}/${es.length}</span></summary>
+        ${es.map(e => `<a class="ex-item${e.id === cur.id ? ' current' : ''}" href="#/script/${e.id}" title="${esc(e.title)}">
+          <span class="dot ${e.status}">${STATUS[e.status].dot}</span><span class="ex-name">${esc(e.title)}</span><span class="t-count">${e.passed.length}/${e.steps.length}</span></a>`).join('')}</details>`;
+      return;
+    }
     renderSideView();
     nav.innerHTML = groups().map(g => {
       const es = g.items, done = es.filter(e => e.status === 'pass').length;
@@ -258,9 +276,9 @@ const Scripts = (() => {
   }
   function leave() {
     document.body.classList.remove('script-run');
-    $('#sidebar').classList.remove('script-mode');
+    $('#sidebar').classList.remove('script-mode', 'script-imp');
     document.querySelector('.overall').title = 'exercises passed';
   }
 
-  return { groups, doneCount, stars, load, list, entry, statusOf, open, go, refresh, renderHomeGrid, renderSidebar, runCheck, showSolution, resetFixture, neighbour, leave, current: () => cur };
+  return { groups, doneCount, stars, load, list, imported, entry, statusOf, open, go, refresh, renderHomeGrid, renderSidebar, runCheck, showSolution, resetFixture, neighbour, leave, current: () => cur };
 })();

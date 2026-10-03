@@ -160,7 +160,7 @@ const NewUser = (() => {
         const e = Scripts.entry(ctx.id);
         if (e && ctx.step < e.steps.length) html = `<div class="nu-box"><span>Next: <b>step ${ctx.step + 1} · ${esc(e.steps[ctx.step].title)}</b></span><button type="button" class="hc-btn" data-nu="script:${esc(ctx.id)}:${ctx.step + 1}">Next step →</button></div>`;
         else {
-          const nx = Scripts.list().find(x => x.id !== ctx.id && x.status !== 'pass');
+          const nx = e && e.imp ? null : Scripts.list().find(x => x.id !== ctx.id && x.status !== 'pass');
           html = `<div class="nu-box"><span>Script complete!${nx ? ` Next script: <b>${esc(nx.id.slice(1))} · ${esc(nx.title)}</b>` : ''}</span><button type="button" class="hc-btn" data-nu="${nx ? 'script:' + esc(nx.id) + ':1' : 'home'}">${nx ? 'Next script →' : 'Back to home →'}</button></div>`;
         }
       }

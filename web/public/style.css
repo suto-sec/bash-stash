@@ -1085,3 +1085,19 @@ html.boot-home #home-page.hidden, html.boot-reference #reference-page.hidden, ht
 .imp-act.renamed { color: var(--warn); border-color: var(--warn); }
 @media (max-width: 700px) { .imp-hist li { grid-template-columns: 1fr; } }
 #imp-hist-clear { justify-self: start; }
+.sidebar.script-imp .sc-view { display: none; }
+
+/* imported scripts: code is shown, then allowed */
+.imp-flag { font-size: 11px; padding: 1px 8px; border-radius: 10px; border: 1px solid var(--warn); color: var(--warn); }
+.imp-codebar { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
+.imp-codenote { justify-self: stretch; padding: 8px 12px; border: 1px solid var(--warn); border-radius: 8px; font-size: 13px; }
+.imp-code { margin: 6px 0; justify-self: stretch; }
+.imp-code summary { cursor: pointer; font-weight: 600; font-size: 13px; }
+.imp-pre { margin: 6px 0 0; padding: 10px 12px; background: var(--code-bg); border-radius: 6px; max-height: 340px; overflow: auto; font: 12.5px/1.45 ui-monospace, Menlo, monospace; white-space: pre; }
+.imp-code-item h4 { margin: 12px 0 4px; font-size: 14px; }
+#imp-dialog { width: 860px; }
+.imp-dlg-body { max-height: 66vh; overflow-y: auto; padding-right: 6px; }
+.imp-dlg-list { margin: 6px 0 10px 18px; padding: 0; display: grid; gap: 4px; font-size: 13.5px; }
+.imp-act.allowed { color: var(--accent); border-color: var(--accent); }
+.imp-act.rolled-back { color: var(--warn); border-color: var(--warn); }
+.imp-act.self-test { color: var(--info); border-color: var(--info); }
