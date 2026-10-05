@@ -1,0 +1,141 @@
+@@sexam medium-03 | svcerrors | Messages per service | Mensajes por servicio
+@@script svcerrors.sh
+@@cmds awk, cut, grep, sort, uniq -c, while read, case, exit codes
+@@objectives
+args | Argument checking and error messages | Comprobación de argumentos y mensajes de error | 3
+core | Selecting, counting and ordering the services | Seleccionar, contar y ordenar los servicios | 4
+edge | Special cases (no match, odd lines, words inside messages) | Casos especiales (ninguna coincidencia, líneas raras, palabras dentro del mensaje) | 3
+@@readme en
+Write a shell script called `svcerrors.sh` that takes a log file and an optional level:
+
+```
+svcerrors.sh file [level]
+```
+
+Every line of the log has this form (fields separated by spaces):
+
+```
+2026-03-14 09:12:01 ERROR sshd: authentication failed for user bob
+```
+
+that is: date, time, **level** (`INFO`, `WARN` or `ERROR`), the **service** followed by a colon (lower-case letters, digits and hyphens) and then a free message that may contain spaces, colons and even the words `INFO`, `WARN` or `ERROR`. The file may also contain blank lines and lines that do not follow this form (for example `-- log rotated --`): ignore them.
+
+The script counts, for the lines whose level is **exactly** `level` (default `ERROR`), how many there are per service, and prints one line per service as `service: N`, ordered by `N` from highest to lowest and, for the same `N`, by service name in alphabetical order. After them it prints a last line:
+
+```
+Total: T
+```
+
+where `T` is the number of lines counted (`Total: 0` alone if there is none).
+
+Errors (messages go to standard error). Check them in this order:
+
+1. No argument, or more than two: print an error message **and the correct usage**, exit code **1**.
+2. `file` does not exist or is not a regular file: error message that includes its name, exit code **2**.
+3. `file` is not readable: error message that includes its name, exit code **4**.
+4. `level` is not one of `INFO`, `WARN`, `ERROR` (written exactly like that): error message that includes the value, exit code **3**.
+
+Don't forget:
+- Argument checking and error messages, in the right order (3 points).
+- Counting per service for the right level, with the exact format and ordering (4 points).
+- Special cases: no line of that level, blank or odd lines, a level word inside a message, ties (3 points).
+@@readme es
+Escribe un script de shell llamado `svcerrors.sh` que reciba un fichero de registro y un nivel opcional:
+
+```
+svcerrors.sh fichero [nivel]
+```
+
+Cada línea del registro tiene esta forma (campos separados por espacios):
+
+```
+2026-03-14 09:12:01 ERROR sshd: authentication failed for user bob
+```
+
+es decir: fecha, hora, **nivel** (`INFO`, `WARN` o `ERROR`), el **servicio** seguido de dos puntos (letras minúsculas, dígitos y guiones) y un mensaje libre que puede contener espacios, dos puntos e incluso las palabras `INFO`, `WARN` o `ERROR`. El fichero también puede contener líneas en blanco y líneas que no siguen esta forma (por ejemplo `-- log rotated --`): se ignoran.
+
+El script cuenta, para las líneas cuyo nivel es **exactamente** `nivel` (por defecto `ERROR`), cuántas hay por servicio, e imprime una línea por servicio con la forma `servicio: N`, ordenadas por `N` de mayor a menor y, a igual `N`, por nombre de servicio en orden alfabético. Después imprime una última línea:
+
+```
+Total: T
+```
+
+donde `T` es el número de líneas contadas (solo `Total: 0` si no hay ninguna).
+
+Errores (los mensajes van a la salida de error). Compruébalos en este orden:
+
+1. Ningún argumento, o más de dos: mensaje de error **y el uso correcto**, código **1**.
+2. `fichero` no existe o no es un fichero regular: mensaje de error que incluya su nombre, código **2**.
+3. `fichero` no se puede leer: mensaje de error que incluya su nombre, código **4**.
+4. `nivel` no es `INFO`, `WARN` ni `ERROR` (escrito exactamente así): mensaje de error que incluya el valor, código **3**.
+
+No olvides:
+- Comprobación de argumentos y mensajes de error, en el orden correcto (3 puntos).
+- Contar por servicio para el nivel correcto, con el formato y el orden exactos (4 puntos).
+- Casos especiales: ninguna línea de ese nivel, líneas en blanco o raras, una palabra de nivel dentro del mensaje, empates (3 puntos).
+@@check
+SEEDS=2
+COMPARE="stdout exit errmsg"
+setup() {
+  local i svc lv
+  local svcs=(sshd cron nginx-proxy kernel db2 mailer)
+  local lvls=(ERROR INFO WARN ERROR ERROR INFO)
+  for ((i = 1; i <= 40; i++)); do
+    svc=$(pick "${svcs[@]}"); lv=$(pick "${lvls[@]}")
+    printf '2026-03-%02d %02d:%02d:%02d %s %s: %s %s\n' "$(randr 1 28)" "$(randr 0 23)" "$(randr 0 59)" "$(randr 0 59)" "$lv" "$svc" "$(word)" "$(word)"
+  done > main.log
+  cat > tricky.log <<'EOT'
+2026-03-01 08:00:00 ERROR sshd: login failed: user root from 10.0.0.5
+-- log rotated --
+
+2026-03-01 08:00:01 INFO cron: retry after ERROR 5
+2026-03-01 08:00:02 ERROR db2: connection lost
+2026-03-01 08:00:03 ERRORS db2: not a level
+2026-03-01 08:00:04 ERROR sshd: too many failures
+2026-03-01 08:00:05 WARN db2: slow query ERROR in text
+2026-03-01 08:00:06 ERROR mailer: queue full
+2026-03-01 08:00:07 ERROR mailer: queue full again
+2026-03-01 08:00:08 ERROR kernel: oops
+
+garbage line without structure
+2026-03-01 08:00:09 error sshd: lower case level
+EOT
+  cat > quiet.log <<'EOT'
+2026-03-02 10:00:00 INFO sshd: started
+2026-03-02 10:00:01 INFO cron: job ok
+2026-03-02 10:00:02 WARN sshd: slow
+-- end --
+EOT
+  : > empty.log
+  cp main.log locked.log; chmod 000 locked.log
+  mkdir -p adir
+}
+ARGS=('' 'main.log WARN extra' 'nofile.log' 'adir' 'locked.log' 'main.log DEBUG' 'main.log error' 'nofile.log DEBUG'
+      'main.log' 'main.log WARN' 'main.log INFO' 'tricky.log' 'tricky.log ERROR'
+      'quiet.log' 'quiet.log WARN' 'quiet.log ERROR' 'empty.log' 'tricky.log INFO' 'tricky.log WARN')
+CASE_OBJ=(args args args args args args args args  core core core core core  edge edge edge edge edge edge)
+extra_check() {
+  case $REF_CODE in
+    1) [[ $ERR == *svcerrors.sh* || $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* ]] || fail "the usage message should show how to call the script" ;;
+    2|4) mentions "$(eval "set -- $CASE"; echo "$1")" ;;
+    3) mentions "$(eval "set -- $CASE"; echo "$2")" ;;
+  esac
+}
+@@solution
+#!/bin/bash
+usage() { echo "Usage: $0 file [level]" >&2; }
+if (( $# < 1 || $# > 2 )); then echo "Error: wrong number of arguments" >&2; usage; exit 1; fi
+file=$1 level=${2:-ERROR}
+[[ -f $file ]] || { echo "Error: $file does not exist or is not a regular file" >&2; exit 2; }
+[[ -r $file ]] || { echo "Error: cannot read $file" >&2; exit 4; }
+case $level in
+  INFO|WARN|ERROR) ;;
+  *) echo "Error: invalid level '$level'" >&2; exit 3 ;;
+esac
+total=0
+while read -r n svc; do
+  [[ -n $svc ]] || continue
+  echo "$svc: $n"
+  total=$((total + n))
+done < <(awk -v lv="$level" '$3 == lv && $4 ~ /^[a-z0-9-]+:$/ { print substr($4, 1, length($4) - 1) }' "$file" | sort | uniq -c | sort -k1,1nr -k2,2)
+echo "Total: $total"

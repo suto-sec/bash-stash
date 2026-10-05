@@ -23,7 +23,7 @@ const NewUser = (() => {
       box.id = 'home-roadmap'; box.className = 'home-roadmap';
       home.insertBefore(box, $1('home-grp-exercises'));
     }
-    ExamPath.render(box);
+    if (FastTrack.active()) FastTrack.render(box); else ExamPath.render(box);
   }
 
   // ---------------------------------------------------------------- the tour
@@ -125,6 +125,10 @@ const NewUser = (() => {
   // finishing something that is on the suggested path: the next open item of the path (null = all done, undefined = not on the path)
   const KIND_NAME = { warm: 'warm-up', ex: 'exercise', sc: 'script', quiz: 'quiz', exam: 'theory exam', sx: 'script exam' };
   function onPath(ctx) {
+    if (FastTrack.active() && state.track === 'fast') {   // the fast track: the next open item of the plan
+      if (ctx.kind === 'ex') { const e = state.flat.find(x => x.id === ctx.id); return e && FastTrack.hasEx(e.id) ? FastTrack.next({ kind: 'ex', id: e.id }) : undefined; }
+      return undefined;
+    }
     if (ctx.kind === 'ex') {
       if (state.track !== 'path' || state.introCategory) return undefined;
       const e = state.flat.find(x => x.id === ctx.id);
@@ -175,7 +179,7 @@ const NewUser = (() => {
     const b = ev.target.closest('[data-nu]');
     if (!b) return;
     const [kind, id, step] = b.dataset.nu.split(':');
-    if (kind === 'path') ExamPath.open(ExamPath.item(id, step));
+    if (kind === 'path') { if (FastTrack.active() && state.track === 'fast') FastTrack.open(FastTrack.item([id, step])); else ExamPath.open(ExamPath.item(id, step)); }
     else if (kind === 'ex') { location.hash = `#/ex/${id}`; }
     else if (kind === 'script') Scripts.go(id, Number(step));
     else if (kind === 'info') $1('info-btn').click();

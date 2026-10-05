@@ -1,0 +1,46 @@
+{
+ "id": "medium-02",
+ "slug": "stage_configs",
+ "tier": "medium",
+ "title": {
+  "en": "Staging configuration files",
+  "es": "Preparar ficheros de configuración"
+ },
+ "script": "stage_configs.sh",
+ "cmds": "find -size, find -prune, cp, mkdir -p, test, exit codes, counters",
+ "objectives": [
+  {
+   "id": "args",
+   "label": {
+    "en": "Argument checking and error messages",
+    "es": "Comprobación de argumentos y mensajes de error"
+   },
+   "points": 3
+  },
+  {
+   "id": "select",
+   "label": {
+    "en": "Choosing the right files",
+    "es": "Elegir los ficheros correctos"
+   },
+   "points": 3
+  },
+  {
+   "id": "dest",
+   "label": {
+    "en": "The destination directory: creating it and overwriting",
+    "es": "El directorio de destino: crearlo y sobrescribir"
+   },
+   "points": 2
+  },
+  {
+   "id": "summary",
+   "label": {
+    "en": "Counting and the final message",
+    "es": "Contar y el mensaje final"
+   },
+   "points": 2
+  }
+ ],
+ "total": 10
+}

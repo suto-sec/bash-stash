@@ -1,0 +1,333 @@
+@@collection 15_script_traps | Script traps: what does it really do?
+@@about
+Single-choice questions on the traps that cost points in a script and in the test: word splitting, quoting, empty variables, subshells, redirection order, exit statuses, find and tests. Every output was run in the lab.
+
+@@group Words, quotes and empty variables
+@@q single | Looping over ls
+A directory holds three files: `a.txt`, `b.txt` and `my notes.txt`. How many times does this loop run?
+
+```bash
+for f in $(ls); do echo "got: $f"; done
+```
+(+) 4 times, because `my notes.txt` is split into the two words `my` and `notes.txt`. :: The unquoted `$(ls)` is split on spaces; use `for f in ./*` (or `find`) to keep names whole.
+(-) 3 times, once per file, because `ls` prints one name per line and the loop reads lines. :: A `for` loop iterates over words, not lines.
+(-) 2 times, because the shell groups the two names that contain a dot into one word. :: The shell never groups words by their characters.
+(-) 0 times, because `$(ls)` is only expanded inside double quotes. :: Command substitution works unquoted too; it is then split into words.
+
+@@q single | An empty variable inside [ ]
+In a script `x` is empty (`x=`). What happens with this line?
+
+```bash
+[ $x = yes ]
+```
+(+) The test fails with an error (`unary operator expected`) and a status of 2. :: Unquoted, the empty `$x` disappears and `[` sees only `= yes`.
+(-) It is simply false, with status 1, because an empty string is different from `yes`. :: That would be the result with `[ "$x" = yes ]`; unquoted there is a syntax error instead.
+(-) It is true, because an empty variable compares equal to anything. :: Nothing compares equal to everything in the shell.
+(-) The shell stops with `x: unbound variable`, as the variable was never given a value. :: Unset or empty variables only raise that error under `set -u`.
+
+@@q single | -n with an unquoted empty variable
+What does this print?
+
+```bash
+y=
+[ -n $y ]
+echo $?
+```
+(+) `0`: with `$y` unquoted the test becomes `[ -n ]`, which only checks that the string `-n` is not empty. :: Quote it, `[ -n "$y" ]`, and the answer is `1`.
+(-) `1`, because `-n` is true only when the string after it is not empty, and `y` is empty here. :: That is the result of `[ -n "$y" ]`, with the quotes.
+(-) `2`, because after the expansion `[ -n ]` is an incomplete test and a syntax error. :: `[ -n ]` has one argument, and a single non-empty argument is true.
+(-) Nothing is printed, because `[` stops the whole script when its test is badly written. :: `echo $?` always prints the status of the last command.
+
+@@q single | Spaces in an assignment
+What happens with this line in a script?
+
+```bash
+file=my file.txt
+```
+(+) The shell runs the command `file.txt` with `file=my` in its environment, so it prints `file.txt: command not found`. :: A space ends the assignment; quote the value: `file="my file.txt"`.
+(-) The variable `file` is assigned the two words `my file.txt`, spaces included, as in any language. :: Only quotes (or a backslash) keep the space inside the value.
+(-) The shell reports a syntax error on that line and runs nothing at all from the script. :: It is valid syntax: a temporary assignment followed by a command.
+(-) The variable is assigned `my` and the rest of the line, from the space on, is ignored as a comment. :: A comment needs `#`.
+
+@@q single | "$@", $* and "$*"
+A script is called as `./s.sh "a b" c`. Which loop runs exactly twice, first with `a b` and then with `c`?
+(+) `for x in "$@"; do ...; done` :: `"$@"` expands to one word per argument, keeping each one whole.
+(-) `for x in $@; do ...; done` :: Unquoted, `$@` is split again: three words `a`, `b` and `c`.
+(-) `for x in "$*"; do ...; done` :: `"$*"` is one single word, `a b c`, so it runs once.
+(-) `for x in $*; do ...; done` :: Unquoted `$*` is split too: three iterations.
+
+@@q single | Single and double quotes together
+With `v=3`, what does this line print?
+
+```bash
+echo '$v' "$v" "\$v"
+```
+(+) `$v 3 $v` :: Single quotes and an escaped dollar print the text; only the middle word is expanded.
+(-) `3 3 3` :: Single quotes stop the expansion, and so does the backslash.
+(-) `$v $v $v` :: Double quotes do expand `$v`.
+(-) `3 $v 3` :: The expansion happens in the middle word, the one in double quotes without a backslash.
+
+@@q single | Quoting a command substitution
+What do these two lines print?
+
+```bash
+echo "$(echo a; echo b)"
+echo $(echo a; echo b)
+```
+(+) First `a` and `b` on two lines, then `a b` on one line. :: The quotes keep the newline; unquoted, the result is split into words that `echo` joins with a space.
+(-) `a b` both times, since `echo` always puts its arguments on one line. :: Inside quotes the substitution is one single argument with a newline in it.
+(-) `a` and `b` on two lines both times, because the substitution keeps its newline. :: Without quotes the newline is just a word separator.
+(-) An error, because a command substitution cannot contain a semicolon. :: Any command list can go inside `$( )`.
+
+@@q single | Plus in an assignment
+What does this print?
+
+```bash
+x=5
+y=$x+1
+echo $y
+```
+(+) `5+1` :: Without `$(( ))` the value is just text.
+(-) `6` :: Arithmetic needs `$(( ))` or `let`.
+(-) `x+1` :: `$x` is expanded to its value.
+(-) Nothing: the second line is a syntax error. :: It is a valid assignment of the text `5+1`.
+
+@@group Functions, subshells and counters
+@@q single | $1 inside a function
+This is `s.sh`, run as `bash s.sh a`. What does it print?
+
+```bash
+f() { echo "inside: $1"; }
+f b
+echo "outside: $1"
+```
+(+) `inside: b` and then `outside: a` :: Inside a function `$1` is the first argument of the function call; outside it is the script's.
+(-) `inside: a` and then `outside: a` :: The positional parameters are replaced inside a function.
+(-) `inside: b` and then `outside: b` :: When the function ends the script's own arguments are back.
+(-) `inside: ` (empty) and then `outside: a` :: The function receives `b`, so `$1` is not empty.
+
+@@q single | A counter in a pipeline
+What does this print?
+
+```bash
+n=0
+printf 'a\nb\nc\n' | while read l; do n=$((n + 1)); done
+echo "n=$n"
+```
+(+) `n=0` :: Each side of a pipe runs in a subshell, so the loop increments a copy of `n`.
+(-) `n=3` :: The loop does run three times, but its variables disappear with its subshell.
+(-) `n=1` :: The variable is not reset in each iteration; the changes are lost at the end.
+(-) An error because `read` cannot be used inside a loop. :: `while read` is the usual idiom to read lines.
+
+@@q single | read at the end of a pipe
+What does this print?
+
+```bash
+unset x
+echo hello | read x
+echo "[$x]"
+```
+(+) `[]` :: `read` runs in a subshell of the pipe, so `x` is still unset in the shell.
+(-) `[hello]` :: The assignment is made in the subshell and lost with it.
+(-) `[x]` :: `read x` stores the text in a variable, it does not print its name.
+(-) An error: `read` cannot take its input from a pipe. :: It can; the problem is where the variable lives.
+
+@@q single | cd in a subshell
+What do these lines print, if the script starts in `/home/alumno`?
+
+```bash
+(cd /tmp; pwd)
+pwd
+```
+(+) `/tmp` and then `/home/alumno` :: The parentheses run in a subshell, so the `cd` does not affect the script.
+(-) `/tmp` and then `/tmp` :: That would happen with braces `{ cd /tmp; pwd; }`, which run in the same shell.
+(-) `/home/alumno` and then `/home/alumno` :: Inside the subshell the `cd` does work.
+(-) An error, because `cd` is not allowed between parentheses. :: Any command can run in a subshell.
+
+@@q single | return and exit in a function
+What does the script print, and with which exit status does it finish?
+
+```bash
+f() { return 3; echo no; }
+g() { exit 4; }
+f; echo "after f: $?"
+g; echo "never"
+```
+(+) `after f: 3`, and the script ends with status 4 without printing `never`. :: `return` leaves the function; `exit` ends the whole script.
+(-) `after f: 3` and `never`, and the script ends with status 0. :: `exit` inside a function terminates the script, not only the function.
+(-) `no`, `after f: 3` and then status 4. :: Nothing after `return` in the function runs.
+(-) `after f: 0` and status 4, as `return` does not change `$?`. :: `return 3` sets the status to 3.
+
+@@q single | The status of ((n++))
+What does this print?
+
+```bash
+n=0
+((n++))
+echo "$? $n"
+```
+(+) `1 1` :: The value of the expression is the old `0`, and an arithmetic command with value 0 has status 1.
+(-) `0 1` :: The status of `(( ))` depends on the value of the expression, not on whether it worked.
+(-) `0 0` :: The variable is incremented, so `n` is 1.
+(-) `1 0` :: The increment is done after the value is taken, but it is done.
+
+@@q single | Counting the arguments
+How many arguments does the script see in the first call?
+
+```bash
+bash cnt.sh "a b" c ""     # cnt.sh: echo "args: $#"
+```
+(+) 3: `a b`, `c` and the empty string. :: Quotes group words, and an empty quoted string is still an argument.
+(-) 2, because the empty string is not an argument. :: `""` is an argument with an empty value.
+(-) 4: `a`, `b`, `c` and the empty string. :: The quotes keep `a b` together.
+(-) 1, because `$#` counts only the first word. :: `$#` is the total number of arguments.
+
+@@group Redirection, statuses and operators
+@@q single | Sending the error into the file
+Which command stores the error message of `ls` in the file `o`, and prints nothing on the screen?
+(+) `ls nofile > o 2>&1` :: First stdout goes to `o`, then stderr is sent to wherever stdout points now.
+(-) `ls nofile 2>&1 > o` :: Stderr is duplicated to the screen first; only stdout then goes to `o`, which stays empty.
+(-) `ls nofile > o` :: Only stdout goes to `o`; the error still appears on the screen.
+(-) `ls nofile 1>&2 > o` :: The later `> o` wins for stdout, and the error travels on stderr, which is never redirected: it stays on the screen and `o` is empty.
+
+@@q single | What stays on the screen
+`s.sh` contains `echo ok` and `echo bad >&2`. What does `bash s.sh > out` do?
+(+) `out` contains `ok`, and `bad` appears on the screen. :: `>&2` sends the message to stderr, which `> out` does not redirect.
+(-) `out` contains `ok` and `bad`, because both are written by `echo`. :: The second `echo` writes to file descriptor 2.
+(-) `out` is empty and both words appear on the screen. :: The redirection takes stdout, so `ok` goes to the file.
+(-) `out` contains `bad` and `ok` appears on the screen. :: Stdout is the one that is redirected.
+
+@@q single | && and || together
+What does this line print?
+
+```bash
+true || echo A && echo B
+```
+(+) `B` :: The operators have the same precedence and group from the left: `(true || echo A) && echo B`.
+(-) `A` :: `true` makes the `||` branch skip `echo A`.
+(-) `A` and then `B` :: `echo A` is not run because the left side succeeded.
+(-) Nothing, because the first command already succeeded. :: The `&&` part still runs after a successful `true || ...`.
+
+@@q single | Silenced does not mean succeeded
+What does this print?
+
+```bash
+ls /nonexistent 2>/dev/null
+echo $?
+```
+(+) `2` :: The redirection only hides the message; the status is the one of `ls`, which failed.
+(-) `0`, because nothing was printed. :: The status does not depend on the output.
+(-) `1`, as every failed command returns 1. :: The status is chosen by each program; `ls` uses 2 for a missing file.
+(-) Nothing, because `/dev/null` also swallows the status. :: `$?` is a variable of the shell, not output.
+
+@@group find and tests
+@@q single | An unquoted pattern in find
+The current directory has `a.txt`, `b.txt` and `c.txt`. What does this do?
+
+```bash
+find . -name *.txt
+```
+(+) It fails with `paths must precede expression`, because the shell expanded `*.txt` before `find` ran. :: `find` receives `-name a.txt b.txt c.txt`; quote the pattern.
+(-) It lists every `.txt` file of the whole tree, since `find` understands patterns by itself. :: Only when it receives the pattern; here the shell expands it first.
+(-) It lists only `a.txt`, `b.txt` and `c.txt` of the current directory, and nothing from below. :: It does not run as a search at all: it is an error.
+(-) It finds nothing and ends quietly, because the pattern was written without any quotes. :: Without matching files the pattern would be passed unchanged; here there are matches.
+
+@@q single | -o and the implicit print
+The directory holds `p.sh` and `q.bin`. What does this print?
+
+```bash
+find . -name '*.sh' -o -name '*.bin' -print
+```
+(+) Only `./q.bin`. :: The explicit `-print` applies only to the second alternative; the first one has no action.
+(-) Both `./p.sh` and `./q.bin`. :: That needs parentheses: `\( -name '*.sh' -o -name '*.bin' \) -print`.
+(-) Only `./p.sh`. :: The `-print` is attached to the `.bin` test.
+(-) An error, because `-o` cannot be mixed with `-print`. :: It is valid; it just does not mean what you may expect.
+
+@@q single | The semicolon of -exec
+What happens with this command?
+
+```bash
+find . -name p.sh -exec echo {} ;
+```
+(+) `find` stops with `missing argument to -exec`, because the shell consumed the bare `;`. :: Write `\;` or `';'` so that `find` receives it.
+(-) It prints `./p.sh`. :: The shell strips the semicolon before `find` sees it.
+(-) It prints `./p.sh ;`. :: The semicolon never reaches `echo`.
+(-) It runs `find` without any action and then runs `echo` as a separate command. :: The shell only splits the line at the semicolon; `find` still gets `-exec echo {}` and complains.
+
+@@q single | Files with any execute bit
+In a directory, `q.bin` has mode 700, `r.x` has mode 010 and `p.sh` has 644. Which command lists exactly `q.bin` and `r.x`?
+(+) `find . -maxdepth 1 -type f -perm /111` :: `/111` means "any of these bits is set".
+(-) `find . -maxdepth 1 -type f -perm -111` :: `-111` needs all three execute bits, which neither file has.
+(-) `find . -maxdepth 1 -type f -perm 111` :: Without a prefix the mode must be exactly 111.
+(-) `find . -maxdepth 1 -type f -perm -u+x` :: It requires the owner's execute bit, so `r.x` is missed.
+
+@@q single | Only the files directly inside
+Which line lists only the regular files directly inside `$dir`, correctly even if the names have spaces?
+(+) `find "$dir" -maxdepth 1 -type f` :: Limits the depth, selects regular files and does not split names.
+(-) `find "$dir" -type f` :: It selects regular files, but it also goes into every subdirectory.
+(-) `ls -l $dir | grep -v '^d'` :: Unquoted it splits names at spaces, and it also keeps symbolic links and the `total` line.
+(-) `find "$dir" -maxdepth 1 ! -type d` :: The depth is right, but it also keeps symbolic links, sockets and any other non-directory.
+
+@@q single | The size of -size +1k
+A directory holds files of 1 byte, 1024 bytes, 1025 bytes and 2049 bytes. Which ones does `find . -type f -size +1k` list?
+(+) The files of 1025 and 2049 bytes. :: Sizes are rounded up to whole kilobytes and `+1k` means more than one: more than 1024 bytes.
+(-) All the files, because every file is at least a kilobyte on disk. :: `-size` compares the length in bytes, rounded up to the unit.
+(-) Only the file of 2049 bytes. :: 1025 bytes rounds up to 2 kilobytes, which is more than 1.
+(-) The files of 1024, 1025 and 2049 bytes. :: 1024 bytes is exactly 1 kilobyte, which is not more than 1.
+
+@@q single | Comparing numbers
+What does `[ 10 \< 9 ]` return?
+(+) True (status 0), because `\<` compares the two texts alphabetically and `1` comes before `9`. :: For numbers use `-lt`: `[ 10 -lt 9 ]` is false.
+(-) False (status 1), because the number 10 is not smaller than the number 9. :: That is what `-lt` answers; `\<` compares strings.
+(-) An error, because the `<` sign cannot be used as an operator inside `[ ]`. :: Escaped, it is the string comparison operator.
+(-) True only if both operands are written between quotes, which turns them into text. :: Quotes do not change which operator is used.
+
+@@q single | = and -eq
+What do these two tests return?
+
+```bash
+[ 01 = 1 ]; echo $?
+[ 01 -eq 1 ]; echo $?
+```
+(+) `1` and then `0` :: `=` compares texts (`01` is not `1`); `-eq` compares numbers.
+(-) `0` and then `0` :: Both look equal, but the first compares characters.
+(-) `1` and then `1` :: As numbers, 01 and 1 are the same.
+(-) `0` and then `1` :: The operators are swapped in this answer.
+
+@@q single | Patterns in [[ ]]
+With `f=a.sh`, what do these two tests return?
+
+```bash
+[[ $f == *.sh ]];   echo $?
+[[ $f == "*.sh" ]]; echo $?
+```
+(+) `0` and then `1` :: Unquoted, the right side is a pattern; quoted, it is the literal text `*.sh`.
+(-) `0` and then `0` :: With quotes there is no pattern, only the text `*.sh`.
+(-) `1` and then `0` :: It is the other way round.
+(-) `1` and then `1` :: The first one is a pattern and `a.sh` matches it.
+
+@@q single | Integer arithmetic
+What does this line print?
+
+```bash
+echo $((7 / 2)) $((7 % 2)) $((2 ** 3)) $((-7 / 2))
+```
+(+) `3 1 8 -3` :: The division is whole and truncates toward zero.
+(-) `3.5 1 8 -3.5` :: The shell does integer arithmetic only.
+(-) `3 1 6 -4` :: `**` is a power, and the division truncates toward zero, not down.
+(-) `4 1 8 -4` :: The division does not round.
+
+@@group Finding out what a command is
+@@q single | Builtin or file
+What does `type cd` print in bash?
+(+) `cd is a shell builtin` :: `cd` must change the directory of the shell itself, so it cannot be a separate program.
+(-) `cd is /usr/bin/cd` :: There is no program that could change the directory of the shell.
+(-) `cd is a shell keyword` :: Keywords are words like `if` and `while`; `cd` is a normal command.
+(-) `cd: not found` :: `type` knows builtins.
+
+@@q single | The manual of a file format
+Which command shows the manual page that describes the format of the file `/etc/passwd`?
+(+) `man 5 passwd` :: Section 5 of the manual holds the file formats.
+(-) `man passwd` :: It shows the command that changes passwords (section 1).
+(-) `man 8 passwd` :: Section 8 is for administration commands.
+(-) `man -k passwd` :: It lists matching page names; it does not open the page.

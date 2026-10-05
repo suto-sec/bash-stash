@@ -71,7 +71,7 @@ const ExamPath = (() => {
     const stage = cur >= 0 ? `Stage ${cur + 1} of ${PATH_DATA.length}: ${PATH_DATA[cur].title}` : 'Every stage is done';
     box.innerHTML = `<div class="ep-top"><div><div class="hr-title">Suggested path <span class="hint">— the exam material in order, nothing else</span></div>
         <div class="ep-sub">${doneAll ? `${stage} · ${doneAll}/${totalAll} done` : `${totalAll} items in ${PATH_DATA.length} stages: warm-ups, exercises, scripts, quizzes and practice exams`}</div></div>
-        ${nx ? '' : '<span class="ep-fin">Path complete ✔</span>'}<button type="button" class="ep-fold" data-ep-fold="1" aria-expanded="${!folded}">${folded ? 'Show the stages ▾' : 'Hide the stages ▴'}</button></div>
+        ${nx ? '' : '<span class="ep-fin">Path complete ✔</span>'}${typeof FastTrack !== 'undefined' ? FastTrack.switchHtml() : ''}<button type="button" class="ep-fold" data-ep-fold="1" aria-expanded="${!folded}">${folded ? 'Show the stages ▾' : 'Hide the stages ▴'}</button></div>
       ${doneAll ? `<div class="ep-bar"><i style="width:${totalAll ? 100 * doneAll / totalAll : 0}%"></i></div>` : ''}
       <ol class="ep-stages">${rows.map((r, i) => {
         const done = r.total && r.done >= r.total, isCur = i === cur, isOpen = opened.has(r.st.id);

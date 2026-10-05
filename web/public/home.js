@@ -263,6 +263,9 @@ const Home = (() => {
     return { kind: 'Quiz', title: c.title, sub: q ? q.title : '', status: q ? q.status : 'new' };
   }
   const isFresh = () => !(state.flat || []).some(e => e.status === 'pass') && !Scripts.list().some(e => e.status === 'pass');
+  // the plan the home page follows: the suggested path (path.js) or the fast track (fast.js)
+  const plan = () => FastTrack.active() ? FastTrack : ExamPath;
+  const planName = () => FastTrack.active() ? 'fast track' : 'suggested path';
   function renderHero() {
     if (!state.flat || !state.flat.length) return;
     let box = el('home-hero');
@@ -275,14 +278,14 @@ const Home = (() => {
         if (!b) return;
         const act = b.dataset.act;
         if (b.tagName === 'A') ev.preventDefault();
-        if (act === 'path') { const n = ExamPath.next(null); if (n) ExamPath.open(n); }
+        if (act === 'path') { const n = plan().next(null); if (n) plan().open(n); }
         else if (act === 'tour') NewUser.startTour();
         else if (act === 'hide') { store.set('startHidden', true); renderHero(); }
         else if (act === 'go') location.hash = b.dataset.go;
       });
     }
     el('home-body').classList.toggle('fresh', isFresh());
-    const nx = ExamPath.next(null), last = store.get(LAST, null), d = describe(last);
+    const nx = plan().next(null), last = store.get(LAST, null), d = describe(last);
     if (isFresh() && !store.get('startHidden', false)) {
       box.className = 'home-hero fresh';
       box.innerHTML = `<h2>Learn bash for the exam, one small step at a time</h2>
@@ -295,7 +298,7 @@ const Home = (() => {
           <li><b>Stuck?</b> <i>Info</i> explains the commands, the <i>Reference</i> (<kbd>Ctrl</kbd> <kbd>K</kbd>) is the full manual, and <i>Show solution</i> is the last resort.</li></ol></details>`;
       return;
     }
-    const pathLink = nx && (!d || nx.hash !== last) ? `<a href="${esc(nx.hash)}" class="hero-alt" data-act="path">or the next item of the suggested path: <b>${esc(nx.label)}</b></a>` : '';
+    const pathLink = nx && (!d || nx.hash !== last) ? `<a href="${esc(nx.hash)}" class="hero-alt" data-act="path">or the next item of the ${planName()}: <b>${esc(nx.label)}</b></a>` : '';
     if (d) {
       box.className = 'home-hero';
       box.innerHTML = `<div class="hc-kind">Continue where you left off</div><div class="hc-title">${esc(d.title)}</div>
@@ -303,7 +306,7 @@ const Home = (() => {
         <div class="hs-actions"><button class="hc-btn" type="button" data-act="go" data-go="${esc(last)}">Continue →</button>${pathLink}</div>`;
     } else if (nx) {
       box.className = 'home-hero';
-      box.innerHTML = `<div class="hc-kind">${isFresh() ? 'Start here' : 'Next on the suggested path'}</div><div class="hc-title">${esc(nx.label)}</div>
+      box.innerHTML = `<div class="hc-kind">${isFresh() ? 'Start here' : 'Next on the ' + planName()}</div><div class="hc-title">${esc(nx.label)}</div>
         <div class="hs-actions"><button class="hc-btn" type="button" data-act="path">${isFresh() ? 'Start' : 'Continue'} →</button></div>`;
     } else { box.className = 'home-hero hidden'; box.innerHTML = ''; }
   }

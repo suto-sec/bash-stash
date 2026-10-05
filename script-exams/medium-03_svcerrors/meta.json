@@ -1,0 +1,38 @@
+{
+ "id": "medium-03",
+ "slug": "svcerrors",
+ "tier": "medium",
+ "title": {
+  "en": "Messages per service",
+  "es": "Mensajes por servicio"
+ },
+ "script": "svcerrors.sh",
+ "cmds": "awk, cut, grep, sort, uniq -c, while read, case, exit codes",
+ "objectives": [
+  {
+   "id": "args",
+   "label": {
+    "en": "Argument checking and error messages",
+    "es": "Comprobación de argumentos y mensajes de error"
+   },
+   "points": 3
+  },
+  {
+   "id": "core",
+   "label": {
+    "en": "Selecting, counting and ordering the services",
+    "es": "Seleccionar, contar y ordenar los servicios"
+   },
+   "points": 4
+  },
+  {
+   "id": "edge",
+   "label": {
+    "en": "Special cases (no match, odd lines, words inside messages)",
+    "es": "Casos especiales (ninguna coincidencia, líneas raras, palabras dentro del mensaje)"
+   },
+   "points": 3
+  }
+ ],
+ "total": 10
+}

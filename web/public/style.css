@@ -1101,3 +1101,13 @@ html.boot-home #home-page.hidden, html.boot-reference #reference-page.hidden, ht
 .imp-act.allowed { color: var(--accent); border-color: var(--accent); }
 .imp-act.rolled-back { color: var(--warn); border-color: var(--warn); }
 .imp-act.self-test { color: var(--info); border-color: var(--info); }
+/* the fast track card (fast.js) shares the .ep-* rules of the suggested path */
+.ep-switch { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.home-roadmap .ep-switch button { width: auto; height: auto; display: inline-block; padding: 5px 11px; border: 0; border-radius: 0; background: transparent; color: var(--muted); font-size: 12.5px; cursor: pointer; }
+.home-roadmap .ep-switch button.on { background: var(--accent); color: var(--accent-ink); font-weight: 600; }
+.ep-nextline { margin: 0 0 10px; font-size: 13.5px; }
+.ep-fastchips { gap: 6px; align-items: center; }
+.ep-tips { margin: 0 0 8px; padding-left: 18px; font-size: 12.5px; }
+.ep-tips li { margin: 2px 0; }
+.ep-chip.ep-extra { border-style: dashed; }
+.ep-foot { margin: 10px 0 0; }

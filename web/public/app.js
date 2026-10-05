@@ -29,6 +29,7 @@ function visibleInTopic(t, e) {
   if (state.introCategory === 'all') return e.tier === 0;
   if (state.introCategory) return state.introCategory === t.id && e.tier === 0;
   if (state.track === 'path') return ExamPath.hasEx(e.id);   // the exam path: its exercises, warm-ups included
+  if (state.track === 'fast') return FastTrack.hasEx(e.id);  // the fast track: its exercises, in plan order
   if (state.track === 'man') return e.tier >= 4;             // the man page tasks (topic 20): only through the Man drills section (or the path)
   if (e.tier >= 4) return false;
   if (e.tier === 0) return false;
@@ -36,6 +37,7 @@ function visibleInTopic(t, e) {
 }
 function visibleFlat() {
   if (!state.introCategory && state.track === 'path') return ExamPath.ordered();   // in path order, not topic order
+  if (!state.introCategory && state.track === 'fast') return FastTrack.ordered();
   const out = [];
   for (const t of state.index) for (const e of t.exercises) if (visibleInTopic(t, e)) out.push(e);
   return out;
@@ -863,7 +865,7 @@ document.addEventListener('click', ev => {
 });
 
 // ------------------------------------------------------------------ home page (track picker)
-const TRACK_LABELS = { minimal: 'Minimal', intermediate: 'Intermediate', complete: 'Complete', path: 'Suggested path', man: 'Man tasks' };
+const TRACK_LABELS = { minimal: 'Minimal', intermediate: 'Intermediate', complete: 'Complete', path: 'Suggested path', fast: 'Fast track', man: 'Man tasks' };
 function updateTrackBadge() {
   const badge = $('#track-badge');
   if (state.script) {

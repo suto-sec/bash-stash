@@ -1,0 +1,124 @@
+@@sexam medium-02 | stage_configs | Staging configuration files | Preparar ficheros de configuración
+@@script stage_configs.sh
+@@cmds find -size, find -prune, cp, mkdir -p, test, exit codes, counters
+@@objectives
+args | Argument checking and error messages | Comprobación de argumentos y mensajes de error | 3
+select | Choosing the right files | Elegir los ficheros correctos | 3
+dest | The destination directory: creating it and overwriting | El directorio de destino: crearlo y sobrescribir | 2
+summary | Counting and the final message | Contar y el mensaje final | 2
+@@readme en
+Write a shell script called `stage_configs.sh` that takes one optional argument:
+
+```
+stage_configs.sh [directory]
+```
+
+The script looks under `directory` (including all its subdirectories) for **regular files** (not directories, not symbolic links) that meet **all** of these conditions, and copies them into the directory `$HOME/staging`:
+
+- the name ends in `.conf` or `.cfg` (lower case);
+- the size is **larger than 1024 bytes** (a file of exactly 1024 bytes does not count);
+- the file is **not inside a directory called `old`**, at any depth.
+
+Only the file name is kept (`directory/net/hosts.conf` becomes `$HOME/staging/hosts.conf`). A file that already exists in the destination is overwritten; other files of the destination are left alone. File names may contain spaces.
+
+Rules:
+
+1. More than one argument: print an error message **and the correct usage**, exit code **1**.
+2. `directory` does not exist: error message that includes its name, exit code **2**.
+3. `directory` exists but is not a directory: error message that includes its name, exit code **3**.
+4. No argument: use the current directory.
+5. If `$HOME/staging` does not exist, create it and print `Created /home/.../staging` (the full path of the directory).
+6. At the end print how many files were copied, exactly in this form (also when it is zero): `Staged N files`.
+
+Errors go to standard error. The messages of the rules 5 and 6 go to standard output.
+
+Don't forget:
+- Argument checking and error messages, in the right order (3 points).
+- Choosing exactly the files described: suffix, size, regular files only, skipping `old` (3 points).
+- Creating `$HOME/staging` with its message and overwriting existing copies (2 points).
+- Counting the copied files and printing the final message, also with the current directory and with zero files (2 points).
+@@readme es
+Escribe un script de shell llamado `stage_configs.sh` que reciba un argumento opcional:
+
+```
+stage_configs.sh [directorio]
+```
+
+El script busca bajo `directorio` (incluidos todos sus subdirectorios) **ficheros regulares** (ni directorios ni enlaces simbólicos) que cumplan **todas** estas condiciones, y los copia al directorio `$HOME/staging`:
+
+- el nombre termina en `.conf` o `.cfg` (en minúsculas);
+- el tamaño es **mayor que 1024 bytes** (un fichero de exactamente 1024 bytes no cuenta);
+- el fichero **no está dentro de un directorio llamado `old`**, a ninguna profundidad.
+
+Solo se conserva el nombre del fichero (`directorio/net/hosts.conf` pasa a ser `$HOME/staging/hosts.conf`). Si un fichero ya existe en el destino se sobrescribe; los demás ficheros del destino no se tocan. Los nombres pueden contener espacios.
+
+Reglas:
+
+1. Más de un argumento: mensaje de error **y el uso correcto**, código **1**.
+2. `directorio` no existe: mensaje de error que incluya su nombre, código **2**.
+3. `directorio` existe pero no es un directorio: mensaje de error que incluya su nombre, código **3**.
+4. Sin argumento: se usa el directorio actual.
+5. Si `$HOME/staging` no existe, se crea y se escribe `Created /home/.../staging` (la ruta completa del directorio).
+6. Al final se escribe cuántos ficheros se han copiado, exactamente así (también cuando es cero): `Staged N files`.
+
+Los errores van a la salida de error. Los mensajes de las reglas 5 y 6 van a la salida estándar.
+
+No olvides:
+- Comprobación de argumentos y mensajes de error, en el orden correcto (3 puntos).
+- Elegir exactamente los ficheros descritos: sufijo, tamaño, solo ficheros regulares, saltarse `old` (3 puntos).
+- Crear `$HOME/staging` con su mensaje y sobrescribir las copias existentes (2 puntos).
+- Contar los ficheros copiados e imprimir el mensaje final, también con el directorio actual y con cero ficheros (2 puntos).
+@@check
+SEEDS=2
+COMPARE="stdout exit errmsg files"
+setup() {
+  mk() { mkdir -p "$(dirname "$1")"; head -c "$2" /dev/zero | tr '\0' 'x' > "$1"; }
+  mk tree/net/hosts.conf "$(randr 1100 4000)"
+  mk tree/net/dns/resolv.cfg "$(randr 1100 4000)"
+  mk tree/net/small.conf "$(randr 10 1000)"
+  mk tree/net/dns/big.txt "$(randr 2000 5000)"
+  mk tree/app/main.cfg 2048
+  mk tree/app/old/legacy.conf "$(randr 1100 4000)"
+  mk tree/app/deep/old/x/hidden.cfg "$(randr 1100 4000)"
+  mk tree/app/deep/keep.conf "$(randr 1100 4000)"
+  mk tree/docs/notes.CONF "$(randr 1100 4000)"
+  mk tree/docs/readme.cfg.bak "$(randr 1100 4000)"
+  mkdir -p tree/dirs.conf; ln -s ../net/hosts.conf tree/docs/link.conf
+  mk "with space/sub dir/my app.conf" "$(randr 1100 3000)"
+  mk "with space/extra.cfg" "$(randr 1100 3000)"
+  mk "with space/older.cfg" 900
+  mk sizes/a1024.conf 1024
+  mk sizes/a1025.cfg 1025
+  mk sizes/b0.conf 0
+  mk oldonly/old/a.conf 3000
+  mk oldonly/old/b.cfg 3000
+  mk oldonly/note.txt 3000
+  mkdir -p empty/sub
+}
+pre_s() { mkdir -p "$H/staging"; }
+pre_x() { mkdir -p "$H/staging"; echo old > "$H/staging/hosts.conf"; echo keep > "$H/staging/other.txt"; }
+ARGS=('tree extra' 'a b c' 'nodir' 'tree/net/hosts.conf'
+      'tree $(pre_s)' '"with space" $(pre_s)' 'sizes $(pre_s)' 'oldonly $(pre_s)'
+      'tree' 'tree $(pre_x)'
+      'empty' '$(pre_s)' 'tree/net $(pre_s)')
+CASE_OBJ=(args args args args  select select select select  dest dest  summary summary summary)
+extra_check() {
+  case $REF_CODE in
+    1) [[ $ERR == *stage_configs.sh* || $ERR == *sage* || $ERR == *Uso* || $ERR == *uso* ]] || fail "the usage message should show how to call the script" ;;
+    2|3) mentions "$(eval "set -- $CASE"; echo "$1")" ;;
+  esac
+}
+@@solution
+#!/bin/bash
+usage() { echo "Usage: $0 [directory]" >&2; }
+if (( $# > 1 )); then echo "Error: too many arguments" >&2; usage; exit 1; fi
+dir=${1:-.}
+[[ -e $dir ]] || { echo "Error: $dir does not exist" >&2; exit 2; }
+[[ -d $dir ]] || { echo "Error: $dir is not a directory" >&2; exit 3; }
+dest=$HOME/staging
+if [[ ! -d $dest ]]; then mkdir -p "$dest"; echo "Created $dest"; fi
+n=0
+while IFS= read -r -d '' f; do
+  cp -f -- "$f" "$dest/" && n=$((n + 1))
+done < <(find "$dir" -type d -name old -prune -o -type f \( -name '*.conf' -o -name '*.cfg' \) -size +1024c -print0)
+echo "Staged $n files"
