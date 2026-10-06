@@ -30,6 +30,11 @@ COPY web/package.json /opt/web/package.json
 RUN cd /opt/web && npm install --omit=dev --no-audit --no-fund \
  && apt-get purge -y build-essential && apt-get autoremove -y
 
+# The C compiler stays: some exercises (e.g. corregir) compile the students' C programs.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends gcc libc6-dev \
+ && rm -rf /var/lib/apt/lists/*
+
 COPY container/setup/ /opt/lab-setup/
 RUN bash /opt/lab-setup/build.sh
 
