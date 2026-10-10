@@ -1,69 +1,177 @@
 #!/bin/bash
-# Host wrapper for the Ubuntu lab container.
-#   ./lab              open a shell as alumno (starts the container if needed)
-#   ./lab <cmd...>     run any command inside the container as alumno (tools/validate*.sh, build scripts...)
-#   ./lab build        (re)build the image
-#   ./lab reset        destroy the container (fresh system on next start)
-#   ./lab root         open a root shell
-#   ./lab web          start the web UI and open http://localhost:8080
-#
-# LAB_INSTANCE=name   use a second, independent container ("bash-stash-name")
-#                      sharing this same folder but with its own /tmp — so its
-#                      checker runs never queue behind (or block) the default
-#                      instance's. Handy to let someone practice in the default
-#                      instance while exercises are authored/validated in a
-#                      "dev" one at the same time. No web port is published for
-#                      a non-default instance unless LAB_PORT is set explicitly.
+# Host wrapper for the Ubuntu lab container. Run ./lab help for the list of commands.
 set -e
 case $(uname -s) in
   MINGW*|MSYS*|CYGWIN*) echo "This script needs a Linux shell. On Windows run it inside WSL (see README: Install > Windows)." >&2; exit 1 ;;
 esac
-HERE=$(cd "$(dirname "$0")" && pwd)
+HERE=$(cd "$(dirname "$(readlink -f "$0")")" && pwd)
 IMG=bash-stash
 NAME=bash-stash${LAB_INSTANCE:+-$LAB_INSTANCE}
 
-if command -v podman >/dev/null; then RT=podman; USERNS=(--userns=keep-id:uid=1000,gid=1000)
+usage() {
+  cat <<'EOF'
+./lab                   open a shell as alumno (starts the container if needed)
+./lab <cmd...>          run any command inside the container as alumno (tools/validate*.sh, build scripts...)
+
+./lab web [-p PORT]     start the web UI and open it (rebuilds the image first if it is older than this version)
+./lab restart [-p PORT] stop the container and start it again (picks up changes to web/server.js)
+./lab open              open the running web UI in the browser
+./lab status            what is running, on which port, and which port is the default
+./lab logs [-f]         the container's log (-f follows it)
+./lab stop              remove the container (your progress stays in .progress/); same as reset
+./lab reset             destroy the container (fresh system on next start)
+./lab build             (re)build the image
+./lab root [cmd...]     open a root shell (or run a command as root)
+
+Port
+  ./lab port              show the default port and the live one
+  ./lab port 9090         make 9090 the default from now on (stays set)
+  ./lab port reset        back to the built-in default (8080)
+  ./lab web -p 9090       use 9090 for this launch only; the next plain ./lab web goes back to the default
+                          (if the web UI is already running on another port it is relaunched on 9090)
+  LAB_PORT=9090 ./lab web is the same as -p 9090. A plain ./lab (shell) never moves a running container.
+
+Other
+  --no-open / LAB_NO_OPEN=1   do not open the browser (web, restart)
+  LAB_ENGINE=podman|docker    choose the container engine
+  LAB_INSTANCE=name           a second, independent container ("bash-stash-name") sharing this folder but with its
+                              own /tmp, so its checker runs never queue behind the default instance's. It gets no
+                              web port unless you give one with -p or LAB_PORT. Handy to author and validate in a
+                              "dev" instance while someone practises in the default one.
+EOF
+}
+
+case ${1:-} in help|-h|--help) usage; exit 0 ;; esac
+
+# ---------------------------------------------------------------- the engine
+if [[ -n ${LAB_ENGINE:-} ]]; then RT=$LAB_ENGINE; USERNS=(); [[ $RT == podman ]] && USERNS=(--userns=keep-id:uid=1000,gid=1000)
+elif command -v podman >/dev/null; then RT=podman; USERNS=(--userns=keep-id:uid=1000,gid=1000)
 elif command -v docker >/dev/null; then RT=docker; USERNS=()
 else echo "Need podman or docker (see README: Install)" >&2; exit 1; fi
 
-PORT=${LAB_PORT:-8080}
-PUBLISH=(); [[ -z $LAB_INSTANCE || -n ${LAB_PORT:-} ]] && PUBLISH=(-p "127.0.0.1:$PORT:8080")
+# ---------------------------------------------------------------- the port
+# The default is kept in a small file outside the project (so a git pull or a new checkout keeps it); ./lab port changes it.
+BUILTIN_PORT=8080
+CONF=${XDG_CONFIG_HOME:-$HOME/.config}/bash-stash/port
+valid_port() { [[ $1 =~ ^[0-9]+$ ]] && (( 10#$1 >= 1 && 10#$1 <= 65535 )); }
+saved_port() { local p; [[ -r $CONF ]] && read -r p < "$CONF" && valid_port "$p" && echo $((10#$p)); return 0; }
+default_port() { local p; p=$(saved_port); echo "${p:-$BUILTIN_PORT}"; }
+need_port() { valid_port "${1:-}" || { echo "'${1:-}' is not a port (a number from 1 to 65535)" >&2; exit 1; }; echo $((10#$1)); }
+listening() { (exec 3<>"/dev/tcp/127.0.0.1/$1") 2>/dev/null; }            # something accepts connections on that port
+live_port() { "$RT" port "$NAME" 2>/dev/null | sed -n 's/.*:\([0-9][0-9]*\)$/\1/p' | head -n 1; }   # the host port the container publishes
+is_running() { [[ $("$RT" inspect -f '{{.State.Running}}' "$NAME" 2>/dev/null) == true ]]; }
 
-build() { "$RT" build -t "$IMG" -f "$HERE/container/Containerfile" "$HERE"; }
-
-ensure() {
-  "$RT" image exists "$IMG" 2>/dev/null || "$RT" image inspect "$IMG" >/dev/null 2>&1 || build
-  # (re)create the container if it is not running or was created without the wanted port
-  if [[ $("$RT" inspect -f '{{.State.Running}}' "$NAME" 2>/dev/null) != true ]] ||
-     { [[ ${#PUBLISH[@]} -gt 0 ]] && ! "$RT" port "$NAME" 2>/dev/null | grep -q "127.0.0.1:$PORT\$"; }; then
-    "$RT" rm -f "$NAME" >/dev/null 2>&1 || true
-    "$RT" run -d --name "$NAME" --hostname labhost "${USERNS[@]}" --user root \
-      "${PUBLISH[@]}" -v "$HERE:/home/alumno/lab:Z" "$IMG" >/dev/null
-  fi
+# which port this run wants: -p / LAB_PORT (this launch only) > the saved default > 8080
+PORT_ARG=${LAB_PORT:+$(need_port "$LAB_PORT")}
+NO_OPEN=${LAB_NO_OPEN:-}
+parse_flags() {
+  while (( $# )); do
+    case $1 in
+      -p|--port)  [[ -n ${2:-} ]] || { echo "$1 needs a port number" >&2; exit 1; }; PORT_ARG=$(need_port "$2"); shift ;;
+      --port=*)   PORT_ARG=$(need_port "${1#*=}") ;;
+      --no-open)  NO_OPEN=1 ;;
+      *) echo "unknown option '$1' (see ./lab help)" >&2; exit 1 ;;
+    esac
+    shift
+  done
+}
+PORT=; PUBLISH=()
+resolve_port() {
+  PORT=${PORT_ARG:-$(default_port)}
+  PUBLISH=(); [[ -z ${LAB_INSTANCE:-} || -n $PORT_ARG ]] && PUBLISH=(-p "127.0.0.1:$PORT:8080")
+  return 0
 }
 
-in_lab() { # [-t] cmd...
+# ---------------------------------------------------------------- the image and the container
+# The image is labelled with a checksum of what it is built from, so `web` can tell when it is older than the project
+# (for example after a git pull). An image without the label (built by an older ./lab) is left alone until the next ./lab build.
+sig() { { cat "$HERE/container/Containerfile" "$HERE/web/package.json"; find "$HERE/container/setup" -type f | sort | xargs cat; } | cksum | cut -d' ' -f1; }
+image_sig() { "$RT" image inspect -f '{{index .Config.Labels "bash-stash.sources"}}' "$IMG" 2>/dev/null || true; }
+have_image() { "$RT" image exists "$IMG" 2>/dev/null || "$RT" image inspect "$IMG" >/dev/null 2>&1; }
+build() { "$RT" build --label "bash-stash.sources=$(sig)" -t "$IMG" -f "$HERE/container/Containerfile" "$HERE"; }
+image_stale() { local s; s=$(image_sig); [[ -n $s && $s != "$(sig)" ]]; }
+
+# ensure [strict]: the container is running. strict (web, restart): it must also publish the wanted port, otherwise it is
+# recreated on it. Without strict (shell, commands) a running container is used as it is, whatever port it is on.
+ensure() {
+  resolve_port
+  have_image || build
+  local mismatch=
+  if is_running; then
+    [[ ${1:-} == strict && ${#PUBLISH[@]} -gt 0 && $(live_port) != "$PORT" ]] && mismatch=1
+    [[ -z $mismatch ]] && return 0
+  fi
+  if [[ ${#PUBLISH[@]} -gt 0 ]] && listening "$PORT"; then   # (checked before touching a running container: it is not on this port)
+    echo "Port $PORT is already in use by another program." >&2
+    echo "  use another one just this time:   ./lab web -p 9090" >&2
+    echo "  or change the default for good:   ./lab port 9090" >&2
+    exit 1
+  fi
+  "$RT" rm -f "$NAME" >/dev/null 2>&1 || true
+  "$RT" run -d --name "$NAME" --hostname labhost "${USERNS[@]}" --user root \
+    "${PUBLISH[@]}" -v "$HERE:/home/alumno/lab:Z" "$IMG" >/dev/null
+}
+
+in_lab() { # cmd...
   local tty=(-i); [[ -t 0 && -t 1 ]] && tty=(-it)
   "$RT" exec "${tty[@]}" -u alumno -w /home/alumno/lab -e HOME=/home/alumno -e LAB_QUIET=1 "$NAME" \
     "$@"
 }
 
+open_browser() { # url   the default browser: Linux (xdg-open), macOS (open), WSL (wslview or Windows' explorer.exe)
+  [[ -z $NO_OPEN ]] || return 0
+  if   grep -qi microsoft /proc/version 2>/dev/null && command -v wslview >/dev/null; then wslview "$1" >/dev/null 2>&1 &
+  elif grep -qi microsoft /proc/version 2>/dev/null && command -v explorer.exe >/dev/null; then explorer.exe "$1" >/dev/null 2>&1 &
+  elif command -v xdg-open >/dev/null; then xdg-open "$1" >/dev/null 2>&1 &
+  elif command -v open >/dev/null; then open "$1" >/dev/null 2>&1 &
+  fi
+  return 0
+}
+
+launch() { # the web UI: running on the wanted port, then the browser
+  if image_stale; then echo "The lab image is older than this version of bash stash: rebuilding it (a few minutes)."; build; "$RT" rm -f "$NAME" >/dev/null 2>&1 || true; fi
+  ensure strict
+  if [[ ${#PUBLISH[@]} -eq 0 ]]; then echo "The $NAME instance has no web port: give one with -p PORT." >&2; exit 1; fi
+  local ready=
+  if command -v curl >/dev/null; then
+    for _ in $(seq 60); do curl -fs "http://127.0.0.1:$PORT/api/ping" >/dev/null 2>&1 && { ready=1; break; }; sleep 0.5; done
+  else sleep 6; ready=1; fi
+  if [[ -z $ready ]]; then echo "The web UI did not answer on port $PORT; see ./lab logs" >&2; exit 1; fi
+  echo "bash stash is running at http://localhost:$PORT   (open it in your browser if it did not open by itself)"
+  if [[ -n $PORT_ARG && $PORT != "$(default_port)" ]]; then echo "(port $PORT is for this launch only; the default stays $(default_port))"; fi
+  open_browser "http://localhost:$PORT"
+}
+
+# ---------------------------------------------------------------- the commands
 case ${1:-} in
-  build) build ;;
-  web)   ensure
-         if command -v curl >/dev/null; then
-           for _ in $(seq 60); do curl -fs "http://127.0.0.1:$PORT/api/ping" >/dev/null 2>&1 && break; sleep 0.5; done
-         else sleep 6; fi
-         echo "bash stash is running at http://localhost:$PORT   (open it in your browser if it did not open by itself)"
-         # the default browser: Linux (xdg-open), macOS (open), WSL (wslview or Windows' explorer.exe)
-         if   grep -qi microsoft /proc/version 2>/dev/null && command -v wslview >/dev/null; then wslview "http://localhost:$PORT" >/dev/null 2>&1 &
-         elif grep -qi microsoft /proc/version 2>/dev/null && command -v explorer.exe >/dev/null; then explorer.exe "http://localhost:$PORT" >/dev/null 2>&1 &
-         elif command -v xdg-open >/dev/null; then xdg-open "http://localhost:$PORT" >/dev/null 2>&1 &
-         elif command -v open >/dev/null; then open "http://localhost:$PORT" >/dev/null 2>&1 &
-         fi
-         ;;
-  reset) "$RT" rm -f "$NAME" >/dev/null 2>&1; echo "container removed" ;;
-  root)  ensure; shift; if (( $# )); then "$RT" exec -u root "$NAME" "$@"; else "$RT" exec -it -u root "$NAME" bash -l; fi ;;
-  "")    ensure; "$RT" exec -it -u alumno -w /home/alumno/lab -e HOME=/home/alumno "$NAME" bash -l ;;
-  *)     ensure; in_lab "$@" ;;
+  build)   build ;;
+  web)     shift; parse_flags "$@"; launch ;;
+  restart) shift; parse_flags "$@"; "$RT" rm -f "$NAME" >/dev/null 2>&1 || true; launch ;;
+  open)    p=$(live_port); [[ -n $p ]] && is_running || { echo "The web UI is not running: ./lab web" >&2; exit 1; }
+           shift; parse_flags "$@"; open_browser "http://localhost:$p"; echo "http://localhost:$p" ;;
+  status)  p=$(default_port); [[ -n $(saved_port) ]] && src="saved with ./lab port" || src="built in"
+           if is_running; then
+             lp=$(live_port)
+             if [[ -n $lp ]]; then echo "container:     $NAME is running; web UI at http://localhost:$lp"
+             else echo "container:     $NAME is running, with no web port"; fi
+           else lp=; echo "container:     $NAME is not running"; fi
+           echo "default port:  $p ($src)"
+           if [[ -n $lp && $lp != "$p" ]]; then echo "               running on $lp for this launch; ./lab web goes back to $p"; fi
+           if ! have_image; then echo "image:         not built yet (./lab web builds it)"
+           elif image_stale; then echo "image:         older than this version (./lab web rebuilds it)"
+           else echo "image:         up to date"; fi ;;
+  port)    case ${2:-} in
+             "")            p=$(default_port); [[ -n $(saved_port) ]] && echo "default port: $p (saved)" || echo "default port: $p (built in)"
+                            lp=; is_running && lp=$(live_port)
+                            if [[ -n $lp ]]; then echo "running on:   $lp"; fi ;;
+             reset|default) rm -f "$CONF"; echo "default port: $BUILTIN_PORT (built in)" ;;
+             *)             p=$(need_port "$2"); mkdir -p "$(dirname "$CONF")"; echo "$p" > "$CONF"; echo "default port: $p (saved in $CONF)"
+                            is_running && lp=$(live_port) || lp=
+                            if [[ -n $lp && $lp != "$p" ]]; then echo "The web UI is running on $lp; ./lab web moves it to $p."; fi ;;
+           esac ;;
+  logs)    shift; "$RT" logs "$@" "$NAME" ;;
+  stop|reset) "$RT" rm -f "$NAME" >/dev/null 2>&1 || true; echo "container removed" ;;
+  root)    ensure; shift; if (( $# )); then "$RT" exec -u root "$NAME" "$@"; else "$RT" exec -it -u root "$NAME" bash -l; fi ;;
+  "")      ensure; "$RT" exec -it -u alumno -w /home/alumno/lab -e HOME=/home/alumno "$NAME" bash -l ;;
+  *)       ensure; in_lab "$@" ;;
 esac
